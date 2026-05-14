@@ -1,0 +1,180 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
+
+:root {
+  --app-font-sans:
+    'Geist Variable', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC',
+    sans-serif;
+  --app-font-size-display: clamp(2.25rem, 5vw, 4.25rem);
+  --app-font-size-lead: 1.0625rem;
+  --app-font-size-body: 1rem;
+  --app-font-size-small: 0.875rem;
+
+  --background: oklch(0.982 0.012 190);
+  --foreground: oklch(0.19 0.035 245);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.035 245);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.035 245);
+  --primary: oklch(0.45 0.12 185);
+  --primary-foreground: oklch(0.99 0.006 185);
+  --secondary: oklch(0.94 0.018 245);
+  --secondary-foreground: oklch(0.25 0.045 245);
+  --muted: oklch(0.95 0.014 245);
+  --muted-foreground: oklch(0.48 0.035 245);
+  --accent: oklch(0.92 0.065 78);
+  --accent-foreground: oklch(0.27 0.055 58);
+  --destructive: oklch(0.58 0.2 27);
+  --border: oklch(0.88 0.018 245);
+  --input: oklch(0.88 0.018 245);
+  --ring: oklch(0.58 0.13 185);
+  --chart-1: oklch(0.56 0.14 185);
+  --chart-2: oklch(0.55 0.14 260);
+  --chart-3: oklch(0.66 0.16 78);
+  --chart-4: oklch(0.62 0.18 25);
+  --chart-5: oklch(0.5 0.12 320);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.97 0.012 245);
+  --sidebar-foreground: oklch(0.19 0.035 245);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--secondary-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--app-font-sans);
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  --background: oklch(0.16 0.03 245);
+  --foreground: oklch(0.97 0.008 245);
+  --card: oklch(0.21 0.035 245);
+  --card-foreground: oklch(0.97 0.008 245);
+  --popover: oklch(0.21 0.035 245);
+  --popover-foreground: oklch(0.97 0.008 245);
+  --primary: oklch(0.72 0.12 185);
+  --primary-foreground: oklch(0.14 0.03 245);
+  --secondary: oklch(0.27 0.035 245);
+  --secondary-foreground: oklch(0.95 0.008 245);
+  --muted: oklch(0.27 0.035 245);
+  --muted-foreground: oklch(0.74 0.025 245);
+  --accent: oklch(0.33 0.08 78);
+  --accent-foreground: oklch(0.95 0.035 78);
+  --destructive: oklch(0.68 0.18 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.12 185);
+  --chart-1: oklch(0.72 0.12 185);
+  --chart-2: oklch(0.72 0.13 260);
+  --chart-3: oklch(0.78 0.14 78);
+  --chart-4: oklch(0.72 0.17 25);
+  --chart-5: oklch(0.7 0.13 320);
+  --sidebar: oklch(0.21 0.035 245);
+  --sidebar-foreground: oklch(0.97 0.008 245);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--secondary-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--app-font-sans);
+  --text-display: var(--app-font-size-display);
+  --text-lead: var(--app-font-size-lead);
+  --text-body: var(--app-font-size-body);
+  --text-small: var(--app-font-size-small);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    @apply bg-background text-foreground;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  h1,
+  h2,
+  p {
+    margin-top: 0;
+  }
+
+  h1 {
+    color: var(--foreground);
+    font-size: var(--app-font-size-display);
+    line-height: 1;
+    margin-bottom: 1.5rem;
+    max-width: 51rem;
+  }
+
+  h2 {
+    color: var(--foreground);
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+  }
+}

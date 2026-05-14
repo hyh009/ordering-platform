@@ -1,0 +1,6 @@
+{
+  "spreadsheetId": "your-google-spreadsheet-id",
+  "sheetTitle": "Translations",
+  "languages": ["en", "zh-TW"],
+  "credentialsPath": "secrets/google-service-account.json"
+}

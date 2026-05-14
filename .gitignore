@@ -1,0 +1,87 @@
+# -----------------
+
+# Node / pnpm
+
+# -----------------
+
+node_modules/
+.pnpm-store/
+apps/*/pnpm-lock.yaml
+
+# logs
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------
+
+# Build output
+
+# -----------------
+
+dist/
+build/
+.next/
+out/
+
+# -----------------
+
+# TypeScript
+
+# -----------------
+
+*.tsbuildinfo
+
+# -----------------
+
+# Environment
+
+# -----------------
+
+.env
+.env.*
+!.env.example
+secrets/
+
+# -----------------
+
+# OS / Editor
+
+# -----------------
+
+.DS_Store
+Thumbs.db
+
+# VSCode (可選，看你要不要 commit settings)
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# -----------------
+
+# Docker
+
+# -----------------
+
+docker-compose.override.yml
+
+# -----------------
+
+# Coverage / test
+
+# -----------------
+
+coverage/
+
+# -----------------
+
+# Misc
+
+# -----------------
+
+*.local

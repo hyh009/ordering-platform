@@ -1,0 +1,81 @@
+import { cloneElement, type ReactElement, type ReactNode, useId } from 'react';
+
+import { cn } from '@/shared/utils/cn';
+
+type FieldControlProps = {
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean | 'false' | 'true';
+  id?: string;
+};
+
+type FieldProps = {
+  children: ReactElement<FieldControlProps>;
+  className?: string;
+  description?: ReactNode;
+  error?: ReactNode;
+  id?: string;
+  label: ReactNode;
+  required?: boolean;
+};
+
+function joinIds(...ids: Array<string | undefined>) {
+  const value = ids.filter(Boolean).join(' ');
+
+  return value.length > 0 ? value : undefined;
+}
+
+export function Field({
+  children,
+  className,
+  description,
+  error,
+  id,
+  label,
+  required = false,
+}: FieldProps) {
+  const generatedId = useId();
+  const controlId = id ?? children.props.id ?? `field-${generatedId}`;
+  const descriptionId = description ? `${controlId}-description` : undefined;
+  const errorId = error ? `${controlId}-error` : undefined;
+  const describedBy = joinIds(
+    children.props['aria-describedby'],
+    descriptionId,
+    errorId,
+  );
+
+  const control = cloneElement(children, {
+    'aria-describedby': describedBy,
+    'aria-invalid': error ? true : children.props['aria-invalid'],
+    id: controlId,
+  });
+
+  return (
+    <div className={cn('grid gap-1.5', className)}>
+      <label
+        className="text-sm font-medium text-foreground"
+        htmlFor={controlId}
+      >
+        {label}
+        {required ? (
+          <span className="ml-1 text-destructive" aria-hidden="true">
+            *
+          </span>
+        ) : null}
+      </label>
+
+      {description ? (
+        <p className="text-sm text-muted-foreground" id={descriptionId}>
+          {description}
+        </p>
+      ) : null}
+
+      {control}
+
+      {error ? (
+        <p className="text-sm font-medium text-destructive" id={errorId}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

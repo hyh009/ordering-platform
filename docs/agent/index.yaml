@@ -1,0 +1,117 @@
+agent_docs:
+  workflows:
+    new_feature:
+      - name: new-feature
+        path: docs/agent/workflows/new-feature/new-feature.md
+        use_when: Adding or extending a feature.
+
+      - name: backend-feature
+        path: docs/agent/workflows/new-feature/backend-feature.md
+        use_when: Backend slice of a new feature.
+
+      - name: frontend-feature
+        path: docs/agent/workflows/new-feature/frontend-feature.md
+        use_when: Frontend slice of a new feature.
+
+    shared:
+      - name: verification
+        path: docs/agent/workflows/verification.md
+        use_when: Before finishing code or documentation changes.
+
+      - name: git-commits
+        path: docs/agent/workflows/git-commits.md
+        use_when: Only when the user explicitly asks for a commit.
+
+      - name: feature-docs
+        path: docs/agent/workflows/feature-docs.md
+        use_when: Creating or updating docs/features files.
+
+      - name: temp-checklist
+        path: docs/agent/workflows/temp-checklist.md
+        use_when: Tracking multi-step agent work with a temporary checklist.
+
+      - name: tooling
+        path: docs/agent/workflows/tooling.md
+        use_when: Changing TypeScript, ESLint, Prettier, or package-level tooling.
+
+      - name: shared-contracts
+        path: docs/agent/workflows/shared-contracts.md
+        use_when: Changing shared API contracts in packages/shared.
+
+  backend:
+    - name: backend-architecture
+      path: docs/agent/backend/architecture.md
+      use_when: Adding or updating backend code.
+
+    - name: backend-architecture-diagram
+      path: docs/agent/backend/architecture-diagram.md
+      use_when: Understanding backend architecture flow visually.
+
+    - name: mongo-schema
+      path: docs/agent/backend/mongo-schema.md
+      use_when: Adding or changing persistent MongoDB data.
+
+    - name: backend-repository
+      path: docs/agent/backend/repository.md
+      use_when: Adding or changing backend data access.
+
+    - name: backend-swagger
+      path: docs/agent/backend/swagger.md
+      use_when: Adding or changing backend API route documentation.
+
+    - name: backend-api-testing
+      path: docs/agent/backend/api-testing.md
+      use_when: Adding or updating backend API integration tests.
+
+    - name: backend-unit-testing
+      path: docs/agent/backend/unit-testing.md
+      use_when: Adding or updating backend unit tests.
+
+    - name: backend-error-handling
+      path: docs/agent/backend/error-handling.md
+      use_when: Changing backend error responses or error middleware behavior.
+
+    - name: backend-throwing-errors
+      path: docs/agent/backend/throwing-errors.md
+      use_when: Throwing or mapping backend errors.
+
+    - name: backend-logging
+      path: docs/agent/backend/logging.md
+      use_when: Changing backend logging or request logging behavior.
+
+  frontend:
+    - name: frontend-architecture
+      path: docs/agent/frontend/architecture.md
+      use_when: Adding or updating frontend code.
+
+    - name: frontend-architecture-diagram
+      path: docs/agent/frontend/architecture-diagram.md
+      use_when: Understanding frontend architecture flow visually.
+
+    - name: frontend-architecture-validation
+      path: docs/agent/frontend/architecture-validation.md
+      use_when: Checking frontend architecture boundaries before finishing frontend code.
+
+    - name: frontend-design-system
+      path: docs/agent/frontend/design-system.md
+      use_when: Adding shadcn/ui, shared UI primitives, or frontend design rules.
+
+    - name: frontend-forms
+      path: docs/agent/frontend/forms.md
+      use_when: Adding or changing frontend forms.
+
+    - name: frontend-error-feedback
+      path: docs/agent/frontend/error-feedback.md
+      use_when: Handling frontend API errors and page/domain error state.
+
+    - name: frontend-api-error-testing
+      path: docs/agent/frontend/api-error-testing.md
+      use_when: Adding or updating frontend API error tests.
+
+    - name: frontend-shared-feedback-ui
+      path: docs/agent/frontend/shared-feedback-ui.md
+      use_when: Adding or updating frontend toast, modal, or confirm feedback behavior.
+
+    - name: frontend-i18n
+      path: docs/agent/frontend/i18n.md
+      use_when: Adding or changing frontend user-facing strings or language switching behavior.

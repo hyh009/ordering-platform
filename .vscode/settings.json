@@ -1,0 +1,24 @@
+{
+  // ===== TypeScript（新版寫法）=====
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+
+  // ===== ESLint =====
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [
+    {
+      "directory": "apps/api",
+      "changeProcessCWD": true
+    }
+  ],
+  "eslint.validate": ["typescript", "javascript"],
+
+  // ===== 存檔自動修正 =====
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+
+  // ===== Prettier =====
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}
