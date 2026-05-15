@@ -85,3 +85,4 @@ coverage/
 # -----------------
 
 *.local
+docs/agent/temp/

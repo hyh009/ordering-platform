@@ -57,14 +57,33 @@ classDiagram
     Date updatedAt
   }
 
+  class StoreSettings {
+    string id
+    string organizationId
+    LocalizedString displayName
+    LocalizedString? description
+    SupportedLocale defaultLocale
+    SupportedLocale[] supportedLocales
+    BusinessHour[] businessHours
+    number serviceFeeRate
+    StoreSettingsCheckoutMode checkoutMode
+    boolean deleted
+    Date createdAt
+    Date updatedAt
+    Date? deletedAt
+    string? deletedBy
+  }
+
   User "1" --> "*" AuthSession : userId
   User "1" --> "*" OrganizationMembership : userId
   Organization "1" --> "*" OrganizationMembership : organizationId
+  Organization "1" --> "0..1" StoreSettings : organizationId
 
   note for User "collection: users\nplugin: mongoose-delete\nunique: email"
   note for AuthSession "collection: auth_sessions\nunique: refreshTokenHash\nindex: userId + revokedAt\nTTL: expiresAt expireAfterSeconds 0"
   note for Organization "collection: organizations\nplugin: mongoose-delete\nindex: status"
   note for OrganizationMembership "collection: organizationMemberships\nunique: organizationId + userId\nindex: userId + status\nindex: organizationId + role + status"
+  note for StoreSettings "collection: storeSettings\nplugin: mongoose-delete\nunique: organizationId"
 ```
 
 ## Status Values
@@ -89,6 +108,16 @@ Organization membership role:
 - `org_owner`
 - `org_admin`
 - `staff`
+
+Store settings checkout mode:
+
+- `pay_first`
+- `pay_later`
+
+Supported locale:
+
+- `en`
+- `zh-TW`
 
 ## Soft Delete
 
@@ -137,6 +166,17 @@ Business lifecycle stays separate from soft delete:
 - unique index: `organizationId + userId`
 - index: `userId + status`
 - index: `organizationId + role + status`
+
+`storeSettings`
+
+- collection uses camelCase intentionally: `storeSettings`
+- plugin: `mongoose-delete`
+- unique index: `organizationId`
+- localized strings currently use supported locales `en` and `zh-TW`
+- `displayName` requires a value for `defaultLocale`
+- `supportedLocales` must include `defaultLocale`
+- `serviceFeeRate` is a decimal rate from `0` to `1`
+- `checkoutMode` is `pay_first` or `pay_later`
 
 ## Starter Demo
 
