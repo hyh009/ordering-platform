@@ -5,5 +5,5 @@ export type AppContextState = {
 };
 
 export const appContextStore = createStore<AppContextState>(() => ({
-  appName: 'React Express Starter',
+  appName: 'Ordering Platform',
 }));

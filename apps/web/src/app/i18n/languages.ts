@@ -4,7 +4,7 @@ export const supportedLanguages = ['en', 'zh-TW'] as const;
 
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
-export const languageStorageKey = 'react-express-starter.language';
+export const languageStorageKey = 'ordering-platform.language';
 
 export const languageOptions: Array<{
   label: string;

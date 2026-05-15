@@ -22,6 +22,26 @@ For full-stack features, start here, then do backend work before frontend work u
 - Do not ask for clarification when the request is already specific and the implementation path is clear from these docs.
 - If a small assumption is enough to proceed, state the assumption and continue.
 
+## Planning Gate
+
+Before implementation, decide whether the feature needs a temporary plan.
+
+Use `docs/agent/workflows/plan.md` first when:
+
+- schema, API, auth, permissions, or frontend boundaries are not settled
+- the feature has multiple reasonable designs
+- the work should be split across phases or pull requests
+- putting the discussion in `docs/features/` would make feature docs too speculative
+
+Do not create a plan for small, obvious edits.
+
+When a plan is needed:
+
+- create it under `docs/agent/temp/plan/`
+- keep open questions and tradeoffs in the plan
+- wait until the user accepts a direction before changing implementation code
+- promote agreed behavior into the permanent docs that own it after decisions are settled
+
 ## Decide Scope
 
 - Classify the feature as:

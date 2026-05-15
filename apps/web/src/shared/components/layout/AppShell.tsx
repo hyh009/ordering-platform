@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import type { SupportedLanguage } from '@/app/i18n/languages';
+import logoUrl from '@/assets/logo.svg';
 
 type LanguageOption = {
   label: string;
@@ -40,7 +41,15 @@ export function AppShell({
   return (
     <div className="min-h-screen">
       <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border bg-card px-5 py-3 md:px-8">
-        <Link className="text-sm font-bold text-foreground" to="/">
+        <Link
+          className="flex items-center gap-2 text-sm font-bold text-foreground"
+          to="/"
+        >
+          <img
+            alt=""
+            className="h-8 w-8 shrink-0 text-foreground"
+            src={logoUrl}
+          />
           {appName}
         </Link>
         <nav

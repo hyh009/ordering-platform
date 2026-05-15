@@ -1,8 +1,12 @@
-# Node.js Monorepo Starter
+# Ordering Platform
 
-Full-stack starter template using React, Vite, Express, TypeScript, and pnpm workspaces.
+Full-stack ordering platform built with React, Vite, Express, TypeScript, and
+pnpm workspaces.
 
-## Features
+The project is being migrated from a starter template. The current Todo demo is
+kept temporarily until the ordering schemas are designed.
+
+## Foundation
 
 - Express API with versioned routes under `/api/v1`
 - React frontend powered by Vite and TypeScript
@@ -179,6 +183,9 @@ VITE_API_BASE_URL=http://localhost:9000
 ```
 
 ## API Routes
+
+Current routes include auth, health, and the temporary Todo demo that will be
+replaced after the ordering schema is designed.
 
 ```txt
 /api

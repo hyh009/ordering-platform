@@ -21,7 +21,8 @@ apps/api/src/repositories/todo/
   mongo.repository.ts
 ```
 
-Do not create unused implementations unless the starter/demo needs to show a switchable data source.
+Do not create unused implementations unless the current project needs to show a
+switchable data source.
 
 ## Responsibilities
 
@@ -52,9 +53,10 @@ Local file, memory, or other non-Mongo repositories should import only `model.ts
 
 Mongo repositories may import both `model.ts` and `mongo.ts`.
 
-## Starter Default
+## Default
 
-For starter demo features, prefer the memory repository as the selected implementation.
+For temporary demo features, prefer the memory repository as the selected
+implementation.
 
 Mongo repositories may exist to show the production-ready path, but they are not required for every domain.
 

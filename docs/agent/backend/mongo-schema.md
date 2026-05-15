@@ -2,7 +2,8 @@
 
 Use this guide when a backend feature stores or changes persistent data.
 
-This starter guide contains common schema rules only. If project-specific schema rules exist, follow them in addition to this guide.
+This guide contains common schema rules only. If project-specific schema rules
+exist, follow them in addition to this guide.
 
 ## Start Here
 

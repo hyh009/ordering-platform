@@ -38,10 +38,10 @@ export function LoginPage() {
     <section className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl content-center gap-8 px-5 py-10 md:grid-cols-[1fr_26rem] md:px-8">
       <div className="max-w-2xl self-center">
         <p className="mb-3 text-xs font-bold tracking-[0.08em] text-primary uppercase">
-          {tDefault('auth.login.eyebrow', 'Protected starter')}
+          {tDefault('auth.login.eyebrow', 'Ordering platform')}
         </p>
         <h1 className="mb-5 text-4xl leading-tight font-bold text-foreground md:text-5xl">
-          {tDefault('auth.login.title', 'Sign in to manage todos')}
+          {tDefault('auth.login.title', 'Sign in to manage your workspace')}
         </h1>
         <p className="max-w-xl text-base text-muted-foreground">
           {tDefault(
@@ -62,7 +62,7 @@ export function LoginPage() {
           <p className="m-0 text-sm text-muted-foreground">
             {tDefault(
               'auth.login.formDescription',
-              'Use an existing starter account.',
+              'Use an existing platform account.',
             )}
           </p>
         </div>

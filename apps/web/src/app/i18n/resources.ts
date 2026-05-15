@@ -66,13 +66,13 @@ const manualResources: Resource = {
           description:
             '前端將 access token 保存在記憶體中，並透過後端 refresh cookie 還原登入狀態。',
           email: 'Email',
-          eyebrow: '受保護的 starter',
-          formDescription: '使用既有的 starter 帳號。',
+          eyebrow: '點餐平台',
+          formDescription: '使用既有的平台帳號。',
           formTitle: '登入',
           password: '密碼',
           submit: '登入',
           submitting: '登入中...',
-          title: '登入以管理 todos',
+          title: '登入以管理工作區',
         },
         register: {
           backToLogin: '回到登入',
@@ -80,7 +80,7 @@ const manualResources: Resource = {
           description:
             '註冊會回傳 access token，並發出受保護路由使用的 refresh cookie。',
           email: 'Email',
-          eyebrow: 'Starter auth',
+          eyebrow: '點餐平台',
           formDescription: '使用簡單且接近正式環境的密碼規則開始。',
           formTitle: '註冊',
           password: '密碼',

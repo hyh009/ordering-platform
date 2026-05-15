@@ -30,6 +30,10 @@ agent_docs:
         path: docs/agent/workflows/temp-checklist.md
         use_when: Tracking multi-step agent work with a temporary checklist.
 
+      - name: temporary-plan
+        path: docs/agent/workflows/plan.md
+        use_when: Planning a larger feature or architecture change before implementation.
+
       - name: tooling
         path: docs/agent/workflows/tooling.md
         use_when: Changing TypeScript, ESLint, Prettier, or package-level tooling.

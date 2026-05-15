@@ -64,10 +64,16 @@ Keep form submit responsibilities split between the page VM and page commands.
 The page VM owns:
 
 - read page-local form values
-- run page/form validation
+- validate current form values before submit commands run
 - set page-local field and submit errors
 - call page commands
 - handle redirect, toast, modal, and form reset outcomes
+
+Before calling page commands, validate the current form values. Prefer shared API contract schemas for request validation and normalization. If validation fails, set page-local field and submit errors, then return without calling commands, services, or APIs.
+
+Keep page-only validation in the VM, such as `confirmPassword` matching. Do not send page-only fields to commands, services, or APIs.
+
+Field errors and submit errors are user-facing text. Build them with the app i18n helper, such as `tDefault(...)`, before storing them in page-local form state. Map schema or library validation issues to app i18n messages, and do not show raw validation-library messages such as `issue.message` in the UI.
 
 The page commands file owns:
 
@@ -87,11 +93,20 @@ function useLoginPageVM() {
   const form = useLoginForm();
 
   async function submit() {
-    if (!form.validate()) {
+    const validation = validateLoginForm(form.values);
+
+    if (!validation.success) {
+      form.setFieldErrors(validation.fieldErrors);
+      form.setSubmitError(
+        tDefault(
+          'auth.validation.submitInvalid',
+          'Check the highlighted fields and try again.',
+        ),
+      );
       return;
     }
 
-    const result = await loginPageCommands.submit(form.values);
+    const result = await loginPageCommands.submit(validation.request);
 
     if (result.status === 'authenticated') {
       form.reset();

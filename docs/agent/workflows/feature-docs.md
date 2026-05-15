@@ -19,6 +19,13 @@ docs/features/todo.md
 
 Do not create feature docs automatically.
 
+Feature docs describe current agreed behavior and architecture. For speculative
+design, open questions, or option comparison, use:
+
+```txt
+docs/agent/workflows/plan.md
+```
+
 ## When to Update
 
 Create or update a feature doc when:

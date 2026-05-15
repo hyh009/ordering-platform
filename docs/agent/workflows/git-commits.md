@@ -81,7 +81,7 @@ Common scopes:
 Examples from this repository:
 
 ```txt
-docs: update starter README
+docs: update project README
 docs: document full-stack workspace setup
 docs(frontend): document page commands architecture
 feat(api): add structured logging and env validation

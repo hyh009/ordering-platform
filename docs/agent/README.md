@@ -1,6 +1,7 @@
 # Agent Docs
 
-Use this directory for repo-specific instructions that help agents change this starter consistently.
+Use this directory for repo-specific instructions that help agents change this
+project consistently.
 
 Start with:
 
