@@ -46,6 +46,15 @@ Define:
 
 Use clear field names that match backend domain language.
 
+## Schema Options
+
+Use `timestamps: true` by default for persistent domain models.
+
+Do not add `optimisticConcurrency: true` by default. Add it later only when the
+model has document-level invariants that can be broken by concurrent
+read-modify-save flows, or when repository code intentionally uses loaded
+documents plus `.save()` for updates that need version conflict detection.
+
 ## MongoDB Indexes
 
 Do not add indexes automatically.
