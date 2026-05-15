@@ -31,7 +31,7 @@ export type RegisterUserInput = {
 
 export type AccessTokenPayload = {
   sub: string;
-  roles: UserEntity['roles'];
+  isSuperAdmin: boolean;
   tokenVersion: number;
   type: 'access';
 };
@@ -57,7 +57,7 @@ function getRefreshExpiresAt(now = new Date()) {
 function createAccessToken(user: UserEntity) {
   const payload: AccessTokenPayload = {
     sub: user.id,
-    roles: [...user.roles],
+    isSuperAdmin: user.isSuperAdmin,
     tokenVersion: user.tokenVersion,
     type: 'access',
   };

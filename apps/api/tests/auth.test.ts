@@ -8,7 +8,7 @@ type TestUser = {
   email: string;
   username: string;
   passwordHash: string;
-  roles: ('user' | 'admin')[];
+  isSuperAdmin: boolean;
   status: 'active' | 'disabled';
   tokenVersion: number;
   createdAt: Date;
@@ -49,7 +49,6 @@ const repositoryMocks = vi.hoisted(() => {
   function cloneUser(user: User): User {
     return {
       ...user,
-      roles: [...user.roles],
       createdAt: new Date(user.createdAt),
       updatedAt: new Date(user.updatedAt),
     };
@@ -96,7 +95,7 @@ const repositoryMocks = vi.hoisted(() => {
           email: normalizeEmail(input.email),
           username: input.username.trim(),
           passwordHash: input.passwordHash,
-          roles: ['user'],
+          isSuperAdmin: false,
           status: 'active',
           tokenVersion: 1,
           createdAt: now,
@@ -214,7 +213,7 @@ vi.mock('@src/repositories/authSession/repository', () => ({
 
 const credentials = {
   email: 'user@example.com',
-  username: 'starter-user',
+  username: 'ordering-user',
   password: 'Password123',
 };
 
@@ -259,7 +258,7 @@ describe('auth API', () => {
         user: {
           email: credentials.email,
           username: credentials.username,
-          roles: ['user'],
+          isSuperAdmin: false,
         },
       },
     });
@@ -284,7 +283,7 @@ describe('auth API', () => {
         user: {
           email: credentials.email,
           username: credentials.username,
-          roles: ['user'],
+          isSuperAdmin: false,
         },
       },
     });

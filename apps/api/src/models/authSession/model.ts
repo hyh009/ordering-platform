@@ -16,7 +16,7 @@ export type CreateAuthSessionInput = {
 };
 
 /*
-Future auth-session fields to consider when the starter needs deeper session
+Future auth-session fields to consider when the product needs deeper session
 tracking:
 
 - familyId: groups rotated refresh tokens so reuse can revoke a whole token

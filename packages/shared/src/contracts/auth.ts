@@ -2,17 +2,15 @@ import { z } from 'zod';
 
 import type { ApiSuccessResponse } from './api.js';
 
-export const userRoles = ['user', 'admin'] as const;
 export const userStatuses = ['active', 'disabled'] as const;
 
-export type UserRole = (typeof userRoles)[number];
 export type UserStatus = (typeof userStatuses)[number];
 
 export type AuthUser = {
   id: string;
   email: string;
   username: string;
-  roles: UserRole[];
+  isSuperAdmin: boolean;
 };
 
 export const passwordRuleMessage =

@@ -1,6 +1,6 @@
 import { passport } from '@src/config/passport';
 import { ERROR_CODES } from '@src/utils/errorCode';
-import { UnauthorizedError } from '@src/utils/errors';
+import { ForbiddenError, UnauthorizedError } from '@src/utils/errors';
 
 import type { NextFunction, Request, Response } from 'express';
 
@@ -28,4 +28,30 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       next();
     },
   )(req, res, next);
+}
+
+export function requireSuperAdmin() {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      next(
+        new UnauthorizedError(
+          'Authentication required',
+          ERROR_CODES.UNAUTHORIZED,
+        ),
+      );
+      return;
+    }
+
+    if (!req.user.isSuperAdmin) {
+      next(
+        new ForbiddenError(
+          'Insufficient platform permissions',
+          ERROR_CODES.FORBIDDEN,
+        ),
+      );
+      return;
+    }
+
+    next();
+  };
 }

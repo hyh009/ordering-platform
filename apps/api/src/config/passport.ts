@@ -17,7 +17,7 @@ function isAccessTokenPayload(payload: unknown): payload is AccessTokenPayload {
     typeof candidate.sub === 'string' &&
     candidate.type === 'access' &&
     typeof candidate.tokenVersion === 'number' &&
-    Array.isArray(candidate.roles)
+    typeof candidate.isSuperAdmin === 'boolean'
   );
 }
 

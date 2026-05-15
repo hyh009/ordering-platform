@@ -2,6 +2,7 @@
   "name": "web",
   "private": true,
   "version": "0.0.0",
+  "description": "Ordering Platform web application.",
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @repo/shared run build && vite",
@@ -12,7 +13,7 @@
     "i18n:sync": "node scripts/sync-i18n-sheet.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "pnpm --filter @repo/shared run build && vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {

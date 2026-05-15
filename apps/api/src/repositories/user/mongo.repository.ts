@@ -5,17 +5,21 @@ import { UserMongoModel } from '@src/models/user/mongo';
 import type { UserEntity } from '@src/models/user/model';
 import type { CreateUserInput } from '@src/repositories/user/repository';
 
+type MongoUserRecord = Omit<UserEntity, 'isSuperAdmin'> & {
+  isSuperAdmin?: boolean;
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function toUserEntity(user: UserEntity): UserEntity {
+function toUserEntity(user: MongoUserRecord): UserEntity {
   return {
     id: user.id,
     email: user.email,
     username: user.username,
     passwordHash: user.passwordHash,
-    roles: [...user.roles],
+    isSuperAdmin: user.isSuperAdmin ?? false,
     status: user.status,
     tokenVersion: user.tokenVersion,
     createdAt: user.createdAt,
@@ -46,7 +50,7 @@ export const userMongoRepository = {
       email: normalizeEmail(input.email),
       username: input.username.trim(),
       passwordHash: input.passwordHash,
-      roles: ['user'],
+      isSuperAdmin: input.isSuperAdmin ?? false,
       status: 'active',
       tokenVersion: 1,
     });

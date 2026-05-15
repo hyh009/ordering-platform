@@ -76,18 +76,13 @@ function sendAuthResult(
  * @openapi
  * components:
  *   schemas:
- *     UserRole:
- *       type: string
- *       enum:
- *         - user
- *         - admin
  *     AuthUser:
  *       type: object
  *       required:
  *         - id
  *         - email
  *         - username
- *         - roles
+ *         - isSuperAdmin
  *       properties:
  *         id:
  *           type: string
@@ -97,11 +92,10 @@ function sendAuthResult(
  *           example: user@example.com
  *         username:
  *           type: string
- *           example: starter-user
- *         roles:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/UserRole'
+ *           example: ordering-user
+ *         isSuperAdmin:
+ *           type: boolean
+ *           example: false
  *     AuthSuccessResponse:
  *       type: object
  *       required:
@@ -186,7 +180,7 @@ function sendAuthResult(
  *                 example: user@example.com
  *               username:
  *                 type: string
- *                 example: starter-user
+ *                 example: ordering-user
  *               password:
  *                 type: string
  *                 example: Password123

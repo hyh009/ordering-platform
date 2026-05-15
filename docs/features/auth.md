@@ -2,7 +2,18 @@
 
 ## Purpose
 
-Auth provides account registration, login, logout, protected routes, and session restoration after browser reloads.
+Auth provides account registration, login, logout, protected routes, and session
+restoration after browser reloads.
+
+The ordering platform will evolve into a multi-tenant system with three frontend
+platform surfaces:
+
+- ordering platform: users can operate within one selected organization and may
+  switch between organizations they belong to.
+- management platform: organization owners, admins, and staff manage one
+  organization.
+- super admin platform: platform administrators manage organizations and
+  platform-wide operations.
 
 ## Code Map
 
@@ -26,6 +37,10 @@ Frontend:
 Shared contracts:
 
 - `packages/shared/src/contracts/auth.ts`
+
+Temporary multi-tenant planning:
+
+- `docs/agent/temp/plan/multi-tenant-auth-20260515-1522.md`
 
 ## Token Model
 
@@ -142,9 +157,39 @@ Navigate to /login
 
 Public login/register routes also read auth state so authenticated users can be redirected away from public auth pages.
 
+## Multi-Tenant Direction
+
+Auth is planned to support one platform user across multiple organizations.
+
+Current agreed direction:
+
+- use `Organization` as the tenant boundary
+- use a dedicated membership model for organization-scoped roles
+- keep platform-wide permissions separate from organization-scoped permissions
+- platform super admin is represented by `isSuperAdmin`; regular registered
+  users default to `false`
+- organization roles are `org_owner`, `org_admin`, and `staff`
+- organization creation belongs to the super admin platform; a super admin
+  creates an organization and assigns an existing user as `org_owner`
+- user and organization soft delete metadata is managed by the
+  `mongoose-delete` plugin; `status` is for business states such as `active`
+  and `disabled`
+- soft delete `deletedBy` stores the platform user id string that performed the
+  delete
+- regular registration creates only a platform user identity and does not create
+  an organization
+- organization and membership schema/collection naming uses camelCase, such as
+  `organizationMemberships`
+- do not replace Todo with menu/order schemas until tenant ownership is settled
+
+Detailed schema drafts, token tradeoffs, and open decisions live in the
+temporary plan linked above until they are agreed.
+
 ## Notes
 
 - Frontend cannot check whether a refresh token exists because it is an HttpOnly cookie.
 - `POST /auth/refresh` is the reliable session restoration check.
 - `GET /auth/me` would require an access token, which is lost after browser reload because access tokens are memory-only.
 - Auth UI code should use `useAuthVM`; React views should not call `authCommands` or `authStore` directly.
+- Todo replacement should wait until the tenant model is agreed, because menu
+  and order data should belong to an organization.

@@ -1,13 +1,15 @@
-export { userRoles, userStatuses } from '@repo/shared';
+export { userStatuses } from '@repo/shared';
 
-import type { UserRole, UserStatus } from '@repo/shared';
+import type { UserStatus } from '@repo/shared';
+
+export type { UserStatus };
 
 export type UserEntity = {
   id: string;
   email: string;
   username: string;
   passwordHash: string;
-  roles: UserRole[];
+  isSuperAdmin: boolean;
   status: UserStatus;
   tokenVersion: number;
   createdAt: Date;
@@ -18,7 +20,7 @@ export type PublicUser = {
   id: string;
   email: string;
   username: string;
-  roles: UserRole[];
+  isSuperAdmin: boolean;
 };
 
 export function toPublicUser(user: UserEntity): PublicUser {
@@ -26,6 +28,6 @@ export function toPublicUser(user: UserEntity): PublicUser {
     id: user.id,
     email: user.email,
     username: user.username,
-    roles: [...user.roles],
+    isSuperAdmin: user.isSuperAdmin,
   };
 }

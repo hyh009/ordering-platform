@@ -1,4 +1,5 @@
-import { userRoles, userStatuses } from '@src/models/user/model';
+import { applySoftDeletePlugin } from '@src/models/plugins/softDelete';
+import { userStatuses } from '@src/models/user/model';
 import { model, models, Schema } from 'mongoose';
 
 import type { UserEntity } from '@src/models/user/model';
@@ -26,11 +27,10 @@ const userSchema = new Schema<UserEntity>(
       type: String,
       required: true,
     },
-    roles: {
-      type: [String],
+    isSuperAdmin: {
+      type: Boolean,
       required: true,
-      enum: userRoles,
-      default: ['user'],
+      default: false,
     },
     status: {
       type: String,
@@ -52,6 +52,7 @@ const userSchema = new Schema<UserEntity>(
 );
 
 userSchema.index({ email: 1 }, { unique: true });
+applySoftDeletePlugin(userSchema);
 
 export const UserMongoModel =
   (models.User as Model<UserEntity> | undefined) ??

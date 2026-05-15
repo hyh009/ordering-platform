@@ -19,8 +19,8 @@ const session: AuthSession = {
   user: {
     email: 'user@example.com',
     id: 'user-1',
-    roles: ['user'],
-    username: 'starter-user',
+    isSuperAdmin: false,
+    username: 'ordering-user',
   },
 };
 
@@ -126,7 +126,7 @@ describe('authCommands', () => {
       authCommands.register({
         email: 'user@example.com',
         password: 'Password123',
-        username: 'starter-user',
+        username: 'ordering-user',
       }),
     ).resolves.toEqual({
       fieldErrors: {
