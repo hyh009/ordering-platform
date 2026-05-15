@@ -3,8 +3,10 @@
 Full-stack ordering platform built with React, Vite, Express, TypeScript, and
 pnpm workspaces.
 
-The project is being migrated from a starter template. The current Todo demo is
-kept temporarily until the ordering schemas are designed.
+The project was cloned from a starter template, but the starter is only an
+architecture and workflow reference. Starter demo data, copy, and domain shapes
+do not need backward compatibility. The current Todo demo is kept temporarily
+until the ordering domain replaces it.
 
 ## Foundation
 
@@ -21,6 +23,10 @@ kept temporarily until the ordering schemas are designed.
 - Centralized `AppError` error handling
 - Swagger/OpenAPI documentation
 - Basic API security middleware with Helmet, CORS, cookie parsing, and JSON body limits
+- Auth foundation with register, login, refresh, logout, and `/me`
+- Platform super-admin flag for platform-level management
+- Organization and organization-membership Mongo models for multi-tenant access
+- Soft delete support for user and organization records
 - Vitest and Supertest API test setup
 
 ## Project Structure
@@ -161,6 +167,25 @@ Keep app internals in their app folders. For example, backend Mongo/session
 models stay in `apps/api`, and frontend view models or store state stay in
 `apps/web`.
 
+## Product Model
+
+The current auth and tenant foundation uses these concepts:
+
+- `User`: platform account with `isSuperAdmin` and an account `status`.
+- `Organization`: tenant boundary for restaurants or merchants.
+- `OrganizationMembership`: links a user to an organization with a role such as
+  `org_owner`, `org_admin`, or `staff`.
+
+Super admins create organizations and choose an existing active user as the
+initial owner. Regular users do not self-create organizations in the current
+direction.
+
+See also:
+
+- `docs/features/auth.md`
+- `docs/schema/mongo.md`
+- `docs/development/starter-to-ordering-platform.md`
+
 ## Environment Variables
 
 The API validates environment variables on startup.
@@ -184,8 +209,8 @@ VITE_API_BASE_URL=http://localhost:9000
 
 ## API Routes
 
-Current routes include auth, health, and the temporary Todo demo that will be
-replaced after the ordering schema is designed.
+Current routes include auth, organizations, health, and the temporary Todo demo
+that will be replaced after the ordering schema is designed.
 
 ```txt
 /api
@@ -197,6 +222,8 @@ replaced after the ordering schema is designed.
    │  ├─ /logout
    │  ├─ /logout-all
    │  └─ /me
+   ├─ /organizations
+   │  └─ POST /
    ├─ /health
    └─ /todos
 ```
@@ -205,6 +232,7 @@ Example:
 
 ```txt
 GET /api/v1/health
+POST /api/v1/organizations
 GET /api/v1/todos
 ```
 
