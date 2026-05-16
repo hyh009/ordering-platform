@@ -9,6 +9,15 @@ export type TimeWindow = {
   end: string;
 };
 
+/**
+ * Menu availability restrictions.
+ *
+ * An empty availabilityRules array means unrestricted availability for the
+ * layer that owns it. For example, a category with no rules is always
+ * available. A product with inheritCategoryAvailability=false and no rules is
+ * also always available, because it explicitly overrides the category with no
+ * restrictions.
+ */
 export type AvailabilityRule = {
   startDate?: Date;
   endDate?: Date;

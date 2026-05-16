@@ -125,12 +125,60 @@ classDiagram
     Date updatedAt
   }
 
+  class ProductModifier {
+    string id
+    string organizationId
+    LocalizedString name
+    ProductModifierSelectionType selectionType
+    number minSelect
+    number maxSelect
+    ProductModifierOption[] options
+    boolean inheritCategoryAvailability
+    AvailabilityRule[] availabilityRules
+    boolean isActive
+    boolean deleted
+    Date createdAt
+    Date updatedAt
+    Date? deletedAt
+    string? deletedBy
+  }
+
+  class Product {
+    string id
+    string organizationId
+    string categoryId
+    LocalizedString name
+    LocalizedString? description
+    string? imageUrl
+    number price
+    string[] tagIds
+    string[] allergenIds
+    string[] dietaryMarkerIds
+    string[] modifierIds
+    boolean inheritCategoryAvailability
+    AvailabilityRule[] availabilityRules
+    boolean isActive
+    boolean isSoldOut
+    boolean deleted
+    Date createdAt
+    Date updatedAt
+    Date? deletedAt
+    string? deletedBy
+  }
+
   User "1" --> "*" AuthSession : userId
   User "1" --> "*" OrganizationMembership : userId
   Organization "1" --> "*" OrganizationMembership : organizationId
   Organization "1" --> "0..1" StoreSettings : organizationId
   Organization "1" --> "*" Category : organizationId
   Organization "1" --> "*" Tag : organizationId
+  Organization "1" --> "*" ProductModifier : organizationId
+  Organization "1" --> "*" Product : organizationId
+  Category "1" --> "*" Product : categoryId
+  Product "*" --> "*" Tag : tagIds
+  Product "*" --> "*" Allergen : allergenIds
+  Product "*" --> "*" DietaryMarker : dietaryMarkerIds
+  Product "*" --> "*" ProductModifier : modifierIds
 
   note for User "collection: users\nplugin: mongoose-delete\nunique: email"
   note for AuthSession "collection: auth_sessions\nunique: refreshTokenHash\nindex: userId + revokedAt\nTTL: expiresAt expireAfterSeconds 0"
@@ -141,6 +189,8 @@ classDiagram
   note for Tag "collection: tags\nplugin: mongoose-delete\norg-owned marketing tag"
   note for DietaryMarker "collection: dietaryMarkers\nglobal product metadata\nlifecycle: isActive"
   note for Allergen "collection: allergens\nglobal product metadata\nlifecycle: isActive"
+  note for ProductModifier "collection: productModifiers\nplugin: mongoose-delete\norg-owned product customization"
+  note for Product "collection: products\nplugin: mongoose-delete\norg-owned menu item"
 ```
 
 ## Status Values
@@ -181,9 +231,16 @@ Dietary marker type:
 - `dietary`
 - `regulatory`
 
+Product modifier selection type:
+
+- `single_choice`
+- `multiple_choice`
+
 ## Soft Delete
 
-`users` and `organizations` use the shared `mongoose-delete` plugin helper.
+`users`, `organizations`, `storeSettings`, `categories`, `tags`,
+`productModifiers`, and `products` use the shared `mongoose-delete` plugin
+helper.
 
 Plugin-managed fields:
 
@@ -199,6 +256,23 @@ Business lifecycle stays separate from soft delete:
 - `status: disabled` means the record exists but cannot be used normally.
 - `deleted: true` means the record is soft-deleted and excluded from normal
   plugin-overridden queries.
+
+## Availability
+
+`AvailabilityRule[]` stores restrictions only. An empty array means the owning
+layer has no availability restrictions and is available all day.
+
+Models with `inheritCategoryAvailability` use it as a source selector:
+
+- `true`: use inherited category availability rules; local `availabilityRules`
+  do not affect effective availability.
+- `false`: use the model's own `availabilityRules`.
+
+Because empty rules mean unrestricted availability, `inheritCategoryAvailability:
+false` with `availabilityRules: []` means the record explicitly overrides
+category availability and is available all day. Do not use empty
+`availabilityRules` to mean unavailable; use lifecycle fields such as
+`isActive: false` or `isSoldOut: true` where applicable.
 
 ## Collections And Indexes
 
@@ -246,6 +320,7 @@ Business lifecycle stays separate from soft delete:
 - plugin: `mongoose-delete`
 - organization-owned menu category
 - localized `name` requires at least one value
+- `availabilityRules: []` means the category is available all day
 - custom indexes not added yet
 
 `tags`
@@ -272,6 +347,46 @@ Business lifecycle stays separate from soft delete:
 - lifecycle uses `isActive`; no soft delete plugin
 - `key` is the stable platform identifier, such as `peanut`
 - localized `name` requires at least one value
+- custom indexes not added yet
+
+`productModifiers`
+
+- collection uses camelCase intentionally: `productModifiers`
+- plugin: `mongoose-delete`
+- organization-owned product customization, such as milk choice or toppings
+- localized `name` and option `name` require at least one value
+- `selectionType` is `single_choice` or `multiple_choice`
+- `minSelect` must be less than or equal to `maxSelect`
+- `single_choice` requires `maxSelect: 1`
+- options are embedded and have string `id` values for future order snapshots
+  and product selection contracts
+- option `sharedOptionCode` is optional and can connect copied embedded options,
+  such as the same topping appearing under multiple modifiers, without creating
+  a shared option collection
+- option `isActive` is for management lifecycle; option `isSoldOut` is for
+  temporary unavailability
+- `inheritCategoryAvailability` selects inherited product/category
+  availability versus modifier-specific `availabilityRules`
+- MVP does not include option stock, linked products, or conditional modifiers
+- custom indexes not added yet
+
+`products`
+
+- collection: `products`
+- plugin: `mongoose-delete`
+- organization-owned menu item
+- `categoryId` is required
+- localized `name` requires at least one value
+- localized `description` is optional
+- `price` must be greater than or equal to `0`
+- `isActive` controls whether the product is usable in normal menu flows
+- `isSoldOut` tracks temporary sale availability separately from `isActive`
+- `tagIds`, `allergenIds`, `dietaryMarkerIds`, and `modifierIds` are optional
+  string ID references
+- `inheritCategoryAvailability` defaults to `true`; when set to `false`, the
+  product uses its own `availabilityRules`
+- MVP does not include stock tracking, max-per-order, calories, promotion
+  fields, AI description, or product-level unique name indexes
 - custom indexes not added yet
 
 ## Starter Demo

@@ -19,6 +19,8 @@ export const timeWindowSchema = new Schema<TimeWindow>(
   { _id: false },
 );
 
+// AvailabilityRule arrays model restrictions only. An empty array means the
+// owning layer has no restrictions and is available all day.
 export const availabilityRuleSchema = new Schema<AvailabilityRule>(
   {
     startDate: {
