@@ -66,12 +66,18 @@ classDiagram
     SupportedLocale[] supportedLocales
     BusinessHour[] businessHours
     number serviceFeeRate
-    StoreSettingsCheckoutMode checkoutMode
+    StoreOrderMode[] orderModes
     boolean deleted
     Date createdAt
     Date updatedAt
     Date? deletedAt
     string? deletedBy
+  }
+
+  class StoreOrderMode {
+    StoreOrderType type
+    boolean isEnabled
+    StoreSettingsCheckoutMode checkoutMode
   }
 
   class Category {
@@ -221,6 +227,11 @@ Store settings checkout mode:
 - `pay_first`
 - `pay_later`
 
+Store order type:
+
+- `dine_in`
+- `takeaway`
+
 Supported locale:
 
 - `en`
@@ -312,7 +323,12 @@ category availability and is available all day. Do not use empty
 - `displayName` requires a value for `defaultLocale`
 - `supportedLocales` must include `defaultLocale`
 - `serviceFeeRate` is a decimal rate from `0` to `1`
-- `checkoutMode` is `pay_first` or `pay_later`
+- `orderModes` stores per-order-type availability and checkout timing
+- default `orderModes` enables `dine_in` with `pay_later` and `takeaway` with
+  `pay_first`
+- `orderModes` must include at least one mode, cannot repeat `type`, and must
+  include at least one enabled mode
+- each order mode `checkoutMode` is `pay_first` or `pay_later`
 
 `categories`
 

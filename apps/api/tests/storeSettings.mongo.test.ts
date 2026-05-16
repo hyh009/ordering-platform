@@ -24,10 +24,45 @@ describe('StoreSettingsMongoModel', () => {
         },
       ],
       serviceFeeRate: 0.1,
-      checkoutMode: 'pay_first',
+      orderModes: [
+        {
+          type: 'dine_in',
+          isEnabled: true,
+          checkoutMode: 'pay_later',
+        },
+        {
+          type: 'takeaway',
+          isEnabled: true,
+          checkoutMode: 'pay_first',
+        },
+      ],
     });
 
     expect(storeSettings.validateSync()).toBeUndefined();
+  });
+
+  it('defaults to dine-in pay-later and takeaway pay-first order modes', () => {
+    const storeSettings = new StoreSettingsMongoModel({
+      id: 'store-settings-1',
+      organizationId: 'org-1',
+      displayName: {
+        en: 'Main Street Cafe',
+      },
+    });
+
+    expect(storeSettings.validateSync()).toBeUndefined();
+    expect(storeSettings.orderModes).toMatchObject([
+      {
+        type: 'dine_in',
+        isEnabled: true,
+        checkoutMode: 'pay_later',
+      },
+      {
+        type: 'takeaway',
+        isEnabled: true,
+        checkoutMode: 'pay_first',
+      },
+    ]);
   });
 
   it('requires a display name value for the default locale', () => {
@@ -62,7 +97,7 @@ describe('StoreSettingsMongoModel', () => {
     );
   });
 
-  it('validates service fee rate and checkout mode', () => {
+  it('validates service fee rate and order mode checkout mode', () => {
     const storeSettings = new StoreSettingsMongoModel({
       id: 'store-settings-1',
       organizationId: 'org-1',
@@ -70,7 +105,13 @@ describe('StoreSettingsMongoModel', () => {
         en: 'Main Street Cafe',
       },
       serviceFeeRate: 1.5,
-      checkoutMode: 'unknown',
+      orderModes: [
+        {
+          type: 'dine_in',
+          isEnabled: true,
+          checkoutMode: 'unknown',
+        },
+      ],
     });
 
     const errors = storeSettings.validateSync()?.errors;
@@ -78,8 +119,75 @@ describe('StoreSettingsMongoModel', () => {
     expect(errors?.serviceFeeRate?.message).toBe(
       'Path `serviceFeeRate` (1.5) is more than maximum allowed value (1).',
     );
-    expect(errors?.checkoutMode?.message).toContain(
+    expect(errors?.['orderModes.0.checkoutMode']?.message).toContain(
       '`unknown` is not a valid enum value',
+    );
+  });
+
+  it('requires at least one order mode', () => {
+    const storeSettings = new StoreSettingsMongoModel({
+      id: 'store-settings-1',
+      organizationId: 'org-1',
+      displayName: {
+        en: 'Main Street Cafe',
+      },
+      orderModes: [],
+    });
+
+    expect(storeSettings.validateSync()?.errors.orderModes?.message).toBe(
+      'orderModes must include at least one order mode',
+    );
+  });
+
+  it('requires unique order mode types', () => {
+    const storeSettings = new StoreSettingsMongoModel({
+      id: 'store-settings-1',
+      organizationId: 'org-1',
+      displayName: {
+        en: 'Main Street Cafe',
+      },
+      orderModes: [
+        {
+          type: 'dine_in',
+          isEnabled: true,
+          checkoutMode: 'pay_later',
+        },
+        {
+          type: 'dine_in',
+          isEnabled: true,
+          checkoutMode: 'pay_first',
+        },
+      ],
+    });
+
+    expect(storeSettings.validateSync()?.errors.orderModes?.message).toBe(
+      'orderModes cannot contain duplicate types',
+    );
+  });
+
+  it('requires at least one enabled order mode', () => {
+    const storeSettings = new StoreSettingsMongoModel({
+      id: 'store-settings-1',
+      organizationId: 'org-1',
+      displayName: {
+        en: 'Main Street Cafe',
+      },
+      orderModes: [
+        {
+          type: 'dine_in',
+          isEnabled: false,
+          checkoutMode: 'pay_later',
+        },
+        {
+          type: 'takeaway',
+          isEnabled: false,
+          checkoutMode: 'pay_first',
+        },
+      ],
+    });
+
+    expect(storeSettings.validateSync()?.errors.orderModes?.message).toBe(
+      'orderModes must include at least one enabled order mode',
     );
   });
 });

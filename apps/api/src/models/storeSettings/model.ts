@@ -8,11 +8,21 @@ export const storeSettingsCheckoutModes = ['pay_first', 'pay_later'] as const;
 export type StoreSettingsCheckoutMode =
   (typeof storeSettingsCheckoutModes)[number];
 
+export const storeOrderTypes = ['dine_in', 'takeaway'] as const;
+
+export type StoreOrderType = (typeof storeOrderTypes)[number];
+
 export type BusinessHour = {
   dayOfWeek: number;
   isOpen: boolean;
   openTime?: string;
   closeTime?: string;
+};
+
+export type StoreOrderMode = {
+  type: StoreOrderType;
+  isEnabled: boolean;
+  checkoutMode: StoreSettingsCheckoutMode;
 };
 
 export type StoreSettingsEntity = {
@@ -24,7 +34,7 @@ export type StoreSettingsEntity = {
   supportedLocales: SupportedLocale[];
   businessHours: BusinessHour[];
   serviceFeeRate: number;
-  checkoutMode: StoreSettingsCheckoutMode;
+  orderModes: StoreOrderMode[];
   createdAt: Date;
   updatedAt: Date;
 };
