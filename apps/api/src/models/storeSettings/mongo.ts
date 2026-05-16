@@ -1,8 +1,9 @@
-import { supportedLocales } from '@src/models/common/model';
 import {
   hasLocalizedValueForDefaultLocale,
   localizedStringSchema,
-} from '@src/models/common/mongo';
+} from '@src/models/common/localizedString.mongo';
+import { supportedLocales } from '@src/models/common/model';
+import { mongoValidationMessages } from '@src/models/common/validationMessages';
 import { applySoftDeletePlugin } from '@src/models/plugins/softDelete';
 import { storeSettingsCheckoutModes } from '@src/models/storeSettings/model';
 import { model, models, Schema } from 'mongoose';
@@ -58,7 +59,10 @@ const storeSettingsSchema = new Schema<StoreSettingsEntity>(
         ) {
           return hasLocalizedValueForDefaultLocale(value, this.defaultLocale);
         },
-        message: 'displayName must have a value for defaultLocale',
+        message:
+          mongoValidationMessages.defaultLocaleLocalizedStringRequired(
+            'displayName',
+          ),
       },
     },
     description: {
@@ -79,7 +83,7 @@ const storeSettingsSchema = new Schema<StoreSettingsEntity>(
         validator(this: StoreSettingsEntity, value: string[]) {
           return value.includes(this.defaultLocale);
         },
-        message: 'supportedLocales must include defaultLocale',
+        message: mongoValidationMessages.supportedLocalesIncludeDefaultLocale,
       },
     },
     businessHours: {

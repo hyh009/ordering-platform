@@ -74,16 +74,73 @@ classDiagram
     string? deletedBy
   }
 
+  class Category {
+    string id
+    string organizationId
+    LocalizedString name
+    LocalizedString? description
+    string? imageUrl
+    number displayOrder
+    boolean isActive
+    AvailabilityRule[] availabilityRules
+    boolean deleted
+    Date createdAt
+    Date updatedAt
+    Date? deletedAt
+    string? deletedBy
+  }
+
+  class Tag {
+    string id
+    string organizationId
+    LocalizedString name
+    string? color
+    number displayOrder
+    boolean isActive
+    boolean deleted
+    Date createdAt
+    Date updatedAt
+    Date? deletedAt
+    string? deletedBy
+  }
+
+  class DietaryMarker {
+    string id
+    string key
+    LocalizedString name
+    string? icon
+    DietaryMarkerType type
+    boolean isActive
+    Date createdAt
+    Date updatedAt
+  }
+
+  class Allergen {
+    string id
+    string key
+    LocalizedString name
+    string? icon
+    boolean isActive
+    Date createdAt
+    Date updatedAt
+  }
+
   User "1" --> "*" AuthSession : userId
   User "1" --> "*" OrganizationMembership : userId
   Organization "1" --> "*" OrganizationMembership : organizationId
   Organization "1" --> "0..1" StoreSettings : organizationId
+  Organization "1" --> "*" Category : organizationId
+  Organization "1" --> "*" Tag : organizationId
 
   note for User "collection: users\nplugin: mongoose-delete\nunique: email"
   note for AuthSession "collection: auth_sessions\nunique: refreshTokenHash\nindex: userId + revokedAt\nTTL: expiresAt expireAfterSeconds 0"
   note for Organization "collection: organizations\nplugin: mongoose-delete\nindex: status"
   note for OrganizationMembership "collection: organizationMemberships\nunique: organizationId + userId\nindex: userId + status\nindex: organizationId + role + status"
   note for StoreSettings "collection: storeSettings\nplugin: mongoose-delete\nunique: organizationId"
+  note for Category "collection: categories\nplugin: mongoose-delete\norg-owned menu category"
+  note for Tag "collection: tags\nplugin: mongoose-delete\norg-owned marketing tag"
+  note for DietaryMarker "collection: dietaryMarkers\nglobal product metadata\nlifecycle: isActive"
+  note for Allergen "collection: allergens\nglobal product metadata\nlifecycle: isActive"
 ```
 
 ## Status Values
@@ -118,6 +175,11 @@ Supported locale:
 
 - `en`
 - `zh-TW`
+
+Dietary marker type:
+
+- `dietary`
+- `regulatory`
 
 ## Soft Delete
 
@@ -177,6 +239,40 @@ Business lifecycle stays separate from soft delete:
 - `supportedLocales` must include `defaultLocale`
 - `serviceFeeRate` is a decimal rate from `0` to `1`
 - `checkoutMode` is `pay_first` or `pay_later`
+
+`categories`
+
+- collection: `categories`
+- plugin: `mongoose-delete`
+- organization-owned menu category
+- localized `name` requires at least one value
+- custom indexes not added yet
+
+`tags`
+
+- collection: `tags`
+- plugin: `mongoose-delete`
+- organization-owned marketing tag, such as popular or limited-time
+- localized `name` requires at least one value
+- custom indexes not added yet
+
+`dietaryMarkers`
+
+- collection uses camelCase intentionally: `dietaryMarkers`
+- global product metadata shared by all organizations
+- lifecycle uses `isActive`; no soft delete plugin
+- `key` is the stable platform identifier, such as `vegetarian`
+- localized `name` requires at least one value
+- custom indexes not added yet
+
+`allergens`
+
+- collection: `allergens`
+- global product metadata shared by all organizations
+- lifecycle uses `isActive`; no soft delete plugin
+- `key` is the stable platform identifier, such as `peanut`
+- localized `name` requires at least one value
+- custom indexes not added yet
 
 ## Starter Demo
 

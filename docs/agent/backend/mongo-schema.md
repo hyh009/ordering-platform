@@ -31,6 +31,31 @@ Use:
 
 Create the domain model folder when the first model for that domain is added.
 
+## Shared Schema Helpers
+
+Use focused common helper files instead of generic catch-all modules.
+
+Current shared model helpers live under:
+
+```txt
+apps/api/src/models/common/
+  model.ts
+  localizedString.mongo.ts
+  availability.mongo.ts
+  validationMessages.ts
+```
+
+Use:
+
+- `model.ts` for shared pure TypeScript types and constants.
+- `localizedString.mongo.ts` for localized string Mongoose schema helpers.
+- `availability.mongo.ts` for availability and time-window Mongoose schema helpers.
+- `validationMessages.ts` for reusable Mongoose validation message strings.
+
+Do not put Mongoose schema validation messages in `src/utils/errors.ts`.
+`utils/errors.ts` is for application/API errors that cross the HTTP boundary.
+Schema validation messages are model-layer invariant messages.
+
 ## Schema Design
 
 Define:
@@ -45,6 +70,11 @@ Define:
 - indexes and uniqueness constraints
 
 Use clear field names that match backend domain language.
+
+Keep cross-document business validation in services. For example, an
+organization-owned localized name may require a value for the organization's
+default locale, but that default locale lives in `StoreSettings`; the schema can
+only enforce a local minimum such as "has at least one localized value."
 
 ## Schema Options
 
