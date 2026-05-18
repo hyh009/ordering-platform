@@ -693,6 +693,10 @@ category availability and is available all day. Do not use empty
   ids based on `target.scope`
 - `target.excludedProductIds` can exclude specific products from order and
   category target scopes
+- creation flows should use backend-defined template kinds such as
+  `product_discount`, `category_item_discount`, `order_threshold_discount`, and
+  `category_threshold_discount`; template kind is not persisted in the current
+  schema
 - `maxUsagePerOrder` defaults to `1`; total usage counters are not implemented
   until promotion application services exist
 - buy-X-get-Y, bundle thresholds, stacking rules, and order-total calculation

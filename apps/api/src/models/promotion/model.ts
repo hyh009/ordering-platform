@@ -62,3 +62,8 @@ export type PromotionEntity = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type PromotionCreateData = Omit<
+  PromotionEntity,
+  'createdAt' | 'updatedAt'
+>;

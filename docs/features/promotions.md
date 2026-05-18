@@ -10,7 +10,9 @@ future cart or order pricing flows.
 Backend:
 
 - `apps/api/src/models/promotion/model.ts`
+- `apps/api/src/models/promotion/template.ts`
 - `apps/api/src/models/promotion/mongo.ts`
+- `apps/api/tests/promotion.model.test.ts`
 - `apps/api/tests/promotion.mongo.test.ts`
 
 Schema:
@@ -85,6 +87,33 @@ The TypeScript model uses separate target types for each scope:
 Use TypeScript `satisfies PromotionTarget` when defining typed constants so
 invalid target shapes fail at compile time. The Mongo schema keeps target id
 arrays optional and validates the required ids based on `scope`.
+
+## Templates
+
+Promotion creation should use backend-defined template kinds instead of asking
+staff/admin users to combine low-level `Promotion` fields directly.
+
+Current template kinds:
+
+- `product_discount`: selected products, `applicationBasis: item`
+- `category_item_discount`: every eligible item in selected categories,
+  `applicationBasis: item`
+- `order_threshold_discount`: eligible order subtotal after `minimumSubtotal`,
+  `applicationBasis: subtotal`
+- `category_threshold_discount`: eligible category subtotal after
+  `minimumSubtotal`, `applicationBasis: subtotal`
+
+Template kinds are stable API/business identifiers. User-facing template labels
+belong in frontend i18n.
+
+The current schema does not persist a template kind. Template input is a future
+management API contract that maps into the normalized `Promotion` fields.
+
+Template validation and create-data mapping live in
+`apps/api/src/models/promotion/template.ts`. Validation returns field-level
+issues for route/service code to convert into API errors. Mapping creates
+normalized `PromotionCreateData` with the correct `target.scope`,
+`applicationBasis`, defaults, and `minimumSubtotal` placement.
 
 ## Lifecycle
 
