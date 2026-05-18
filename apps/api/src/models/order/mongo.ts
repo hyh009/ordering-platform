@@ -2,7 +2,11 @@ import {
   cartItemSnapshotSchema,
   participantSnapshotSchema,
 } from '@src/models/cart/mongo';
-import { orderPaymentStatuses, orderStatuses } from '@src/models/order/model';
+import {
+  orderBatchStatuses,
+  orderPaymentStatuses,
+  orderStatuses,
+} from '@src/models/order/model';
 import {
   storeOrderTypes,
   storeSettingsCheckoutModes,
@@ -24,6 +28,12 @@ const orderBatchSnapshotSchema = new Schema<OrderBatchSnapshot>(
       required: true,
       min: 1,
     },
+    status: {
+      type: String,
+      required: true,
+      enum: orderBatchStatuses,
+      default: 'pending_confirmation',
+    },
     submittedAt: {
       type: Date,
       required: true,
@@ -32,6 +42,15 @@ const orderBatchSnapshotSchema = new Schema<OrderBatchSnapshot>(
     submittedByParticipantId: {
       type: String,
       trim: true,
+    },
+    confirmedAt: {
+      type: Date,
+    },
+    readyAt: {
+      type: Date,
+    },
+    cancelledAt: {
+      type: Date,
     },
     items: {
       type: [cartItemSnapshotSchema],
@@ -142,6 +161,18 @@ const orderSchema = new Schema<OrderEntity>(
       required: true,
       min: 0,
       default: 0,
+    },
+    paidAt: {
+      type: Date,
+    },
+    servedAt: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
+    },
+    cancelledAt: {
+      type: Date,
     },
   },
   {

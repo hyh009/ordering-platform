@@ -9,9 +9,10 @@ import type {
 
 export const orderStatuses = [
   'pending_payment',
-  'open',
+  'pending_confirmation',
   'preparing',
   'ready',
+  'served',
   'completed',
   'cancelled',
 ] as const;
@@ -27,11 +28,24 @@ export const orderPaymentStatuses = [
 
 export type OrderPaymentStatus = (typeof orderPaymentStatuses)[number];
 
+export const orderBatchStatuses = [
+  'pending_confirmation',
+  'preparing',
+  'ready',
+  'cancelled',
+] as const;
+
+export type OrderBatchStatus = (typeof orderBatchStatuses)[number];
+
 export type OrderBatchSnapshot = {
   id: string;
   batchNumber: number;
+  status: OrderBatchStatus;
   submittedAt: Date;
   submittedByParticipantId?: string;
+  confirmedAt?: Date;
+  readyAt?: Date;
+  cancelledAt?: Date;
   items: CartItemSnapshot[];
   subtotal: number;
 };
@@ -56,6 +70,10 @@ export type OrderEntity = {
   serviceFeeRate: number;
   serviceFeeAmount: number;
   totalAmount: number;
+  paidAt?: Date;
+  servedAt?: Date;
+  completedAt?: Date;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };

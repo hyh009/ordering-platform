@@ -90,7 +90,7 @@ describe('ordering runtime Mongo models', () => {
       businessDate: '2026-05-16',
       dailySequence: 23,
       displayNumber: 'A023',
-      status: 'pending_payment',
+      status: 'pending_confirmation',
       paymentStatus: 'unpaid',
       participants: [
         {
@@ -115,6 +115,7 @@ describe('ordering runtime Mongo models', () => {
         {
           id: 'batch-1',
           batchNumber: 1,
+          status: 'pending_confirmation',
           submittedByParticipantId: 'participant-1',
           items: [
             {
@@ -140,6 +141,76 @@ describe('ordering runtime Mongo models', () => {
 
     expect(order.validateSync()).toBeUndefined();
     expect(order.batches[0]?.submittedAt).toBeInstanceOf(Date);
+  });
+
+  it('accepts manual payment, service, and completion timestamps', () => {
+    const paidAt = new Date('2026-05-16T12:30:00.000Z');
+    const servedAt = new Date('2026-05-16T12:40:00.000Z');
+    const completedAt = new Date('2026-05-16T12:45:00.000Z');
+    const order = new OrderMongoModel({
+      id: 'order-1',
+      organizationId: 'org-1',
+      orderType: 'dine_in',
+      checkoutMode: 'pay_later',
+      businessDate: '2026-05-16',
+      dailySequence: 23,
+      displayNumber: 'A023',
+      status: 'completed',
+      paymentStatus: 'paid',
+      paidAt,
+      servedAt,
+      completedAt,
+    });
+
+    expect(order.validateSync()).toBeUndefined();
+    expect(order.paidAt).toEqual(paidAt);
+    expect(order.servedAt).toEqual(servedAt);
+    expect(order.completedAt).toEqual(completedAt);
+  });
+
+  it('accepts a served unpaid pay-later order', () => {
+    const servedAt = new Date('2026-05-16T12:40:00.000Z');
+    const order = new OrderMongoModel({
+      id: 'order-1',
+      organizationId: 'org-1',
+      orderType: 'dine_in',
+      checkoutMode: 'pay_later',
+      businessDate: '2026-05-16',
+      dailySequence: 23,
+      displayNumber: 'A023',
+      status: 'served',
+      paymentStatus: 'unpaid',
+      servedAt,
+    });
+
+    expect(order.validateSync()).toBeUndefined();
+    expect(order.servedAt).toEqual(servedAt);
+  });
+
+  it('validates order batch status', () => {
+    const order = new OrderMongoModel({
+      id: 'order-1',
+      organizationId: 'org-1',
+      orderType: 'dine_in',
+      checkoutMode: 'pay_later',
+      businessDate: '2026-05-16',
+      dailySequence: 23,
+      displayNumber: 'A023',
+      status: 'pending_confirmation',
+      paymentStatus: 'unpaid',
+      batches: [
+        {
+          id: 'batch-1',
+          batchNumber: 1,
+          status: 'unknown',
+          subtotal: 0,
+        },
+      ],
+    });
+
+    expect(order.validateSync()?.errors['batches.0.status']?.message).toContain(
+      '`unknown` is not a valid enum value',
+    );
   });
 
   it('validates order status and daily sequence', () => {
@@ -250,7 +321,7 @@ describe('ordering runtime Mongo models', () => {
       businessDate: '2026-05-16',
       dailySequence: 1,
       displayNumber: 'A001',
-      status: 'pending_payment',
+      status: 'pending_confirmation',
       paymentStatus: 'unpaid',
       items: [
         {

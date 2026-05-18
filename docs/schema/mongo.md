@@ -222,6 +222,10 @@ classDiagram
     number serviceFeeRate
     number serviceFeeAmount
     number totalAmount
+    Date? paidAt
+    Date? servedAt
+    Date? completedAt
+    Date? cancelledAt
     Date createdAt
     Date updatedAt
   }
@@ -257,8 +261,12 @@ classDiagram
   class OrderBatchSnapshot {
     string id
     number batchNumber
+    OrderBatchStatus status
     Date submittedAt
     string? submittedByParticipantId
+    Date? confirmedAt
+    Date? readyAt
+    Date? cancelledAt
     CartItemSnapshot[] items
     number subtotal
   }
@@ -348,10 +356,18 @@ Cart status:
 Order status:
 
 - `pending_payment`
-- `open`
+- `pending_confirmation`
 - `preparing`
 - `ready`
+- `served`
 - `completed`
+- `cancelled`
+
+Order batch status:
+
+- `pending_confirmation`
+- `preparing`
+- `ready`
 - `cancelled`
 
 Order payment status:
