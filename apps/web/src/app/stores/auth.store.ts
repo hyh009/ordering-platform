@@ -1,13 +1,13 @@
 import { createStore } from 'zustand/vanilla';
 import { setApiTokenProvider } from '@/api';
-import type { AuthUser } from '@/models/auth.types';
+import type { AuthUserDto } from '@/models/auth.types';
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
 
 export type AuthState = {
   accessToken: string | null;
   status: AuthStatus;
-  user: AuthUser | null;
+  user: AuthUserDto | null;
 };
 
 export const authStore = createStore<AuthState>(() => ({

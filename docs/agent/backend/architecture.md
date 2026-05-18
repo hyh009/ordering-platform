@@ -36,6 +36,7 @@ Use these locations:
 - `config/` for environment, database, CORS, and infrastructure configuration
 - `middlewares/` for Express middleware
 - `models/<domain>/model.ts` for domain model types and constants
+- `models/<domain>/mapper.ts` for mapping domain entities to public resource DTOs
 - `models/<domain>/mongo.ts` for Mongo/Mongoose schema and model
 - `repositories/<domain>/` for data access contracts and implementations
 - `routes/v1/` for versioned API routes
@@ -60,7 +61,28 @@ Use these locations:
 - Define services as classes, export a `createXService()` factory, and export a singleton `xService` for route/config modules.
 - Use factory functions when a service needs testable dependencies.
 - Services may call repositories, Redis clients, external integrations, and utility functions.
+- Services should call domain mappers when returning public resource DTOs instead of raw persistence entities.
+- Simple endpoint action responses can be assembled inline in the service.
 - Services should not start HTTP listeners or depend on Express request/response objects unless the behavior is middleware-specific.
+
+## Model and Contract Naming
+
+- Backend persistence/domain types use `<Domain>Entity` in `models/<domain>/model.ts`.
+- Public API contract types live in `packages/shared` when Web consumes or may consume them.
+- Primary public resource DTOs use `<Domain>Dto`, such as `TodoDto`.
+- Request body contracts use action names such as `CreateTodoRequest` or `UpdateTodoRequest`.
+- Endpoint-specific action results use response names such as `DeleteTodoResponse`.
+- Keep entity and DTO types separate even when their fields currently match.
+
+## Domain Mappers
+
+- Put resource `Entity -> DTO` conversion functions in `models/<domain>/mapper.ts`.
+- Keep each domain's mapper in its own domain folder.
+- Name resource DTO mapper functions after their target public contract, such as `toTodoDto` or `toAuthUserDto`.
+- Add a response mapper only when an endpoint response shape becomes complex or reused.
+- Do not put backend entity-to-resource-DTO conversion functions in `packages/shared`.
+- Keep `model.ts` focused on domain types and constants.
+- Repositories return backend entities or repository result objects; services call mappers before returning public resource DTOs to route handlers.
 
 ## Persistence
 

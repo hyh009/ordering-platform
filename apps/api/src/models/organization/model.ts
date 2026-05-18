@@ -1,6 +1,6 @@
 export { organizationStatuses } from '@repo/shared';
 
-import type { OrganizationDto, OrganizationStatus } from '@repo/shared';
+import type { OrganizationStatus } from '@repo/shared';
 
 export type { OrganizationStatus };
 
@@ -11,13 +11,3 @@ export type OrganizationEntity = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-export function toOrganizationDto(
-  organization: OrganizationEntity,
-): OrganizationDto {
-  return {
-    id: organization.id,
-    name: organization.name,
-    status: organization.status,
-  };
-}

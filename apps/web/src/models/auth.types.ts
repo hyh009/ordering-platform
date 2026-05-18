@@ -1,7 +1,7 @@
 import type {
   AuthActionSuccessResponse,
   AuthSuccessResponse,
-  AuthUser,
+  AuthUserDto,
   AuthUserSuccessResponse,
   LoginRequest,
   RegisterRequest,
@@ -10,7 +10,7 @@ import type {
 export type {
   AuthActionSuccessResponse,
   AuthSuccessResponse,
-  AuthUser,
+  AuthUserDto,
   AuthUserSuccessResponse,
   LoginRequest,
   RegisterRequest,
@@ -18,5 +18,5 @@ export type {
 
 export type AuthSession = {
   accessToken: string;
-  user: AuthUser;
+  user: AuthUserDto;
 };

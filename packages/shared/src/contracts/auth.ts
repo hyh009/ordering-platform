@@ -6,7 +6,7 @@ export const userStatuses = ['active', 'disabled'] as const;
 
 export type UserStatus = (typeof userStatuses)[number];
 
-export type AuthUser = {
+export type AuthUserDto = {
   id: string;
   email: string;
   username: string;
@@ -40,12 +40,12 @@ export const loginSchema = z.object({
 export type LoginRequest = z.infer<typeof loginSchema>;
 
 export type AuthSuccessResponse = ApiSuccessResponse<{
-  user: AuthUser;
+  user: AuthUserDto;
   accessToken: string;
 }>;
 
 export type AuthUserSuccessResponse = ApiSuccessResponse<{
-  user: AuthUser;
+  user: AuthUserDto;
 }>;
 
 export type AuthActionSuccessResponse = ApiSuccessResponse<{

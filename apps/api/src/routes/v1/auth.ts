@@ -76,7 +76,7 @@ function sendAuthResult(
  * @openapi
  * components:
  *   schemas:
- *     AuthUser:
+ *     AuthUserDto:
  *       type: object
  *       required:
  *         - id
@@ -114,7 +114,7 @@ function sendAuthResult(
  *             - accessToken
  *           properties:
  *             user:
- *               $ref: '#/components/schemas/AuthUser'
+ *               $ref: '#/components/schemas/AuthUserDto'
  *             accessToken:
  *               type: string
  *               description: JWT access token. Store in frontend memory/state and send with Authorization Bearer.
@@ -135,7 +135,7 @@ function sendAuthResult(
  *             - user
  *           properties:
  *             user:
- *               $ref: '#/components/schemas/AuthUser'
+ *               $ref: '#/components/schemas/AuthUserDto'
  *     AuthActionSuccessResponse:
  *       type: object
  *       required:

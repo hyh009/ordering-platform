@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 
 import { authConfig } from '@src/config/auth';
 import { env } from '@src/config/env';
-import { toPublicUser } from '@src/models/user/model';
+import { toAuthUserDto } from '@src/models/user/mapper';
 import { authSessionRepository } from '@src/repositories/authSession/repository';
 import { userRepository } from '@src/repositories/user/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
@@ -15,10 +15,11 @@ import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
 import bcrypt from 'bcryptjs';
 import { sign } from 'jsonwebtoken';
 
-import type { PublicUser, UserEntity } from '@src/models/user/model';
+import type { AuthUserDto } from '@repo/shared';
+import type { UserEntity } from '@src/models/user/model';
 
 export type AuthResult = {
-  user: PublicUser;
+  user: AuthUserDto;
   accessToken: string;
   refreshToken: string;
 };
@@ -77,7 +78,7 @@ async function createAuthResult(user: UserEntity): Promise<AuthResult> {
   });
 
   return {
-    user: toPublicUser(user),
+    user: toAuthUserDto(user),
     accessToken: createAccessToken(user),
     refreshToken,
   };
@@ -227,7 +228,7 @@ export class AuthService {
       return null;
     }
 
-    return toPublicUser(user);
+    return toAuthUserDto(user);
   }
 }
 

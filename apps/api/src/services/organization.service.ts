@@ -1,8 +1,5 @@
-import {
-  toOrganizationDto,
-  type OrganizationEntity,
-} from '@src/models/organization/model';
-import { toOrganizationMembershipDto } from '@src/models/organizationMembership/model';
+import { toOrganizationDto } from '@src/models/organization/mapper';
+import { toOrganizationMembershipDto } from '@src/models/organizationMembership/mapper';
 import { organizationRepository } from '@src/repositories/organization/repository';
 import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
 import { userRepository } from '@src/repositories/user/repository';
@@ -14,7 +11,11 @@ import {
 } from '@src/utils/errors';
 import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
 
-import type { OrganizationDto, OrganizationMembershipDto } from '@repo/shared';
+import type {
+  OrganizationDto,
+  OrganizationMembershipDto,
+} from '@repo/shared';
+import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
