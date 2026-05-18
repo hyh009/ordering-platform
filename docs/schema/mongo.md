@@ -572,8 +572,8 @@ category availability and is available all day. Do not use empty
 - `orderType` is `dine_in` or `takeaway`
 - `checkoutMode` snapshots the store order mode at cart creation time
 - `status` is `active`, `checked_out`, or `abandoned`
-- participant and contact data are embedded snapshots; MVP does not use a
-  standalone customer or order participant collection
+- participant data is embedded as snapshots; MVP does not use a standalone
+  customer or order participant collection
 - participant `displayName` is the only MVP customer-facing identity snapshot;
   phone, email, and member links are deferred until remote ordering,
   notification, or membership flows need them
@@ -597,8 +597,8 @@ category availability and is available all day. Do not use empty
 - `status` tracks order preparation/lifecycle state
 - `paymentStatus` is separate from lifecycle so `pay_first` and `pay_later`
   flows can evolve independently
-- participant and contact data are embedded snapshots; MVP does not use a
-  standalone customer or order participant collection
+- participant data is embedded as snapshots; MVP does not use a standalone
+  customer or order participant collection
 - participant `displayName` is the only MVP customer-facing identity snapshot;
   phone, email, and member links are deferred until remote ordering,
   notification, or membership flows need them
