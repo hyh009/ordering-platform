@@ -10,7 +10,6 @@ vi.mock('@/services/auth.service', () => ({
     login: vi.fn(),
     logout: vi.fn(),
     refresh: vi.fn(),
-    register: vi.fn(),
   },
 }));
 
@@ -110,30 +109,6 @@ describe('authCommands', () => {
       accessToken: 'access-token',
       status: 'authenticated',
       user: session.user,
-    });
-  });
-
-  it('maps duplicate registration into an email field error', async () => {
-    vi.mocked(authService.register).mockRejectedValue(
-      new ApiError({
-        code: 'USER_ALREADY_EXISTS',
-        message: 'User already exists',
-        statusCode: 409,
-      }),
-    );
-
-    await expect(
-      authCommands.register({
-        email: 'user@example.com',
-        password: 'Password123',
-        username: 'ordering-user',
-      }),
-    ).resolves.toEqual({
-      fieldErrors: {
-        email: 'This email is already registered.',
-      },
-      message: 'An account with this email already exists.',
-      status: 'failed',
     });
   });
 });

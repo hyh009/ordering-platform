@@ -7,21 +7,11 @@ import type {
   AuthSuccessResponse,
   AuthUserSuccessResponse,
   LoginRequest,
-  RegisterRequest,
 } from '@/models/auth.types';
 
 export const authService = {
   async login(input: LoginRequest): Promise<AuthSession> {
     const response = await apiJson<AuthSuccessResponse>(authPaths.login, {
-      body: JSON.stringify(input),
-      method: 'POST',
-    });
-
-    return authModel.deserializeSession(response);
-  },
-
-  async register(input: RegisterRequest): Promise<AuthSession> {
-    const response = await apiJson<AuthSuccessResponse>(authPaths.register, {
       body: JSON.stringify(input),
       method: 'POST',
     });

@@ -8,7 +8,7 @@ import { tDefault } from '@/app/i18n';
 import { createAuthActions } from '@/features/auth/actions/auth.actions';
 import { authStore } from '@/app/stores/auth.store';
 import { authService } from '@/services/auth.service';
-import type { LoginRequest, RegisterRequest } from '@/models/auth.types';
+import type { LoginRequest } from '@/models/auth.types';
 
 const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;
@@ -31,7 +31,7 @@ export type AuthLogoutResult =
 type AuthSubmitFailureResult = {
   status: 'failed';
   message: string;
-  fieldErrors?: Partial<Record<keyof RegisterRequest, string>>;
+  fieldErrors?: Partial<Record<keyof LoginRequest, string>>;
 };
 
 export const authCommands = {
@@ -61,27 +61,6 @@ export const authCommands = {
         tDefault(
           'auth.errors.invalidCredentials',
           'Invalid email or password.',
-        ),
-      );
-
-      return result;
-    }
-  },
-
-  async register(input: RegisterRequest): Promise<AuthSubmitResult> {
-    try {
-      const session = await authService.register(input);
-
-      authActions.authSuccess(session);
-      return {
-        status: 'authenticated',
-      };
-    } catch (error) {
-      const result: AuthSubmitFailureResult = mapAuthSubmitError(
-        error,
-        tDefault(
-          'auth.errors.registerFailed',
-          'Could not create this account.',
         ),
       );
 
@@ -122,22 +101,6 @@ function mapAuthSubmitError(
   error: unknown,
   fallbackMessage: string,
 ): AuthSubmitFailureResult {
-  if (hasApiErrorCode(error, 'USER_ALREADY_EXISTS')) {
-    return {
-      status: 'failed',
-      message: tDefault(
-        'auth.errors.accountExists',
-        'An account with this email already exists.',
-      ),
-      fieldErrors: {
-        email: tDefault(
-          'auth.errors.emailRegistered',
-          'This email is already registered.',
-        ),
-      },
-    };
-  }
-
   if (hasApiErrorCode(error, 'INVALID_CREDENTIALS')) {
     return {
       status: 'failed',
@@ -159,7 +122,7 @@ function mapAuthSubmitError(
       ),
       fieldErrors: Object.fromEntries(
         validationDetails.map((detail) => [detail.path, detail.message]),
-      ) as Partial<Record<keyof RegisterRequest, string>>,
+      ) as Partial<Record<keyof LoginRequest, string>>,
     };
   }
 

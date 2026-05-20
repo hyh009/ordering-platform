@@ -17,14 +17,14 @@ export function AppLayout() {
   const navigate = useNavigate();
   const auth = useAuthVM({
     onLoggedOut() {
-      navigate('/login', {
+      navigate('/admin/login', {
         replace: true,
       });
     },
   });
 
   function navigateHome() {
-    navigate('/');
+    navigate(auth.user?.isSuperAdmin ? '/admin/organizations' : '/home');
   }
 
   return (
@@ -32,6 +32,7 @@ export function AppLayout() {
       appName={appContext.appName}
       healthUrl={apiUrl(healthPaths.status)}
       isAuthenticated
+      isSuperAdmin={auth.user?.isSuperAdmin ?? false}
       language={language.currentLanguage}
       languageOptions={language.languageOptions}
       onLanguageChange={language.changeLanguage}

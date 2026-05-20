@@ -3,5 +3,4 @@ export const authPaths = {
   logout: '/v1/auth/logout',
   me: '/v1/auth/me',
   refresh: '/v1/auth/refresh',
-  register: '/v1/auth/register',
 } as const;

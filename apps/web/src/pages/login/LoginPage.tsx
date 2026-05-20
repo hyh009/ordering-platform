@@ -1,9 +1,8 @@
 import type { FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { Field } from '@/shared/components/form/Field';
 import { Button } from '@/shared/components/ui/button';
-import { buttonVariants } from '@/shared/components/ui/buttonVariants';
 import { Input } from '@/shared/components/ui/input';
 import { useLoginPageVM } from './useLoginPageVM';
 
@@ -38,15 +37,15 @@ export function LoginPage() {
     <section className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl content-center gap-8 px-5 py-10 md:grid-cols-[1fr_26rem] md:px-8">
       <div className="max-w-2xl self-center">
         <p className="mb-3 text-xs font-bold tracking-[0.08em] text-primary uppercase">
-          {tDefault('auth.login.eyebrow', 'Ordering platform')}
+          {tDefault('auth.login.eyebrow', 'Super admin')}
         </p>
         <h1 className="mb-5 text-4xl leading-tight font-bold text-foreground md:text-5xl">
-          {tDefault('auth.login.title', 'Sign in to manage your workspace')}
+          {tDefault('auth.login.title', 'Sign in to the admin console')}
         </h1>
         <p className="max-w-xl text-base text-muted-foreground">
           {tDefault(
             'auth.login.description',
-            'The frontend keeps the access token in memory and restores sessions with the backend refresh cookie.',
+            'Manage organizations, allergens, and dietary markers with a super admin account.',
           )}
         </p>
       </div>
@@ -57,12 +56,12 @@ export function LoginPage() {
       >
         <div>
           <h2 className="mb-1 text-xl font-semibold">
-            {tDefault('auth.login.formTitle', 'Login')}
+            {tDefault('auth.login.formTitle', 'Admin login')}
           </h2>
           <p className="m-0 text-sm text-muted-foreground">
             {tDefault(
               'auth.login.formDescription',
-              'Use an existing platform account.',
+              'Use an existing super admin platform account.',
             )}
           </p>
         </div>
@@ -108,10 +107,6 @@ export function LoginPage() {
             ? tDefault('auth.login.submitting', 'Signing in...')
             : tDefault('auth.login.submit', 'Sign in')}
         </Button>
-
-        <Link className={buttonVariants({ variant: 'ghost' })} to="/register">
-          {tDefault('auth.login.createAccount', 'Create account')}
-        </Link>
       </form>
     </section>
   );

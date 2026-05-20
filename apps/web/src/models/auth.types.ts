@@ -4,7 +4,6 @@ import type {
   AuthUserDto,
   AuthUserSuccessResponse,
   LoginRequest,
-  RegisterRequest,
 } from '@repo/shared';
 
 export type {
@@ -13,7 +12,6 @@ export type {
   AuthUserDto,
   AuthUserSuccessResponse,
   LoginRequest,
-  RegisterRequest,
 };
 
 export type AuthSession = {

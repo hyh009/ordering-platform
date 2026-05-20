@@ -13,9 +13,15 @@ export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
   const auth = useAuthVM();
   const navigate = useNavigate();
   const { tDefault } = useAppTranslation();
-  const destination = auth.isAuthenticated ? '/' : '/login';
+  const destination = auth.isAuthenticated
+    ? auth.user?.isSuperAdmin
+      ? '/admin/organizations'
+      : '/home'
+    : '/admin/login';
   const destinationLabel = auth.isAuthenticated
-    ? tDefault('notFound.goToTodos', 'Go to todos')
+    ? auth.user?.isSuperAdmin
+      ? tDefault('notFound.goToOrganizations', 'Go to organizations')
+      : tDefault('notFound.goToHome', 'Go to home')
     : tDefault('notFound.signIn', 'Sign in');
   const DestinationIcon = auth.isAuthenticated ? Home : LogIn;
 

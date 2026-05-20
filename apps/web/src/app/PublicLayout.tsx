@@ -16,7 +16,7 @@ export function PublicLayout() {
   const navigate = useNavigate();
 
   function navigateHome() {
-    navigate('/login');
+    navigate('/admin/login');
   }
 
   return (

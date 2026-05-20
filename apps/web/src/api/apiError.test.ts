@@ -18,7 +18,7 @@ describe('api error normalization', () => {
         statusCode: 400,
         code: 'VALIDATION_ERROR',
         message: 'Invalid request body',
-        details: [{ path: 'title', message: 'Required' }],
+        details: [{ path: 'name', message: 'Required' }],
       },
     });
 
@@ -27,7 +27,7 @@ describe('api error normalization', () => {
       statusCode: 400,
       code: 'VALIDATION_ERROR',
       message: 'Invalid request body',
-      details: [{ path: 'title', message: 'Required' }],
+      details: [{ path: 'name', message: 'Required' }],
     });
   });
 
@@ -47,8 +47,8 @@ describe('api error normalization', () => {
   it('normalizes network failures without wrapping existing ApiError instances', () => {
     const existingError = new ApiError({
       statusCode: 404,
-      code: 'TODO_NOT_FOUND',
-      message: 'Todo not found',
+      code: 'ORGANIZATION_NOT_FOUND',
+      message: 'Organization not found',
     });
 
     expect(normalizeNetworkError(existingError)).toBe(existingError);
@@ -93,11 +93,11 @@ describe('api error normalization', () => {
   it('matches documented application error codes', () => {
     const error = new ApiError({
       statusCode: 404,
-      code: 'TODO_NOT_FOUND',
-      message: 'Todo not found',
+      code: 'ORGANIZATION_NOT_FOUND',
+      message: 'Organization not found',
     });
 
-    expect(hasApiErrorCode(error, 'TODO_NOT_FOUND')).toBe(true);
+    expect(hasApiErrorCode(error, 'ORGANIZATION_NOT_FOUND')).toBe(true);
     expect(hasApiErrorCode(error, 'VALIDATION_ERROR')).toBe(false);
   });
 
@@ -106,25 +106,25 @@ describe('api error normalization', () => {
       statusCode: 400,
       code: 'VALIDATION_ERROR',
       message: 'Invalid request body',
-      details: [{ path: 'title', message: 'Required' }],
+      details: [{ path: 'name', message: 'Required' }],
     });
     const malformedValidationError = new ApiError({
       statusCode: 400,
       code: 'VALIDATION_ERROR',
       message: 'Invalid request body',
-      details: [{ path: 'title', text: 'Required' }],
+      details: [{ path: 'name', text: 'Required' }],
     });
 
     expect(getValidationDetails(validationError)).toEqual([
-      { path: 'title', message: 'Required' },
+      { path: 'name', message: 'Required' },
     ]);
     expect(getValidationDetails(malformedValidationError)).toEqual([]);
     expect(
       getValidationDetails(
         new ApiError({
           statusCode: 404,
-          code: 'TODO_NOT_FOUND',
-          message: 'Todo not found',
+          code: 'ORGANIZATION_NOT_FOUND',
+          message: 'Organization not found',
         }),
       ),
     ).toEqual([]);

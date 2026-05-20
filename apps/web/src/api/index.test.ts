@@ -17,7 +17,7 @@ describe('apiJson', () => {
       ),
     );
 
-    await expect(apiJson('/todos/1')).resolves.toEqual({
+    await expect(apiJson('/organizations/org-1')).resolves.toEqual({
       status: 'success',
       data: { id: '1' },
     });
@@ -33,8 +33,8 @@ describe('apiJson', () => {
     setApiTokenProvider(() => 'test-token');
     vi.stubGlobal('fetch', fetchMock);
 
-    await apiJson('/todos', {
-      body: JSON.stringify({ title: 'Write tests' }),
+    await apiJson('/organizations', {
+      body: JSON.stringify({ name: 'Test organization' }),
       method: 'POST',
     });
 
@@ -56,7 +56,7 @@ describe('apiJson', () => {
     setApiTokenProvider(() => 'test-token');
     vi.stubGlobal('fetch', fetchMock);
 
-    await apiJson('/todos', {
+    await apiJson('/organizations', {
       headers: {
         Accept: 'application/vnd.api+json',
         Authorization: 'Bearer request-token',
@@ -81,19 +81,19 @@ describe('apiJson', () => {
           JSON.stringify({
             status: 'error',
             statusCode: 404,
-            code: 'TODO_NOT_FOUND',
-            message: 'Todo not found',
+            code: 'ORGANIZATION_NOT_FOUND',
+            message: 'Organization not found',
           }),
           { status: 404 },
         ),
       ),
     );
 
-    await expect(apiJson('/todos/missing')).rejects.toMatchObject({
+    await expect(apiJson('/organizations/missing')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 404,
-      code: 'TODO_NOT_FOUND',
-      message: 'Todo not found',
+      code: 'ORGANIZATION_NOT_FOUND',
+      message: 'Organization not found',
     });
   });
 
@@ -107,19 +107,19 @@ describe('apiJson', () => {
             statusCode: 400,
             code: 'VALIDATION_ERROR',
             message: 'Invalid request body',
-            details: [{ path: 'title', message: 'Required' }],
+            details: [{ path: 'name', message: 'Required' }],
           }),
           { status: 400 },
         ),
       ),
     );
 
-    await expect(apiJson('/todos')).rejects.toMatchObject({
+    await expect(apiJson('/organizations')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 400,
       code: 'VALIDATION_ERROR',
       message: 'Invalid request body',
-      details: [{ path: 'title', message: 'Required' }],
+      details: [{ path: 'name', message: 'Required' }],
     });
   });
 
@@ -129,7 +129,7 @@ describe('apiJson', () => {
       vi.fn().mockResolvedValue(new Response('not-json', { status: 200 })),
     );
 
-    await expect(apiJson('/todos')).rejects.toMatchObject({
+    await expect(apiJson('/organizations')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 200,
       code: 'INVALID_API_RESPONSE',
@@ -143,7 +143,7 @@ describe('apiJson', () => {
       vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
     );
 
-    await expect(apiJson('/todos')).rejects.toMatchObject({
+    await expect(apiJson('/organizations')).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 0,
       code: 'NETWORK_ERROR',

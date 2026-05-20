@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, NavLink } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import type { SupportedLanguage } from '@/app/i18n/languages';
 import logoUrl from '@/assets/logo.svg';
@@ -14,6 +14,7 @@ type AppShellProps = {
   children: ReactNode;
   healthUrl: string;
   isAuthenticated: boolean;
+  isSuperAdmin?: boolean;
   language: SupportedLanguage;
   languageOptions: LanguageOption[];
   onLanguageChange: (language: string) => void | Promise<void>;
@@ -28,6 +29,7 @@ export function AppShell({
   children,
   healthUrl,
   isAuthenticated,
+  isSuperAdmin = false,
   language,
   languageOptions,
   onLanguageChange,
@@ -62,8 +64,23 @@ export function AppShell({
               onClick={onNavigateHome}
               type="button"
             >
-              {tDefault('app.navigation.home', 'Todos')}
+              {isSuperAdmin
+                ? tDefault('app.navigation.home', 'Organizations')
+                : tDefault('app.navigation.userHome', 'Home')}
             </button>
+          ) : null}
+          {isAuthenticated && isSuperAdmin ? (
+            <>
+              <NavLink className="hover:text-primary" to="/admin/allergens">
+                {tDefault('app.navigation.allergens', 'Allergens')}
+              </NavLink>
+              <NavLink
+                className="hover:text-primary"
+                to="/admin/dietary-markers"
+              >
+                {tDefault('app.navigation.dietaryMarkers', 'Dietary markers')}
+              </NavLink>
+            </>
           ) : null}
           <a className="hover:text-primary" href={healthUrl}>
             {tDefault('app.navigation.apiHealth', 'API health')}
