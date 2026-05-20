@@ -1,5 +1,5 @@
 import type { AuthSession } from '@/models/auth.types';
-import type { AuthState } from '@/app/stores/auth.store';
+import type { AuthState } from '@/app/global/auth/auth.store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createAuthActions(authStore: StoreApi<AuthState>) {

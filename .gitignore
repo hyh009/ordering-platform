@@ -86,3 +86,6 @@ coverage/
 
 *.local
 docs/agent/temp/
+
+
+references/

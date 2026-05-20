@@ -1,10 +1,7 @@
 import { tDefault } from '@/app/i18n';
-import { feedbackStore } from '../stores/feedback.store';
+import { feedbackStore } from './feedback.store';
 
-import type {
-  ActiveConfirmModal,
-  FeedbackTone,
-} from '../stores/feedback.store';
+import type { ActiveConfirmModal, FeedbackTone } from './feedback.store';
 
 type ToastInput = {
   tone?: FeedbackTone;
@@ -20,7 +17,7 @@ type ConfirmInput = {
   tone?: FeedbackTone;
 };
 
-class FeedbackVM {
+class FeedbackCommands {
   private nextToastId = 1;
 
   toast = (input: ToastInput) => {
@@ -79,4 +76,4 @@ class FeedbackVM {
   };
 }
 
-export const feedbackVM = new FeedbackVM();
+export const feedbackCommands = new FeedbackCommands();

@@ -1,5 +1,4 @@
 import { createStore } from 'zustand/vanilla';
-import { setApiTokenProvider } from '@/api';
 import type { AuthUserDto } from '@/models/auth.types';
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
@@ -15,5 +14,3 @@ export const authStore = createStore<AuthState>(() => ({
   status: 'checking',
   user: null,
 }));
-
-setApiTokenProvider(() => authStore.getState().accessToken);

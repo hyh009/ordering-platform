@@ -1,10 +1,11 @@
-import { Navigate, Outlet } from 'react-router';
+import { Navigate, Outlet, useLocation } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
-import { useAuthVM } from '@/app/viewModel/useAuthVM';
+import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { LoadingState } from '@/shared/components/LoadingState';
 
-export function RequireSuperAdmin() {
+export function RequireAuth() {
   const auth = useAuthVM();
+  const location = useLocation();
   const { tDefault } = useAppTranslation();
 
   if (auth.isChecking) {
@@ -15,8 +16,8 @@ export function RequireSuperAdmin() {
     );
   }
 
-  if (!auth.user?.isSuperAdmin) {
-    return <Navigate replace to="/home" />;
+  if (!auth.isAuthenticated) {
+    return <Navigate replace state={{ from: location }} to="/admin/login" />;
   }
 
   return <Outlet />;

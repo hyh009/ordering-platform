@@ -42,8 +42,17 @@ React View re-renders
 Page view + page VM hook + page commands
   -> src/pages/<pageName>
 
-App-level state
-  -> src/app/stores
+App-wide runtime modules
+  -> src/app/global/<module>
+
+App shell layouts and project-specific app header
+  -> src/app/layout
+
+App route guards
+  -> src/app/routing
+
+App and route error boundaries
+  -> src/app/error
 
 Feature-level state
   -> src/features/<domain>/store
@@ -89,8 +98,14 @@ src/
     paths/
 
   app/
-    stores/
-    viewModel/
+    error/
+    global/
+      auth/
+      feedback/
+      appContext/
+    i18n/
+    layout/
+    routing/
 
   assets/
   models/
@@ -114,9 +129,11 @@ src/
     utils/
 ```
 
-Use camelCase for folders, such as `todoOverview`, `todoDetail`, and `viewModel`.
+Use camelCase for folders, such as `todoOverview`, `todoDetail`, and `appContext`.
 
 `store` / `stores` folders contain `*.store.ts` files only.
+
+Use `src/app/global/<module>` only for app-wide runtime modules such as auth, feedback, and app context.
 
 `*.commands.ts` files do not use React hooks, toast/modal APIs, or navigation APIs.
 

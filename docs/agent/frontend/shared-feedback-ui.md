@@ -12,7 +12,7 @@ Toast and modal feedback may be used for errors, success messages, confirmations
 
 ```txt
 Page VM Hook
-  -> feedback VM
+  -> feedback commands
   -> feedback store
   -> shared feedback host renders
 ```
@@ -22,7 +22,7 @@ Page VM Hook
 - Toast and modal state belongs to `src/app`, not `src/shared`.
 - `src/shared` owns reusable UI components.
 - `src/app` owns this application's active toast and modal instance.
-- Page VM hooks may call app-level feedback VM methods.
+- Page VM hooks may call app-level feedback commands.
 - API, service, feature action, and feature store files do not call toast or modal APIs.
 - Do not use feedback UI as a global error store.
 
@@ -31,10 +31,11 @@ Page VM Hook
 ```txt
 src/
   app/
-    stores/
-      feedback.store.ts
-    viewModel/
-      feedback.vm.ts
+    global/
+      feedback/
+        feedback.commands.ts
+        feedback.store.ts
+        useFeedbackVM.ts
 
   shared/
     components/
@@ -46,7 +47,7 @@ src/
 ## Allowed
 
 ```txt
-Page VM Hook -> feedback VM -> feedback store -> shared host renders
+Page VM Hook -> feedback commands -> feedback store -> shared host renders
 ```
 
 ## Not Allowed

@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
-import { RouteErrorBoundary } from '@/app/AppErrorBoundary';
-import { PublicLayout } from '@/app/PublicLayout';
-import { RequireAuth } from '@/app/RequireAuth';
-import { RequireSuperAdmin } from '@/app/RequireSuperAdmin';
-import { useAppTranslation } from '@/app/i18n';
-import { useAuthVM } from '@/app/viewModel/useAuthVM';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { RouteErrorBoundary } from '@/app/error/AppErrorBoundary';
+import { useAuthVM } from '@/app/global/auth/useAuthVM';
+import { PublicLayout } from '@/app/layout/PublicLayout';
+import { AppLayout } from '@/app/layout/AppLayout';
+import { PublicOnly } from '@/app/routing/PublicOnly';
+import { RequireAuth } from '@/app/routing/RequireAuth';
+import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
 import { AllergenListPage } from '@/pages/allergenList/AllergenListPage';
 import { DietaryMarkerListPage } from '@/pages/dietaryMarkerList/DietaryMarkerListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
@@ -13,32 +14,6 @@ import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
 import { OrganizationDetailPage } from '@/pages/organizationDetail/OrganizationDetailPage';
 import { OrganizationListPage } from '@/pages/organizationList/OrganizationListPage';
 import { UserHomePage } from '@/pages/userHome/UserHomePage';
-import { LoadingState } from '@/shared/components/LoadingState';
-import { AppLayout } from './AppLayout';
-
-function PublicOnly() {
-  const auth = useAuthVM();
-  const { tDefault } = useAppTranslation();
-
-  if (auth.isChecking) {
-    return (
-      <LoadingState
-        label={tDefault('app.loading.checkingSession', 'Checking session')}
-      />
-    );
-  }
-
-  if (auth.isAuthenticated) {
-    return (
-      <Navigate
-        replace
-        to={auth.user?.isSuperAdmin ? '/admin/organizations' : '/home'}
-      />
-    );
-  }
-
-  return <Outlet />;
-}
 
 export function App() {
   const auth = useAuthVM();

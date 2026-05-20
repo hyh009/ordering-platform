@@ -1,50 +1,59 @@
 import { Outlet, useNavigate } from 'react-router';
 import { apiBaseUrl, apiUrl } from '@/api';
 import { healthPaths } from '@/api/paths/health.paths';
-import { PageErrorBoundary } from '@/app/AppErrorBoundary';
-import { useAppContextVM } from '@/app/viewModel/useAppContextVM';
-import { useFeedbackVM } from '@/app/viewModel/useFeedbackVM';
-import { useLanguageVM } from '@/app/viewModel/useLanguageVM';
+import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
+import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
+import { useAuthVM } from '@/app/global/auth/useAuthVM';
+import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
+import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
 import { ToastHost } from '@/shared/components/feedback/ToastHost';
-import { AppShell } from '@/shared/components/layout/AppShell';
+import { AppShell } from '@/app/layout/AppShell';
 
-export function PublicLayout() {
+export function AppLayout() {
   const appContext = useAppContextVM();
   const feedback = useFeedbackVM();
   const language = useLanguageVM();
   const navigate = useNavigate();
+  const auth = useAuthVM({
+    onLoggedOut() {
+      navigate('/admin/login', {
+        replace: true,
+      });
+    },
+  });
 
   function navigateHome() {
-    navigate('/admin/login');
+    navigate(auth.user?.isSuperAdmin ? '/admin/organizations' : '/home');
   }
 
   return (
     <AppShell
       appName={appContext.appName}
       healthUrl={apiUrl(healthPaths.status)}
-      isAuthenticated={false}
+      isAuthenticated
+      isSuperAdmin={auth.user?.isSuperAdmin ?? false}
       language={language.currentLanguage}
       languageOptions={language.languageOptions}
       onLanguageChange={language.changeLanguage}
-      onLogout={() => {}}
+      onLogout={() => {
+        void auth.logout();
+      }}
       onNavigateHome={navigateHome}
       swaggerUrl={`${apiBaseUrl}/docs`}
+      username={auth.user?.username}
     >
       <PageErrorBoundary>
         <Outlet />
       </PageErrorBoundary>
-      <ToastHost
-        onDismiss={feedback.actions.dismissToast}
-        toasts={feedback.toasts}
-      />
+      <ToastHost onDismiss={feedback.dismissToast} toasts={feedback.toasts} />
       <ModalHost
         modal={feedback.modal}
         onCancel={() => {
-          feedback.actions.closeModal(false);
+          feedback.closeModal(false);
         }}
         onConfirm={() => {
-          feedback.actions.closeModal(true);
+          feedback.closeModal(true);
         }}
       />
     </AppShell>

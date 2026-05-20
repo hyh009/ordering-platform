@@ -1,6 +1,6 @@
 import { useStore } from 'zustand';
-import { feedbackStore } from '../stores/feedback.store';
-import { feedbackVM } from './feedback.vm';
+import { feedbackCommands } from './feedback.commands';
+import { feedbackStore } from './feedback.store';
 
 export function useFeedbackVM() {
   const toasts = useStore(feedbackStore, (state) => state.toasts);
@@ -9,6 +9,7 @@ export function useFeedbackVM() {
   return {
     toasts,
     modal,
-    actions: feedbackVM,
+    closeModal: feedbackCommands.closeModal,
+    dismissToast: feedbackCommands.dismissToast,
   };
 }

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useStore } from 'zustand';
-import { authCommands } from '@/app/auth.commands';
-import { authStore } from '@/app/stores/auth.store';
+import { authCommands } from '@/app/global/auth/auth.commands';
+import { authStore } from '@/app/global/auth/auth.store';
 
 type UseAuthVMOptions = {
   onLoggedOut?: () => void;

@@ -26,6 +26,7 @@ Feature Store -> Page VM Hook via useStore(...) -> View re-renders
 - Pages live in `src/pages`.
 - Each page folder contains the page view, page VM hook, and page commands.
 - Features are based on domain, not page.
+- App-wide runtime modules live under `src/app/global/<module>`.
 - Feature stores and feature actions live under `src/features/<domain>`.
 - Zustand stores hold state only.
 - Feature actions only mutate store state.
@@ -34,7 +35,7 @@ Feature Store -> Page VM Hook via useStore(...) -> View re-renders
 - Components use page VM hooks to read state and trigger VM handlers.
 - Page VM hooks own route lifecycle effects and command-result reactions.
 - Page VM hooks expose stable top-level handlers, not nested action objects.
-- Global stores only contain app-level context.
+- Global app modules only contain app-wide runtime state and flows.
 - Use camelCase for folder names and normal module names.
 
 ## Folder Structure
@@ -46,8 +47,14 @@ src/
     paths/
 
   app/
-    stores/
-    viewModel/
+    error/
+    global/
+      auth/
+      feedback/
+      appContext/
+    i18n/
+    layout/
+    routing/
 
   assets/
   models/
@@ -161,18 +168,35 @@ Feature folders should not contain page folders.
 
 ## State Categories
 
-App-level state is used across multiple pages or features.
+App-level global state is used across multiple pages or features and belongs to the application runtime.
 
-Place app-level store files in `src/app/stores`.
+Place app-wide runtime modules in `src/app/global/<module>`.
 
 Examples:
 
-- current user
-- authentication status
-- access token
-- permissions
-- current organization
+- auth session, current user, authentication status, and access token
+- app feedback such as toast and confirm modal state
+- current organization or app context
 - global theme
+
+Do not use `src/app/global` as a generic shared folder.
+
+Do not put page-specific state, domain feature state, or generic utilities in `src/app/global`.
+
+App-level global modules may contain their own store, actions, commands, and VM hook files:
+
+```txt
+src/app/global/auth/
+  auth.store.ts
+  auth.actions.ts
+  auth.commands.ts
+  useAuthVM.ts
+
+src/app/global/feedback/
+  feedback.store.ts
+  feedback.commands.ts
+  useFeedbackVM.ts
+```
 
 Feature-level state belongs to one domain feature and needs feature ownership or shared access.
 
@@ -274,6 +298,9 @@ Stores should keep frontend models, not raw API DTOs.
 
 Place components by ownership:
 
+- App shell layouts and project-specific app header: `src/app/layout`
+- App route guards: `src/app/routing`
+- App and route error boundaries: `src/app/error`
 - Page-only components: `src/pages/<pageName>`
 - Same domain, multiple pages: `src/features/<domain>/components`
 - Project-level reusable: `src/shared/components`
@@ -299,7 +326,7 @@ Examples:
 
 - `todoOverview`
 - `todoDetail`
-- `viewModel`
+- `appContext`
 - `todoOverview.store.ts`
 - `todoDetail.actions.ts`
 - `todoOverviewPage.commands.ts`

@@ -1,29 +1,18 @@
 import { ArrowLeft, Home, LogIn } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
-import { useAuthVM } from '@/app/viewModel/useAuthVM';
 import { buttonVariants } from '@/shared/components/ui/buttonVariants';
 import { cn } from '@/shared/utils/cn';
+import { useNotFoundPageVM } from './useNotFoundPageVM';
 
 type NotFoundPageProps = {
   embedded?: boolean;
 };
 
 export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
-  const auth = useAuthVM();
-  const navigate = useNavigate();
+  const vm = useNotFoundPageVM();
   const { tDefault } = useAppTranslation();
-  const destination = auth.isAuthenticated
-    ? auth.user?.isSuperAdmin
-      ? '/admin/organizations'
-      : '/home'
-    : '/admin/login';
-  const destinationLabel = auth.isAuthenticated
-    ? auth.user?.isSuperAdmin
-      ? tDefault('notFound.goToOrganizations', 'Go to organizations')
-      : tDefault('notFound.goToHome', 'Go to home')
-    : tDefault('notFound.signIn', 'Sign in');
-  const DestinationIcon = auth.isAuthenticated ? Home : LogIn;
+  const DestinationIcon = vm.isAuthenticated ? Home : LogIn;
 
   return (
     <section
@@ -48,17 +37,15 @@ export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
         <div className="mt-7 flex flex-wrap gap-3">
           <button
             className={buttonVariants({ variant: 'outline' })}
-            onClick={() => {
-              navigate(-1);
-            }}
+            onClick={vm.goBack}
             type="button"
           >
             <ArrowLeft aria-hidden="true" />
             {tDefault('notFound.back', 'Back')}
           </button>
-          <Link className={buttonVariants()} to={destination}>
+          <Link className={buttonVariants()} to={vm.destination}>
             <DestinationIcon aria-hidden="true" />
-            {destinationLabel}
+            {vm.destinationLabel}
           </Link>
         </div>
       </div>

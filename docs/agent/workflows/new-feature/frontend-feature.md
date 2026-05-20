@@ -14,7 +14,7 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 
 - Follow `docs/agent/frontend/architecture.md`.
 - Check `docs/agent/frontend/shared-components.md` before creating or moving components.
-- Check `docs/agent/frontend/reusable-primitives.md` before adding helpers, shared hooks, utilities, or app-level VMs.
+- Check `docs/agent/frontend/reusable-primitives.md` before adding helpers, shared hooks, utilities, or app-wide runtime modules.
 - Discuss the page, feature domain, state ownership, and API-backed behavior with the user before implementation when the shape is not already clear.
 - Before implementing new or changed frontend state, tell the user the state ownership plan:
   - Store state: app/domain state shared across handlers, flows, components, or pages.
@@ -22,6 +22,9 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
   - Component local state: UI-only state owned by one component, such as menu open state, hover state, password visibility, or local-only search text.
 - Ask before coding when a state value could reasonably belong in more than one place.
 - Put page views, page VM hooks, and page commands under `apps/web/src/pages`.
+- Put app shell UI under `apps/web/src/app/layout`.
+- Put route guards under `apps/web/src/app/routing`.
+- Put app and route error boundaries under `apps/web/src/app/error`.
 - Put domain feature state, actions, and reusable domain components under `apps/web/src/features/<domain>`.
 - Put frontend models and DTO conversion helpers under `apps/web/src/models`.
 - Use React local state for UI-only state such as modals, menus, hover state, and temporary input text.
@@ -44,7 +47,7 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 ## 3. UI, State, and Feedback
 
 - Check existing shared, feature, and page components before creating a new component.
-- Check existing reusable primitives before adding a new shared hook, helper, utility, or app-level VM.
+- Check existing reusable primitives before adding a new shared hook, helper, utility, or app-wide runtime module.
 - Components read state and trigger behavior through page VM hooks.
 - Page commands coordinate service calls, actions, loading states, errors, and save flows.
 - Feature actions mutate feature stores.

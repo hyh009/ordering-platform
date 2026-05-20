@@ -1,29 +1,31 @@
 # Frontend Reusable Primitives
 
-Use this before adding frontend helpers, shared hooks, utilities, or app-level
-VMs.
+Use this before adding frontend helpers, shared hooks, utilities, or app-wide
+runtime modules.
 
 For reusable UI components, use
 `docs/agent/frontend/shared-components.md`.
 
-## App-Level VMs
+## App-Wide Runtime Modules
 
-Use app-level VMs for global app behavior.
+Use app-wide runtime modules for global app behavior.
 
-- App context: `apps/web/src/app/viewModel/useAppContextVM.ts`
-- Auth: `apps/web/src/app/viewModel/useAuthVM.ts`
-- Feedback VM: `apps/web/src/app/viewModel/feedback.vm.ts`
-- Feedback hook: `apps/web/src/app/viewModel/useFeedbackVM.ts`
-- Language: `apps/web/src/app/viewModel/useLanguageVM.ts`
+- App context: `apps/web/src/app/global/appContext`
+- Auth: `apps/web/src/app/global/auth`
+- Feedback commands and hook: `apps/web/src/app/global/feedback`
+- Language VM: `apps/web/src/app/i18n/useLanguageVM.ts`
 
-Do not put page-specific behavior in app-level VMs.
+Do not put page-specific behavior in app-wide runtime modules.
+
+Use `apps/web/src/app/global/<module>` only for app-wide runtime state and
+flows, such as auth, feedback, app context, current organization, or theme.
 
 ## Shared Hooks
 
 Use shared hooks for generic reusable React state behavior.
 
-- Cursor pagination: `apps/web/src/shared/hooks/useCursorPaginationQuery.ts`
 - Debounce: `apps/web/src/shared/hooks/useDebouncedValue.ts`
+- Cursor pagination: `apps/web/src/shared/hooks/useCursorPaginationQuery.ts`
 - Offset pagination: `apps/web/src/shared/hooks/useOffsetPaginationQuery.ts`
 - Throttle: `apps/web/src/shared/hooks/useThrottle.ts`
 

@@ -4,14 +4,17 @@ import {
   hasApiErrorCode,
   isApiError,
 } from '@/api/apiError';
+import { setApiTokenProvider } from '@/api';
 import { tDefault } from '@/app/i18n';
-import { createAuthActions } from '@/features/auth/actions/auth.actions';
-import { authStore } from '@/app/stores/auth.store';
+import { createAuthActions } from '@/app/global/auth/auth.actions';
+import { authStore } from '@/app/global/auth/auth.store';
 import { authService } from '@/services/auth.service';
 import type { LoginRequest } from '@/models/auth.types';
 
 const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;
+
+setApiTokenProvider(() => authStore.getState().accessToken);
 
 export type AuthSubmitResult =
   | {

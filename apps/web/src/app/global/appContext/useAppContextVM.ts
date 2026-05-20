@@ -1,5 +1,5 @@
 import { useStore } from 'zustand';
-import { appContextStore } from '../stores/appContext.store';
+import { appContextStore } from './appContext.store';
 
 export function useAppContextVM() {
   const appName = useStore(appContextStore, (state) => state.appName);
