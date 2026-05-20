@@ -1,8 +1,9 @@
+export { dietaryMarkerTypes } from '@repo/shared';
+
+import type { DietaryMarkerType } from '@repo/shared';
 import type { LocalizedString } from '@src/models/common/model';
 
-export const dietaryMarkerTypes = ['dietary', 'regulatory'] as const;
-
-export type DietaryMarkerType = (typeof dietaryMarkerTypes)[number];
+export type { DietaryMarkerType };
 
 export type DietaryMarkerEntity = {
   id: string;

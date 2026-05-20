@@ -12,6 +12,8 @@ import {
 import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
 
 import type {
+  ListOrganizationsQuery,
+  ListOrganizationsSuccessResponse,
   OrganizationDto,
   OrganizationMembershipDto,
 } from '@repo/shared';
@@ -27,7 +29,44 @@ export type CreateOrganizationResult = {
   ownerMembership: OrganizationMembershipDto;
 };
 
+export type UpdateOrganizationInput = {
+  name?: string | undefined;
+  status?: OrganizationEntity['status'] | undefined;
+};
+
+export type ListOrganizationsResult = ListOrganizationsSuccessResponse['data'];
+
 export class OrganizationService {
+  public async listOrganizations(
+    query: ListOrganizationsQuery,
+  ): Promise<ListOrganizationsResult> {
+    const result = await organizationRepository.list(query);
+
+    return {
+      organizations: result.organizations.map(toOrganizationDto),
+      pagination: {
+        offset: query.offset,
+        limit: query.limit,
+        total: result.total,
+      },
+    };
+  }
+
+  public async getOrganization(
+    organizationId: string,
+  ): Promise<OrganizationDto> {
+    const organization = await organizationRepository.findById(organizationId);
+
+    if (!organization) {
+      throw new NotFoundError(
+        'Organization not found',
+        ERROR_CODES.ORGANIZATION_NOT_FOUND,
+      );
+    }
+
+    return toOrganizationDto(organization);
+  }
+
   public async createOrganization(
     input: CreateOrganizationInput,
   ): Promise<CreateOrganizationResult> {
@@ -54,6 +93,25 @@ export class OrganizationService {
       organization: toOrganizationDto(organization),
       ownerMembership: toOrganizationMembershipDto(ownerMembership),
     };
+  }
+
+  public async updateOrganization(
+    organizationId: string,
+    input: UpdateOrganizationInput,
+  ): Promise<OrganizationDto> {
+    const organization = await organizationRepository.update(
+      organizationId,
+      input,
+    );
+
+    if (!organization) {
+      throw new NotFoundError(
+        'Organization not found',
+        ERROR_CODES.ORGANIZATION_NOT_FOUND,
+      );
+    }
+
+    return toOrganizationDto(organization);
   }
 
   private async createOwnerMembership(

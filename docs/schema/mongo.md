@@ -336,8 +336,8 @@ classDiagram
   note for StoreSettings "collection: storeSettings\nplugin: mongoose-delete\nunique: organizationId"
   note for Category "collection: categories\nplugin: mongoose-delete\norg-owned menu category"
   note for Tag "collection: tags\nplugin: mongoose-delete\norg-owned marketing tag"
-  note for DietaryMarker "collection: dietaryMarkers\nglobal product metadata\nlifecycle: isActive"
-  note for Allergen "collection: allergens\nglobal product metadata\nlifecycle: isActive"
+  note for DietaryMarker "collection: dietaryMarkers\nglobal product metadata\nunique: key\nlifecycle: isActive"
+  note for Allergen "collection: allergens\nglobal product metadata\nunique: key\nlifecycle: isActive"
   note for ProductModifier "collection: productModifiers\nplugin: mongoose-delete\norg-owned product customization"
   note for Product "collection: products\nplugin: mongoose-delete\norg-owned menu item"
   note for Counter "collection: counters\ndaily per-organization sequence cursor"
@@ -558,7 +558,7 @@ category availability and is available all day. Do not use empty
 - lifecycle uses `isActive`; no soft delete plugin
 - `key` is the stable platform identifier, such as `vegetarian`
 - localized `name` requires at least one value
-- custom indexes not added yet
+- unique index: `key`
 
 `allergens`
 
@@ -567,7 +567,7 @@ category availability and is available all day. Do not use empty
 - lifecycle uses `isActive`; no soft delete plugin
 - `key` is the stable platform identifier, such as `peanut`
 - localized `name` requires at least one value
-- custom indexes not added yet
+- unique index: `key`
 
 `productModifiers`
 

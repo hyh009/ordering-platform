@@ -56,6 +56,8 @@ const dietaryMarkerSchema = new Schema<DietaryMarkerEntity>(
   },
 );
 
+dietaryMarkerSchema.index({ key: 1 }, { unique: true });
+
 export const DietaryMarkerMongoModel =
   (models.DietaryMarker as Model<DietaryMarkerEntity> | undefined) ??
   model<DietaryMarkerEntity>('DietaryMarker', dietaryMarkerSchema);

@@ -76,6 +76,21 @@ const repositoryMocks = vi.hoisted(() => {
       },
     },
     organizationRepository: {
+      async list(input: { offset: number; limit: number }) {
+        return {
+          organizations: organizations
+            .slice(input.offset, input.offset + input.limit)
+            .map(cloneOrganization),
+          total: organizations.length,
+        };
+      },
+      async findById(organizationId: string) {
+        const organization = organizations.find(
+          (item) => item.id === organizationId,
+        );
+
+        return organization ? cloneOrganization(organization) : null;
+      },
       async create(input: { name: string }) {
         const now = new Date();
         const organization: TestOrganization = {
@@ -90,6 +105,30 @@ const repositoryMocks = vi.hoisted(() => {
         organizations = [...organizations, organization];
 
         return cloneOrganization(organization);
+      },
+      async update(
+        organizationId: string,
+        input: Partial<Pick<TestOrganization, 'name' | 'status'>>,
+      ) {
+        const organization = organizations.find(
+          (item) => item.id === organizationId,
+        );
+
+        if (!organization) {
+          return null;
+        }
+
+        const updatedOrganization = {
+          ...organization,
+          ...input,
+          updatedAt: new Date(),
+        };
+
+        organizations = organizations.map((item) =>
+          item.id === organizationId ? updatedOrganization : item,
+        );
+
+        return cloneOrganization(updatedOrganization);
       },
     },
     organizationMembershipRepository: {
@@ -143,6 +182,23 @@ const repositoryMocks = vi.hoisted(() => {
         },
       ];
     },
+    addOrganization(input: {
+      id: string;
+      name: string;
+      status?: 'active' | 'disabled';
+    }) {
+      const now = new Date();
+      organizations = [
+        ...organizations,
+        {
+          id: input.id,
+          name: input.name,
+          status: input.status ?? 'active',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+    },
   };
 });
 
@@ -177,6 +233,166 @@ function createAccessToken(userId: string, isSuperAdmin = false) {
 describe('organizations API', () => {
   beforeEach(() => {
     repositoryMocks.reset();
+  });
+
+  it('allows a super admin to list organizations', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-2',
+      name: 'Night Market Tea',
+      status: 'disabled',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/organizations')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        organizations: [
+          {
+            id: 'org-1',
+            name: 'Main Street Cafe',
+            status: 'active',
+          },
+          {
+            id: 'org-2',
+            name: 'Night Market Tea',
+            status: 'disabled',
+          },
+        ],
+        pagination: {
+          offset: 0,
+          limit: 20,
+          total: 2,
+        },
+      },
+    });
+  });
+
+  it('allows a super admin to list organizations with offset pagination', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-2',
+      name: 'Night Market Tea',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-3',
+      name: 'Station Bento',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/organizations?offset=1&limit=1')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        organizations: [
+          {
+            id: 'org-2',
+            name: 'Night Market Tea',
+            status: 'active',
+          },
+        ],
+        pagination: {
+          offset: 1,
+          limit: 1,
+          total: 3,
+        },
+      },
+    });
+  });
+
+  it('allows a super admin to get an organization', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/organizations/org-1')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        organization: {
+          id: 'org-1',
+          name: 'Main Street Cafe',
+          status: 'active',
+        },
+      },
+    });
+  });
+
+  it('allows a super admin to update organization core fields', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+
+    const response = await request(app)
+      .patch('/api/v1/organizations/org-1')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      )
+      .send({
+        name: 'Updated Cafe',
+        status: 'disabled',
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        organization: {
+          id: 'org-1',
+          name: 'Updated Cafe',
+          status: 'disabled',
+        },
+      },
+    });
   });
 
   it('allows a super admin to create an organization and assign an owner', async () => {
@@ -294,6 +510,29 @@ describe('organizations API', () => {
       statusCode: 403,
       code: 'USER_DISABLED',
       message: 'User is disabled',
+    });
+  });
+
+  it('returns not found for a missing organization detail', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/organizations/org-missing')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(404);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      statusCode: 404,
+      code: 'ORGANIZATION_NOT_FOUND',
+      message: 'Organization not found',
     });
   });
 });

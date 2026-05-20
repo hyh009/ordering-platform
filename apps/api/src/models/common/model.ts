@@ -2,7 +2,9 @@ export const supportedLocales = ['en', 'zh-TW'] as const;
 
 export type SupportedLocale = (typeof supportedLocales)[number];
 
-export type LocalizedString = Partial<Record<SupportedLocale, string>>;
+export type LocalizedString = Partial<
+  Record<SupportedLocale, string | undefined>
+>;
 
 export type TimeWindow = {
   start: string;
