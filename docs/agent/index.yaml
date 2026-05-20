@@ -100,6 +100,14 @@ agent_docs:
       path: docs/agent/frontend/design-system.md
       use_when: Adding shadcn/ui, shared UI primitives, or frontend design rules.
 
+    - name: frontend-shared-components
+      path: docs/agent/frontend/shared-components.md
+      use_when: Adding, reusing, moving, or reviewing frontend shared components.
+
+    - name: frontend-reusable-primitives
+      path: docs/agent/frontend/reusable-primitives.md
+      use_when: Checking existing frontend helpers, shared hooks, utilities, or app-level VMs before adding new reusable code.
+
     - name: frontend-forms
       path: docs/agent/frontend/forms.md
       use_when: Adding or changing frontend forms.

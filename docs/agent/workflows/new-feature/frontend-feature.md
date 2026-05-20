@@ -13,13 +13,15 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 ## 1. Page and Feature Shape
 
 - Follow `docs/agent/frontend/architecture.md`.
+- Check `docs/agent/frontend/shared-components.md` before creating or moving components.
+- Check `docs/agent/frontend/reusable-primitives.md` before adding helpers, shared hooks, utilities, or app-level VMs.
 - Discuss the page, feature domain, state ownership, and API-backed behavior with the user before implementation when the shape is not already clear.
 - Before implementing new or changed frontend state, tell the user the state ownership plan:
   - Store state: app/domain state shared across handlers, flows, components, or pages.
   - Page VM state: page-only process state, route lifecycle state, command-result reactions, and page-owned form/control state.
   - Component local state: UI-only state owned by one component, such as menu open state, hover state, password visibility, or local-only search text.
 - Ask before coding when a state value could reasonably belong in more than one place.
-- Put page views, page VM hooks, and page workflows under `apps/web/src/pages`.
+- Put page views, page VM hooks, and page commands under `apps/web/src/pages`.
 - Put domain feature state, actions, and reusable domain components under `apps/web/src/features/<domain>`.
 - Put frontend models and DTO conversion helpers under `apps/web/src/models`.
 - Use React local state for UI-only state such as modals, menus, hover state, and temporary input text.
@@ -33,7 +35,7 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 - Add endpoint paths under `apps/web/src/api/paths`.
 - Add domain or app services under `apps/web/src/services`.
 - Services call `apiJson` and use `src/models` helpers for DTO deserialize/serialize.
-- Keep raw API DTOs out of pages, workflows, actions, stores, and views.
+- Keep raw API DTOs out of pages, commands, actions, stores, and views.
 - Let `apiJson` throw `ApiError`; do not catch API errors in services.
 - Follow `docs/agent/frontend/error-feedback.md` when mapping API errors.
 - Update `apps/web/.env.example` when a new frontend env variable is required.
@@ -41,8 +43,10 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 
 ## 3. UI, State, and Feedback
 
+- Check existing shared, feature, and page components before creating a new component.
+- Check existing reusable primitives before adding a new shared hook, helper, utility, or app-level VM.
 - Components read state and trigger behavior through page VM hooks.
-- Page workflows coordinate service calls, actions, loading states, errors, and save flows.
+- Page commands coordinate service calls, actions, loading states, errors, and save flows.
 - Feature actions mutate feature stores.
 - Stores hold state only.
 - Use inline error state for page-owned data errors.
@@ -50,7 +54,7 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 
 ## 4. Tests
 
-- Add focused tests for meaningful API error normalization or workflow mapping changes.
+- Add focused tests for meaningful API error normalization or command mapping changes.
 - Use `docs/agent/frontend/api-error-testing.md` for API error tests.
 - Do not invent mocked API error shapes; copy fixtures from backend Swagger or backend API tests.
 - DOM/component tests are not required yet.
@@ -67,6 +71,8 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 
 - `docs/agent/frontend/architecture.md`
 - `docs/agent/frontend/architecture-diagram.md`
+- `docs/agent/frontend/shared-components.md`
+- `docs/agent/frontend/reusable-primitives.md`
 - `docs/agent/frontend/error-feedback.md`
 - `docs/agent/frontend/api-error-testing.md`
 - `docs/agent/frontend/shared-feedback-ui.md`
