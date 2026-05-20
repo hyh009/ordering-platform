@@ -61,6 +61,10 @@ Use repo-wide formatting only when the requested work owns the whole formatting 
 
 If a change needs user manual testing, list the specific checks in the final response.
 
+Do not start API, web, preview, or full dev servers after finishing a change by
+default. The user usually keeps local servers running. Start a server only when
+the user explicitly asks or the task cannot be verified without it.
+
 Manual checks are useful when behavior depends on:
 
 - browser interaction
