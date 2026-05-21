@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createDietaryMarkerListActions } from '@/features/metadata/actions/dietaryMarkerList.actions';
-import { createDietaryMarkerListStore } from '@/features/metadata/store/dietaryMarkerList.store';
+import { createDietaryMarkerListRuntime } from '@/features/metadata/dietaryMarkerList/runtime';
 import type {
   DietaryMarker,
   MetadataActiveFilter,
@@ -25,8 +24,7 @@ type DietaryMarkerModalMode =
     };
 
 function createDietaryMarkerListPageContext() {
-  const store = createDietaryMarkerListStore();
-  const actions = createDietaryMarkerListActions(store);
+  const { actions, store } = createDietaryMarkerListRuntime();
   const commands = createDietaryMarkerListPageCommands(actions);
 
   return {

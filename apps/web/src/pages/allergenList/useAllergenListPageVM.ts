@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createAllergenListActions } from '@/features/metadata/actions/allergenList.actions';
-import { createAllergenListStore } from '@/features/metadata/store/allergenList.store';
+import { createAllergenListRuntime } from '@/features/metadata/allergenList/runtime';
 import type { Allergen, MetadataActiveFilter } from '@/models/metadata.types';
 import { createAllergenListPageCommands } from './allergenListPage.commands';
 import {
@@ -22,8 +21,7 @@ type AllergenModalMode =
     };
 
 function createAllergenListPageContext() {
-  const store = createAllergenListStore();
-  const actions = createAllergenListActions(store);
+  const { actions, store } = createAllergenListRuntime();
   const commands = createAllergenListPageCommands(actions);
 
   return {

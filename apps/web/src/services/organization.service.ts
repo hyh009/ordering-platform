@@ -1,6 +1,7 @@
 import { apiJson } from '@/api';
 import { organizationPaths } from '@/api/paths/organization.paths';
 import { organizationModel } from '@/models/organization.model';
+import { toPaginationPage } from './utils/pagination';
 import type {
   CreateOrganizationRequest,
   CreateOrganizationSuccessResponse,
@@ -25,7 +26,14 @@ export const organizationService = {
       organizations: response.data.organizations.map(
         organizationModel.deserialize,
       ),
-      pagination: response.data.pagination satisfies OrganizationListPage,
+      pagination: toPaginationPage<OrganizationListPage>(
+        response.data.pagination,
+        {
+          limit: input.limit,
+          offset: input.offset,
+          total: response.data.organizations.length,
+        },
+      ),
     };
   },
 

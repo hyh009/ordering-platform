@@ -1,5 +1,5 @@
 import type { Allergen } from '@/models/metadata.types';
-import type { AllergenListState } from '@/features/metadata/store/allergenList.store';
+import type { AllergenListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createAllergenListActions(store: StoreApi<AllergenListState>) {

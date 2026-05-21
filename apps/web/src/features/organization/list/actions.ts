@@ -2,7 +2,7 @@ import type {
   Organization,
   OrganizationListPage,
 } from '@/models/organization.types';
-import type { OrganizationListState } from '@/features/organization/store/organizationList.store';
+import type { OrganizationListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createOrganizationListActions(
@@ -32,22 +32,6 @@ export function createOrganizationListActions(
       store.setState({
         error,
         isLoading: false,
-      });
-    },
-
-    organizationSaved(organization: Organization) {
-      store.setState((state) => {
-        const exists = state.organizations.some(
-          (item) => item.id === organization.id,
-        );
-
-        return {
-          organizations: exists
-            ? state.organizations.map((item) =>
-                item.id === organization.id ? organization : item,
-              )
-            : [organization, ...state.organizations],
-        };
       });
     },
   };

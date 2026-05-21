@@ -1,5 +1,5 @@
 import type { Organization } from '@/models/organization.types';
-import type { OrganizationDetailState } from '@/features/organization/store/organizationDetail.store';
+import type { OrganizationDetailState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createOrganizationDetailActions(

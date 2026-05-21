@@ -90,3 +90,5 @@ export function useOrganizationForm() {
     values,
   };
 }
+
+export type OrganizationFormVM = ReturnType<typeof useOrganizationForm>;

@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { createOrganizationDetailActions } from '@/features/organization/actions/organizationDetail.actions';
-import { createOrganizationDetailStore } from '@/features/organization/store/organizationDetail.store';
-import { createOrganizationDetailPageCommands } from './organizationDetailPage.commands';
+import { createOrganizationDetailRuntime } from '@/features/organization/detail/runtime';
 import {
   toUpdateOrganizationRequest,
   useOrganizationForm,
   valuesFromOrganization,
-} from '@/pages/organizationList/useOrganizationForm';
+} from '@/features/organization/components/organizationForm/useOrganizationForm';
+import { createOrganizationDetailPageCommands } from './organizationDetailPage.commands';
 
 function createOrganizationDetailPageContext() {
-  const store = createOrganizationDetailStore();
-  const actions = createOrganizationDetailActions(store);
+  const { actions, store } = createOrganizationDetailRuntime();
   const commands = createOrganizationDetailPageCommands(actions);
 
   return {
@@ -55,7 +53,7 @@ export function useOrganizationDetailPageVM(organizationId: string) {
     form.setIsSubmitting(true);
     form.setSubmitError(null);
 
-    const result = await commands.updateOrganization(
+    const result = await commands.saveOrganizationDetail(
       organizationId,
       toUpdateOrganizationRequest(form.values),
     );

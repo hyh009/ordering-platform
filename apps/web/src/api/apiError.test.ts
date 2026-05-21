@@ -61,7 +61,7 @@ describe('api error normalization', () => {
     });
   });
 
-  it('classifies generic failure reasons used by page commands', () => {
+  it('classifies generic failure reasons used by commands', () => {
     expect(
       getApiFailureReason(
         new ApiError({

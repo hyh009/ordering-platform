@@ -1,22 +1,14 @@
-import type { FormEvent } from 'react';
 import { Link } from 'react-router';
-import { organizationStatuses } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
-import { Field } from '@/shared/components/form/Field';
+import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { useOrganizationListPageVM } from './useOrganizationListPageVM';
 
 export function OrganizationListPage() {
   const { tDefault } = useAppTranslation();
   const vm = useOrganizationListPageVM();
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void vm.submitOrganization();
-  }
 
   if (vm.isLoading && vm.organizations.length === 0) {
     return (
@@ -141,78 +133,13 @@ export function OrganizationListPage() {
         onClose={vm.closeModal}
         title={vm.modalTitle}
       >
-        <form className="grid gap-4" onSubmit={handleSubmit}>
-          {vm.form.submitError ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-              {vm.form.submitError}
-            </p>
-          ) : null}
-
-          <Field
-            error={vm.form.fieldErrors.name}
-            label={tDefault('admin.organizations.name', 'Name')}
-            required
-          >
-            <Input
-              value={vm.form.values.name}
-              onChange={(event) => {
-                vm.form.setField('name', event.target.value);
-              }}
-            />
-          </Field>
-
-          {vm.isCreateMode ? (
-            <Field
-              description={tDefault(
-                'admin.organizations.ownerDescription',
-                'Use an existing active platform user ID.',
-              )}
-              error={vm.form.fieldErrors.ownerUserId}
-              label={tDefault(
-                'admin.organizations.ownerUserId',
-                'Owner user ID',
-              )}
-              required
-            >
-              <Input
-                value={vm.form.values.ownerUserId}
-                onChange={(event) => {
-                  vm.form.setField('ownerUserId', event.target.value);
-                }}
-              />
-            </Field>
-          ) : (
-            <Field
-              label={tDefault('admin.organizations.status', 'Status')}
-              required
-            >
-              <select
-                className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
-                value={vm.form.values.status}
-                onChange={(event) => {
-                  vm.form.setField('status', event.target.value);
-                }}
-              >
-                {organizationStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button onClick={vm.closeModal} type="button" variant="ghost">
-              {tDefault('common.actions.cancel', 'Cancel')}
-            </Button>
-            <Button disabled={vm.form.isSubmitting} type="submit">
-              {vm.form.isSubmitting
-                ? tDefault('common.actions.saving', 'Saving...')
-                : tDefault('common.actions.save', 'Save')}
-            </Button>
-          </div>
-        </form>
+        <OrganizationForm
+          form={vm.form}
+          onCancel={vm.closeModal}
+          onSubmit={vm.submitOrganization}
+          showOwnerUserId={vm.isCreateMode}
+          showStatus={!vm.isCreateMode}
+        />
       </Modal>
     </section>
   );

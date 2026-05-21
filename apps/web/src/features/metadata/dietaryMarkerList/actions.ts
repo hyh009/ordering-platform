@@ -1,5 +1,5 @@
 import type { DietaryMarker } from '@/models/metadata.types';
-import type { DietaryMarkerListState } from '@/features/metadata/store/dietaryMarkerList.store';
+import type { DietaryMarkerListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createDietaryMarkerListActions(

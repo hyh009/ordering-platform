@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createOrganizationListActions } from '@/features/organization/actions/organizationList.actions';
-import { createOrganizationListStore } from '@/features/organization/store/organizationList.store';
-import type { Organization } from '@/models/organization.types';
-import { createOrganizationListPageCommands } from './organizationListPage.commands';
+import { createOrganizationListRuntime } from '@/features/organization/list/runtime';
 import {
   toCreateOrganizationRequest,
   toUpdateOrganizationRequest,
   useOrganizationForm,
   valuesFromOrganization,
-} from './useOrganizationForm';
+} from '@/features/organization/components/organizationForm/useOrganizationForm';
+import type { Organization } from '@/models/organization.types';
+import { createOrganizationListPageCommands } from './organizationListPage.commands';
 
 type OrganizationModalMode =
   | {
@@ -22,8 +21,7 @@ type OrganizationModalMode =
     };
 
 function createOrganizationListPageContext() {
-  const store = createOrganizationListStore();
-  const actions = createOrganizationListActions(store);
+  const { actions, store } = createOrganizationListRuntime();
   const commands = createOrganizationListPageCommands(actions);
 
   return {
