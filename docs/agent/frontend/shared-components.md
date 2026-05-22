@@ -56,9 +56,38 @@ that are not already clear.
 - Do not put domain-specific components in `src/shared/components`.
 - Do not move a component to shared only because it is visually similar.
 
+For reusable domain form UI, colocate the form view and component-specific form
+hook under the domain component folder:
+
+```txt
+src/features/<domain>/components/<domainForm>/
+  <DomainForm>.tsx
+  use<Domain>Form.ts
+```
+
+The colocated hook defines the form contract consumed by the component. It is
+not a page VM and should not own commands, routing, modal lifecycle, or feature
+store subscriptions.
+
 App-level shared components are shared inside the app runtime, not across the
 project as generic UI. Keep them in `src/app` when they know about routing,
 global app state, i18n setup, or app shell behavior.
+
+## Shared Ownership And Imports
+
+Page folders are private to their route. Do not import VM hooks, form hooks,
+types, commands, components, or helpers from another page folder.
+
+If two or more pages need the same code, extract one shared owner and update all
+imports to use that owner. Do not keep compatibility re-exports from the old
+page folder.
+
+Choose the owner by behavior:
+
+- `src/features/<domain>` for domain-specific reusable UI, hooks, commands, or helpers.
+- `src/shared` for project-generic UI, hooks, or helpers.
+- `src/models` for model types, request/response mapping, and pure model helpers.
+- `src/services` for API-backed domain calls.
 
 ## Shared Component Boundaries
 
@@ -69,11 +98,13 @@ Shared components may own:
 - local UI-only state
 - accessibility wiring
 - generic empty, loading, or confirmation UI
+- component-specific form field wiring when the form state contract is passed in
+  through props
 
 Shared components must not own:
 
 - API calls
-- page commands
+- commands
 - feature actions
 - Zustand store access
 - route navigation
@@ -86,4 +117,5 @@ Pass behavior in through props from the page VM or feature component.
 - Check whether a new component duplicates an existing shared, feature, or page component.
 - Check whether a new shared component contains domain language, domain data assumptions, or page flow behavior.
 - If two places need the same UI, first decide whether the shared ownership is app layout, project-level, domain-level, or page-level.
+- When extracting shared code, verify every existing import now points at the new owner.
 - Follow `docs/agent/frontend/design-system.md` for shadcn and styling rules.

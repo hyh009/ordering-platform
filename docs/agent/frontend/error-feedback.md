@@ -18,7 +18,7 @@ docs/agent/frontend/shared-feedback-ui.md
 Backend error response
   -> API client normalizes error
   -> Service throws ApiError
-  -> Page commands map domain meaning
+  -> Commands map domain meaning
   -> Page-local form state or feature action writes page/domain error state
   -> View renders inline error
 ```
@@ -29,7 +29,7 @@ Backend error response
 - API and service files do not call UI feedback APIs.
 - Feature stores keep feature-owned page/domain error state only.
 - Feature actions only mutate store state.
-- Page commands may map API errors into page-level outcomes.
+- Commands may map API errors into page-level outcomes.
 - Keep catch blocks small: delegate API error mapping to named mapper functions.
 - Use inline state when the error is part of the page data.
 - For form field errors, follow `docs/agent/frontend/forms.md`.

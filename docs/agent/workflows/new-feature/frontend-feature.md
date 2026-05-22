@@ -13,6 +13,8 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 ## 1. Page and Feature Shape
 
 - Follow `docs/agent/frontend/architecture.md`.
+- Check `docs/agent/frontend/state-ownership.md` when deciding where frontend state belongs.
+- Check `docs/agent/frontend/commands.md` before adding or moving command files.
 - Check `docs/agent/frontend/shared-components.md` before creating or moving components.
 - Check `docs/agent/frontend/reusable-primitives.md` before adding helpers, shared hooks, utilities, or app-wide runtime modules.
 - Discuss the page, feature domain, state ownership, and API-backed behavior with the user before implementation when the shape is not already clear.
@@ -21,11 +23,14 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
   - Page VM state: page-only process state, route lifecycle state, command-result reactions, and page-owned form/control state.
   - Component local state: UI-only state owned by one component, such as menu open state, hover state, password visibility, or local-only search text.
 - Ask before coding when a state value could reasonably belong in more than one place.
-- Put page views, page VM hooks, and page commands under `apps/web/src/pages`.
+- Ask before coding when state ownership remains ambiguous after checking the state ownership guide.
+- Put page views and page VM hooks under `apps/web/src/pages`.
+- Put page commands under `apps/web/src/pages` only when the async flow is page-owned.
 - Put app shell UI under `apps/web/src/app/layout`.
 - Put route guards under `apps/web/src/app/routing`.
 - Put app and route error boundaries under `apps/web/src/app/error`.
-- Put domain feature state, actions, and reusable domain components under `apps/web/src/features/<domain>`.
+- Put domain feature state, commands, actions, and runtimes under `apps/web/src/features/<domain>/<slice>`.
+- Put reusable domain components under `apps/web/src/features/<domain>/components`.
 - Put frontend models and DTO conversion helpers under `apps/web/src/models`.
 - Use React local state for UI-only state such as modals, menus, hover state, and temporary input text.
 - Keep domain-specific components out of `apps/web/src/shared/components`.
@@ -49,7 +54,8 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 - Check existing shared, feature, and page components before creating a new component.
 - Check existing reusable primitives before adding a new shared hook, helper, utility, or app-wide runtime module.
 - Components read state and trigger behavior through page VM hooks.
-- Page commands coordinate service calls, actions, loading states, errors, and save flows.
+- Commands coordinate service calls, actions, loading states, errors, and save flows.
+- Use feature commands for async flows that should grow with a domain feature or be shared across pages.
 - Feature actions mutate feature stores.
 - Stores hold state only.
 - Use inline error state for page-owned data errors.
@@ -74,6 +80,8 @@ Use this guide when a new feature adds or changes frontend behavior in `apps/web
 
 - `docs/agent/frontend/architecture.md`
 - `docs/agent/frontend/architecture-diagram.md`
+- `docs/agent/frontend/state-ownership.md`
+- `docs/agent/frontend/commands.md`
 - `docs/agent/frontend/shared-components.md`
 - `docs/agent/frontend/reusable-primitives.md`
 - `docs/agent/frontend/error-feedback.md`

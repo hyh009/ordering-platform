@@ -100,6 +100,14 @@ agent_docs:
       path: docs/agent/frontend/architecture-validation.md
       use_when: Checking frontend architecture boundaries before finishing frontend code.
 
+    - name: frontend-state-ownership
+      path: docs/agent/frontend/state-ownership.md
+      use_when: Deciding whether frontend state belongs in app global state, a feature store, a page VM, or component local state.
+
+    - name: frontend-commands
+      path: docs/agent/frontend/commands.md
+      use_when: Adding or changing frontend command files or runtime wiring.
+
     - name: frontend-design-system
       path: docs/agent/frontend/design-system.md
       use_when: Adding shadcn/ui, shared UI primitives, or frontend design rules.

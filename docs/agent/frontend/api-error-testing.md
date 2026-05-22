@@ -16,14 +16,14 @@ Use `pnpm --filter web run test:watch` while iterating.
 
 - Test API error normalization in `src/api`.
 - Test `apiJson` behavior with mocked `fetch` responses.
-- Test page command error mapping when backend `code` values affect page behavior.
+- Test command error mapping when backend `code` values affect page behavior.
 - Do not treat these as real backend integration tests.
 - Keep DOM, component, and E2E testing in a separate guide if those are added later.
 
 ## Placement
 
 - Put API client tests beside `src/api` modules.
-- Put page command tests beside the page command file.
+- Put command tests beside the command file.
 - Use mocked services when testing commands.
 - Do not test store internals through components; test actions/commands directly when possible.
 

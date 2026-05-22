@@ -43,9 +43,9 @@ Examples:
 - editor draft values shared across components or pages
 - table column visibility for one feature
 
-Put feature-owned form state in `src/features/<domain>/store`.
+Put feature-owned form state in `src/features/<domain>/<slice>/store.ts`.
 
-Put feature-owned form setters and resets in `src/features/<domain>/actions`.
+Put feature-owned form setters and resets in `src/features/<domain>/<slice>/actions.ts`.
 
 The page-local form hook may use React `useState` or `useReducer`.
 
@@ -59,30 +59,30 @@ Examples:
 
 ## Submit Flow
 
-Keep form submit responsibilities split between the page VM and page commands.
+Keep form submit responsibilities split between the page VM and commands.
 
 The page VM owns:
 
 - read page-local form values
 - validate current form values before submit commands run
 - set page-local field and submit errors
-- call page commands
+- call commands
 - handle redirect, toast, modal, and form reset outcomes
 
-Before calling page commands, validate the current form values. Prefer shared API contract schemas for request validation and normalization. If validation fails, set page-local field and submit errors, then return without calling commands, services, or APIs.
+Before calling commands, validate the current form values. Prefer shared API contract schemas for request validation and normalization. If validation fails, set page-local field and submit errors, then return without calling commands, services, or APIs.
 
 Keep page-only validation in the VM, such as `confirmPassword` matching. Do not send page-only fields to commands, services, or APIs.
 
 Field errors and submit errors are user-facing text. Build them with the app i18n helper, such as `tDefault(...)`, before storing them in page-local form state. Map schema or library validation issues to app i18n messages, and do not show raw validation-library messages such as `issue.message` in the UI.
 
-The page commands file owns:
+The commands file owns:
 
 - call services
 - map API errors
 - call feature actions when a submit result should update feature store state
 - return typed page outcomes to the VM
 
-The page VM connects the local form hook to the page commands.
+The page VM connects the local form hook to commands.
 
 Return submit handlers as stable top-level VM fields. Do not hide them under an unstable `actions` object.
 
@@ -150,7 +150,7 @@ Use the page-local form hook for draft values the user has not saved yet.
 
 On save:
 
-- pass the page-local draft values to the page command
+- pass the page-local draft values to the command
 - call the service
 - update the feature store with the saved result
 - reset or realign the page-local draft state after success
@@ -169,6 +169,9 @@ Use shared `Field` wrappers with shadcn UI primitives.
 ```
 
 Shared form components live in `src/shared/components/form`.
+
+For reusable domain form components, placement, and colocated component form
+hooks, follow `docs/agent/frontend/shared-components.md`.
 
 shadcn primitives live in `src/shared/components/ui`.
 

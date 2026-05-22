@@ -7,7 +7,7 @@ Use this checklist before finishing frontend code changes.
 Confirm the implementation follows:
 
 ```txt
-View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store
+View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
                          |
                          v
                        Service -> API
@@ -16,7 +16,7 @@ View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store
 ## View Checks
 
 - Views call page VM hooks and render returned values.
-- Views do not call page commands directly.
+- Views do not call commands directly.
 - Views do not call stores directly.
 - Views do not inspect command results for navigation, toast, modal, or form reset decisions.
 - Views do not put the whole `vm` object in hook dependency arrays.
@@ -30,14 +30,21 @@ View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store
 - Returned handlers used in effects or memoized children are stable.
 - Page-local form and UI state stays in the VM or page-local form hook.
 - VM hooks do not pass raw API DTOs to views.
+- VM hooks do not create feature stores and actions directly; use feature runtime factories for store/action wiring, then create page-owned commands from the returned actions.
+
+## Page Boundary Checks
+
+- Page files do not import from other page folders; shared code is moved to the correct feature, shared, model, or service owner.
+- Extracted shared code has one owner, and every existing import points to that owner.
 
 ## Commands Checks
 
-- Page commands do not use React hooks.
-- Page commands do not call toast, modal, or navigation APIs.
-- Page commands call services and feature actions.
-- Page commands return typed page results.
-- Page commands map API errors with named helpers when behavior depends on error meaning.
+- Commands do not use React hooks.
+- Commands do not call toast, modal, or navigation APIs.
+- Commands call services and feature actions.
+- Commands return typed results.
+- Commands map API errors with named helpers when behavior depends on error meaning.
+- Feature commands do not import from `src/pages`.
 
 ## Feature Checks
 
@@ -51,5 +58,6 @@ View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store
 - `useEffect(..., [vm])`
 - `useEffect(..., [vm.actions])`
 - View code doing `await commandOrVMAction(); navigate(...)` without checking a typed result in the VM.
-- `*.commands.ts` importing React, router APIs, or feedback UI APIs.
+- `*.commands.ts` importing React, router APIs, feedback UI APIs, or page modules from feature code.
+- Page code importing anything from another page folder, including VM hooks, form hooks, types, commands, components, or helpers.
 - Feature actions importing services.

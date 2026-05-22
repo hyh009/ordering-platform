@@ -29,7 +29,7 @@ Use shared hooks for generic reusable React state behavior.
 - Offset pagination: `apps/web/src/shared/hooks/useOffsetPaginationQuery.ts`
 - Throttle: `apps/web/src/shared/hooks/useThrottle.ts`
 
-Shared hooks must not call services, APIs, page commands, toast, navigation, or
+Shared hooks must not call services, APIs, commands, toast, navigation, or
 domain stores directly.
 
 ## Shared Utils
