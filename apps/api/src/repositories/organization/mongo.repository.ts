@@ -16,6 +16,14 @@ function toOrganizationEntity(
     id: organization.id,
     name: organization.name,
     status: organization.status,
+    reviewStatus: organization.reviewStatus ?? 'pending',
+    ...(organization.contactEmail
+      ? { contactEmail: organization.contactEmail }
+      : {}),
+    ...(organization.contactPhone
+      ? { contactPhone: organization.contactPhone }
+      : {}),
+    ...(organization.address ? { address: organization.address } : {}),
     createdAt: organization.createdAt,
     updatedAt: organization.updatedAt,
   };
@@ -54,6 +62,12 @@ export const organizationMongoRepository = {
       id: `org-${randomUUID()}`,
       name: input.name.trim(),
       status: 'active',
+      reviewStatus: 'pending',
+      ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
+      ...(input.contactPhone
+        ? { contactPhone: input.contactPhone.trim() }
+        : {}),
+      ...(input.address ? { address: input.address } : {}),
     });
 
     return toOrganizationEntity(organization.toObject());
@@ -63,11 +77,25 @@ export const organizationMongoRepository = {
     const update: UpdateOrganizationInput = {
       ...(input.name ? { name: input.name.trim() } : {}),
       ...(input.status ? { status: input.status } : {}),
+      ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}),
+      ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
+      ...(input.contactPhone
+        ? { contactPhone: input.contactPhone.trim() }
+        : {}),
+      ...(input.address ? { address: input.address } : {}),
+    };
+    const unset = {
+      ...(input.contactEmail === null ? { contactEmail: '' } : {}),
+      ...(input.contactPhone === null ? { contactPhone: '' } : {}),
+      ...(input.address === null ? { address: '' } : {}),
     };
 
     const organization = await OrganizationMongoModel.findOneAndUpdate(
       { id: organizationId },
-      { $set: update },
+      {
+        ...(Object.keys(update).length > 0 ? { $set: update } : {}),
+        ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
+      },
       { new: true, runValidators: true },
     )
       .lean<OrganizationEntity>()

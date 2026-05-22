@@ -40,11 +40,24 @@ classDiagram
     string id
     string name
     OrganizationStatus status
+    OrganizationReviewStatus reviewStatus
+    string? contactEmail
+    string? contactPhone
+    OrganizationAddress? address
     boolean deleted
     Date createdAt
     Date updatedAt
     Date? deletedAt
     string? deletedBy
+  }
+
+  class OrganizationAddress {
+    string? country
+    string? postalCode
+    string? city
+    string? district
+    string? line1
+    string? line2
   }
 
   class OrganizationMembership {
@@ -357,6 +370,12 @@ Organization:
 
 - `active`
 - `disabled`
+
+Organization review:
+
+- `pending`
+- `approved`
+- `rejected`
 
 Organization membership:
 

@@ -20,6 +20,17 @@ type TestOrganization = {
   id: string;
   name: string;
   status: 'active' | 'disabled';
+  reviewStatus: 'pending' | 'approved' | 'rejected';
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: {
+    country?: string;
+    postalCode?: string;
+    city?: string;
+    district?: string;
+    line1?: string;
+    line2?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 };
@@ -91,12 +102,21 @@ const repositoryMocks = vi.hoisted(() => {
 
         return organization ? cloneOrganization(organization) : null;
       },
-      async create(input: { name: string }) {
+      async create(input: {
+        name: string;
+        contactEmail?: string;
+        contactPhone?: string;
+        address?: TestOrganization['address'];
+      }) {
         const now = new Date();
         const organization: TestOrganization = {
           id: `org-${organizationIdCounter}`,
           name: input.name.trim(),
           status: 'active',
+          reviewStatus: 'pending',
+          ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
+          ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
+          ...(input.address ? { address: input.address } : {}),
           createdAt: now,
           updatedAt: now,
         };
@@ -108,7 +128,17 @@ const repositoryMocks = vi.hoisted(() => {
       },
       async update(
         organizationId: string,
-        input: Partial<Pick<TestOrganization, 'name' | 'status'>>,
+        input: Partial<
+          Pick<
+            TestOrganization,
+            | 'name'
+            | 'status'
+            | 'reviewStatus'
+            | 'contactEmail'
+            | 'contactPhone'
+            | 'address'
+          >
+        >,
       ) {
         const organization = organizations.find(
           (item) => item.id === organizationId,
@@ -186,6 +216,10 @@ const repositoryMocks = vi.hoisted(() => {
       id: string;
       name: string;
       status?: 'active' | 'disabled';
+      reviewStatus?: 'pending' | 'approved' | 'rejected';
+      contactEmail?: string;
+      contactPhone?: string;
+      address?: TestOrganization['address'];
     }) {
       const now = new Date();
       organizations = [
@@ -194,6 +228,10 @@ const repositoryMocks = vi.hoisted(() => {
           id: input.id,
           name: input.name,
           status: input.status ?? 'active',
+          reviewStatus: input.reviewStatus ?? 'pending',
+          ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
+          ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
+          ...(input.address ? { address: input.address } : {}),
           createdAt: now,
           updatedAt: now,
         },
@@ -244,6 +282,16 @@ describe('organizations API', () => {
     repositoryMocks.addOrganization({
       id: 'org-1',
       name: 'Main Street Cafe',
+      contactEmail: 'ops@example.com',
+      contactPhone: '+886-2-1234-5678',
+      address: {
+        country: 'Taiwan',
+        postalCode: '100',
+        city: 'Taipei',
+        district: 'Zhongzheng',
+        line1: 'No. 1, Zhongxiao W. Rd.',
+        line2: '2F',
+      },
     });
     repositoryMocks.addOrganization({
       id: 'org-2',
@@ -267,11 +315,23 @@ describe('organizations API', () => {
             id: 'org-1',
             name: 'Main Street Cafe',
             status: 'active',
+            reviewStatus: 'pending',
+            contactEmail: 'ops@example.com',
+            contactPhone: '+886-2-1234-5678',
+            address: {
+              country: 'Taiwan',
+              postalCode: '100',
+              city: 'Taipei',
+              district: 'Zhongzheng',
+              line1: 'No. 1, Zhongxiao W. Rd.',
+              line2: '2F',
+            },
           },
           {
             id: 'org-2',
             name: 'Night Market Tea',
             status: 'disabled',
+            reviewStatus: 'pending',
           },
         ],
         pagination: {
@@ -318,6 +378,7 @@ describe('organizations API', () => {
             id: 'org-2',
             name: 'Night Market Tea',
             status: 'active',
+            reviewStatus: 'pending',
           },
         ],
         pagination: {
@@ -338,6 +399,16 @@ describe('organizations API', () => {
     repositoryMocks.addOrganization({
       id: 'org-1',
       name: 'Main Street Cafe',
+      contactEmail: 'ops@example.com',
+      contactPhone: '+886-2-1234-5678',
+      address: {
+        country: 'Taiwan',
+        postalCode: '100',
+        city: 'Taipei',
+        district: 'Zhongzheng',
+        line1: 'No. 1, Zhongxiao W. Rd.',
+        line2: '2F',
+      },
     });
 
     const response = await request(app)
@@ -355,12 +426,23 @@ describe('organizations API', () => {
           id: 'org-1',
           name: 'Main Street Cafe',
           status: 'active',
+          reviewStatus: 'pending',
+          contactEmail: 'ops@example.com',
+          contactPhone: '+886-2-1234-5678',
+          address: {
+            country: 'Taiwan',
+            postalCode: '100',
+            city: 'Taipei',
+            district: 'Zhongzheng',
+            line1: 'No. 1, Zhongxiao W. Rd.',
+            line2: '2F',
+          },
         },
       },
     });
   });
 
-  it('allows a super admin to update organization core fields', async () => {
+  it('allows a super admin to update organization core fields and contact details', async () => {
     const app = createApp();
     repositoryMocks.addUser({
       id: 'user-super-admin',
@@ -380,6 +462,14 @@ describe('organizations API', () => {
       .send({
         name: 'Updated Cafe',
         status: 'disabled',
+        reviewStatus: 'approved',
+        contactEmail: 'OPS@Example.COM',
+        contactPhone: '+886-2-8765-4321',
+        address: {
+          country: 'Taiwan',
+          city: 'Taipei',
+          line1: 'Updated Address',
+        },
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -390,6 +480,14 @@ describe('organizations API', () => {
           id: 'org-1',
           name: 'Updated Cafe',
           status: 'disabled',
+          reviewStatus: 'approved',
+          contactEmail: 'ops@example.com',
+          contactPhone: '+886-2-8765-4321',
+          address: {
+            country: 'Taiwan',
+            city: 'Taipei',
+            line1: 'Updated Address',
+          },
         },
       },
     });
@@ -412,6 +510,13 @@ describe('organizations API', () => {
       .send({
         name: 'Main Street Cafe',
         ownerUserId: 'user-owner',
+        contactEmail: 'ops@example.com',
+        contactPhone: '+886-2-1234-5678',
+        address: {
+          country: 'Taiwan',
+          city: 'Taipei',
+          line1: 'No. 1, Zhongxiao W. Rd.',
+        },
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(201);
@@ -422,6 +527,14 @@ describe('organizations API', () => {
           id: 'org-1',
           name: 'Main Street Cafe',
           status: 'active',
+          reviewStatus: 'pending',
+          contactEmail: 'ops@example.com',
+          contactPhone: '+886-2-1234-5678',
+          address: {
+            country: 'Taiwan',
+            city: 'Taipei',
+            line1: 'No. 1, Zhongxiao W. Rd.',
+          },
         },
         ownerMembership: {
           id: 'org-membership-1',

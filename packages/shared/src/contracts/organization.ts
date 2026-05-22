@@ -3,6 +3,11 @@ import { z } from 'zod';
 import type { ApiSuccessResponse } from './api.js';
 
 export const organizationStatuses = ['active', 'disabled'] as const;
+export const organizationReviewStatuses = [
+  'pending',
+  'approved',
+  'rejected',
+] as const;
 export const organizationMembershipRoles = [
   'org_owner',
   'org_admin',
@@ -11,15 +16,30 @@ export const organizationMembershipRoles = [
 export const organizationMembershipStatuses = ['active', 'disabled'] as const;
 
 export type OrganizationStatus = (typeof organizationStatuses)[number];
+export type OrganizationReviewStatus =
+  (typeof organizationReviewStatuses)[number];
 export type OrganizationMembershipRole =
   (typeof organizationMembershipRoles)[number];
 export type OrganizationMembershipStatus =
   (typeof organizationMembershipStatuses)[number];
 
+export type OrganizationAddressDto = {
+  country?: string | undefined;
+  postalCode?: string | undefined;
+  city?: string | undefined;
+  district?: string | undefined;
+  line1?: string | undefined;
+  line2?: string | undefined;
+};
+
 export type OrganizationDto = {
   id: string;
   name: string;
   status: OrganizationStatus;
+  reviewStatus: OrganizationReviewStatus;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: OrganizationAddressDto;
 };
 
 export type OrganizationMembershipDto = {
@@ -37,9 +57,27 @@ function paginationNumberSchema(schema: z.ZodNumber) {
   );
 }
 
+const organizationOptionalTextSchema = z.string().trim().min(1).max(120);
+
+export const organizationAddressSchema = z
+  .object({
+    country: organizationOptionalTextSchema.optional(),
+    postalCode: organizationOptionalTextSchema.optional(),
+    city: organizationOptionalTextSchema.optional(),
+    district: organizationOptionalTextSchema.optional(),
+    line1: z.string().trim().min(1).max(240).optional(),
+    line2: z.string().trim().min(1).max(240).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one address field is required',
+  });
+
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(120),
   ownerUserId: z.string().trim().min(1),
+  contactEmail: z.email().trim().toLowerCase().optional(),
+  contactPhone: organizationOptionalTextSchema.optional(),
+  address: organizationAddressSchema.optional(),
 });
 
 export const listOrganizationsQuerySchema = z
@@ -58,6 +96,10 @@ export const updateOrganizationSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
     status: z.enum(organizationStatuses).optional(),
+    reviewStatus: z.enum(organizationReviewStatuses).optional(),
+    contactEmail: z.email().trim().toLowerCase().nullable().optional(),
+    contactPhone: organizationOptionalTextSchema.nullable().optional(),
+    address: organizationAddressSchema.nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',

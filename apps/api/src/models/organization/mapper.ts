@@ -8,5 +8,13 @@ export function toOrganizationDto(
     id: organization.id,
     name: organization.name,
     status: organization.status,
+    reviewStatus: organization.reviewStatus,
+    ...(organization.contactEmail
+      ? { contactEmail: organization.contactEmail }
+      : {}),
+    ...(organization.contactPhone
+      ? { contactPhone: organization.contactPhone }
+      : {}),
+    ...(organization.address ? { address: organization.address } : {}),
   };
 }

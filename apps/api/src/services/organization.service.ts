@@ -22,6 +22,9 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 export type CreateOrganizationInput = {
   name: string;
   ownerUserId: string;
+  contactEmail?: string | undefined;
+  contactPhone?: string | undefined;
+  address?: OrganizationEntity['address'] | undefined;
 };
 
 export type CreateOrganizationResult = {
@@ -32,6 +35,10 @@ export type CreateOrganizationResult = {
 export type UpdateOrganizationInput = {
   name?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
+  reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
+  contactEmail?: string | null | undefined;
+  contactPhone?: string | null | undefined;
+  address?: OrganizationEntity['address'] | null | undefined;
 };
 
 export type ListOrganizationsResult = ListOrganizationsSuccessResponse['data'];
@@ -82,6 +89,9 @@ export class OrganizationService {
 
     const organization = await organizationRepository.create({
       name: input.name,
+      ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
+      ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
+      ...(input.address ? { address: input.address } : {}),
     });
 
     const ownerMembership = await this.createOwnerMembership(

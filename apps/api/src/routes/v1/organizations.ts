@@ -30,6 +30,12 @@ const router = Router();
  *       enum:
  *         - active
  *         - disabled
+ *     OrganizationReviewStatus:
+ *       type: string
+ *       enum:
+ *         - pending
+ *         - approved
+ *         - rejected
  *     OrganizationMembershipRole:
  *       type: string
  *       enum:
@@ -41,12 +47,34 @@ const router = Router();
  *       enum:
  *         - active
  *         - disabled
+ *     OrganizationAddress:
+ *       type: object
+ *       properties:
+ *         country:
+ *           type: string
+ *           example: Taiwan
+ *         postalCode:
+ *           type: string
+ *           example: "100"
+ *         city:
+ *           type: string
+ *           example: Taipei
+ *         district:
+ *           type: string
+ *           example: Zhongzheng
+ *         line1:
+ *           type: string
+ *           example: No. 1, Zhongxiao W. Rd.
+ *         line2:
+ *           type: string
+ *           example: 2F
  *     Organization:
  *       type: object
  *       required:
  *         - id
  *         - name
  *         - status
+ *         - reviewStatus
  *       properties:
  *         id:
  *           type: string
@@ -56,6 +84,17 @@ const router = Router();
  *           example: Main Street Cafe
  *         status:
  *           $ref: '#/components/schemas/OrganizationStatus'
+ *         reviewStatus:
+ *           $ref: '#/components/schemas/OrganizationReviewStatus'
+ *         contactEmail:
+ *           type: string
+ *           format: email
+ *           example: ops@example.com
+ *         contactPhone:
+ *           type: string
+ *           example: "+886-2-1234-5678"
+ *         address:
+ *           $ref: '#/components/schemas/OrganizationAddress'
  *     OrganizationMembership:
  *       type: object
  *       required:
@@ -245,6 +284,15 @@ router.get<
  *               ownerUserId:
  *                 type: string
  *                 example: user-123
+ *               contactEmail:
+ *                 type: string
+ *                 format: email
+ *                 example: ops@example.com
+ *               contactPhone:
+ *                 type: string
+ *                 example: "+886-2-1234-5678"
+ *               address:
+ *                 $ref: '#/components/schemas/OrganizationAddress'
  *     responses:
  *       201:
  *         description: Organization created
@@ -372,6 +420,21 @@ router.get<
  *                 example: Main Street Cafe
  *               status:
  *                 $ref: '#/components/schemas/OrganizationStatus'
+ *               reviewStatus:
+ *                 $ref: '#/components/schemas/OrganizationReviewStatus'
+ *               contactEmail:
+ *                 type: string
+ *                 format: email
+ *                 nullable: true
+ *                 example: ops@example.com
+ *               contactPhone:
+ *                 type: string
+ *                 nullable: true
+ *                 example: "+886-2-1234-5678"
+ *               address:
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/OrganizationAddress'
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Organization updated

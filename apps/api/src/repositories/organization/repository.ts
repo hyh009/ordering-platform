@@ -4,6 +4,9 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
+  contactEmail?: string | undefined;
+  contactPhone?: string | undefined;
+  address?: OrganizationEntity['address'] | undefined;
 };
 
 export type ListOrganizationsInput = {
@@ -19,6 +22,10 @@ export type ListOrganizationsResult = {
 export type UpdateOrganizationInput = {
   name?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
+  reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
+  contactEmail?: string | null | undefined;
+  contactPhone?: string | null | undefined;
+  address?: OrganizationEntity['address'] | null | undefined;
 };
 
 export type OrganizationRepository = {
