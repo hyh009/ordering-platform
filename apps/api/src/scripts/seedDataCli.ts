@@ -16,7 +16,7 @@ async function run() {
     const dietaryMarkersCount = await seedDietaryMarkers();
     logger.info(`Seeded ${dietaryMarkersCount} dietary markers.`);
 
-    const orgsCount = await seedOrganizations(10);
+    const orgsCount = await seedOrganizations(30);
     logger.info(`Seeded ${orgsCount} organizations.`);
 
     logger.info('Data seeding completed successfully.');
