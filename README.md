@@ -110,6 +110,12 @@ INIT_SUPER_ADMIN_PASSWORD='ChangeMe123' \
 pnpm run init:super-admin
 ```
 
+Seed initial data (allergens, dietary markers, and fake organizations):
+
+```bash
+pnpm run seed
+```
+
 Start the API development server:
 
 ```bash

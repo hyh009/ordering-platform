@@ -57,6 +57,16 @@ export const organizationMongoRepository = {
     return organization ? toOrganizationEntity(organization) : null;
   },
 
+  async findByName(name: string) {
+    const organization = await OrganizationMongoModel.findOne({
+      name,
+    })
+      .lean<OrganizationEntity>()
+      .exec();
+
+    return organization ? toOrganizationEntity(organization) : null;
+  },
+
   async create(input: CreateOrganizationInput) {
     const organization = await OrganizationMongoModel.create({
       id: `org-${randomUUID()}`,

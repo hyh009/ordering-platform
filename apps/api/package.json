@@ -12,6 +12,7 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "init:super-admin": "pnpm --filter @repo/shared run build && tsx src/scripts/initSuperAdminCli.ts",
+    "seed": "pnpm --filter @repo/shared run build && tsx src/scripts/seedDataCli.ts",
     "up": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml up -d",
     "down": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml down",
     "logs": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml logs -f"
@@ -41,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",

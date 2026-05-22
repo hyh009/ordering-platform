@@ -8,6 +8,7 @@
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
     "init:super-admin": "pnpm --filter api run init:super-admin",
+    "seed": "pnpm --filter api run seed",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
