@@ -7,6 +7,7 @@
     "build": "pnpm --filter @repo/shared run build && pnpm --filter api run build:app && pnpm --filter web run build:app",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
+    "init:super-admin": "pnpm --filter api run init:super-admin",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

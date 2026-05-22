@@ -101,6 +101,15 @@ Start MongoDB and Redis:
 pnpm --filter api run up
 ```
 
+Create the first super admin account:
+
+```bash
+INIT_SUPER_ADMIN_EMAIL=admin@example.com \
+INIT_SUPER_ADMIN_USERNAME=admin \
+INIT_SUPER_ADMIN_PASSWORD='ChangeMe123' \
+pnpm run init:super-admin
+```
+
 Start the API development server:
 
 ```bash
@@ -209,8 +218,7 @@ VITE_API_BASE_URL=http://localhost:9000
 
 ## API Routes
 
-Current routes include auth, organizations, health, and the temporary Todo demo
-that will be replaced after the ordering schema is designed.
+Current routes include auth, organizations, and health.
 
 ```txt
 /api
@@ -224,8 +232,7 @@ that will be replaced after the ordering schema is designed.
    │  └─ /me
    ├─ /organizations
    │  └─ POST /
-   ├─ /health
-   └─ /todos
+   └─ /health
 ```
 
 Example:
@@ -233,7 +240,6 @@ Example:
 ```txt
 GET /api/v1/health
 POST /api/v1/organizations
-GET /api/v1/todos
 ```
 
 ## Path Alias
