@@ -18,8 +18,6 @@ Current product direction:
   initial organization owner.
 - User and organization records use soft delete where appropriate; business
   lifecycle state remains separate from deletion state.
-- The Todo demo is temporary starter code and should be replaced when the
-  ordering domain is implemented.
 
 Before changing this repository, start with:
 
