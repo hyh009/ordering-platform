@@ -15,3 +15,9 @@ export type ApiSuccessResponse<TData> = {
   status: 'success';
   data: TData;
 };
+
+export type OffsetPaginationDto = {
+  offset: number;
+  limit: number;
+  total: number;
+};

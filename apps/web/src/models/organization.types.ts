@@ -3,6 +3,7 @@ import type {
   CreateOrganizationSuccessResponse,
   GetOrganizationSuccessResponse,
   ListOrganizationsSuccessResponse,
+  OffsetPaginationDto,
   OrganizationDto,
   OrganizationStatus,
   UpdateOrganizationRequest,
@@ -14,6 +15,7 @@ export type {
   CreateOrganizationSuccessResponse,
   GetOrganizationSuccessResponse,
   ListOrganizationsSuccessResponse,
+  OffsetPaginationDto,
   OrganizationDto,
   OrganizationStatus,
   UpdateOrganizationRequest,
@@ -22,8 +24,4 @@ export type {
 
 export type Organization = OrganizationDto;
 
-export type OrganizationListPage = {
-  limit: number;
-  offset: number;
-  total: number;
-};
+export type OrganizationListPage = OffsetPaginationDto;

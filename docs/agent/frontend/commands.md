@@ -189,10 +189,14 @@ differences visible in the `overrides` block.
 Use page command overrides when the flow includes page-specific choices:
 
 - reload strategy
-- pagination or filter interaction
+- pagination request strategy
+- filter interaction
 - modal and form outcomes
 - navigation outcomes
 - page-specific result shapes
+
+For pagination button behavior and page math, use
+`docs/agent/frontend/pagination.md`.
 
 Use feature slice commands for default async behavior tied to that slice/store.
 

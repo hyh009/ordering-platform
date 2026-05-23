@@ -1,8 +1,6 @@
-export type PaginationPage = {
-  limit: number;
-  offset: number;
-  total: number;
-};
+import type { OffsetPaginationDto } from '@repo/shared';
+
+export type PaginationPage = OffsetPaginationDto;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

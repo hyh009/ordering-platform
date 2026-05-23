@@ -9,6 +9,10 @@ import {
   valuesFromOrganization,
 } from '@/features/organization/components/organizationForm/useOrganizationForm';
 import type { Organization } from '@/models/organization.types';
+import {
+  useOffsetPaginationControls,
+  type OffsetPaginationLoadPageInput,
+} from '@/shared/hooks/useOffsetPaginationControls';
 import { createOrganizationListPageCommands } from './organizationListPage.commands';
 
 type OrganizationModalMode =
@@ -42,30 +46,34 @@ export function useOrganizationListPageVM() {
   const error = useStore(store, (state) => state.error);
   const pagination = useStore(store, (state) => state.pagination);
 
-  const page = Math.floor(pagination.offset / pagination.limit) + 1;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(pagination.total / pagination.limit),
-  );
-  const hasPreviousPage = pagination.offset > 0;
-  const hasNextPage = page < totalPages;
-
   const loadPage = useCallback(
-    async function loadPage(offset: number, limit = pagination.limit) {
+    async function loadPage({ limit, offset }: OffsetPaginationLoadPageInput) {
       await commands.loadOrganizations({
         limit,
         offset,
       });
     },
-    [commands, pagination.limit],
+    [commands],
   );
 
+  const {
+    hasNextPage,
+    hasPreviousPage,
+    nextPage,
+    page,
+    previousPage,
+    totalPages,
+  } = useOffsetPaginationControls({
+    loadPage,
+    pagination,
+  });
+
   useEffect(() => {
-    void commands.loadOrganizations({
+    void loadPage({
       limit: pagination.limit,
       offset: 0,
     });
-  }, [commands, pagination.limit]);
+  }, [loadPage, pagination.limit]);
 
   const openCreateModal = useCallback(
     function openCreateModal() {
@@ -119,7 +127,7 @@ export function useOrganizationListPageVM() {
 
       if (result.status === 'saved') {
         closeModal();
-        await commands.loadOrganizations({
+        await loadPage({
           limit: pagination.limit,
           offset: pagination.offset,
         });
@@ -133,27 +141,12 @@ export function useOrganizationListPageVM() {
       closeModal,
       commands,
       form,
+      loadPage,
       modalMode,
       pagination.limit,
       pagination.offset,
     ],
   );
-
-  const previousPage = useCallback(async () => {
-    if (!hasPreviousPage) {
-      return;
-    }
-
-    await loadPage(Math.max(0, pagination.offset - pagination.limit));
-  }, [hasPreviousPage, loadPage, pagination.limit, pagination.offset]);
-
-  const nextPage = useCallback(async () => {
-    if (!hasNextPage) {
-      return;
-    }
-
-    await loadPage(pagination.offset + pagination.limit);
-  }, [hasNextPage, loadPage, pagination.limit, pagination.offset]);
 
   const modalTitle = useMemo(() => {
     if (!modalMode) {

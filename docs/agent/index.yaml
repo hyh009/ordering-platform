@@ -120,6 +120,10 @@ agent_docs:
       path: docs/agent/frontend/reusable-primitives.md
       use_when: Checking existing frontend helpers, shared hooks, utilities, or app-level VMs before adding new reusable code.
 
+    - name: frontend-pagination
+      path: docs/agent/frontend/pagination.md
+      use_when: Adding or changing offset or cursor pagination in the frontend.
+
     - name: frontend-forms
       path: docs/agent/frontend/forms.md
       use_when: Adding or changing frontend forms.

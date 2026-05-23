@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ApiSuccessResponse } from './api.js';
+import type { ApiSuccessResponse, OffsetPaginationDto } from './api.js';
 
 export const organizationStatuses = ['active', 'disabled'] as const;
 export const organizationReviewStatuses = [
@@ -125,11 +125,7 @@ export type ListOrganizationsQuery = z.infer<
 
 export type ListOrganizationsSuccessResponse = ApiSuccessResponse<{
   organizations: OrganizationDto[];
-  pagination: {
-    offset: number;
-    limit: number;
-    total: number;
-  };
+  pagination: OffsetPaginationDto;
 }>;
 
 export type GetOrganizationSuccessResponse = ApiSuccessResponse<{
