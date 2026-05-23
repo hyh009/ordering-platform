@@ -1,32 +1,13 @@
 import type { FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { Field } from '@/shared/components/form/Field';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { useLoginPageVM } from './useLoginPageVM';
 
-type RouteState = {
-  from?: {
-    pathname?: string;
-  };
-};
-
-function getRedirectPath(state: unknown) {
-  const routeState = state as RouteState | null;
-
-  return routeState?.from?.pathname ?? '/';
-}
-
 export function LoginPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const { tDefault } = useAppTranslation();
-  const vm = useLoginPageVM(() => {
-    navigate(getRedirectPath(location.state), {
-      replace: true,
-    });
-  });
+  const vm = useLoginPageVM();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,8 +1,27 @@
+import { useLocation, useNavigate } from 'react-router';
+import type { AuthUserDto } from '@/models/auth.types';
 import { loginPageCommands } from './loginPage.commands';
 import { useLoginForm } from './useLoginForm';
 
-export function useLoginPageVM(onAuthenticated: () => void) {
+type RouteState = {
+  from?: {
+    pathname?: string;
+  };
+};
+
+function getRedirectPath(state: unknown, user: AuthUserDto) {
+  const routeState = state as RouteState | null;
+
+  return (
+    routeState?.from?.pathname ??
+    (user.isSuperAdmin ? '/admin/organizations' : '/home')
+  );
+}
+
+export function useLoginPageVM() {
   const form = useLoginForm();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   async function submit() {
     form.setIsSubmitting(true);
@@ -14,7 +33,9 @@ export function useLoginPageVM(onAuthenticated: () => void) {
 
     if (result.status === 'authenticated') {
       form.reset();
-      onAuthenticated();
+      navigate(getRedirectPath(location.state, result.user), {
+        replace: true,
+      });
       return;
     }
 

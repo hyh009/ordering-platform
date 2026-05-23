@@ -9,7 +9,7 @@ import { tDefault } from '@/app/i18n';
 import { createAuthActions } from '@/app/global/auth/auth.actions';
 import { authStore } from '@/app/global/auth/auth.store';
 import { authService } from '@/services/auth.service';
-import type { LoginRequest } from '@/models/auth.types';
+import type { AuthUserDto, LoginRequest } from '@/models/auth.types';
 
 const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;
@@ -19,6 +19,7 @@ setApiTokenProvider(() => authStore.getState().accessToken);
 export type AuthSubmitResult =
   | {
       status: 'authenticated';
+      user: AuthUserDto;
     }
   | AuthSubmitFailureResult;
 
@@ -57,6 +58,7 @@ export const authCommands = {
       authActions.authSuccess(session);
       return {
         status: 'authenticated',
+        user: session.user,
       };
     } catch (error) {
       const result: AuthSubmitFailureResult = mapAuthSubmitError(

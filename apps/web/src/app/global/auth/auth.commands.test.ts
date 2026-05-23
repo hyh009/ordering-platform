@@ -43,6 +43,7 @@ describe('authCommands', () => {
       }),
     ).resolves.toEqual({
       status: 'authenticated',
+      user: session.user,
     });
 
     expect(authStore.getState()).toMatchObject({
