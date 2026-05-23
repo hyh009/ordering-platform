@@ -15,6 +15,7 @@ function toOrganizationEntity(
   return {
     id: organization.id,
     name: organization.name,
+    ...(organization.domain ? { domain: organization.domain } : {}),
     status: organization.status,
     reviewStatus: organization.reviewStatus ?? 'pending',
     ...(organization.contactEmail
@@ -31,14 +32,34 @@ function toOrganizationEntity(
 
 export const organizationMongoRepository = {
   async list(input: ListOrganizationsInput) {
+    const filter: Record<string, any> = {};
+
+    if (input.keyword) {
+      const regex = new RegExp(input.keyword, 'i');
+      filter.$or = [{ name: regex }, { domain: regex }];
+    }
+
+    if (input.status) {
+      filter.status = input.status;
+    }
+
+    const sort: Record<string, 1 | -1> = {};
+    if (input.sortBy) {
+      sort[input.sortBy] = input.sortDirection === 'asc' ? 1 : -1;
+    }
+    // Secondary sort to ensure stable pagination
+    if (!sort.id) {
+      sort.id = 1;
+    }
+
     const [organizations, total] = await Promise.all([
-      OrganizationMongoModel.find({})
-        .sort({ name: 1, id: 1 })
+      OrganizationMongoModel.find(filter)
+        .sort(sort)
         .skip(input.offset)
         .limit(input.limit)
         .lean<OrganizationEntity[]>()
         .exec(),
-      OrganizationMongoModel.countDocuments({}).exec(),
+      OrganizationMongoModel.countDocuments(filter).exec(),
     ]);
 
     return {
@@ -71,6 +92,7 @@ export const organizationMongoRepository = {
     const organization = await OrganizationMongoModel.create({
       id: `org-${randomUUID()}`,
       name: input.name.trim(),
+      ...(input.domain ? { domain: input.domain.trim().toLowerCase() } : {}),
       status: 'active',
       reviewStatus: 'pending',
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
@@ -84,8 +106,9 @@ export const organizationMongoRepository = {
   },
 
   async update(organizationId: string, input: UpdateOrganizationInput) {
-    const update: UpdateOrganizationInput = {
+    const update: Partial<OrganizationEntity> = {
       ...(input.name ? { name: input.name.trim() } : {}),
+      ...(input.domain ? { domain: input.domain.trim().toLowerCase() } : {}),
       ...(input.status ? { status: input.status } : {}),
       ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}),
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
@@ -94,7 +117,7 @@ export const organizationMongoRepository = {
         : {}),
       ...(input.address ? { address: input.address } : {}),
     };
-    const unset = {
+    const unset: Record<string, string> = {
       ...(input.contactEmail === null ? { contactEmail: '' } : {}),
       ...(input.contactPhone === null ? { contactPhone: '' } : {}),
       ...(input.address === null ? { address: '' } : {}),
@@ -112,5 +135,8 @@ export const organizationMongoRepository = {
       .exec();
 
     return organization ? toOrganizationEntity(organization) : null;
+  },
+};
+ization ? toOrganizationEntity(organization) : null;
   },
 };

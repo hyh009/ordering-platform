@@ -19,6 +19,7 @@ type TestUser = {
 type TestOrganization = {
   id: string;
   name: string;
+  domain?: string;
   status: 'active' | 'disabled';
   reviewStatus: 'pending' | 'approved' | 'rejected';
   contactEmail?: string;
@@ -87,12 +88,45 @@ const repositoryMocks = vi.hoisted(() => {
       },
     },
     organizationRepository: {
-      async list(input: { offset: number; limit: number }) {
+      async list(input: {
+        offset: number;
+        limit: number;
+        keyword?: string;
+        status?: string;
+        sortBy?: 'name' | 'createdAt';
+        sortDirection?: 'asc' | 'desc';
+      }) {
+        let filtered = [...organizations];
+
+        if (input.keyword) {
+          const k = input.keyword.toLowerCase();
+          filtered = filtered.filter(
+            (o) =>
+              o.name.toLowerCase().includes(k) ||
+              o.domain?.toLowerCase().includes(k),
+          );
+        }
+
+        if (input.status) {
+          filtered = filtered.filter((o) => o.status === input.status);
+        }
+
+        if (input.sortBy) {
+          const direction = input.sortDirection === 'desc' ? -1 : 1;
+          filtered.sort((a, b) => {
+            const valA = a[input.sortBy!];
+            const valB = b[input.sortBy!];
+            if (valA! < valB!) return -1 * direction;
+            if (valA! > valB!) return 1 * direction;
+            return 0;
+          });
+        }
+
         return {
-          organizations: organizations
+          organizations: filtered
             .slice(input.offset, input.offset + input.limit)
             .map(cloneOrganization),
-          total: organizations.length,
+          total: filtered.length,
         };
       },
       async findById(organizationId: string) {
@@ -104,6 +138,7 @@ const repositoryMocks = vi.hoisted(() => {
       },
       async create(input: {
         name: string;
+        domain?: string;
         contactEmail?: string;
         contactPhone?: string;
         address?: TestOrganization['address'];
@@ -112,6 +147,7 @@ const repositoryMocks = vi.hoisted(() => {
         const organization: TestOrganization = {
           id: `org-${organizationIdCounter}`,
           name: input.name.trim(),
+          domain: input.domain?.trim().toLowerCase(),
           status: 'active',
           reviewStatus: 'pending',
           ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
@@ -132,6 +168,7 @@ const repositoryMocks = vi.hoisted(() => {
           Pick<
             TestOrganization,
             | 'name'
+            | 'domain'
             | 'status'
             | 'reviewStatus'
             | 'contactEmail'
@@ -215,18 +252,21 @@ const repositoryMocks = vi.hoisted(() => {
     addOrganization(input: {
       id: string;
       name: string;
+      domain?: string;
       status?: 'active' | 'disabled';
       reviewStatus?: 'pending' | 'approved' | 'rejected';
       contactEmail?: string;
       contactPhone?: string;
       address?: TestOrganization['address'];
+      createdAt?: Date;
     }) {
-      const now = new Date();
+      const now = input.createdAt ?? new Date();
       organizations = [
         ...organizations,
         {
           id: input.id,
           name: input.name,
+          domain: input.domain,
           status: input.status ?? 'active',
           reviewStatus: input.reviewStatus ?? 'pending',
           ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
@@ -390,6 +430,122 @@ describe('organizations API', () => {
     });
   });
 
+  it('allows a super admin to search organizations by name or domain', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+      domain: 'mainstreet.com',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-2',
+      name: 'Night Market Tea',
+      domain: 'nightmarket.com',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-3',
+      name: 'Station Bento',
+      domain: 'station.com',
+    });
+
+    // Search by name
+    const response1 = await request(app)
+      .get('/api/v1/organizations?keyword=Cafe')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response1.status).toBe(200);
+    expect(response1.body.data.organizations).toHaveLength(1);
+    expect(response1.body.data.organizations[0].name).toBe('Main Street Cafe');
+
+    // Search by domain
+    const response2 = await request(app)
+      .get('/api/v1/organizations?keyword=nightmarket')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response2.status).toBe(200);
+    expect(response2.body.data.organizations).toHaveLength(1);
+    expect(response2.body.data.organizations[0].name).toBe('Night Market Tea');
+  });
+
+  it('allows a super admin to filter organizations by status', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Org Active',
+      status: 'active',
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-2',
+      name: 'Org Disabled',
+      status: 'disabled',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/organizations?status=disabled')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.organizations).toHaveLength(1);
+    expect(response.body.data.organizations[0].name).toBe('Org Disabled');
+  });
+
+  it('allows a super admin to sort organizations', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'B Organization',
+      createdAt: new Date('2023-01-01'),
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-2',
+      name: 'A Organization',
+      createdAt: new Date('2023-01-02'),
+    });
+
+    // Sort by name asc
+    const response1 = await request(app)
+      .get('/api/v1/organizations?sortBy=name&sortDirection=asc')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response1.status).toBe(200);
+    expect(response1.body.data.organizations[0].name).toBe('A Organization');
+
+    // Sort by createdAt desc
+    const response2 = await request(app)
+      .get('/api/v1/organizations?sortBy=createdAt&sortDirection=desc')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response2.status).toBe(200);
+    expect(response2.body.data.organizations[0].name).toBe('A Organization');
+  });
+
   it('allows a super admin to get an organization', async () => {
     const app = createApp();
     repositoryMocks.addUser({
@@ -509,6 +665,7 @@ describe('organizations API', () => {
       )
       .send({
         name: 'Main Street Cafe',
+        domain: 'mainstreet.com',
         ownerUserId: 'user-owner',
         contactEmail: 'ops@example.com',
         contactPhone: '+886-2-1234-5678',
@@ -526,6 +683,7 @@ describe('organizations API', () => {
         organization: {
           id: 'org-1',
           name: 'Main Street Cafe',
+          domain: 'mainstreet.com',
           status: 'active',
           reviewStatus: 'pending',
           contactEmail: 'ops@example.com',

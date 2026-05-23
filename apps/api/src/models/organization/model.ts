@@ -19,6 +19,7 @@ export type OrganizationAddressEntity = {
 export type OrganizationEntity = {
   id: string;
   name: string;
+  domain?: string;
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
   contactEmail?: string;

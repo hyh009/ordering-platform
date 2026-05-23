@@ -4,6 +4,7 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
+  domain?: string | undefined;
   contactEmail?: string | undefined;
   contactPhone?: string | undefined;
   address?: OrganizationEntity['address'] | undefined;
@@ -12,6 +13,10 @@ export type CreateOrganizationInput = {
 export type ListOrganizationsInput = {
   offset: number;
   limit: number;
+  keyword?: string | undefined;
+  status?: OrganizationEntity['status'] | undefined;
+  sortBy?: 'name' | 'createdAt' | undefined;
+  sortDirection?: 'asc' | 'desc' | undefined;
 };
 
 export type ListOrganizationsResult = {
@@ -21,6 +26,7 @@ export type ListOrganizationsResult = {
 
 export type UpdateOrganizationInput = {
   name?: string | undefined;
+  domain?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
   contactEmail?: string | null | undefined;

@@ -7,6 +7,7 @@ export function toOrganizationDto(
   return {
     id: organization.id,
     name: organization.name,
+    ...(organization.domain ? { domain: organization.domain } : {}),
     status: organization.status,
     reviewStatus: organization.reviewStatus,
     ...(organization.contactEmail

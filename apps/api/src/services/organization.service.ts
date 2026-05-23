@@ -21,6 +21,7 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
+  domain?: string | undefined;
   ownerUserId: string;
   contactEmail?: string | undefined;
   contactPhone?: string | undefined;
@@ -34,6 +35,7 @@ export type CreateOrganizationResult = {
 
 export type UpdateOrganizationInput = {
   name?: string | undefined;
+  domain?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
   contactEmail?: string | null | undefined;
@@ -89,6 +91,7 @@ export class OrganizationService {
 
     const organization = await organizationRepository.create({
       name: input.name,
+      domain: input.domain,
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
       ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
       ...(input.address ? { address: input.address } : {}),

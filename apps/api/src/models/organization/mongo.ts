@@ -56,6 +56,12 @@ const organizationSchema = new Schema<OrganizationEntity>(
       required: true,
       trim: true,
     },
+    domain: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 120,
+    },
     status: {
       type: String,
       required: true,

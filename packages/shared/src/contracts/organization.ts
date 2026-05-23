@@ -35,6 +35,7 @@ export type OrganizationAddressDto = {
 export type OrganizationDto = {
   id: string;
   name: string;
+  domain?: string;
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
   contactEmail?: string;
@@ -74,6 +75,7 @@ export const organizationAddressSchema = z
 
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(120),
+  domain: z.string().trim().min(1).max(120).optional(),
   ownerUserId: z.string().trim().min(1),
   contactEmail: z.email().trim().toLowerCase().optional(),
   contactPhone: organizationOptionalTextSchema.optional(),
@@ -88,13 +90,23 @@ export const listOrganizationsQuerySchema = z
     limit: paginationNumberSchema(z.number().int().min(1).max(100))
       .optional()
       .default(20),
+    keyword: z.string().trim().optional(),
+    status: z.enum(organizationStatuses).optional(),
+    sortBy: z.enum(['name', 'createdAt']).optional().default('createdAt'),
+    sortDirection: z.enum(['asc', 'desc']).optional().default('desc'),
   })
   .optional()
-  .default({ offset: 0, limit: 20 });
+  .default({
+    offset: 0,
+    limit: 20,
+    sortBy: 'createdAt',
+    sortDirection: 'desc',
+  });
 
 export const updateOrganizationSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
+    domain: z.string().trim().min(1).max(120).optional(),
     status: z.enum(organizationStatuses).optional(),
     reviewStatus: z.enum(organizationReviewStatuses).optional(),
     contactEmail: z.email().trim().toLowerCase().nullable().optional(),

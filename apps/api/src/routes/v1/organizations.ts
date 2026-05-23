@@ -82,6 +82,9 @@ const router = Router();
  *         name:
  *           type: string
  *           example: Main Street Cafe
+ *         domain:
+ *           type: string
+ *           example: mainstreet.com
  *         status:
  *           $ref: '#/components/schemas/OrganizationStatus'
  *         reviewStatus:
@@ -224,6 +227,32 @@ const router = Router();
  *           minimum: 1
  *           maximum: 100
  *           default: 20
+ *       - in: query
+ *         name: keyword
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search by organization name or domain
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           $ref: '#/components/schemas/OrganizationStatus'
+ *         description: Filter by organization status
+ *       - in: query
+ *         name: sortBy
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [name, createdAt]
+ *           default: createdAt
+ *       - in: query
+ *         name: sortDirection
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
  *     responses:
  *       200:
  *         description: Organizations returned
