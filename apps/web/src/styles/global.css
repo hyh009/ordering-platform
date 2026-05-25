@@ -45,6 +45,9 @@
   --sidebar-accent-foreground: var(--secondary-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+  --z-page-modal: 50;
+  --z-feedback-modal: 100;
+  --z-feedback-toast: 110;
 
   color: var(--foreground);
   background: var(--background);
@@ -135,6 +138,18 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@utility z-page-modal {
+  z-index: var(--z-page-modal);
+}
+
+@utility z-feedback-modal {
+  z-index: var(--z-feedback-modal);
+}
+
+@utility z-feedback-toast {
+  z-index: var(--z-feedback-toast);
 }
 
 @layer base {

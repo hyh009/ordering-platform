@@ -22,7 +22,7 @@ export function ModalHost({ modal, onCancel, onConfirm }: ModalHostProps) {
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/45 p-5"
+      className="z-feedback-modal fixed inset-0 flex items-center justify-center bg-foreground/45 p-5"
       role="dialog"
     >
       <section className="grid w-full max-w-[26.25rem] gap-6 rounded-lg border border-border bg-card p-6 shadow-2xl">

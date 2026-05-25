@@ -30,7 +30,7 @@ export function ToastHost({ toasts, onDismiss }: ToastHostProps) {
   return (
     <div
       aria-live="polite"
-      className="fixed top-20 right-4 z-30 grid w-[22.5rem] max-w-[calc(100vw-2rem)] gap-2.5"
+      className="z-feedback-toast fixed top-20 right-4 grid w-[22.5rem] max-w-[calc(100vw-2rem)] gap-2.5"
     >
       {toasts.map((toast) => (
         <section

@@ -20,9 +20,16 @@ Theme tokens are defined in `src/styles/global.css` under `:root`, `.dark`, and 
 - Destructive state: use `--destructive`.
 - Font: use the app `font-sans` token.
 - Radius: use the shadcn radius tokens.
+- Overlay z-index layers: use semantic utilities from `src/styles/global.css`,
+  such as `z-page-modal`, `z-feedback-modal`, and `z-feedback-toast`.
 
 Prefer theme tokens over hard-coded colors in shared UI.
-When adding new colors, spacing, or radius values, first check whether an existing Tailwind or shadcn token can be reused.
+When adding new colors, spacing, radius values, or overlay layers, first check
+whether an existing Tailwind, shadcn, or app token can be reused.
+
+Do not hard-code numeric z-index utilities such as `z-50` or `z-[100]` in
+components. Add or reuse a semantic overlay layer utility in `global.css`
+instead.
 
 ## Type And Spacing
 

@@ -46,7 +46,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-foreground/35 px-4 py-6"
+      className="z-page-modal fixed inset-0 grid place-items-center bg-foreground/35 px-4 py-6"
       role="presentation"
     >
       <div
