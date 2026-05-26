@@ -93,6 +93,7 @@ Generic reusable hooks
 
 Frontend models/types
   -> src/models
+  -> src/models/<domain> when using a domain model folder
 
 Services
   -> src/services
@@ -124,6 +125,12 @@ src/
 
   assets/
   models/
+    <domain>/
+      types.ts
+      model.ts
+      requestMapper.ts  # optional
+      formMapper.ts     # optional
+      index.ts
   services/
 
   pages/

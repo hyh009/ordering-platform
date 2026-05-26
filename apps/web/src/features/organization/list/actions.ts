@@ -1,7 +1,7 @@
 import type {
-  Organization,
+  OrganizationListItem,
   OrganizationListPage,
-} from '@/models/organization.types';
+} from '@/models/organization';
 import type { OrganizationListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
@@ -17,7 +17,7 @@ export function createOrganizationListActions(
     },
 
     loadSucceeded(input: {
-      organizations: Organization[];
+      organizations: OrganizationListItem[];
       pagination: OrganizationListPage;
     }) {
       store.setState({

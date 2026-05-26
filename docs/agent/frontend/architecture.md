@@ -97,6 +97,25 @@ Services should not own UI flow, mutate stores, or catch API errors for display.
 Use root-level `src/models` for frontend model types and pure DTO conversion
 helpers.
 
+Any domain may use a domain folder when that keeps model-boundary files easier
+to scan:
+
+```txt
+src/models/<domain>/
+  types.ts
+  model.ts
+  requestMapper.ts  # optional
+  formMapper.ts     # optional
+  index.ts
+```
+
+Keep DTO conversion functions in model mapper files. Start with `model.ts` for
+DTO-to-model conversion; add focused mapper files such as `requestMapper.ts` or
+`formMapper.ts` only when the direction or caller makes the split clearer.
+
+Import domain model APIs through `@/models/<domain>` instead of reaching into
+private files from pages, features, or services.
+
 Raw API DTOs should not leak into pages, commands, actions, stores, or views.
 
 Base API client behavior and endpoint paths stay in `src/api`.

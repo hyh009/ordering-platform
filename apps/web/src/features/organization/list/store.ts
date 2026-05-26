@@ -1,13 +1,13 @@
 import { createStore } from 'zustand/vanilla';
 import type {
-  Organization,
+  OrganizationListItem,
   OrganizationListPage,
-} from '@/models/organization.types';
+} from '@/models/organization';
 
 export type OrganizationListState = {
   error: string | null;
   isLoading: boolean;
-  organizations: Organization[];
+  organizations: OrganizationListItem[];
   pagination: OrganizationListPage;
 };
 

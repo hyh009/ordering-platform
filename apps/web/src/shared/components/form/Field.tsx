@@ -36,11 +36,11 @@ export function Field({
   const generatedId = useId();
   const controlId = id ?? children.props.id ?? `field-${generatedId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
-  const errorId = error ? `${controlId}-error` : undefined;
+  const errorId = `${controlId}-error`;
   const describedBy = joinIds(
     children.props['aria-describedby'],
     descriptionId,
-    errorId,
+    error ? errorId : undefined,
   );
 
   const control = cloneElement(children, {
@@ -71,11 +71,9 @@ export function Field({
 
       {control}
 
-      {error ? (
-        <p className="text-sm font-medium text-destructive" id={errorId}>
-          {error}
-        </p>
-      ) : null}
+      <p className="min-h-5 text-sm font-medium text-destructive" id={errorId}>
+        {error}
+      </p>
     </div>
   );
 }

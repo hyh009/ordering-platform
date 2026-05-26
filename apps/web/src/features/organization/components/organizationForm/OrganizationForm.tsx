@@ -1,9 +1,11 @@
 import type { FormEvent } from 'react';
 import { organizationStatuses } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
+import { TaiwanAddressFields } from '@/shared/components/address/TaiwanAddressFields';
 import { Field } from '@/shared/components/form/Field';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Select } from '@/shared/components/ui/select';
 import type { OrganizationFormVM } from './useOrganizationForm';
 
 type OrganizationFormProps = {
@@ -68,24 +70,71 @@ export function OrganizationForm({
         </Field>
       ) : null}
 
+      <Field
+        error={form.fieldErrors.domain}
+        label={tDefault('admin.organizations.domain', 'Domain')}
+      >
+        <Input
+          value={form.values.domain}
+          onChange={(event) => {
+            form.setField('domain', event.target.value);
+          }}
+        />
+      </Field>
+
+      <h4 className="border-b border-border pb-2 text-sm font-semibold">
+        {tDefault('admin.organizations.contactTitle', 'Contact')}
+      </h4>
+
+      <Field
+        error={form.fieldErrors.contactEmail}
+        label={tDefault('admin.organizations.contactEmail', 'Email')}
+      >
+        <Input
+          type="email"
+          value={form.values.contactEmail}
+          onChange={(event) => {
+            form.setField('contactEmail', event.target.value);
+          }}
+        />
+      </Field>
+
+      <Field
+        error={form.fieldErrors.contactPhone}
+        label={tDefault('admin.organizations.contactPhone', 'Phone')}
+      >
+        <Input
+          value={form.values.contactPhone}
+          onChange={(event) => {
+            form.setField('contactPhone', event.target.value);
+          }}
+        />
+      </Field>
+
+      <h4 className="border-b border-border pb-2 text-sm font-semibold">
+        {tDefault('admin.organizations.address', 'Address')}
+      </h4>
+
+      <TaiwanAddressFields
+        value={form.values.address}
+        onChange={form.setAddress}
+      />
+
       {showStatus ? (
         <Field
           label={tDefault('admin.organizations.status', 'Status')}
           required
         >
-          <select
-            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
+          <Select
             value={form.values.status}
-            onChange={(event) => {
-              form.setField('status', event.target.value);
+            options={organizationStatuses.map((status) => ({
+              label: status,
+              value: status,
+            }))}
+            onValueChange={(status) => {
+              form.setField('status', status);
             }}
-          >
-            {organizationStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
       ) : null}
 

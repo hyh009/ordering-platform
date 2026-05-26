@@ -36,6 +36,9 @@ View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
 
 - Page files do not import from other page folders; shared code is moved to the correct feature, shared, model, or service owner.
 - Extracted shared code has one owner, and every existing import points to that owner.
+- Pages, features, and services import domain model APIs from
+  `@/models/<domain>` when a domain model folder exists, not from private
+  model subfiles.
 
 ## Commands Checks
 
@@ -52,6 +55,14 @@ View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
 - Feature actions do not call services.
 - Stores contain state only.
 - Store state uses frontend models, not raw API DTOs.
+
+## Model Checks
+
+- Shared HTTP DTO types are imported from `@repo/shared` at the model boundary.
+- DTO conversion functions live in model mapper files under `src/models` or
+  `src/models/<domain>`.
+- Raw API DTOs do not leak past services into commands, actions, stores, VMs,
+  or views.
 
 ## Common Failure Patterns
 

@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { Organization } from '@/models/organization.types';
+import type { Organization } from '@/models/organization';
 
 export type OrganizationDetailState = {
   error: string | null;

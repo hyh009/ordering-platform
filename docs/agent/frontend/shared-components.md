@@ -86,7 +86,8 @@ Choose the owner by behavior:
 
 - `src/features/<domain>` for domain-specific reusable UI, hooks, commands, or helpers.
 - `src/shared` for project-generic UI, hooks, or helpers.
-- `src/models` for model types, request/response mapping, and pure model helpers.
+- `src/models` or `src/models/<domain>` for model types, request/response
+  mapping, and pure model helpers.
 - `src/services` for API-backed domain calls.
 
 ## Shared Component Boundaries

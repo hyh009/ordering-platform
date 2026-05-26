@@ -1,16 +1,5 @@
 import { useState } from 'react';
-import type {
-  CreateOrganizationRequest,
-  Organization,
-  OrganizationStatus,
-  UpdateOrganizationRequest,
-} from '@/models/organization.types';
-
-export type OrganizationFormValues = {
-  name: string;
-  ownerUserId: string;
-  status: OrganizationStatus;
-};
+import type { OrganizationFormValues } from '@/models/organization';
 
 export type OrganizationFormField = keyof OrganizationFormValues;
 export type OrganizationFormFieldErrors = Partial<
@@ -21,38 +10,39 @@ const initialValues: OrganizationFormValues = {
   name: '',
   ownerUserId: '',
   status: 'active',
+  domain: '',
+  contactEmail: '',
+  contactPhone: '',
+  address: {
+    city: '',
+    district: '',
+    postalCode: '',
+    streetAddress: '',
+  },
 };
 
-export function toCreateOrganizationRequest(
-  values: OrganizationFormValues,
-): CreateOrganizationRequest {
-  return {
-    name: values.name.trim(),
-    ownerUserId: values.ownerUserId.trim(),
-  };
-}
-
-export function toUpdateOrganizationRequest(
-  values: OrganizationFormValues,
-): UpdateOrganizationRequest {
-  return {
-    name: values.name.trim(),
-    status: values.status,
-  };
-}
-
-export function valuesFromOrganization(
-  organization: Organization,
-): OrganizationFormValues {
-  return {
-    name: organization.name,
-    ownerUserId: '',
-    status: organization.status,
-  };
+function areOrganizationFormValuesEqual(
+  left: OrganizationFormValues,
+  right: OrganizationFormValues,
+): boolean {
+  return (
+    left.name === right.name &&
+    left.ownerUserId === right.ownerUserId &&
+    left.status === right.status &&
+    left.domain === right.domain &&
+    left.contactEmail === right.contactEmail &&
+    left.contactPhone === right.contactPhone &&
+    left.address.city === right.address.city &&
+    left.address.district === right.address.district &&
+    left.address.postalCode === right.address.postalCode &&
+    left.address.streetAddress === right.address.streetAddress
+  );
 }
 
 export function useOrganizationForm() {
   const [values, setValues] = useState<OrganizationFormValues>(initialValues);
+  const [baselineValues, setBaselineValues] =
+    useState<OrganizationFormValues>(initialValues);
   const [fieldErrors, setFieldErrors] = useState<OrganizationFormFieldErrors>(
     {},
   );
@@ -61,6 +51,7 @@ export function useOrganizationForm() {
 
   function reset(nextValues: OrganizationFormValues = initialValues) {
     setValues(nextValues);
+    setBaselineValues(nextValues);
     setFieldErrors({});
     setSubmitError(null);
     setIsSubmitting(false);
@@ -78,10 +69,23 @@ export function useOrganizationForm() {
     setSubmitError(null);
   }
 
+  function setAddress(value: OrganizationFormValues['address']) {
+    setValues((current) => ({
+      ...current,
+      address: value,
+    }));
+  }
+
+  function hasChanges() {
+    return !areOrganizationFormValuesEqual(baselineValues, values);
+  }
+
   return {
     fieldErrors,
+    hasChanges,
     isSubmitting,
     reset,
+    setAddress,
     setField,
     setFieldErrors,
     setIsSubmitting,

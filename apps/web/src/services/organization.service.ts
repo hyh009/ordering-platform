@@ -1,6 +1,6 @@
 import { apiJson } from '@/api';
 import { organizationPaths } from '@/api/paths/organization.paths';
-import { organizationModel } from '@/models/organization.model';
+import { organizationModel } from '@/models/organization';
 import { toPaginationPage } from './utils/pagination';
 import type {
   CreateOrganizationRequest,
@@ -10,7 +10,7 @@ import type {
   OrganizationListPage,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
-} from '@/models/organization.types';
+} from '@/models/organization';
 
 export const organizationService = {
   async listOrganizations(input: { limit: number; offset: number }) {
@@ -24,7 +24,7 @@ export const organizationService = {
 
     return {
       organizations: response.data.organizations.map(
-        organizationModel.deserialize,
+        organizationModel.deserializeListItem,
       ),
       pagination: toPaginationPage<OrganizationListPage>(
         response.data.pagination,

@@ -1,28 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { tDefault } from '@/app/i18n';
+import { useOrganizationForm } from '@/features/organization/components/organizationForm/useOrganizationForm';
 import { createOrganizationListRuntime } from '@/features/organization/list/runtime';
-import {
-  toCreateOrganizationRequest,
-  toUpdateOrganizationRequest,
-  useOrganizationForm,
-  valuesFromOrganization,
-} from '@/features/organization/components/organizationForm/useOrganizationForm';
-import type { Organization } from '@/models/organization.types';
+import { toCreateOrganizationRequest } from '@/models/organization';
 import {
   useOffsetPaginationControls,
   type OffsetPaginationLoadPageInput,
 } from '@/shared/hooks/useOffsetPaginationControls';
 import { createOrganizationListPageCommands } from './organizationListPage.commands';
-
-type OrganizationModalMode =
-  | {
-      type: 'create';
-    }
-  | {
-      organization: Organization;
-      type: 'edit';
-    };
 
 function createOrganizationListPageContext() {
   const { actions, store } = createOrganizationListRuntime();
@@ -37,9 +22,7 @@ function createOrganizationListPageContext() {
 export function useOrganizationListPageVM() {
   const [{ commands, store }] = useState(createOrganizationListPageContext);
   const form = useOrganizationForm();
-  const [modalMode, setModalMode] = useState<OrganizationModalMode | null>(
-    null,
-  );
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const organizations = useStore(store, (state) => state.organizations);
   const isLoading = useStore(store, (state) => state.isLoading);
@@ -75,108 +58,55 @@ export function useOrganizationListPageVM() {
     });
   }, [loadPage, pagination.limit]);
 
-  const openCreateModal = useCallback(
-    function openCreateModal() {
-      form.reset();
-      setModalMode({
-        type: 'create',
+  const openCreateModal = useCallback(() => {
+    form.reset();
+    setIsCreateModalOpen(true);
+  }, [form]);
+
+  const closeCreateModal = useCallback(() => {
+    form.reset();
+    setIsCreateModalOpen(false);
+  }, [form]);
+
+  const submitCreate = useCallback(async () => {
+    form.setIsSubmitting(true);
+    form.setSubmitError(null);
+
+    const result = await commands.createOrganization(
+      toCreateOrganizationRequest(form.values),
+    );
+
+    form.setIsSubmitting(false);
+
+    if (result.status === 'saved') {
+      closeCreateModal();
+      await loadPage({
+        limit: pagination.limit,
+        offset: 0, // Go back to first page to see the new item
       });
-    },
-    [form],
-  );
-
-  const openEditModal = useCallback(
-    function openEditModal(organization: Organization) {
-      form.reset(valuesFromOrganization(organization));
-      setModalMode({
-        organization,
-        type: 'edit',
-      });
-    },
-    [form],
-  );
-
-  const closeModal = useCallback(
-    function closeModal() {
-      form.reset();
-      setModalMode(null);
-    },
-    [form],
-  );
-
-  const submitOrganization = useCallback(
-    async function submitOrganization() {
-      if (!modalMode) {
-        return;
-      }
-
-      form.setIsSubmitting(true);
-      form.setSubmitError(null);
-
-      const result =
-        modalMode.type === 'create'
-          ? await commands.createOrganization(
-              toCreateOrganizationRequest(form.values),
-            )
-          : await commands.updateOrganization(
-              modalMode.organization.id,
-              toUpdateOrganizationRequest(form.values),
-            );
-
-      form.setIsSubmitting(false);
-
-      if (result.status === 'saved') {
-        closeModal();
-        await loadPage({
-          limit: pagination.limit,
-          offset: pagination.offset,
-        });
-        return;
-      }
-
-      form.setFieldErrors(result.fieldErrors ?? {});
-      form.setSubmitError(result.message);
-    },
-    [
-      closeModal,
-      commands,
-      form,
-      loadPage,
-      modalMode,
-      pagination.limit,
-      pagination.offset,
-    ],
-  );
-
-  const modalTitle = useMemo(() => {
-    if (!modalMode) {
-      return '';
+      return;
     }
 
-    return modalMode.type === 'create'
-      ? tDefault('admin.organizations.createTitle', 'Create organization')
-      : tDefault('admin.organizations.editTitle', 'Edit organization');
-  }, [modalMode]);
+    form.setFieldErrors(result.fieldErrors ?? {});
+    form.setSubmitError(result.message);
+  }, [closeCreateModal, commands, form, loadPage, pagination.limit]);
 
   return {
-    closeModal,
     error,
     form,
     hasNextPage,
     hasPreviousPage,
+    isCreateModalOpen,
     isLoading,
-    isModalOpen: modalMode !== null,
-    isCreateMode: modalMode?.type === 'create',
     loadPage,
-    modalTitle,
     nextPage,
     organizations,
+    openCreateModal,
+    closeCreateModal,
     page,
     pagination,
     previousPage,
-    submitOrganization,
+    submitCreate,
     totalPages,
-    openCreateModal,
-    openEditModal,
   };
 }

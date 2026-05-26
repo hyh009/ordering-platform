@@ -1,4 +1,4 @@
-import type { Organization } from '@/models/organization.types';
+import type { Organization } from '@/models/organization';
 import type { OrganizationDetailState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 

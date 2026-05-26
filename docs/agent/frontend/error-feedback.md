@@ -94,7 +94,8 @@ Expected normalized failure reasons:
 - `invalid-response`: API returned malformed or unreadable JSON
 - `unknown`: known API error without a generic frontend category
 
-Keep backend response types in `src/models`.
+Keep backend response types in `src/models` or the owning
+`src/models/<domain>` folder.
 
 Keep fetch helpers and normalization logic in `src/api`.
 

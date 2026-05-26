@@ -3,7 +3,7 @@ import {
   updateOrganizationSchema,
 } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
-import type { Organization } from '@/models/organization.types';
+import type { Organization } from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
 import {
   mapAdminApiError,
@@ -12,7 +12,7 @@ import {
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
-} from '@/models/organization.types';
+} from '@/models/organization';
 import type { OrganizationListActions } from './actions';
 
 export type OrganizationListCommandField = 'name' | 'ownerUserId' | 'status';

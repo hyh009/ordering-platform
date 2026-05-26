@@ -3,7 +3,7 @@ import { tDefault } from '@/app/i18n';
 import type {
   Organization,
   UpdateOrganizationRequest,
-} from '@/models/organization.types';
+} from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
 import {
   mapAdminApiError,
@@ -31,7 +31,9 @@ export type SaveOrganizationDetailResult =
     });
 
 export type OrganizationDetailCommands = {
-  loadOrganization(organizationId: string): Promise<LoadOrganizationDetailResult>;
+  loadOrganization(
+    organizationId: string,
+  ): Promise<LoadOrganizationDetailResult>;
   saveOrganizationDetail(
     organizationId: string,
     input: UpdateOrganizationRequest,
