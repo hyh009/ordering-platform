@@ -42,7 +42,7 @@ classDiagram
     OrganizationStatus status
     OrganizationReviewStatus reviewStatus
     string? contactEmail
-    string? contactPhone
+    OrganizationPhone? contactPhone
     OrganizationAddress? address
     boolean deleted
     Date createdAt
@@ -52,12 +52,25 @@ classDiagram
   }
 
   class OrganizationAddress {
-    string? country
+    string countryCode
+    number schemaVersion
+    string formatted
+    TaiwanAddress tw
+  }
+
+  class TaiwanAddress {
     string? postalCode
-    string? city
-    string? district
-    string? line1
-    string? line2
+    string city
+    string district
+    string streetAddress
+  }
+
+  class OrganizationPhone {
+    string countryCode
+    string e164
+    string nationalNumber
+    OrganizationPhoneType type
+    string? extension
   }
 
   class OrganizationMembership {

@@ -23,14 +23,23 @@ type TestOrganization = {
   status: 'active' | 'disabled';
   reviewStatus: 'pending' | 'approved' | 'rejected';
   contactEmail?: string;
-  contactPhone?: string;
+  contactPhone?: {
+    countryCode: 'TW';
+    e164: string;
+    nationalNumber: string;
+    type: 'mobile' | 'landline' | 'toll_free';
+    extension?: string;
+  };
   address?: {
-    country?: string;
-    postalCode?: string;
-    city?: string;
-    district?: string;
-    line1?: string;
-    line2?: string;
+    countryCode: 'TW';
+    schemaVersion: 1;
+    formatted: string;
+    tw: {
+      postalCode?: string;
+      city: string;
+      district: string;
+      streetAddress: string;
+    };
   };
   createdAt: Date;
   updatedAt: Date;
@@ -93,7 +102,7 @@ const repositoryMocks = vi.hoisted(() => {
         limit: number;
         keyword?: string;
         status?: string;
-        sortBy?: 'name' | 'createdAt';
+        sortBy?: 'name' | 'createdAt' | 'updatedAt';
         sortDirection?: 'asc' | 'desc';
       }) {
         let filtered = [...organizations];
@@ -140,7 +149,7 @@ const repositoryMocks = vi.hoisted(() => {
         name: string;
         domain?: string;
         contactEmail?: string;
-        contactPhone?: string;
+        contactPhone?: TestOrganization['contactPhone'];
         address?: TestOrganization['address'];
       }) {
         const now = new Date();
@@ -175,7 +184,11 @@ const repositoryMocks = vi.hoisted(() => {
             | 'contactPhone'
             | 'address'
           >
-        >,
+        > & {
+          contactEmail?: string | null;
+          contactPhone?: TestOrganization['contactPhone'] | null;
+          address?: TestOrganization['address'] | null;
+        },
       ) {
         const organization = organizations.find(
           (item) => item.id === organizationId,
@@ -185,11 +198,34 @@ const repositoryMocks = vi.hoisted(() => {
           return null;
         }
 
-        const updatedOrganization = {
+        const updatedOrganization: TestOrganization = {
           ...organization,
-          ...input,
           updatedAt: new Date(),
         };
+
+        if (input.name !== undefined) updatedOrganization.name = input.name;
+        if (input.domain !== undefined)
+          updatedOrganization.domain = input.domain;
+        if (input.status !== undefined)
+          updatedOrganization.status = input.status;
+        if (input.reviewStatus !== undefined) {
+          updatedOrganization.reviewStatus = input.reviewStatus;
+        }
+        if (input.contactEmail === null) {
+          delete updatedOrganization.contactEmail;
+        } else if (input.contactEmail !== undefined) {
+          updatedOrganization.contactEmail = input.contactEmail;
+        }
+        if (input.contactPhone === null) {
+          delete updatedOrganization.contactPhone;
+        } else if (input.contactPhone !== undefined) {
+          updatedOrganization.contactPhone = input.contactPhone;
+        }
+        if (input.address === null) {
+          delete updatedOrganization.address;
+        } else if (input.address !== undefined) {
+          updatedOrganization.address = input.address;
+        }
 
         organizations = organizations.map((item) =>
           item.id === organizationId ? updatedOrganization : item,
@@ -256,7 +292,7 @@ const repositoryMocks = vi.hoisted(() => {
       status?: 'active' | 'disabled';
       reviewStatus?: 'pending' | 'approved' | 'rejected';
       contactEmail?: string;
-      contactPhone?: string;
+      contactPhone?: TestOrganization['contactPhone'];
       address?: TestOrganization['address'];
       createdAt?: Date;
     }) {
@@ -308,6 +344,33 @@ function createAccessToken(userId: string, isSuperAdmin = false) {
   );
 }
 
+function createTaiwanPhone(
+  nationalNumber = '0912345678',
+): NonNullable<TestOrganization['contactPhone']> {
+  return {
+    countryCode: 'TW',
+    e164: `+886${nationalNumber.slice(1)}`,
+    nationalNumber,
+    type: nationalNumber.startsWith('09') ? 'mobile' : 'landline',
+  };
+}
+
+function createTaiwanAddress(
+  streetAddress = '忠孝西路一段1號',
+): NonNullable<TestOrganization['address']> {
+  return {
+    countryCode: 'TW',
+    schemaVersion: 1,
+    formatted: `100台北市中正區${streetAddress}`,
+    tw: {
+      postalCode: '100',
+      city: '台北市',
+      district: '中正區',
+      streetAddress,
+    },
+  };
+}
+
 describe('organizations API', () => {
   beforeEach(() => {
     repositoryMocks.reset();
@@ -323,15 +386,8 @@ describe('organizations API', () => {
       id: 'org-1',
       name: 'Main Street Cafe',
       contactEmail: 'ops@example.com',
-      contactPhone: '+886-2-1234-5678',
-      address: {
-        country: 'Taiwan',
-        postalCode: '100',
-        city: 'Taipei',
-        district: 'Zhongzheng',
-        line1: 'No. 1, Zhongxiao W. Rd.',
-        line2: '2F',
-      },
+      contactPhone: createTaiwanPhone(),
+      address: createTaiwanAddress(),
     });
     repositoryMocks.addOrganization({
       id: 'org-2',
@@ -356,22 +412,16 @@ describe('organizations API', () => {
             name: 'Main Street Cafe',
             status: 'active',
             reviewStatus: 'pending',
-            contactEmail: 'ops@example.com',
-            contactPhone: '+886-2-1234-5678',
-            address: {
-              country: 'Taiwan',
-              postalCode: '100',
-              city: 'Taipei',
-              district: 'Zhongzheng',
-              line1: 'No. 1, Zhongxiao W. Rd.',
-              line2: '2F',
-            },
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
           },
           {
             id: 'org-2',
             name: 'Night Market Tea',
             status: 'disabled',
             reviewStatus: 'pending',
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
           },
         ],
         pagination: {
@@ -419,6 +469,8 @@ describe('organizations API', () => {
             name: 'Night Market Tea',
             status: 'active',
             reviewStatus: 'pending',
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
           },
         ],
         pagination: {
@@ -556,15 +608,8 @@ describe('organizations API', () => {
       id: 'org-1',
       name: 'Main Street Cafe',
       contactEmail: 'ops@example.com',
-      contactPhone: '+886-2-1234-5678',
-      address: {
-        country: 'Taiwan',
-        postalCode: '100',
-        city: 'Taipei',
-        district: 'Zhongzheng',
-        line1: 'No. 1, Zhongxiao W. Rd.',
-        line2: '2F',
-      },
+      contactPhone: createTaiwanPhone(),
+      address: createTaiwanAddress(),
     });
 
     const response = await request(app)
@@ -584,15 +629,10 @@ describe('organizations API', () => {
           status: 'active',
           reviewStatus: 'pending',
           contactEmail: 'ops@example.com',
-          contactPhone: '+886-2-1234-5678',
-          address: {
-            country: 'Taiwan',
-            postalCode: '100',
-            city: 'Taipei',
-            district: 'Zhongzheng',
-            line1: 'No. 1, Zhongxiao W. Rd.',
-            line2: '2F',
-          },
+          contactPhone: createTaiwanPhone(),
+          address: createTaiwanAddress(),
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
         },
       },
     });
@@ -620,12 +660,8 @@ describe('organizations API', () => {
         status: 'disabled',
         reviewStatus: 'approved',
         contactEmail: 'OPS@Example.COM',
-        contactPhone: '+886-2-8765-4321',
-        address: {
-          country: 'Taiwan',
-          city: 'Taipei',
-          line1: 'Updated Address',
-        },
+        contactPhone: createTaiwanPhone('0223456789'),
+        address: createTaiwanAddress('更新路1號'),
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(200);
@@ -638,12 +674,52 @@ describe('organizations API', () => {
           status: 'disabled',
           reviewStatus: 'approved',
           contactEmail: 'ops@example.com',
-          contactPhone: '+886-2-8765-4321',
-          address: {
-            country: 'Taiwan',
-            city: 'Taipei',
-            line1: 'Updated Address',
-          },
+          contactPhone: createTaiwanPhone('0223456789'),
+          address: createTaiwanAddress('更新路1號'),
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+        },
+      },
+    });
+  });
+
+  it('allows a super admin to clear nullable organization contact fields', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+      contactEmail: 'ops@example.com',
+      contactPhone: createTaiwanPhone(),
+      address: createTaiwanAddress(),
+    });
+
+    const response = await request(app)
+      .patch('/api/v1/organizations/org-1')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      )
+      .send({
+        contactEmail: null,
+        contactPhone: null,
+        address: null,
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        organization: {
+          id: 'org-1',
+          name: 'Main Street Cafe',
+          status: 'active',
+          reviewStatus: 'pending',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
         },
       },
     });
@@ -668,12 +744,8 @@ describe('organizations API', () => {
         domain: 'mainstreet.com',
         ownerUserId: 'user-owner',
         contactEmail: 'ops@example.com',
-        contactPhone: '+886-2-1234-5678',
-        address: {
-          country: 'Taiwan',
-          city: 'Taipei',
-          line1: 'No. 1, Zhongxiao W. Rd.',
-        },
+        contactPhone: createTaiwanPhone(),
+        address: createTaiwanAddress(),
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(201);
@@ -687,12 +759,10 @@ describe('organizations API', () => {
           status: 'active',
           reviewStatus: 'pending',
           contactEmail: 'ops@example.com',
-          contactPhone: '+886-2-1234-5678',
-          address: {
-            country: 'Taiwan',
-            city: 'Taipei',
-            line1: 'No. 1, Zhongxiao W. Rd.',
-          },
+          contactPhone: createTaiwanPhone(),
+          address: createTaiwanAddress(),
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
         },
         ownerMembership: {
           id: 'org-membership-1',
@@ -703,6 +773,82 @@ describe('organizations API', () => {
         },
       },
     });
+  });
+
+  it('rejects an organization phone when E.164 does not match the national number', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addUser({ id: 'user-owner' });
+
+    const response = await request(app)
+      .post('/api/v1/organizations')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      )
+      .send({
+        name: 'Main Street Cafe',
+        ownerUserId: 'user-owner',
+        contactPhone: {
+          ...createTaiwanPhone(),
+          e164: '+886987654321',
+        },
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+    });
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'contactPhone.e164',
+        }),
+      ]),
+    );
+  });
+
+  it('rejects an organization address when formatted does not match the address fields', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addUser({ id: 'user-owner' });
+
+    const response = await request(app)
+      .post('/api/v1/organizations')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      )
+      .send({
+        name: 'Main Street Cafe',
+        ownerUserId: 'user-owner',
+        address: {
+          ...createTaiwanAddress(),
+          formatted: '台北市中正區不同地址',
+        },
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+    });
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'address.formatted',
+        }),
+      ]),
+    );
   });
 
   it('rejects organization creation without a super admin role', async () => {

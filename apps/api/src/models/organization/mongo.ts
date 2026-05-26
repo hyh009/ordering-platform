@@ -10,35 +10,81 @@ import type { Model } from 'mongoose';
 
 const organizationAddressSchema = new Schema(
   {
-    country: {
+    countryCode: {
       type: String,
+      required: true,
       trim: true,
-      maxlength: 120,
+      enum: ['TW'],
     },
-    postalCode: {
-      type: String,
-      trim: true,
-      maxlength: 120,
+    schemaVersion: {
+      type: Number,
+      required: true,
+      enum: [1],
     },
-    city: {
+    formatted: {
       type: String,
+      required: true,
       trim: true,
-      maxlength: 120,
+      maxlength: 360,
     },
-    district: {
-      type: String,
-      trim: true,
-      maxlength: 120,
+    tw: {
+      postalCode: {
+        type: String,
+        trim: true,
+        match: /^\d{3}(\d{2,3})?$/,
+      },
+      city: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 120,
+      },
+      district: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 120,
+      },
+      streetAddress: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 240,
+      },
     },
-    line1: {
+  },
+  { _id: false },
+);
+
+const organizationPhoneSchema = new Schema(
+  {
+    countryCode: {
       type: String,
+      required: true,
       trim: true,
-      maxlength: 240,
+      enum: ['TW'],
     },
-    line2: {
+    e164: {
+      type: String,
+      required: true,
+      trim: true,
+      match: /^\+886\d{7,9}$/,
+    },
+    nationalNumber: {
+      type: String,
+      required: true,
+      trim: true,
+      match: /^0\d{7,9}$/,
+    },
+    type: {
+      type: String,
+      required: true,
+      enum: ['mobile', 'landline', 'toll_free'],
+    },
+    extension: {
       type: String,
       trim: true,
-      maxlength: 240,
+      match: /^\d{1,10}$/,
     },
   },
   { _id: false },
@@ -80,11 +126,7 @@ const organizationSchema = new Schema<OrganizationEntity>(
       lowercase: true,
       maxlength: 320,
     },
-    contactPhone: {
-      type: String,
-      trim: true,
-      maxlength: 120,
-    },
+    contactPhone: organizationPhoneSchema,
     address: organizationAddressSchema,
   },
   {

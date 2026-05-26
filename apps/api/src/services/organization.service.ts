@@ -1,4 +1,7 @@
-import { toOrganizationDto } from '@src/models/organization/mapper';
+import {
+  toOrganizationDto,
+  toOrganizationListItemDto,
+} from '@src/models/organization/mapper';
 import { toOrganizationMembershipDto } from '@src/models/organizationMembership/mapper';
 import { organizationRepository } from '@src/repositories/organization/repository';
 import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
@@ -24,7 +27,7 @@ export type CreateOrganizationInput = {
   domain?: string | undefined;
   ownerUserId: string;
   contactEmail?: string | undefined;
-  contactPhone?: string | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
   address?: OrganizationEntity['address'] | undefined;
 };
 
@@ -39,7 +42,7 @@ export type UpdateOrganizationInput = {
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
   contactEmail?: string | null | undefined;
-  contactPhone?: string | null | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | null | undefined;
   address?: OrganizationEntity['address'] | null | undefined;
 };
 
@@ -52,7 +55,7 @@ export class OrganizationService {
     const result = await organizationRepository.list(query);
 
     return {
-      organizations: result.organizations.map(toOrganizationDto),
+      organizations: result.organizations.map(toOrganizationListItemDto),
       pagination: {
         offset: query.offset,
         limit: query.limit,

@@ -1,20 +1,16 @@
 export { organizationReviewStatuses, organizationStatuses } from '@repo/shared';
 
 import type {
+  OrganizationAddressDto,
+  OrganizationPhoneDto,
   OrganizationReviewStatus,
   OrganizationStatus,
 } from '@repo/shared';
 
 export type { OrganizationReviewStatus, OrganizationStatus };
 
-export type OrganizationAddressEntity = {
-  country?: string | undefined;
-  postalCode?: string | undefined;
-  city?: string | undefined;
-  district?: string | undefined;
-  line1?: string | undefined;
-  line2?: string | undefined;
-};
+export type OrganizationAddressEntity = OrganizationAddressDto;
+export type OrganizationPhoneEntity = OrganizationPhoneDto;
 
 export type OrganizationEntity = {
   id: string;
@@ -23,7 +19,7 @@ export type OrganizationEntity = {
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
   contactEmail?: string;
-  contactPhone?: string;
+  contactPhone?: OrganizationPhoneEntity;
   address?: OrganizationAddressEntity;
   createdAt: Date;
   updatedAt: Date;

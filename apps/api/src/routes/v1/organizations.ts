@@ -49,25 +49,69 @@ const router = Router();
  *         - disabled
  *     OrganizationAddress:
  *       type: object
+ *       required:
+ *         - countryCode
+ *         - schemaVersion
+ *         - formatted
+ *         - tw
  *       properties:
- *         country:
+ *         countryCode:
  *           type: string
- *           example: Taiwan
- *         postalCode:
+ *           enum:
+ *             - TW
+ *         schemaVersion:
+ *           type: integer
+ *           enum:
+ *             - 1
+ *         formatted:
  *           type: string
- *           example: "100"
- *         city:
+ *           example: "100台北市中正區忠孝西路一段1號"
+ *         tw:
+ *           type: object
+ *           required:
+ *             - city
+ *             - district
+ *             - streetAddress
+ *           properties:
+ *             postalCode:
+ *               type: string
+ *               example: "100"
+ *             city:
+ *               type: string
+ *               example: 台北市
+ *             district:
+ *               type: string
+ *               example: 中正區
+ *             streetAddress:
+ *               type: string
+ *               example: 忠孝西路一段1號
+ *     OrganizationPhone:
+ *       type: object
+ *       required:
+ *         - countryCode
+ *         - e164
+ *         - nationalNumber
+ *         - type
+ *       properties:
+ *         countryCode:
  *           type: string
- *           example: Taipei
- *         district:
+ *           enum:
+ *             - TW
+ *         e164:
  *           type: string
- *           example: Zhongzheng
- *         line1:
+ *           example: "+886912345678"
+ *         nationalNumber:
  *           type: string
- *           example: No. 1, Zhongxiao W. Rd.
- *         line2:
+ *           example: "0912345678"
+ *         type:
  *           type: string
- *           example: 2F
+ *           enum:
+ *             - mobile
+ *             - landline
+ *             - toll_free
+ *         extension:
+ *           type: string
+ *           example: "123"
  *     Organization:
  *       type: object
  *       required:
@@ -75,6 +119,8 @@ const router = Router();
  *         - name
  *         - status
  *         - reviewStatus
+ *         - createdAt
+ *         - updatedAt
  *       properties:
  *         id:
  *           type: string
@@ -94,10 +140,48 @@ const router = Router();
  *           format: email
  *           example: ops@example.com
  *         contactPhone:
- *           type: string
- *           example: "+886-2-1234-5678"
+ *           $ref: '#/components/schemas/OrganizationPhone'
  *         address:
  *           $ref: '#/components/schemas/OrganizationAddress'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-05-26T00:00:00.000Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-05-26T00:00:00.000Z"
+ *     OrganizationListItem:
+ *       type: object
+ *       required:
+ *         - id
+ *         - name
+ *         - status
+ *         - reviewStatus
+ *         - createdAt
+ *         - updatedAt
+ *       properties:
+ *         id:
+ *           type: string
+ *           example: org-123
+ *         name:
+ *           type: string
+ *           example: Main Street Cafe
+ *         domain:
+ *           type: string
+ *           example: mainstreet.com
+ *         status:
+ *           $ref: '#/components/schemas/OrganizationStatus'
+ *         reviewStatus:
+ *           $ref: '#/components/schemas/OrganizationReviewStatus'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-05-26T00:00:00.000Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-05-26T00:00:00.000Z"
  *     OrganizationMembership:
  *       type: object
  *       required:
@@ -179,7 +263,7 @@ const router = Router();
  *             organizations:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Organization'
+ *                 $ref: '#/components/schemas/OrganizationListItem'
  *             pagination:
  *               type: object
  *               required:
@@ -244,7 +328,7 @@ const router = Router();
  *         required: false
  *         schema:
  *           type: string
- *           enum: [name, createdAt]
+ *           enum: [name, createdAt, updatedAt]
  *           default: createdAt
  *       - in: query
  *         name: sortDirection
@@ -318,8 +402,7 @@ router.get<
  *                 format: email
  *                 example: ops@example.com
  *               contactPhone:
- *                 type: string
- *                 example: "+886-2-1234-5678"
+ *                 $ref: '#/components/schemas/OrganizationPhone'
  *               address:
  *                 $ref: '#/components/schemas/OrganizationAddress'
  *     responses:
@@ -457,9 +540,9 @@ router.get<
  *                 nullable: true
  *                 example: ops@example.com
  *               contactPhone:
- *                 type: string
+ *                 allOf:
+ *                   - $ref: '#/components/schemas/OrganizationPhone'
  *                 nullable: true
- *                 example: "+886-2-1234-5678"
  *               address:
  *                 allOf:
  *                   - $ref: '#/components/schemas/OrganizationAddress'

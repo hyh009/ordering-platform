@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+  organizationAddressSchema,
+  organizationPhoneSchema,
+} from '@repo/shared';
 import { OrganizationMongoModel } from '@src/models/organization/mongo';
 
 import type { OrganizationEntity } from '@src/models/organization/model';
@@ -9,9 +13,24 @@ import type {
   UpdateOrganizationInput,
 } from '@src/repositories/organization/repository';
 
+function toValidContactPhone(value: unknown) {
+  const result = organizationPhoneSchema.safeParse(value);
+
+  return result.success ? result.data : undefined;
+}
+
+function toValidAddress(value: unknown) {
+  const result = organizationAddressSchema.safeParse(value);
+
+  return result.success ? result.data : undefined;
+}
+
 function toOrganizationEntity(
   organization: OrganizationEntity,
 ): OrganizationEntity {
+  const contactPhone = toValidContactPhone(organization.contactPhone);
+  const address = toValidAddress(organization.address);
+
   return {
     id: organization.id,
     name: organization.name,
@@ -21,10 +40,8 @@ function toOrganizationEntity(
     ...(organization.contactEmail
       ? { contactEmail: organization.contactEmail }
       : {}),
-    ...(organization.contactPhone
-      ? { contactPhone: organization.contactPhone }
-      : {}),
-    ...(organization.address ? { address: organization.address } : {}),
+    ...(contactPhone ? { contactPhone } : {}),
+    ...(address ? { address } : {}),
     createdAt: organization.createdAt,
     updatedAt: organization.updatedAt,
   };
@@ -97,9 +114,11 @@ export const organizationMongoRepository = {
       reviewStatus: 'pending',
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
       ...(input.contactPhone
-        ? { contactPhone: input.contactPhone.trim() }
+        ? { contactPhone: organizationPhoneSchema.parse(input.contactPhone) }
         : {}),
-      ...(input.address ? { address: input.address } : {}),
+      ...(input.address
+        ? { address: organizationAddressSchema.parse(input.address) }
+        : {}),
     });
 
     return toOrganizationEntity(organization.toObject());
@@ -113,9 +132,11 @@ export const organizationMongoRepository = {
       ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}),
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
       ...(input.contactPhone
-        ? { contactPhone: input.contactPhone.trim() }
+        ? { contactPhone: organizationPhoneSchema.parse(input.contactPhone) }
         : {}),
-      ...(input.address ? { address: input.address } : {}),
+      ...(input.address
+        ? { address: organizationAddressSchema.parse(input.address) }
+        : {}),
     };
     const unset: Record<string, string> = {
       ...(input.contactEmail === null ? { contactEmail: '' } : {}),
@@ -135,8 +156,5 @@ export const organizationMongoRepository = {
       .exec();
 
     return organization ? toOrganizationEntity(organization) : null;
-  },
-};
-ization ? toOrganizationEntity(organization) : null;
   },
 };

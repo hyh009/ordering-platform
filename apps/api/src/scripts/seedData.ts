@@ -8,7 +8,9 @@ import type { CreateDietaryMarkerInput } from '@src/repositories/dietaryMarker/r
 import type { CreateOrganizationInput } from '@src/repositories/organization/repository';
 
 export async function seedAllergens() {
-  const existingAllergens = await allergenRepository.list({ isActive: undefined });
+  const existingAllergens = await allergenRepository.list({
+    isActive: undefined,
+  });
   const existingKeys = new Set(existingAllergens.map((a) => a.key));
 
   const allergensToSeed: CreateAllergenInput[] = [
@@ -36,15 +38,33 @@ export async function seedAllergens() {
 }
 
 export async function seedDietaryMarkers() {
-  const existingMarkers = await dietaryMarkerRepository.list({ isActive: undefined });
+  const existingMarkers = await dietaryMarkerRepository.list({
+    isActive: undefined,
+  });
   const existingKeys = new Set(existingMarkers.map((m) => m.key));
 
   const markersToSeed: CreateDietaryMarkerInput[] = [
-    { key: 'vegetarian', name: { en: 'Vegetarian', 'zh-TW': '蛋奶素' }, type: 'dietary' },
+    {
+      key: 'vegetarian',
+      name: { en: 'Vegetarian', 'zh-TW': '蛋奶素' },
+      type: 'dietary',
+    },
     { key: 'vegan', name: { en: 'Vegan', 'zh-TW': '全素' }, type: 'dietary' },
-    { key: 'gluten-free', name: { en: 'Gluten-Free', 'zh-TW': '無麩質' }, type: 'dietary' },
-    { key: 'halal', name: { en: 'Halal', 'zh-TW': '清真' }, type: 'regulatory' },
-    { key: 'kosher', name: { en: 'Kosher', 'zh-TW': '猶太潔食' }, type: 'regulatory' },
+    {
+      key: 'gluten-free',
+      name: { en: 'Gluten-Free', 'zh-TW': '無麩質' },
+      type: 'dietary',
+    },
+    {
+      key: 'halal',
+      name: { en: 'Halal', 'zh-TW': '清真' },
+      type: 'regulatory',
+    },
+    {
+      key: 'kosher',
+      name: { en: 'Kosher', 'zh-TW': '猶太潔食' },
+      type: 'regulatory',
+    },
     { key: 'spicy', name: { en: 'Spicy', 'zh-TW': '辣' }, type: 'dietary' },
   ];
 
@@ -70,13 +90,22 @@ export async function seedOrganizations(count = 10) {
     const input: CreateOrganizationInput = {
       name,
       contactEmail: faker.internet.email(),
-      contactPhone: faker.phone.number({ style: 'international' }),
+      contactPhone: {
+        countryCode: 'TW',
+        e164: '+886912345678',
+        nationalNumber: '0912345678',
+        type: 'mobile',
+      },
       address: {
-        country: faker.location.country(),
-        city: faker.location.city(),
-        district: faker.location.secondaryAddress(),
-        line1: faker.location.streetAddress(),
-        postalCode: faker.location.zipCode(),
+        countryCode: 'TW',
+        schemaVersion: 1,
+        formatted: '100台北市中正區忠孝西路一段1號',
+        tw: {
+          city: '台北市',
+          district: '中正區',
+          postalCode: '100',
+          streetAddress: '忠孝西路一段1號',
+        },
       },
     };
 

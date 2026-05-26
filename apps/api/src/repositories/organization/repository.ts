@@ -6,7 +6,7 @@ export type CreateOrganizationInput = {
   name: string;
   domain?: string | undefined;
   contactEmail?: string | undefined;
-  contactPhone?: string | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
   address?: OrganizationEntity['address'] | undefined;
 };
 
@@ -15,7 +15,7 @@ export type ListOrganizationsInput = {
   limit: number;
   keyword?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
-  sortBy?: 'name' | 'createdAt' | undefined;
+  sortBy?: 'name' | 'createdAt' | 'updatedAt' | undefined;
   sortDirection?: 'asc' | 'desc' | undefined;
 };
 
@@ -30,7 +30,7 @@ export type UpdateOrganizationInput = {
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
   contactEmail?: string | null | undefined;
-  contactPhone?: string | null | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | null | undefined;
   address?: OrganizationEntity['address'] | null | undefined;
 };
 

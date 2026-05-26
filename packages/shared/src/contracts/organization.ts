@@ -23,23 +23,53 @@ export type OrganizationMembershipRole =
 export type OrganizationMembershipStatus =
   (typeof organizationMembershipStatuses)[number];
 
+export const organizationAddressCountryCodes = ['TW'] as const;
+export const organizationPhoneCountryCodes = ['TW'] as const;
+export const organizationPhoneTypes = [
+  'mobile',
+  'landline',
+  'toll_free',
+] as const;
+
+export type OrganizationAddressCountryCode =
+  (typeof organizationAddressCountryCodes)[number];
+export type OrganizationPhoneCountryCode =
+  (typeof organizationPhoneCountryCodes)[number];
+export type OrganizationPhoneType = (typeof organizationPhoneTypes)[number];
+
 export type OrganizationAddressDto = {
-  country?: string | undefined;
-  postalCode?: string | undefined;
-  city?: string | undefined;
-  district?: string | undefined;
-  line1?: string | undefined;
-  line2?: string | undefined;
+  countryCode: 'TW';
+  schemaVersion: 1;
+  formatted: string;
+  tw: {
+    postalCode?: string | undefined;
+    city: string;
+    district: string;
+    streetAddress: string;
+  };
 };
 
-export type OrganizationDto = {
+export type OrganizationPhoneDto = {
+  countryCode: 'TW';
+  e164: string;
+  nationalNumber: string;
+  type: OrganizationPhoneType;
+  extension?: string | undefined;
+};
+
+export type OrganizationListItemDto = {
   id: string;
   name: string;
   domain?: string;
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrganizationDto = OrganizationListItemDto & {
   contactEmail?: string;
-  contactPhone?: string;
+  contactPhone?: OrganizationPhoneDto;
   address?: OrganizationAddressDto;
 };
 
@@ -59,26 +89,93 @@ function paginationNumberSchema(schema: z.ZodNumber) {
 }
 
 const organizationOptionalTextSchema = z.string().trim().min(1).max(120);
+const taiwanPostalCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{3}(\d{2,3})?$/, 'Invalid Taiwan postal code');
+const taiwanPhoneNationalNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^0\d{7,9}$/, 'Invalid Taiwan phone number');
+const taiwanPhoneExtensionSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{1,10}$/, 'Invalid phone extension');
 
-export const organizationAddressSchema = z
+function normalizeTaiwanPhoneNumber(value: string) {
+  return value.replace(/[^\d]/g, '');
+}
+
+function toTaiwanE164(nationalNumber: string) {
+  return `+886${nationalNumber.slice(1)}`;
+}
+
+export const organizationTaiwanAddressSchema = z
   .object({
-    country: organizationOptionalTextSchema.optional(),
-    postalCode: organizationOptionalTextSchema.optional(),
-    city: organizationOptionalTextSchema.optional(),
-    district: organizationOptionalTextSchema.optional(),
-    line1: z.string().trim().min(1).max(240).optional(),
-    line2: z.string().trim().min(1).max(240).optional(),
+    countryCode: z.literal('TW'),
+    schemaVersion: z.literal(1),
+    formatted: z.string().trim().min(1).max(360),
+    tw: z.object({
+      postalCode: taiwanPostalCodeSchema.optional(),
+      city: organizationOptionalTextSchema,
+      district: organizationOptionalTextSchema,
+      streetAddress: z.string().trim().min(1).max(240),
+    }),
   })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: 'At least one address field is required',
+  .superRefine((value, ctx) => {
+    const expectedFormatted = [
+      value.tw.postalCode,
+      value.tw.city,
+      value.tw.district,
+      value.tw.streetAddress,
+    ]
+      .filter(Boolean)
+      .join('');
+
+    if (value.formatted !== expectedFormatted) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Taiwan address formatted value does not match address fields',
+        path: ['formatted'],
+      });
+    }
   });
+
+export const organizationAddressSchema = organizationTaiwanAddressSchema;
+
+export const organizationTaiwanPhoneSchema = z
+  .object({
+    countryCode: z.literal('TW'),
+    e164: z
+      .string()
+      .trim()
+      .regex(/^\+886\d{7,9}$/, 'Invalid E.164 phone number'),
+    nationalNumber: z.preprocess(
+      (value) =>
+        typeof value === 'string' ? normalizeTaiwanPhoneNumber(value) : value,
+      taiwanPhoneNationalNumberSchema,
+    ),
+    type: z.enum(organizationPhoneTypes),
+    extension: taiwanPhoneExtensionSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.e164 !== toTaiwanE164(value.nationalNumber)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Taiwan phone E.164 value does not match national number',
+        path: ['e164'],
+      });
+    }
+  });
+
+export const organizationPhoneSchema = organizationTaiwanPhoneSchema;
 
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(120),
   domain: z.string().trim().min(1).max(120).optional(),
   ownerUserId: z.string().trim().min(1),
   contactEmail: z.email().trim().toLowerCase().optional(),
-  contactPhone: organizationOptionalTextSchema.optional(),
+  contactPhone: organizationPhoneSchema.optional(),
   address: organizationAddressSchema.optional(),
 });
 
@@ -92,7 +189,10 @@ export const listOrganizationsQuerySchema = z
       .default(20),
     keyword: z.string().trim().optional(),
     status: z.enum(organizationStatuses).optional(),
-    sortBy: z.enum(['name', 'createdAt']).optional().default('createdAt'),
+    sortBy: z
+      .enum(['name', 'createdAt', 'updatedAt'])
+      .optional()
+      .default('createdAt'),
     sortDirection: z.enum(['asc', 'desc']).optional().default('desc'),
   })
   .optional()
@@ -110,7 +210,7 @@ export const updateOrganizationSchema = z
     status: z.enum(organizationStatuses).optional(),
     reviewStatus: z.enum(organizationReviewStatuses).optional(),
     contactEmail: z.email().trim().toLowerCase().nullable().optional(),
-    contactPhone: organizationOptionalTextSchema.nullable().optional(),
+    contactPhone: organizationPhoneSchema.nullable().optional(),
     address: organizationAddressSchema.nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -136,7 +236,7 @@ export type ListOrganizationsQuery = z.infer<
 >;
 
 export type ListOrganizationsSuccessResponse = ApiSuccessResponse<{
-  organizations: OrganizationDto[];
+  organizations: OrganizationListItemDto[];
   pagination: OffsetPaginationDto;
 }>;
 
