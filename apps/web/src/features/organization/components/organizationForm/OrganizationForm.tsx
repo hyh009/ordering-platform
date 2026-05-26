@@ -3,9 +3,9 @@ import { organizationStatuses } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { TaiwanAddressFields } from '@/shared/components/address/TaiwanAddressFields';
 import { Field } from '@/shared/components/form/Field';
+import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Select } from '@/shared/components/ui/select';
 import type { OrganizationFormVM } from './useOrganizationForm';
 
 type OrganizationFormProps = {
@@ -133,7 +133,7 @@ export function OrganizationForm({
           label={tDefault('admin.organizations.status', 'Status')}
           required
         >
-          <Select
+          <OptionsSelect
             value={form.values.status}
             options={organizationStatuses.map((status) => ({
               label: status,

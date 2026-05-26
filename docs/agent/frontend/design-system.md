@@ -6,6 +6,11 @@ Use this guide when making UI decisions.
 
 - This app uses Tailwind CSS and shadcn/ui.
 - shadcn primitives live in `src/shared/components/ui`.
+- shadcn primitives are local source files copied into the repo, not runtime
+  imports from a `shadcn/ui` component package.
+- The current button primitive uses Base UI under the hood via
+  `@base-ui/react/button`; keep app-specific styling in the local shadcn wrapper
+  and variant files.
 - Shared app-level UI lives in `src/shared/components`.
 - Feature-specific UI lives in `src/features/<domain>/components`.
 - Page-only UI lives beside the page in `src/pages/<pageName>`.
@@ -52,6 +57,8 @@ Start with the mobile layout, then add breakpoint variants only where the layout
 
 ## Component Rules
 
+- When creating a reusable control primitive such as Input, Select, or Popover,
+  follow `docs/agent/frontend/how-to-create-ui-control.md`.
 - Prefer shadcn primitives for buttons, inputs, dialogs, dropdowns, tabs, menus, checkboxes, switches, toasts, and form controls.
 - Wrap primitives in shared or feature components when behavior becomes app-specific.
 - Do not put business rules, API calls, feature store access, or layout ownership inside shadcn primitives.

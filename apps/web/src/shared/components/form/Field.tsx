@@ -16,6 +16,7 @@ type FieldProps = {
   id?: string;
   label: ReactNode;
   required?: boolean;
+  showErrorMessage?: boolean;
 };
 
 function joinIds(...ids: Array<string | undefined>) {
@@ -32,15 +33,16 @@ export function Field({
   id,
   label,
   required = false,
+  showErrorMessage = true,
 }: FieldProps) {
   const generatedId = useId();
   const controlId = id ?? children.props.id ?? `field-${generatedId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
-  const errorId = `${controlId}-error`;
+  const errorId = showErrorMessage ? `${controlId}-error` : undefined;
   const describedBy = joinIds(
     children.props['aria-describedby'],
     descriptionId,
-    error ? errorId : undefined,
+    error && showErrorMessage ? errorId : undefined,
   );
 
   const control = cloneElement(children, {
@@ -74,9 +76,14 @@ export function Field({
 
       {control}
 
-      <p className="min-h-5 text-sm font-medium text-destructive" id={errorId}>
-        {error}
-      </p>
+      {showErrorMessage ? (
+        <p
+          className="min-h-5 text-sm font-medium text-destructive"
+          id={errorId}
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

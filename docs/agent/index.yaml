@@ -112,6 +112,14 @@ agent_docs:
       path: docs/agent/frontend/design-system.md
       use_when: Adding shadcn/ui, shared UI primitives, or frontend design rules.
 
+    - name: frontend-how-to-create-ui-control
+      path: docs/agent/frontend/how-to-create-ui-control.md
+      use_when: Creating or updating input, select, popover, dialog, dropdown, checkbox, switch, textarea, button, or other reusable UI control primitives.
+
+    - name: frontend-searchable-select
+      path: docs/agent/frontend/searchable-select.md
+      use_when: Creating or updating searchable select, async select, keyword-filtered select, user picker, product picker, postal-code picker, or select with cursor pagination.
+
     - name: frontend-shared-components
       path: docs/agent/frontend/shared-components.md
       use_when: Adding, reusing, moving, or reviewing frontend shared components.
