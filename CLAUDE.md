@@ -1,4 +1,4 @@
-# Gemini Instructions
+# Claude Instructions
 
 This is an ordering platform built from a React + Express TypeScript starter
 using pnpm workspaces.
