@@ -1,5 +1,9 @@
 import { updateOrganizationSchema } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
+import {
+  mapOrganizationValidationIssuesToFieldErrors,
+  type OrganizationFormFieldErrors,
+} from '@/features/organization/formFieldErrors';
 import type {
   Organization,
   UpdateOrganizationRequest,
@@ -11,9 +15,7 @@ import {
 } from '@/services/utils/adminApiError';
 import type { OrganizationDetailActions } from './actions';
 
-export type OrganizationDetailCommandFieldErrors = Partial<
-  Record<'name' | 'status', string>
->;
+export type OrganizationDetailCommandFieldErrors = OrganizationFormFieldErrors;
 
 export type LoadOrganizationDetailResult =
   | {
@@ -68,12 +70,9 @@ export function createOrganizationDetailCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: {
-            name: tDefault(
-              'admin.organizations.validation.nameRequired',
-              'Organization name is required.',
-            ),
-          },
+          fieldErrors: mapOrganizationValidationIssuesToFieldErrors(
+            validation.error.issues,
+          ),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',

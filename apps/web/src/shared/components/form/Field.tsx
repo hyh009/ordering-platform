@@ -52,7 +52,10 @@ export function Field({
   return (
     <div className={cn('grid gap-1.5', className)}>
       <label
-        className="text-sm font-medium text-foreground"
+        className={cn(
+          'text-sm font-medium',
+          error ? 'text-destructive' : 'text-foreground',
+        )}
         htmlFor={controlId}
       >
         {label}

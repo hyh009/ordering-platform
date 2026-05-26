@@ -9,16 +9,17 @@ import {
   mapAdminApiError,
   type AdminCommandFailure,
 } from '@/services/utils/adminApiError';
+import {
+  mapOrganizationValidationIssuesToFieldErrors,
+  type OrganizationFormFieldErrors,
+} from '@/features/organization/formFieldErrors';
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
 } from '@/models/organization';
 import type { OrganizationListActions } from './actions';
 
-export type OrganizationListCommandField = 'name' | 'ownerUserId' | 'status';
-export type OrganizationListCommandFieldErrors = Partial<
-  Record<OrganizationListCommandField, string>
->;
+export type OrganizationListCommandFieldErrors = OrganizationFormFieldErrors;
 
 export type LoadOrganizationsResult =
   | {
@@ -49,19 +50,6 @@ export type OrganizationListCommands = {
   ): Promise<SaveOrganizationListResult>;
 };
 
-function organizationValidationErrors() {
-  return {
-    name: tDefault(
-      'admin.organizations.validation.nameRequired',
-      'Organization name is required.',
-    ),
-    ownerUserId: tDefault(
-      'admin.organizations.validation.ownerRequired',
-      'Owner user ID is required.',
-    ),
-  };
-}
-
 function validateCreate(
   input: CreateOrganizationRequest,
 ):
@@ -75,16 +63,10 @@ function validateCreate(
     };
   }
 
-  const messages = organizationValidationErrors();
-
   return {
-    fieldErrors: Object.fromEntries(
-      result.error.issues.map((issue) => [
-        issue.path[0],
-        messages[issue.path[0] as keyof typeof messages] ??
-          tDefault('admin.validation.invalidField', 'This field is invalid.'),
-      ]),
-    ) as OrganizationListCommandFieldErrors,
+    fieldErrors: mapOrganizationValidationIssuesToFieldErrors(
+      result.error.issues,
+    ),
     success: false,
   };
 }
@@ -103,12 +85,9 @@ function validateUpdate(
   }
 
   return {
-    fieldErrors: {
-      name: tDefault(
-        'admin.organizations.validation.nameRequired',
-        'Organization name is required.',
-      ),
-    },
+    fieldErrors: mapOrganizationValidationIssuesToFieldErrors(
+      result.error.issues,
+    ),
     success: false,
   };
 }

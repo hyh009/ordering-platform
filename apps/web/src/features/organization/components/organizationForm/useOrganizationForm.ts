@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import type { OrganizationFormValues } from '@/models/organization';
-
-export type OrganizationFormField = keyof OrganizationFormValues;
-export type OrganizationFormFieldErrors = Partial<
-  Record<OrganizationFormField, string>
->;
+import type {
+  OrganizationFormField,
+  OrganizationFormFieldErrors,
+} from '@/features/organization/formFieldErrors';
 
 const initialValues: OrganizationFormValues = {
   name: '',
@@ -74,6 +73,18 @@ export function useOrganizationForm() {
       ...current,
       address: value,
     }));
+    setFieldErrors((current) => ({
+      ...current,
+      'address.city': undefined,
+      'address.district': undefined,
+      'address.postalCode': undefined,
+      'address.streetAddress': undefined,
+    }));
+    setSubmitError(null);
+  }
+
+  function hasFieldErrors() {
+    return Object.values(fieldErrors).some(Boolean);
   }
 
   function hasChanges() {
@@ -82,6 +93,7 @@ export function useOrganizationForm() {
 
   return {
     fieldErrors,
+    hasFieldErrors,
     hasChanges,
     isSubmitting,
     reset,

@@ -24,6 +24,7 @@ export function OrganizationForm({
   showStatus = false,
 }: OrganizationFormProps) {
   const { tDefault } = useAppTranslation();
+  const shouldShowSubmitError = form.submitError && !form.hasFieldErrors();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,7 +33,7 @@ export function OrganizationForm({
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
-      {form.submitError ? (
+      {shouldShowSubmitError ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {form.submitError}
         </p>
@@ -116,12 +117,19 @@ export function OrganizationForm({
       </h4>
 
       <TaiwanAddressFields
+        errors={{
+          city: form.fieldErrors['address.city'],
+          district: form.fieldErrors['address.district'],
+          postalCode: form.fieldErrors['address.postalCode'],
+          streetAddress: form.fieldErrors['address.streetAddress'],
+        }}
         value={form.values.address}
         onChange={form.setAddress}
       />
 
       {showStatus ? (
         <Field
+          error={form.fieldErrors.status}
           label={tDefault('admin.organizations.status', 'Status')}
           required
         >
