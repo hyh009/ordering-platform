@@ -4,8 +4,6 @@ Use this guide when adding or changing frontend forms.
 
 ## Default
 
-Do not install a form library by default.
-
 Follow the frontend architecture command flow in `docs/agent/frontend/architecture.md`.
 
 Use a page-local form hook for form state, including small starter forms such as login and register.
@@ -139,6 +137,11 @@ Use an empty object when there are no field errors.
 Use a separate `submitError: string | null` for form-level errors.
 
 Do not put form-level errors inside the field error object.
+
+When a submit result includes both field errors and a generic submit error,
+render the field errors as the primary feedback. Show the generic submit error
+only when there are no field errors, such as network, server, permission, or
+other non-field failures.
 
 ## Editing Forms
 

@@ -137,6 +137,10 @@ function mapLoadTodoError(error: unknown): LoadTodoResult {
 
 Use page-local form state for page-only form field and submit errors.
 
+When a form has field errors, prefer inline field feedback and suppress generic
+form-level submit alerts. Use the form-level submit error for non-field failures
+or when no field error can explain the failure.
+
 Use feature store state for feature-owned errors that belong to current page data.
 
 Examples:

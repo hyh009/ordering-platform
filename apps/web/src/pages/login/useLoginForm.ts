@@ -33,8 +33,13 @@ export function useLoginForm() {
     setSubmitError(null);
   }
 
+  function hasFieldErrors() {
+    return Object.values(fieldErrors).some(Boolean);
+  }
+
   return {
     fieldErrors,
+    hasFieldErrors,
     isSubmitting,
     reset,
     setField,

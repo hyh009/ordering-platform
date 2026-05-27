@@ -1,6 +1,5 @@
 import {
   getApiFailureReason,
-  getValidationDetails,
   hasApiErrorCode,
   isApiError,
 } from '@/api/apiError';
@@ -116,18 +115,13 @@ function mapAuthSubmitError(
     };
   }
 
-  const validationDetails = getValidationDetails(error);
-
-  if (validationDetails.length > 0) {
+  if (hasApiErrorCode(error, 'VALIDATION_ERROR')) {
     return {
       status: 'failed',
       message: tDefault(
         'auth.validation.submitInvalid',
         'Check the highlighted fields and try again.',
       ),
-      fieldErrors: Object.fromEntries(
-        validationDetails.map((detail) => [detail.path, detail.message]),
-      ) as Partial<Record<keyof LoginRequest, string>>,
     };
   }
 

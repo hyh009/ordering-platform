@@ -8,6 +8,7 @@ import { useLoginPageVM } from './useLoginPageVM';
 export function LoginPage() {
   const { tDefault } = useAppTranslation();
   const vm = useLoginPageVM();
+  const shouldShowSubmitError = vm.form.submitError && !vm.form.hasFieldErrors();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,7 +48,7 @@ export function LoginPage() {
           </p>
         </div>
 
-        {vm.form.submitError ? (
+        {shouldShowSubmitError ? (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
             {vm.form.submitError}
           </p>
