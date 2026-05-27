@@ -4,6 +4,11 @@ import type { VariantProps } from 'class-variance-authority';
 import { buttonVariants } from '@/shared/components/ui/buttonVariants';
 import { cn } from '@/shared/utils/cn';
 
+/**
+ * @reusable
+ * @description Render a shared button primitive with the repo's variant recipe.
+ * @keywords button, action, submit, trigger, cta, icon button
+ */
 function Button({
   className,
   variant = 'default',

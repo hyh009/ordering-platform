@@ -3,6 +3,11 @@ import { Input as InputPrimitive } from '@base-ui/react/input';
 
 import { cn } from '@/shared/utils/cn';
 
+/**
+ * @reusable
+ * @description Render a shared input primitive with consistent styling.
+ * @keywords input, text field, form control, text input
+ */
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
     <InputPrimitive

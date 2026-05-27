@@ -13,6 +13,11 @@ function getSafeLimit(limit: number) {
   return Number.isFinite(limit) && limit > 0 ? limit : 1;
 }
 
+/**
+ * @reusable
+ * @description Read offset pagination page state from total, limit, and offset values.
+ * @keywords pagination, offset, page info, total pages, has next
+ */
 export function getOffsetPageInfo(
   pagination: OffsetPagination,
 ): OffsetPageInfo {
@@ -30,10 +35,20 @@ export function getOffsetPageInfo(
   };
 }
 
+/**
+ * @reusable
+ * @description Compute the next offset for offset pagination.
+ * @keywords pagination, offset, next page, next offset
+ */
 export function getNextOffset(pagination: OffsetPagination) {
   return Math.max(0, pagination.offset) + getSafeLimit(pagination.limit);
 }
 
+/**
+ * @reusable
+ * @description Compute the previous offset for offset pagination.
+ * @keywords pagination, offset, previous page, previous offset
+ */
 export function getPreviousOffset(pagination: OffsetPagination) {
   return Math.max(
     0,

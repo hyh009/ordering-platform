@@ -28,6 +28,11 @@ type OptionsSelectProps = {
   value: string;
 };
 
+/**
+ * @reusable
+ * @description Render a shared select control from plain option data.
+ * @keywords select, dropdown, options, form, static list
+ */
 export function OptionsSelect({
   className,
   disabled = false,

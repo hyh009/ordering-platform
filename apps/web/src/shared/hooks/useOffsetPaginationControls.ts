@@ -16,6 +16,11 @@ export type UseOffsetPaginationControlsOptions = {
   pagination: OffsetPagination;
 };
 
+/**
+ * @reusable
+ * @description Drive offset pagination navigation with a loadPage callback.
+ * @keywords pagination, offset, page, next, previous
+ */
 export function useOffsetPaginationControls({
   loadPage,
   pagination,

@@ -6,6 +6,9 @@ runtime modules.
 For reusable UI components, use
 `docs/agent/frontend/shared-components.md`.
 
+For reusable marker and generated registry rules, use
+`docs/agent/frontend/reusable-registry.md`.
+
 ## Shared Types
 
 Import public API contracts from `@repo/shared` when they are already shared

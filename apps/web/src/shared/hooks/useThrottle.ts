@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
+/**
+ * @reusable
+ * @description Throttle a changing value to a fixed interval.
+ * @keywords throttle, throttled, rate limit, interval, input
+ */
 export function useThrottle<T>(value: T, intervalMs: number) {
   const [throttledValue, setThrottledValue] = useState(value);
   const lastUpdatedAtRef = useRef(0);

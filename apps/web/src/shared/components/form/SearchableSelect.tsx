@@ -50,6 +50,11 @@ function optionToString(option: SearchableSelectOption | null | undefined) {
   return typeof option.label === 'string' ? option.label : option.value;
 }
 
+/**
+ * @reusable
+ * @description Render a searchable select with async load-more support.
+ * @keywords searchable select, combobox, dropdown, search, async, load more
+ */
 export function SearchableSelect({
   className,
   disabled = false,

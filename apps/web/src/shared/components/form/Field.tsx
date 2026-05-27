@@ -25,6 +25,11 @@ function joinIds(...ids: Array<string | undefined>) {
   return value.length > 0 ? value : undefined;
 }
 
+/**
+ * @reusable
+ * @description Accessible form field wrapper with label, description, and error wiring.
+ * @keywords field, form field, label, error, description, aria
+ */
 export function Field({
   children,
   className,

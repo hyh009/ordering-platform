@@ -11,6 +11,11 @@ export type UseCursorPaginationControlsOptions<
   pagination: TPagination;
 };
 
+/**
+ * @reusable
+ * @description Drive cursor pagination navigation with a loadNextPage callback.
+ * @keywords pagination, cursor, load more, next cursor, infinite
+ */
 export function useCursorPaginationControls<
   TPagination extends CursorPagination,
 >({

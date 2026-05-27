@@ -12,6 +12,11 @@ type ModalProps = {
   title: ReactNode;
 };
 
+/**
+ * @reusable
+ * @description Render a dismissible modal overlay for page flows.
+ * @keywords modal, dialog, overlay, confirmation, close
+ */
 export function Modal({
   children,
   description,

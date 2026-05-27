@@ -2,6 +2,11 @@ import * as React from 'react';
 
 import { cn } from '@/shared/utils/cn';
 
+/**
+ * @reusable
+ * @description Render a shared textarea primitive with consistent styling.
+ * @keywords textarea, multiline, form control, text area
+ */
 function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
   return (
     <textarea

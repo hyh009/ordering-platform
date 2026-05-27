@@ -5,6 +5,9 @@ Use this guide before adding, moving, or reusing frontend UI components.
 For shared hooks, helpers, utilities, or app-wide runtime modules, use
 `docs/agent/frontend/reusable-primitives.md`.
 
+For reusable marker and generated registry rules, use
+`docs/agent/frontend/reusable-registry.md`.
+
 ## Component Lookup
 
 Before creating a component, check the existing component layers:

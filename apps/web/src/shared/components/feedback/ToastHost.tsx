@@ -20,6 +20,11 @@ const toastToneClassName: Record<ToastItem['tone'], string> = {
   error: 'border-l-destructive',
 };
 
+/**
+ * @reusable
+ * @description Render stacked toast notifications and dismiss actions.
+ * @keywords toast, notification, feedback, dismiss, status
+ */
 export function ToastHost({ dismissLabel, onDismiss, toasts }: ToastHostProps) {
   if (toasts.length === 0) {
     return null;

@@ -14,6 +14,11 @@ type ModalHostProps = {
   onConfirm: () => void;
 };
 
+/**
+ * @reusable
+ * @description Render confirmation modals from a shared view state.
+ * @keywords modal, confirmation, dialog, feedback, actions
+ */
 export function ModalHost({ modal, onCancel, onConfirm }: ModalHostProps) {
   if (!modal) {
     return null;
