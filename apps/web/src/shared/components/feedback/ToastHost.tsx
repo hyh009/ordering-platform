@@ -1,5 +1,4 @@
 import { X } from 'lucide-react';
-import { useAppTranslation } from '@/app/i18n';
 import { cn } from '@/shared/utils/cn';
 
 type ToastItem = {
@@ -10,8 +9,9 @@ type ToastItem = {
 };
 
 type ToastHostProps = {
-  toasts: ToastItem[];
+  dismissLabel: string;
   onDismiss: (toastId: string) => void;
+  toasts: ToastItem[];
 };
 
 const toastToneClassName: Record<ToastItem['tone'], string> = {
@@ -20,9 +20,7 @@ const toastToneClassName: Record<ToastItem['tone'], string> = {
   error: 'border-l-destructive',
 };
 
-export function ToastHost({ toasts, onDismiss }: ToastHostProps) {
-  const { tDefault } = useAppTranslation();
-
+export function ToastHost({ dismissLabel, onDismiss, toasts }: ToastHostProps) {
   if (toasts.length === 0) {
     return null;
   }
@@ -49,10 +47,7 @@ export function ToastHost({ toasts, onDismiss }: ToastHostProps) {
             <p className="m-0 text-sm text-muted-foreground">{toast.message}</p>
           </div>
           <button
-            aria-label={tDefault(
-              'app.feedback.dismissNotification',
-              'Dismiss notification',
-            )}
+            aria-label={dismissLabel}
             className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => {
               onDismiss(toast.id);

@@ -5,6 +5,7 @@ import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
 import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
+import { useAppTranslation } from '@/app/i18n';
 import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
 import { ToastHost } from '@/shared/components/feedback/ToastHost';
@@ -14,6 +15,7 @@ export function AppLayout() {
   const appContext = useAppContextVM();
   const feedback = useFeedbackVM();
   const language = useLanguageVM();
+  const { tDefault } = useAppTranslation();
   const navigate = useNavigate();
   const auth = useAuthVM({
     onLoggedOut() {
@@ -46,7 +48,14 @@ export function AppLayout() {
       <PageErrorBoundary>
         <Outlet />
       </PageErrorBoundary>
-      <ToastHost onDismiss={feedback.dismissToast} toasts={feedback.toasts} />
+      <ToastHost
+        dismissLabel={tDefault(
+          'app.feedback.dismissNotification',
+          'Dismiss notification',
+        )}
+        onDismiss={feedback.dismissToast}
+        toasts={feedback.toasts}
+      />
       <ModalHost
         modal={feedback.modal}
         onCancel={() => {

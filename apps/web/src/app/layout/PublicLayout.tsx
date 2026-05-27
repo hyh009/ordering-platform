@@ -4,6 +4,7 @@ import { healthPaths } from '@/api/paths/health.paths';
 import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
 import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
+import { useAppTranslation } from '@/app/i18n';
 import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
 import { ToastHost } from '@/shared/components/feedback/ToastHost';
@@ -13,6 +14,7 @@ export function PublicLayout() {
   const appContext = useAppContextVM();
   const feedback = useFeedbackVM();
   const language = useLanguageVM();
+  const { tDefault } = useAppTranslation();
   const navigate = useNavigate();
 
   function navigateHome() {
@@ -34,7 +36,14 @@ export function PublicLayout() {
       <PageErrorBoundary>
         <Outlet />
       </PageErrorBoundary>
-      <ToastHost onDismiss={feedback.dismissToast} toasts={feedback.toasts} />
+      <ToastHost
+        dismissLabel={tDefault(
+          'app.feedback.dismissNotification',
+          'Dismiss notification',
+        )}
+        onDismiss={feedback.dismissToast}
+        toasts={feedback.toasts}
+      />
       <ModalHost
         modal={feedback.modal}
         onCancel={() => {
