@@ -86,18 +86,23 @@ const manualResources: Resource = {
           confirm: '確認',
           delete: '刪除',
           edit: '編輯',
-          label: '操作',
           next: '下一頁',
           previous: '上一頁',
           save: '儲存',
           saveChanges: '儲存變更',
           saving: '儲存中...',
         },
+        pagination: {
+          summary: '第 {{page}} 頁，共 {{total}} 頁',
+        },
         errors: {
           apiInvalidResponse: 'API 回傳了此頁面無法讀取的資料。',
           apiServerUnavailable: '服務暫時無法使用。',
           checkApiServer: '請確認 API server 正在執行，然後再試一次。',
           tryAgainLater: '請稍後再試。',
+        },
+        table: {
+          actions: '操作',
         },
         fields: {
           description: '描述',

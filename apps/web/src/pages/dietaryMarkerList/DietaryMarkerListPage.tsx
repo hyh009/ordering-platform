@@ -95,7 +95,7 @@ export function DietaryMarkerListPage() {
           <span>{tDefault('admin.dietaryMarkers.type', 'Type')}</span>
           <span>{tDefault('admin.metadata.status', 'Status')}</span>
           <span className="text-right">
-            {tDefault('common.actions.label', 'Actions')}
+            {tDefault('common.table.actions', 'Actions')}
           </span>
         </div>
         {vm.dietaryMarkers.map((marker) => (

@@ -151,3 +151,7 @@ agent_docs:
     - name: frontend-i18n
       path: docs/agent/frontend/i18n.md
       use_when: Adding or changing frontend user-facing strings or language switching behavior.
+
+    - name: frontend-i18n-validation
+      path: docs/agent/frontend/i18n-validation.md
+      use_when: Reviewing frontend i18n keys, namespaces, or shared-string ownership.

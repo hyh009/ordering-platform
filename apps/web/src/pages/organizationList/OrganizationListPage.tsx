@@ -49,7 +49,7 @@ export function OrganizationListPage() {
             <span>{tDefault('admin.organizations.name', 'Name')}</span>
             <span>{tDefault('admin.organizations.status', 'Status')}</span>
             <span className="text-right">
-              {tDefault('common.actions.label', 'Actions')}
+              {tDefault('common.table.actions', 'Actions')}
             </span>
           </div>
           {vm.organizations.map((organization) => (
@@ -91,7 +91,7 @@ export function OrganizationListPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
           <span>
             {tDefault(
-              'admin.pagination.summary',
+              'common.pagination.summary',
               'Page {{page}} of {{total}}',
               {
                 page: vm.page,

@@ -87,7 +87,7 @@ export function AllergenListPage() {
           <span>{tDefault('admin.metadata.key', 'Key')}</span>
           <span>{tDefault('admin.metadata.status', 'Status')}</span>
           <span className="text-right">
-            {tDefault('common.actions.label', 'Actions')}
+            {tDefault('common.table.actions', 'Actions')}
           </span>
         </div>
         {vm.allergens.map((allergen) => (
