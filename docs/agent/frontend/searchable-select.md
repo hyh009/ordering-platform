@@ -12,6 +12,7 @@ UI control.
 `SearchableSelect` owns:
 
 - input, popup, option rendering, loading rows, empty rows
+- infinite-scroll trigger when the list scrolls near the bottom
 - controlled `searchValue` display
 - selected option display
 - accessibility and invalid-state wiring
@@ -140,6 +141,10 @@ When loading more:
 - pass the current cursor
 - append returned options
 - update `hasMore` and next cursor
+
+`SearchableSelect` calls `onLoadMore` automatically when the popup list scrolls
+near the bottom. Do not add a manual "Load more" button unless the product
+explicitly asks for button-based pagination.
 
 ## Selected Option
 

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import {
@@ -27,7 +27,6 @@ type SearchableSelectProps = {
   id?: string;
   isLoading?: boolean;
   isLoadingMore?: boolean;
-  loadMoreLabel?: ReactNode;
   loadingMessage?: ReactNode;
   onLoadMore?: () => void;
   onSearchChange: (value: string) => void;
@@ -59,7 +58,6 @@ export function SearchableSelect({
   id,
   isLoading = false,
   isLoadingMore = false,
-  loadMoreLabel = 'Load more',
   loadingMessage = 'Loading...',
   onLoadMore,
   onSearchChange,
@@ -73,6 +71,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ignoredInputValueRef = useRef<string | null>(null);
+  const loadMoreRequestedRef = useRef(false);
   const selectedOption = useMemo(
     () =>
       selectedOptionProp ??
@@ -90,6 +89,33 @@ export function SearchableSelect({
   const inputValue = isOpen ? searchValue : selectedInputValue;
   const showEmpty = !isLoading && options.length === 0;
   const showLoadMore = hasMore && onLoadMore;
+
+  useEffect(() => {
+    if (!isLoadingMore) {
+      loadMoreRequestedRef.current = false;
+    }
+  }, [isLoadingMore, options.length]);
+
+  function maybeLoadMore(element: HTMLElement) {
+    if (
+      !showLoadMore ||
+      isLoading ||
+      isLoadingMore ||
+      loadMoreRequestedRef.current
+    ) {
+      return;
+    }
+
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+
+    if (distanceFromBottom > 24) {
+      return;
+    }
+
+    loadMoreRequestedRef.current = true;
+    onLoadMore();
+  }
 
   return (
     <ComboboxPrimitive.Root
@@ -156,7 +182,12 @@ export function SearchableSelect({
       <ComboboxPrimitive.Portal>
         <ComboboxPrimitive.Positioner className="z-page-modal" sideOffset={4}>
           <ComboboxPrimitive.Popup className="max-h-64 w-(--anchor-width) min-w-36 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none">
-            <ComboboxPrimitive.List className="max-h-56 overflow-y-auto p-1">
+            <ComboboxPrimitive.List
+              className="max-h-56 overflow-y-auto p-1"
+              onScroll={(event) => {
+                maybeLoadMore(event.currentTarget);
+              }}
+            >
               {options.map((option) => (
                 <ComboboxPrimitive.Item
                   key={option.value}
@@ -180,28 +211,19 @@ export function SearchableSelect({
                 </div>
               ) : null}
 
+              {isLoadingMore ? (
+                <div className="flex items-center gap-2 px-2 py-2 text-sm text-muted-foreground">
+                  <LoaderCircleIcon className="size-4 animate-spin" />
+                  <span>{loadingMessage}</span>
+                </div>
+              ) : null}
+
               {showEmpty ? (
                 <ComboboxPrimitive.Empty className="px-2 py-2 text-sm text-muted-foreground">
                   {emptyMessage}
                 </ComboboxPrimitive.Empty>
               ) : null}
             </ComboboxPrimitive.List>
-
-            {showLoadMore ? (
-              <div className="border-t border-border p-1">
-                <button
-                  className="flex w-full items-center justify-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
-                  disabled={disabled || isLoadingMore}
-                  type="button"
-                  onClick={onLoadMore}
-                >
-                  {isLoadingMore ? (
-                    <LoaderCircleIcon className="size-4 animate-spin" />
-                  ) : null}
-                  <span>{isLoadingMore ? loadingMessage : loadMoreLabel}</span>
-                </button>
-              </div>
-            ) : null}
           </ComboboxPrimitive.Popup>
         </ComboboxPrimitive.Positioner>
       </ComboboxPrimitive.Portal>
