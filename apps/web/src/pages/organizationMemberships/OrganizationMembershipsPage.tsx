@@ -1,11 +1,11 @@
-import React from 'react';
 import { Link, useParams } from 'react-router';
 import { ChevronLeft, Pencil } from 'lucide-react';
+import { organizationMembershipRoles } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
+import { AddMemberForm } from '@/features/organization/membership/components/addMemberForm/AddMemberForm';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
-import { Input } from '@/shared/components/ui/input';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import {
@@ -21,11 +21,16 @@ import { cn } from '@/shared/utils/cn';
 import type { OrganizationMembership, OrganizationMembershipRole } from '@/models/organizationMembership';
 import { useOrganizationMembershipsPageVM } from './useOrganizationMembershipsPageVM';
 
-const ROLE_OPTIONS: { value: OrganizationMembershipRole; label: string }[] = [
-  { value: 'org_owner', label: 'Org Owner' },
-  { value: 'org_admin', label: 'Org Admin' },
-  { value: 'staff', label: 'Staff' },
-];
+const ROLE_LABELS: Record<OrganizationMembershipRole, string> = {
+  org_owner: 'Org Owner',
+  org_admin: 'Org Admin',
+  staff: 'Staff',
+};
+
+const ROLE_OPTIONS = organizationMembershipRoles.map((role) => ({
+  value: role,
+  label: ROLE_LABELS[role],
+}));
 
 function MemberAvatar({ email }: { email: string }) {
   const initial = (email[0] ?? '?').toUpperCase();
@@ -231,7 +236,7 @@ export function OrganizationMembershipsPage() {
       <Modal
         description={tDefault(
           'admin.memberships.addModalDescription',
-          'Enter the user ID and select a role.',
+          'Create a new user and assign them a role in this organization.',
         )}
         footer={
           <>
@@ -240,8 +245,8 @@ export function OrganizationMembershipsPage() {
             </Button>
             <Button
               disabled={vm.addForm.isSubmitting}
-              onClick={() => void vm.submitAdd()}
-              type="button"
+              form="add-member-form"
+              type="submit"
             >
               {vm.addForm.isSubmitting
                 ? tDefault('common.actions.saving', 'Saving...')
@@ -253,38 +258,13 @@ export function OrganizationMembershipsPage() {
         onClose={vm.closeAddModal}
         title={tDefault('admin.memberships.addTitle', 'Add member')}
       >
-        <div className="grid gap-4">
-          {vm.addForm.submitError ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-              {vm.addForm.submitError}
-            </p>
-          ) : null}
-          <Field
-            error={vm.addForm.fieldErrors['userId']}
-            label={tDefault('admin.memberships.userId', 'User ID')}
-            required
-          >
-            <Input
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                vm.setAddField('userId', e.target.value)
-              }
-              placeholder="user-..."
-              value={vm.addForm.userId}
-            />
-          </Field>
-          <Field
-            label={tDefault('admin.memberships.role', 'Role')}
-            required
-          >
-            <OptionsSelect
-              onValueChange={(v) =>
-                vm.setAddField('role', v as OrganizationMembershipRole)
-              }
-              options={ROLE_OPTIONS}
-              value={vm.addForm.role}
-            />
-          </Field>
-        </div>
+        <AddMemberForm
+          form={vm.addForm}
+          hideFooter
+          id="add-member-form"
+          onCancel={vm.closeAddModal}
+          onSubmit={vm.submitAdd}
+        />
       </Modal>
 
       {/* Edit membership modal */}

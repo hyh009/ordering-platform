@@ -5,6 +5,7 @@ import type {
   OrganizationMembershipRole,
   OrganizationMembershipStatus,
 } from '@src/models/organizationMembership/model';
+import type { ClientSession } from 'mongoose';
 
 export type CreateOrganizationMembershipInput = {
   organizationId: string;
@@ -31,6 +32,7 @@ export type UpdateOrganizationMembershipInput = {
 export type OrganizationMembershipRepository = {
   create(
     input: CreateOrganizationMembershipInput,
+    session?: ClientSession,
   ): Promise<OrganizationMembershipEntity>;
   listByOrganization(
     input: ListOrganizationMembershipsInput,

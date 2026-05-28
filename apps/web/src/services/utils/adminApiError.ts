@@ -24,6 +24,7 @@ const duplicateCodes = new Set([
   'ALLERGEN_ALREADY_EXISTS',
   'DIETARY_MARKER_ALREADY_EXISTS',
   'ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS',
+  'USER_ALREADY_EXISTS',
 ]);
 
 const notFoundCodes = new Set([

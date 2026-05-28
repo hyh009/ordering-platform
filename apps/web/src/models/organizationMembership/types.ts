@@ -28,7 +28,9 @@ export type OrganizationMembership = OrganizationMembershipWithUserDto;
 export type OrganizationMembershipListPage = OffsetPaginationDto;
 
 export type OrganizationMembershipAddFormValues = {
-  userId: string;
+  email: string;
+  username: string;
+  temporaryPassword: string;
   role: OrganizationMembershipRole;
 };
 

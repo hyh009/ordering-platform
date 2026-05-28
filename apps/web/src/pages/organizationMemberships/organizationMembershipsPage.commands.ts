@@ -18,12 +18,7 @@ export function createOrganizationMembershipsPageCommands(
 ): OrganizationMembershipsPageCommands {
   const base = createOrganizationMembershipListCommands(actions);
 
-  const overrides = {} satisfies Partial<OrganizationMembershipsPageCommands>;
-
-  return {
-    addMember: base.addMember,
-    loadMemberships: base.loadMemberships,
-    updateMembership: base.updateMembership,
-    ...overrides,
-  };
+  // To override a command:
+  //   return { ...base, loadMemberships: async (...args) => { ... } };
+  return base;
 }

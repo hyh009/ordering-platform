@@ -241,7 +241,9 @@ export const listOrganizationMembershipsQuerySchema = z
   .default({ offset: 0, limit: 20 });
 
 export const createOrganizationMembershipSchema = z.object({
-  userId: z.string().trim().min(1),
+  email: z.email().trim().toLowerCase(),
+  username: z.string().trim().min(1),
+  temporaryPassword: z.string().min(8),
   role: z.enum(organizationMembershipRoles),
 });
 

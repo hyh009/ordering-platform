@@ -29,16 +29,6 @@ export function createOrganizationMembershipListActions(
       store.setState({ error, isLoading: false });
     },
 
-    memberAdded(membership: OrganizationMembership) {
-      store.setState((state) => ({
-        memberships: [...state.memberships, membership],
-        pagination: {
-          ...state.pagination,
-          total: state.pagination.total + 1,
-        },
-      }));
-    },
-
     membershipSaved(membership: OrganizationMembership) {
       store.setState((state) => ({
         memberships: state.memberships.map((m) =>

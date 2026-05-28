@@ -8,6 +8,7 @@ import type {
   ListOrganizationMembershipsInput,
   UpdateOrganizationMembershipInput,
 } from '@src/repositories/organizationMembership/repository';
+import type { ClientSession } from 'mongoose';
 
 function toOrganizationMembershipEntity(
   membership: OrganizationMembershipEntity,
@@ -24,8 +25,8 @@ function toOrganizationMembershipEntity(
 }
 
 export const organizationMembershipMongoRepository = {
-  async create(input: CreateOrganizationMembershipInput) {
-    const membership = await OrganizationMembershipMongoModel.create({
+  async create(input: CreateOrganizationMembershipInput, session?: ClientSession) {
+    const doc = new OrganizationMembershipMongoModel({
       id: `org-membership-${randomUUID()}`,
       organizationId: input.organizationId,
       userId: input.userId,
@@ -33,7 +34,8 @@ export const organizationMembershipMongoRepository = {
       status: 'active',
     });
 
-    return toOrganizationMembershipEntity(membership.toObject());
+    await doc.save({ session: session ?? null });
+    return toOrganizationMembershipEntity(doc.toObject());
   },
 
   async listByOrganization(input: ListOrganizationMembershipsInput) {

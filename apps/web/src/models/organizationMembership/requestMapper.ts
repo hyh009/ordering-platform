@@ -10,7 +10,9 @@ export function toCreateOrganizationMembershipRequest(
   values: OrganizationMembershipAddFormValues,
 ): CreateOrganizationMembershipRequest {
   return {
-    userId: values.userId.trim(),
+    email: values.email,
+    username: values.username,
+    temporaryPassword: values.temporaryPassword,
     role: values.role,
   };
 }

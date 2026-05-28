@@ -770,6 +770,8 @@ describe('organizations API', () => {
           userId: 'user-owner',
           role: 'org_owner',
           status: 'active',
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
         },
       },
     });

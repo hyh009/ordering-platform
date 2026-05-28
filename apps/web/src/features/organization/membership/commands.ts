@@ -1,8 +1,3 @@
-import {
-  createOrganizationMembershipSchema,
-  updateOrganizationMembershipSchema,
-} from '@repo/shared';
-import { tDefault } from '@/app/i18n';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 import type {
   CreateOrganizationMembershipRequest,
@@ -61,26 +56,12 @@ export function createOrganizationMembershipListCommands(
     },
 
     async addMember(organizationId, input) {
-      const validation = createOrganizationMembershipSchema.safeParse(input);
-
-      if (!validation.success) {
-        return {
-          message: tDefault(
-            'admin.errors.validation',
-            'Check the highlighted fields and try again.',
-          ),
-          reason: 'invalid',
-          status: 'failed',
-        };
-      }
-
       try {
         const membership = await organizationService.addOrganizationMember(
           organizationId,
           input,
         );
 
-        actions.memberAdded(membership);
         return { status: 'saved', membership };
       } catch (error) {
         return mapAdminApiError(error);
@@ -88,19 +69,6 @@ export function createOrganizationMembershipListCommands(
     },
 
     async updateMembership(organizationId, membershipId, input) {
-      const validation = updateOrganizationMembershipSchema.safeParse(input);
-
-      if (!validation.success) {
-        return {
-          message: tDefault(
-            'admin.errors.validation',
-            'Check the highlighted fields and try again.',
-          ),
-          reason: 'invalid',
-          status: 'failed',
-        };
-      }
-
       try {
         const membership = await organizationService.updateOrganizationMembership(
           organizationId,

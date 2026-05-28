@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
+import {
+  createOrganizationMembershipSchema,
+  updateOrganizationMembershipSchema,
+} from '@repo/shared';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
+import { useAddMemberForm } from '@/features/organization/membership/components/addMemberForm/useAddMemberForm';
 import { createOrganizationMembershipListRuntime } from '@/features/organization/membership/runtime';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 import {
@@ -24,14 +29,6 @@ function createOrganizationMembershipsPageContext() {
   return { commands, store };
 }
 
-const initialAddForm = {
-  fieldErrors: {} as Record<string, string | undefined>,
-  isSubmitting: false,
-  submitError: null as string | null,
-  userId: '',
-  role: 'staff' as OrganizationMembershipRole,
-};
-
 const initialEditForm = {
   isSubmitting: false,
   submitError: null as string | null,
@@ -41,6 +38,7 @@ const initialEditForm = {
 export function useOrganizationMembershipsPageVM(organizationId: string) {
   const [{ commands, store }] = useState(createOrganizationMembershipsPageContext);
   const feedbackVM = useFeedbackVM();
+  const addForm = useAddMemberForm();
 
   const memberships = useStore(store, (state) => state.memberships);
   const isLoading = useStore(store, (state) => state.isLoading);
@@ -63,38 +61,53 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
 
   // Add member modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addForm, setAddForm] = useState(initialAddForm);
 
   const openAddModal = useCallback(() => {
-    setAddForm(initialAddForm);
+    addForm.reset();
     setIsAddModalOpen(true);
-  }, []);
+  }, [addForm]);
 
   const closeAddModal = useCallback(() => {
     setIsAddModalOpen(false);
   }, []);
 
-  const setAddField = useCallback(
-    <K extends 'userId' | 'role'>(field: K, value: (typeof initialAddForm)[K]) => {
-      setAddForm((prev) => ({
-        ...prev,
-        [field]: value,
-        fieldErrors: { ...prev.fieldErrors, [field]: undefined },
-      }));
-    },
-    [],
-  );
-
   const submitAdd = useCallback(async () => {
-    setAddForm((prev) => ({ ...prev, isSubmitting: true, submitError: null }));
+    const request = toCreateOrganizationMembershipRequest(addForm.values);
+    const validation = createOrganizationMembershipSchema.safeParse(request);
 
-    const result = await commands.addMember(
-      organizationId,
-      toCreateOrganizationMembershipRequest({ userId: addForm.userId, role: addForm.role }),
-    );
+    if (!validation.success) {
+      const raw = validation.error.flatten().fieldErrors;
+      addForm.setFieldErrors({
+        email: raw.email?.length
+          ? tDefault('admin.memberships.errors.email', 'Enter a valid email address.')
+          : undefined,
+        username: raw.username?.length
+          ? tDefault('admin.memberships.errors.username', 'Username is required.')
+          : undefined,
+        temporaryPassword: raw.temporaryPassword?.length
+          ? tDefault(
+              'admin.memberships.errors.temporaryPassword',
+              'Password must be at least 8 characters.',
+            )
+          : undefined,
+        role: raw.role?.length
+          ? tDefault('admin.memberships.errors.role', 'Select a role.')
+          : undefined,
+      });
+      addForm.setSubmitError(
+        tDefault('admin.errors.validation', 'Check the highlighted fields and try again.'),
+      );
+      return;
+    }
+
+    addForm.setIsSubmitting(true);
+    addForm.setSubmitError(null);
+
+    const result = await commands.addMember(organizationId, validation.data);
 
     if (result.status === 'saved') {
       setIsAddModalOpen(false);
+      void loadPage({ limit: pagination.limit, offset: pagination.offset });
       feedbackCommands.toast({
         message: tDefault('admin.memberships.addSuccess', 'Member added.'),
         tone: 'success',
@@ -102,12 +115,9 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
       return;
     }
 
-    setAddForm((prev) => ({
-      ...prev,
-      isSubmitting: false,
-      submitError: result.message,
-    }));
-  }, [commands, organizationId, addForm.userId, addForm.role, feedbackVM]);
+    addForm.setIsSubmitting(false);
+    addForm.setSubmitError(result.message);
+  }, [commands, organizationId, addForm, loadPage, pagination]);
 
   // Edit membership modal
   const [editTarget, setEditTarget] = useState<OrganizationMembership | null>(null);
@@ -129,12 +139,23 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
   const submitEdit = useCallback(async () => {
     if (!editTarget) return;
 
+    const request = toUpdateOrganizationMembershipRoleRequest({ role: editForm.role });
+    const validation = updateOrganizationMembershipSchema.safeParse(request);
+
+    if (!validation.success) {
+      setEditForm((prev) => ({
+        ...prev,
+        submitError: tDefault('admin.errors.validation', 'Check the highlighted fields and try again.'),
+      }));
+      return;
+    }
+
     setEditForm((prev) => ({ ...prev, isSubmitting: true, submitError: null }));
 
     const result = await commands.updateMembership(
       organizationId,
       editTarget.id,
-      toUpdateOrganizationMembershipRoleRequest({ role: editForm.role }),
+      validation.data,
     );
 
     if (result.status === 'saved') {
@@ -151,7 +172,7 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
       isSubmitting: false,
       submitError: result.message,
     }));
-  }, [commands, editTarget, editForm.role, organizationId, feedbackVM]);
+  }, [commands, editTarget, editForm.role, organizationId]);
 
   const submitDisable = useCallback(async () => {
     if (!editTarget) return;
@@ -166,12 +187,14 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
 
     if (!confirmed) return;
 
+    const disableRequest = toDisableOrganizationMembershipRequest();
+
     setEditForm((prev) => ({ ...prev, isSubmitting: true, submitError: null }));
 
     const result = await commands.updateMembership(
       organizationId,
       editTarget.id,
-      toDisableOrganizationMembershipRequest(),
+      disableRequest,
     );
 
     if (result.status === 'saved') {
@@ -209,7 +232,6 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     page,
     pagination,
     previousPage,
-    setAddField,
     setEditRole,
     submitAdd,
     submitDisable,

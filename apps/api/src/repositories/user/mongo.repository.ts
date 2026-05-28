@@ -4,6 +4,7 @@ import { UserMongoModel } from '@src/models/user/mongo';
 
 import type { UserEntity } from '@src/models/user/model';
 import type { CreateUserInput } from '@src/repositories/user/repository';
+import type { ClientSession } from 'mongoose';
 
 type MongoUserRecord = Omit<UserEntity, 'isSuperAdmin'> & {
   isSuperAdmin?: boolean;
@@ -52,8 +53,8 @@ export const userMongoRepository = {
     return user ? toUserEntity(user) : null;
   },
 
-  async create(input: CreateUserInput) {
-    const user = await UserMongoModel.create({
+  async create(input: CreateUserInput, session?: ClientSession) {
+    const doc = new UserMongoModel({
       id: `user-${randomUUID()}`,
       email: normalizeEmail(input.email),
       username: input.username.trim(),
@@ -63,6 +64,7 @@ export const userMongoRepository = {
       tokenVersion: 1,
     });
 
-    return toUserEntity(user.toObject());
+    await doc.save({ session: session ?? null });
+    return toUserEntity(doc.toObject());
   },
 };

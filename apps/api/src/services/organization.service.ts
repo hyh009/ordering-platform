@@ -1,3 +1,4 @@
+import { authConfig } from '@src/config/auth';
 import {
   toOrganizationDto,
   toOrganizationListItemDto,
@@ -15,7 +16,10 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '@src/utils/errors';
+import { logger } from '@src/utils/logger';
 import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
+import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 import type {
   ListOrganizationMembershipsQuery,
@@ -61,7 +65,9 @@ export type ListOrganizationMembershipsResult = {
 };
 
 export type AddOrganizationMemberInput = {
-  userId: string;
+  email: string;
+  username: string;
+  temporaryPassword: string;
   role: OrganizationMembershipRole;
 };
 
@@ -172,14 +178,21 @@ export class OrganizationService {
         limit: query.limit,
       });
 
-    const users = await userRepository.findByIds(
-      memberships.map((m) => m.userId),
-    );
+    const users =
+      memberships.length > 0
+        ? await userRepository.findByIds(memberships.map((m) => m.userId))
+        : [];
     const userMap = new Map(users.map((u) => [u.id, u]));
 
     return {
       memberships: memberships.map((m) => {
         const user = userMap.get(m.userId);
+        if (!user) {
+          logger.warn(
+            { membershipId: m.id, userId: m.userId },
+            'Membership references non-existent user',
+          );
+        }
         return toOrganizationMembershipWithUserDto(m, {
           email: user?.email ?? '',
           username: user?.username ?? '',
@@ -202,39 +215,64 @@ export class OrganizationService {
       );
     }
 
-    const user = await userRepository.findById(input.userId);
+    const existingUser = await userRepository.findByEmail(input.email);
 
-    if (!user) {
-      throw new NotFoundError('User not found', ERROR_CODES.USER_NOT_FOUND);
+    if (existingUser) {
+      throw new ConflictError(
+        'User already exists',
+        ERROR_CODES.USER_ALREADY_EXISTS,
+      );
     }
 
-    if (user.status !== 'active') {
-      throw new ForbiddenError('User is disabled', ERROR_CODES.USER_DISABLED);
-    }
+    const passwordHash = await bcrypt.hash(
+      input.temporaryPassword,
+      authConfig.passwordHashRounds,
+    );
 
-    let membership;
+    const session = await mongoose.connection.startSession();
 
     try {
-      membership = await organizationMembershipRepository.create({
-        organizationId,
-        userId: input.userId,
-        role: input.role,
+      const { user, membership } = await session.withTransaction(async () => {
+        const user = await userRepository
+          .create(
+            { email: input.email, username: input.username, passwordHash },
+            session,
+          )
+          .catch((error: unknown) => {
+            if (isMongoDuplicateKeyError(error)) {
+              throw new ConflictError(
+                'User already exists',
+                ERROR_CODES.USER_ALREADY_EXISTS,
+              );
+            }
+            throw error;
+          });
+
+        const membership = await organizationMembershipRepository
+          .create(
+            { organizationId, userId: user.id, role: input.role },
+            session,
+          )
+          .catch((error: unknown) => {
+            if (isMongoDuplicateKeyError(error)) {
+              throw new ConflictError(
+                'Organization membership already exists',
+                ERROR_CODES.ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS,
+              );
+            }
+            throw error;
+          });
+
+        return { user, membership };
       });
-    } catch (error) {
-      if (isMongoDuplicateKeyError(error)) {
-        throw new ConflictError(
-          'Organization membership already exists',
-          ERROR_CODES.ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS,
-        );
-      }
 
-      throw error;
+      return toOrganizationMembershipWithUserDto(membership, {
+        email: user.email,
+        username: user.username,
+      });
+    } finally {
+      await session.endSession();
     }
-
-    return toOrganizationMembershipWithUserDto(membership, {
-      email: user.email,
-      username: user.username,
-    });
   }
 
   public async updateOrganizationMembership(
@@ -266,9 +304,22 @@ export class OrganizationService {
       input,
     );
 
-    const user = await userRepository.findById(existing.userId);
+    if (!updated) {
+      throw new NotFoundError(
+        'Organization membership not found',
+        ERROR_CODES.ORGANIZATION_MEMBERSHIP_NOT_FOUND,
+      );
+    }
 
-    return toOrganizationMembershipWithUserDto(updated ?? existing, {
+    const user = await userRepository.findById(existing.userId);
+    if (!user) {
+      logger.warn(
+        { membershipId: membershipId, userId: existing.userId },
+        'Membership references non-existent user',
+      );
+    }
+
+    return toOrganizationMembershipWithUserDto(updated, {
       email: user?.email ?? '',
       username: user?.username ?? '',
     });
