@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
+import { PATHS } from '@/app/routing/paths';
 import { LoadingState } from '@/shared/components/LoadingState';
 
 export function RequireAuth() {
@@ -17,7 +18,9 @@ export function RequireAuth() {
   }
 
   if (!auth.isAuthenticated) {
-    return <Navigate replace state={{ from: location }} to="/admin/login" />;
+    return (
+      <Navigate replace state={{ from: location }} to={PATHS.AUTH.LOGIN} />
+    );
   }
 
   return <Outlet />;

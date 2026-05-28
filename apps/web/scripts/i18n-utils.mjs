@@ -77,6 +77,51 @@ function listSourceFiles(directory) {
   return files;
 }
 
+function isPathInside(parentPath, childPath) {
+  const relativePath = path.relative(parentPath, childPath);
+
+  return (
+    relativePath === '' ||
+    (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+  );
+}
+
+function resolveScanPath(scope) {
+  if (!scope) {
+    return sourceRoot;
+  }
+
+  const normalizedScope = scope.startsWith('src/')
+    ? scope.slice('src/'.length)
+    : scope;
+  const scanPath = path.resolve(sourceRoot, normalizedScope);
+
+  if (!isPathInside(sourceRoot, scanPath)) {
+    throw new Error(`i18n scan scope must stay inside src: ${scope}`);
+  }
+
+  if (!fs.existsSync(scanPath)) {
+    throw new Error(`i18n scan scope does not exist: ${scope}`);
+  }
+
+  return scanPath;
+}
+
+function listScopedSourceFiles(scope) {
+  const scanPath = resolveScanPath(scope);
+  const stats = fs.statSync(scanPath);
+
+  if (stats.isDirectory()) {
+    return listSourceFiles(scanPath);
+  }
+
+  if (stats.isFile()) {
+    return isSourceFile(scanPath) ? [scanPath] : [];
+  }
+
+  return [];
+}
+
 function getStringLiteralValue(node) {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
     return node.text;
@@ -100,11 +145,11 @@ function getLocation(sourceFile, node, filePath) {
   return `${relativePath}:${position.line + 1}:${position.character + 1}`;
 }
 
-export function scanI18nDefaults() {
+export function scanI18nDefaults({ scope } = {}) {
   const entries = new Map();
   const invalidCalls = [];
 
-  for (const filePath of listSourceFiles(sourceRoot)) {
+  for (const filePath of listScopedSourceFiles(scope)) {
     const sourceText = fs.readFileSync(filePath, 'utf8');
     const sourceFile = ts.createSourceFile(
       filePath,

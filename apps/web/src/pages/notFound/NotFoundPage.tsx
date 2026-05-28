@@ -43,10 +43,12 @@ export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
             <ArrowLeft aria-hidden="true" />
             {tDefault('notFound.back', 'Back')}
           </button>
-          <Link className={buttonVariants()} to={vm.destination}>
-            <DestinationIcon aria-hidden="true" />
-            {vm.destinationLabel}
-          </Link>
+          {vm.destination !== null && vm.destinationLabel !== null && (
+            <Link className={buttonVariants()} to={vm.destination}>
+              <DestinationIcon aria-hidden="true" />
+              {vm.destinationLabel}
+            </Link>
+          )}
         </div>
       </div>
 

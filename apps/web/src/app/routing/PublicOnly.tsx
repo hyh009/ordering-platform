@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { useAppTranslation } from '@/app/i18n';
+import { PATHS } from '@/app/routing/paths';
 import { LoadingState } from '@/shared/components/LoadingState';
 
 export function PublicOnly() {
@@ -19,7 +20,11 @@ export function PublicOnly() {
     return (
       <Navigate
         replace
-        to={auth.user?.isSuperAdmin ? '/admin/organizations' : '/home'}
+        to={
+          auth.user?.isSuperAdmin
+            ? PATHS.SUPER_ADMIN.ORGANIZATIONS
+            : PATHS.MERCHANT.MENU
+        }
       />
     );
   }

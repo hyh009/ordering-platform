@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
+import { PATHS } from '@/app/routing/paths';
 import { LoadingState } from '@/shared/components/LoadingState';
 
 export function RequireSuperAdmin() {
@@ -16,7 +17,7 @@ export function RequireSuperAdmin() {
   }
 
   if (!auth.user?.isSuperAdmin) {
-    return <Navigate replace to="/home" />;
+    return <Navigate replace to={PATHS.MERCHANT.MENU} />;
   }
 
   return <Outlet />;

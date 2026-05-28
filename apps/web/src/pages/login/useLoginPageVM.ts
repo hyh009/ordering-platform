@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router';
 import { loginSchema } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
+import { PATHS } from '@/app/routing/paths';
 import type { AuthUserDto } from '@/models/auth.types';
 import { loginPageCommands } from './loginPage.commands';
 import { type LoginFieldErrors, useLoginForm } from './useLoginForm';
@@ -16,7 +17,7 @@ function getRedirectPath(state: unknown, user: AuthUserDto) {
 
   return (
     routeState?.from?.pathname ??
-    (user.isSuperAdmin ? '/admin/organizations' : '/home')
+    (user.isSuperAdmin ? PATHS.SUPER_ADMIN.ORGANIZATIONS : PATHS.MERCHANT.MENU)
   );
 }
 
