@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
+import { PATHS } from '@/app/routing/paths';
 import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
@@ -59,7 +60,9 @@ export function OrganizationListPage() {
             >
               <Link
                 className="min-w-0 truncate font-semibold hover:text-primary"
-                to={`/admin/organizations/${organization.id}`}
+                to={PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(
+                  organization.id,
+                )}
               >
                 {organization.name}
               </Link>
@@ -70,7 +73,11 @@ export function OrganizationListPage() {
               </span>
               <div className="flex justify-end">
                 <Button size="sm" variant="secondary">
-                  <Link to={`/admin/organizations/${organization.id}`}>
+                  <Link
+                    to={PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(
+                      organization.id,
+                    )}
+                  >
                     {tDefault('common.actions.view', 'View')}
                   </Link>
                 </Button>
@@ -129,8 +136,25 @@ export function OrganizationListPage() {
           'admin.organizations.createModalDescription',
           'Create a new organization and assign an owner.',
         )}
+        footer={
+          <>
+            <Button onClick={vm.closeCreateModal} type="button" variant="ghost">
+              {tDefault('common.actions.cancel', 'Cancel')}
+            </Button>
+            <Button
+              disabled={vm.form.isSubmitting}
+              form="create-organization-form"
+              type="submit"
+            >
+              {vm.form.isSubmitting
+                ? tDefault('common.actions.saving', 'Saving...')
+                : tDefault('common.actions.save', 'Save')}
+            </Button>
+          </>
+        }
         isOpen={vm.isCreateModalOpen}
         onClose={vm.closeCreateModal}
+        size="lg"
         title={tDefault(
           'admin.organizations.createTitle',
           'Create organization',
@@ -138,6 +162,8 @@ export function OrganizationListPage() {
       >
         <OrganizationForm
           form={vm.form}
+          hideFooter
+          id="create-organization-form"
           onCancel={vm.closeCreateModal}
           onSubmit={vm.submitCreate}
           showOwnerUserId

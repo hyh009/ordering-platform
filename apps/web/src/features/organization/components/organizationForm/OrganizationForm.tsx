@@ -10,6 +10,8 @@ import type { OrganizationFormVM } from './useOrganizationForm';
 
 type OrganizationFormProps = {
   form: OrganizationFormVM;
+  hideFooter?: boolean;
+  id?: string;
   onCancel: () => void;
   onSubmit: () => void | Promise<void>;
   showOwnerUserId?: boolean;
@@ -18,6 +20,8 @@ type OrganizationFormProps = {
 
 export function OrganizationForm({
   form,
+  hideFooter = false,
+  id,
   onCancel,
   onSubmit,
   showOwnerUserId = false,
@@ -32,7 +36,7 @@ export function OrganizationForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={handleSubmit}>
+    <form className="grid gap-4" id={id} onSubmit={handleSubmit}>
       {shouldShowSubmitError ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {form.submitError}
@@ -146,16 +150,18 @@ export function OrganizationForm({
         </Field>
       ) : null}
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button onClick={onCancel} type="button" variant="ghost">
-          {tDefault('common.actions.cancel', 'Cancel')}
-        </Button>
-        <Button disabled={form.isSubmitting} type="submit">
-          {form.isSubmitting
-            ? tDefault('common.actions.saving', 'Saving...')
-            : tDefault('common.actions.save', 'Save')}
-        </Button>
-      </div>
+      {!hideFooter ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button onClick={onCancel} type="button" variant="ghost">
+            {tDefault('common.actions.cancel', 'Cancel')}
+          </Button>
+          <Button disabled={form.isSubmitting} type="submit">
+            {form.isSubmitting
+              ? tDefault('common.actions.saving', 'Saving...')
+              : tDefault('common.actions.save', 'Save')}
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router';
 import { ChevronLeft, PenSquare } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
+import { PATHS } from '@/app/routing/paths';
 import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
@@ -30,7 +31,7 @@ export function OrganizationDetailPage() {
       <section className="grid gap-8 p-8">
         <Link
           className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary"
-          to="/admin/organizations"
+          to={PATHS.SUPER_ADMIN.ORGANIZATIONS}
         >
           <ChevronLeft className="h-4 w-4" />
           {tDefault('admin.organizations.backToList', 'Back to organizations')}
@@ -51,7 +52,7 @@ export function OrganizationDetailPage() {
           <div>
             <Link
               className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary"
-              to="/admin/organizations"
+              to={PATHS.SUPER_ADMIN.ORGANIZATIONS}
             >
               <ChevronLeft className="h-4 w-4" />
               {tDefault(
@@ -204,12 +205,31 @@ export function OrganizationDetailPage() {
           'admin.organizations.modalDescription',
           'Key organization fields only. Membership management will be handled separately.',
         )}
+        footer={
+          <>
+            <Button onClick={vm.closeEditModal} type="button" variant="ghost">
+              {tDefault('common.actions.cancel', 'Cancel')}
+            </Button>
+            <Button
+              disabled={vm.form.isSubmitting}
+              form="edit-organization-form"
+              type="submit"
+            >
+              {vm.form.isSubmitting
+                ? tDefault('common.actions.saving', 'Saving...')
+                : tDefault('common.actions.save', 'Save')}
+            </Button>
+          </>
+        }
         isOpen={vm.isEditModalOpen}
         onClose={vm.closeEditModal}
+        size="lg"
         title={tDefault('admin.organizations.editTitle', 'Edit organization')}
       >
         <OrganizationForm
           form={vm.form}
+          hideFooter
+          id="edit-organization-form"
           onCancel={vm.closeEditModal}
           onSubmit={vm.submitOrganization}
           showStatus

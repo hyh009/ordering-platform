@@ -149,11 +149,31 @@ export function DietaryMarkerListPage() {
           'admin.metadata.keyLockedDescription',
           'The key is create-only and cannot be changed after creation.',
         )}
+        footer={
+          <>
+            <Button onClick={vm.closeModal} type="button" variant="ghost">
+              {tDefault('common.actions.cancel', 'Cancel')}
+            </Button>
+            <Button
+              disabled={vm.form.isSubmitting}
+              form="dietary-marker-form"
+              type="submit"
+            >
+              {vm.form.isSubmitting
+                ? tDefault('common.actions.saving', 'Saving...')
+                : tDefault('common.actions.save', 'Save')}
+            </Button>
+          </>
+        }
         isOpen={vm.isModalOpen}
         onClose={vm.closeModal}
         title={vm.modalTitle}
       >
-        <form className="grid gap-4" onSubmit={handleSubmit}>
+        <form
+          className="grid gap-4"
+          id="dietary-marker-form"
+          onSubmit={handleSubmit}
+        >
           {vm.form.submitError ? (
             <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
               {vm.form.submitError}
@@ -235,16 +255,6 @@ export function DietaryMarkerListPage() {
             />
             {tDefault('admin.metadata.isActive', 'Active')}
           </label>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button onClick={vm.closeModal} type="button" variant="ghost">
-              {tDefault('common.actions.cancel', 'Cancel')}
-            </Button>
-            <Button disabled={vm.form.isSubmitting} type="submit">
-              {vm.form.isSubmitting
-                ? tDefault('common.actions.saving', 'Saving...')
-                : tDefault('common.actions.save', 'Save')}
-            </Button>
-          </div>
         </form>
       </Modal>
     </section>
