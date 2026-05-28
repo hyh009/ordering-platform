@@ -12,6 +12,7 @@ export type CreateUserInput = {
 export type UserRepository = {
   findById(id: string): Promise<UserEntity | null>;
   findByEmail(email: string): Promise<UserEntity | null>;
+  findByIds(ids: string[]): Promise<UserEntity[]>;
   create(input: CreateUserInput): Promise<UserEntity>;
 };
 

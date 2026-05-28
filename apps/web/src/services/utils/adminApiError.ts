@@ -23,12 +23,15 @@ export type AdminCommandFailure = {
 const duplicateCodes = new Set([
   'ALLERGEN_ALREADY_EXISTS',
   'DIETARY_MARKER_ALREADY_EXISTS',
+  'ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS',
 ]);
 
 const notFoundCodes = new Set([
   'ALLERGEN_NOT_FOUND',
   'DIETARY_MARKER_NOT_FOUND',
   'ORGANIZATION_NOT_FOUND',
+  'ORGANIZATION_MEMBERSHIP_NOT_FOUND',
+  'USER_NOT_FOUND',
 ]);
 
 export function mapAdminApiError(error: unknown): AdminCommandFailure {
@@ -58,6 +61,17 @@ export function mapAdminApiError(error: unknown): AdminCommandFailure {
         'Check the highlighted fields and try again.',
       ),
       reason: 'invalid',
+      status: 'failed',
+    };
+  }
+
+  if (hasApiErrorCode(error, 'USER_DISABLED')) {
+    return {
+      message: tDefault(
+        'admin.errors.userDisabled',
+        'This user is disabled and cannot be added.',
+      ),
+      reason: 'forbidden',
       status: 'failed',
     };
   }

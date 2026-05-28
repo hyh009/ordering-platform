@@ -1,11 +1,12 @@
 import { Link, useParams } from 'react-router';
-import { ChevronLeft, PenSquare } from 'lucide-react';
+import { ChevronLeft, PenSquare, Users } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
+import { buttonVariants } from '@/shared/components/ui/buttonVariants';
 import { cn } from '@/shared/utils/cn';
 import { useOrganizationDetailPageVM } from './useOrganizationDetailPageVM';
 
@@ -67,10 +68,21 @@ export function OrganizationDetailPage() {
               {vm.organization.domain}
             </p>
           </div>
-          <Button onClick={vm.openEditModal}>
-            <PenSquare className="mr-2 h-4 w-4" />
-            {tDefault('common.actions.edit', 'Edit')}
-          </Button>
+          <div className="flex gap-2">
+            <Link
+              className={buttonVariants({ variant: 'secondary' })}
+              to={PATHS.SUPER_ADMIN.ORGANIZATION_MEMBERSHIPS_BUILD(
+                vm.organization.id,
+              )}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              {tDefault('admin.memberships.manageMembers', 'Manage members')}
+            </Link>
+            <Button onClick={vm.openEditModal}>
+              <PenSquare className="mr-2 h-4 w-4" />
+              {tDefault('common.actions.edit', 'Edit')}
+            </Button>
+          </div>
         </div>
 
         {/* Main Content */}

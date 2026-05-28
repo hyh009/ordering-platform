@@ -1,6 +1,7 @@
 import { apiJson } from '@/api';
 import { organizationPaths } from '@/api/paths/organization.paths';
 import { organizationModel } from '@/models/organization';
+import { organizationMembershipModel } from '@/models/organizationMembership';
 import { toPaginationPage } from './utils/pagination';
 import type {
   CreateOrganizationRequest,
@@ -11,6 +12,14 @@ import type {
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
 } from '@/models/organization';
+import type {
+  CreateOrganizationMembershipRequest,
+  CreateOrganizationMembershipSuccessResponse,
+  ListOrganizationMembershipsSuccessResponse,
+  OrganizationMembershipListPage,
+  UpdateOrganizationMembershipRequest,
+  UpdateOrganizationMembershipSuccessResponse,
+} from '@/models/organizationMembership';
 
 export const organizationService = {
   async listOrganizations(input: { limit: number; offset: number }) {
@@ -70,5 +79,63 @@ export const organizationService = {
     );
 
     return organizationModel.deserialize(response.data.organization);
+  },
+
+  async listOrganizationMemberships(
+    organizationId: string,
+    input: { limit: number; offset: number },
+  ) {
+    const params = new URLSearchParams({
+      limit: String(input.limit),
+      offset: String(input.offset),
+    });
+    const response = await apiJson<ListOrganizationMembershipsSuccessResponse>(
+      `${organizationPaths.memberships(organizationId)}?${params.toString()}`,
+    );
+
+    return {
+      memberships: response.data.memberships.map(
+        organizationMembershipModel.deserialize,
+      ),
+      pagination: toPaginationPage<OrganizationMembershipListPage>(
+        response.data.pagination,
+        {
+          limit: input.limit,
+          offset: input.offset,
+          total: response.data.pagination.total,
+        },
+      ),
+    };
+  },
+
+  async addOrganizationMember(
+    organizationId: string,
+    input: CreateOrganizationMembershipRequest,
+  ) {
+    const response = await apiJson<CreateOrganizationMembershipSuccessResponse>(
+      organizationPaths.memberships(organizationId),
+      {
+        body: JSON.stringify(input),
+        method: 'POST',
+      },
+    );
+
+    return organizationMembershipModel.deserialize(response.data.membership);
+  },
+
+  async updateOrganizationMembership(
+    organizationId: string,
+    membershipId: string,
+    input: UpdateOrganizationMembershipRequest,
+  ) {
+    const response = await apiJson<UpdateOrganizationMembershipSuccessResponse>(
+      organizationPaths.membership(organizationId, membershipId),
+      {
+        body: JSON.stringify(input),
+        method: 'PATCH',
+      },
+    );
+
+    return organizationMembershipModel.deserialize(response.data.membership);
   },
 };

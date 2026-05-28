@@ -1,7 +1,11 @@
 import {
+  createOrganizationMembershipSchema,
   createOrganizationSchema,
+  listOrganizationMembershipsQuerySchema,
   listOrganizationsQuerySchema,
+  organizationMembershipParamsSchema,
   organizationParamsSchema,
+  updateOrganizationMembershipSchema,
   updateOrganizationSchema,
 } from '@repo/shared';
 import { requireAuth, requireSuperAdmin } from '@src/middlewares/auth';
@@ -10,11 +14,17 @@ import { organizationService } from '@src/services/organization.service';
 import { Router } from 'express';
 
 import type {
+  CreateOrganizationMembershipRequest,
+  CreateOrganizationMembershipSuccessResponse,
   CreateOrganizationRequest,
   CreateOrganizationSuccessResponse,
   GetOrganizationSuccessResponse,
+  ListOrganizationMembershipsSuccessResponse,
   ListOrganizationsSuccessResponse,
+  OrganizationMembershipParams,
   OrganizationParams,
+  UpdateOrganizationMembershipRequest,
+  UpdateOrganizationMembershipSuccessResponse,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
 } from '@repo/shared';
@@ -596,6 +606,67 @@ router.patch<
         organization,
       },
     });
+  },
+);
+
+router.get<
+  OrganizationParams,
+  ListOrganizationMembershipsSuccessResponse,
+  Record<string, never>
+>(
+  '/:organizationId/memberships',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(organizationParamsSchema, 'params'),
+  async (req, res) => {
+    const query = listOrganizationMembershipsQuerySchema.parse(req.query);
+    const data = await organizationService.listOrganizationMemberships(
+      req.params.organizationId,
+      query,
+    );
+
+    res.json({ status: 'success', data });
+  },
+);
+
+router.post<
+  OrganizationParams,
+  CreateOrganizationMembershipSuccessResponse,
+  CreateOrganizationMembershipRequest
+>(
+  '/:organizationId/memberships',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(organizationParamsSchema, 'params'),
+  validate(createOrganizationMembershipSchema),
+  async (req, res) => {
+    const membership = await organizationService.addOrganizationMember(
+      req.params.organizationId,
+      req.body,
+    );
+
+    res.status(201).json({ status: 'success', data: { membership } });
+  },
+);
+
+router.patch<
+  OrganizationMembershipParams,
+  UpdateOrganizationMembershipSuccessResponse,
+  UpdateOrganizationMembershipRequest
+>(
+  '/:organizationId/memberships/:membershipId',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(organizationMembershipParamsSchema, 'params'),
+  validate(updateOrganizationMembershipSchema),
+  async (req, res) => {
+    const membership = await organizationService.updateOrganizationMembership(
+      req.params.organizationId,
+      req.params.membershipId,
+      req.body,
+    );
+
+    res.json({ status: 'success', data: { membership } });
   },
 );
 

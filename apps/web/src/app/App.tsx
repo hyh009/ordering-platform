@@ -17,6 +17,7 @@ import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
 import { OrderListPage } from '@/pages/orderList/OrderListPage';
 import { OrganizationDetailPage } from '@/pages/organizationDetail/OrganizationDetailPage';
 import { OrganizationListPage } from '@/pages/organizationList/OrganizationListPage';
+import { OrganizationMembershipsPage } from '@/pages/organizationMemberships/OrganizationMembershipsPage';
 import { StoreSettingsPage } from '@/pages/storeSettings/StoreSettingsPage';
 import { TagListPage } from '@/pages/tagList/TagListPage';
 
@@ -75,6 +76,10 @@ export function App() {
                 <Route
                   element={<OrganizationDetailPage />}
                   path={PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL}
+                />
+                <Route
+                  element={<OrganizationMembershipsPage />}
+                  path={PATHS.SUPER_ADMIN.ORGANIZATION_MEMBERSHIPS}
                 />
                 <Route
                   element={<AllergenListPage />}

@@ -36,6 +36,14 @@ export const userMongoRepository = {
     return user ? toUserEntity(user) : null;
   },
 
+  async findByIds(ids: string[]) {
+    const users = await UserMongoModel.find({ id: { $in: ids } })
+      .lean<UserEntity[]>()
+      .exec();
+
+    return users.map(toUserEntity);
+  },
+
   async findByEmail(email: string) {
     const user = await UserMongoModel.findOne({ email: normalizeEmail(email) })
       .lean<UserEntity>()

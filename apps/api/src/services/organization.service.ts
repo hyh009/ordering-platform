@@ -2,7 +2,10 @@ import {
   toOrganizationDto,
   toOrganizationListItemDto,
 } from '@src/models/organization/mapper';
-import { toOrganizationMembershipDto } from '@src/models/organizationMembership/mapper';
+import {
+  toOrganizationMembershipDto,
+  toOrganizationMembershipWithUserDto,
+} from '@src/models/organizationMembership/mapper';
 import { organizationRepository } from '@src/repositories/organization/repository';
 import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
 import { userRepository } from '@src/repositories/user/repository';
@@ -15,10 +18,14 @@ import {
 import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
 
 import type {
+  ListOrganizationMembershipsQuery,
   ListOrganizationsQuery,
   ListOrganizationsSuccessResponse,
   OrganizationDto,
   OrganizationMembershipDto,
+  OrganizationMembershipRole,
+  OrganizationMembershipStatus,
+  OrganizationMembershipWithUserDto,
 } from '@repo/shared';
 import type { OrganizationEntity } from '@src/models/organization/model';
 
@@ -47,6 +54,21 @@ export type UpdateOrganizationInput = {
 };
 
 export type ListOrganizationsResult = ListOrganizationsSuccessResponse['data'];
+
+export type ListOrganizationMembershipsResult = {
+  memberships: OrganizationMembershipWithUserDto[];
+  pagination: { offset: number; limit: number; total: number };
+};
+
+export type AddOrganizationMemberInput = {
+  userId: string;
+  role: OrganizationMembershipRole;
+};
+
+export type UpdateOrganizationMembershipInput = {
+  role?: OrganizationMembershipRole | undefined;
+  status?: OrganizationMembershipStatus | undefined;
+};
 
 export class OrganizationService {
   public async listOrganizations(
@@ -128,6 +150,128 @@ export class OrganizationService {
     }
 
     return toOrganizationDto(organization);
+  }
+
+  public async listOrganizationMemberships(
+    organizationId: string,
+    query: ListOrganizationMembershipsQuery,
+  ): Promise<ListOrganizationMembershipsResult> {
+    const org = await organizationRepository.findById(organizationId);
+
+    if (!org) {
+      throw new NotFoundError(
+        'Organization not found',
+        ERROR_CODES.ORGANIZATION_NOT_FOUND,
+      );
+    }
+
+    const { memberships, total } =
+      await organizationMembershipRepository.listByOrganization({
+        organizationId,
+        offset: query.offset,
+        limit: query.limit,
+      });
+
+    const users = await userRepository.findByIds(
+      memberships.map((m) => m.userId),
+    );
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    return {
+      memberships: memberships.map((m) => {
+        const user = userMap.get(m.userId);
+        return toOrganizationMembershipWithUserDto(m, {
+          email: user?.email ?? '',
+          username: user?.username ?? '',
+        });
+      }),
+      pagination: { offset: query.offset, limit: query.limit, total },
+    };
+  }
+
+  public async addOrganizationMember(
+    organizationId: string,
+    input: AddOrganizationMemberInput,
+  ): Promise<OrganizationMembershipWithUserDto> {
+    const org = await organizationRepository.findById(organizationId);
+
+    if (!org) {
+      throw new NotFoundError(
+        'Organization not found',
+        ERROR_CODES.ORGANIZATION_NOT_FOUND,
+      );
+    }
+
+    const user = await userRepository.findById(input.userId);
+
+    if (!user) {
+      throw new NotFoundError('User not found', ERROR_CODES.USER_NOT_FOUND);
+    }
+
+    if (user.status !== 'active') {
+      throw new ForbiddenError('User is disabled', ERROR_CODES.USER_DISABLED);
+    }
+
+    let membership;
+
+    try {
+      membership = await organizationMembershipRepository.create({
+        organizationId,
+        userId: input.userId,
+        role: input.role,
+      });
+    } catch (error) {
+      if (isMongoDuplicateKeyError(error)) {
+        throw new ConflictError(
+          'Organization membership already exists',
+          ERROR_CODES.ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS,
+        );
+      }
+
+      throw error;
+    }
+
+    return toOrganizationMembershipWithUserDto(membership, {
+      email: user.email,
+      username: user.username,
+    });
+  }
+
+  public async updateOrganizationMembership(
+    organizationId: string,
+    membershipId: string,
+    input: UpdateOrganizationMembershipInput,
+  ): Promise<OrganizationMembershipWithUserDto> {
+    const org = await organizationRepository.findById(organizationId);
+
+    if (!org) {
+      throw new NotFoundError(
+        'Organization not found',
+        ERROR_CODES.ORGANIZATION_NOT_FOUND,
+      );
+    }
+
+    const existing =
+      await organizationMembershipRepository.findById(membershipId);
+
+    if (!existing || existing.organizationId !== organizationId) {
+      throw new NotFoundError(
+        'Organization membership not found',
+        ERROR_CODES.ORGANIZATION_MEMBERSHIP_NOT_FOUND,
+      );
+    }
+
+    const updated = await organizationMembershipRepository.update(
+      membershipId,
+      input,
+    );
+
+    const user = await userRepository.findById(existing.userId);
+
+    return toOrganizationMembershipWithUserDto(updated ?? existing, {
+      email: user?.email ?? '',
+      username: user?.username ?? '',
+    });
   }
 
   private async createOwnerMembership(

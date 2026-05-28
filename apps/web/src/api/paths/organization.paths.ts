@@ -3,4 +3,10 @@ export const organizationPaths = {
   detail(organizationId: string) {
     return `/v1/organizations/${encodeURIComponent(organizationId)}`;
   },
-} as const;
+  memberships(organizationId: string) {
+    return `/v1/organizations/${encodeURIComponent(organizationId)}/memberships`;
+  },
+  membership(organizationId: string, membershipId: string) {
+    return `/v1/organizations/${encodeURIComponent(organizationId)}/memberships/${encodeURIComponent(membershipId)}`;
+  },
+};

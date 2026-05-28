@@ -8,6 +8,9 @@ export const PATHS = {
     ORGANIZATIONS: '/admin/organizations',
     ORGANIZATION_DETAIL: '/admin/organizations/:organizationId',
     ORGANIZATION_DETAIL_BUILD: (id: string) => `/admin/organizations/${id}`,
+    ORGANIZATION_MEMBERSHIPS: '/admin/organizations/:organizationId/memberships',
+    ORGANIZATION_MEMBERSHIPS_BUILD: (id: string) =>
+      `/admin/organizations/${id}/memberships`,
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },

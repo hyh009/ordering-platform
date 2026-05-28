@@ -79,6 +79,13 @@ export type OrganizationMembershipDto = {
   userId: string;
   role: OrganizationMembershipRole;
   status: OrganizationMembershipStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrganizationMembershipWithUserDto = OrganizationMembershipDto & {
+  userEmail: string;
+  userUsername: string;
 };
 
 function paginationNumberSchema(schema: z.ZodNumber) {
@@ -221,6 +228,37 @@ export const organizationParamsSchema = z.object({
   organizationId: z.string().trim().min(1),
 });
 
+export const listOrganizationMembershipsQuerySchema = z
+  .object({
+    offset: paginationNumberSchema(z.number().int().min(0))
+      .optional()
+      .default(0),
+    limit: paginationNumberSchema(z.number().int().min(1).max(100))
+      .optional()
+      .default(20),
+  })
+  .optional()
+  .default({ offset: 0, limit: 20 });
+
+export const createOrganizationMembershipSchema = z.object({
+  userId: z.string().trim().min(1),
+  role: z.enum(organizationMembershipRoles),
+});
+
+export const updateOrganizationMembershipSchema = z
+  .object({
+    role: z.enum(organizationMembershipRoles).optional(),
+    status: z.enum(organizationMembershipStatuses).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required',
+  });
+
+export const organizationMembershipParamsSchema = z.object({
+  organizationId: z.string().trim().min(1),
+  membershipId: z.string().trim().min(1),
+});
+
 export type CreateOrganizationRequest = z.infer<
   typeof createOrganizationSchema
 >;
@@ -233,6 +271,22 @@ export type OrganizationParams = z.infer<typeof organizationParamsSchema>;
 
 export type ListOrganizationsQuery = z.infer<
   typeof listOrganizationsQuerySchema
+>;
+
+export type ListOrganizationMembershipsQuery = z.infer<
+  typeof listOrganizationMembershipsQuerySchema
+>;
+
+export type CreateOrganizationMembershipRequest = z.infer<
+  typeof createOrganizationMembershipSchema
+>;
+
+export type UpdateOrganizationMembershipRequest = z.infer<
+  typeof updateOrganizationMembershipSchema
+>;
+
+export type OrganizationMembershipParams = z.infer<
+  typeof organizationMembershipParamsSchema
 >;
 
 export type ListOrganizationsSuccessResponse = ApiSuccessResponse<{
@@ -251,4 +305,17 @@ export type CreateOrganizationSuccessResponse = ApiSuccessResponse<{
 
 export type UpdateOrganizationSuccessResponse = ApiSuccessResponse<{
   organization: OrganizationDto;
+}>;
+
+export type ListOrganizationMembershipsSuccessResponse = ApiSuccessResponse<{
+  memberships: OrganizationMembershipWithUserDto[];
+  pagination: OffsetPaginationDto;
+}>;
+
+export type CreateOrganizationMembershipSuccessResponse = ApiSuccessResponse<{
+  membership: OrganizationMembershipWithUserDto;
+}>;
+
+export type UpdateOrganizationMembershipSuccessResponse = ApiSuccessResponse<{
+  membership: OrganizationMembershipWithUserDto;
 }>;
