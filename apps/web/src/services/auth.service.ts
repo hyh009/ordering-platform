@@ -11,18 +11,21 @@ import type {
 
 export const authService = {
   async login(input: LoginRequest): Promise<AuthSession> {
-    const response = await apiJson<AuthSuccessResponse>(authPaths.login, {
-      body: JSON.stringify(input),
-      method: 'POST',
-    });
+    const response = await apiJson<AuthSuccessResponse>(
+      authPaths.login,
+      { body: JSON.stringify(input), method: 'POST' },
+      { skipRefresh: true },
+    );
 
     return authModel.deserializeSession(response);
   },
 
   async refresh(): Promise<AuthSession> {
-    const response = await apiJson<AuthSuccessResponse>(authPaths.refresh, {
-      method: 'POST',
-    });
+    const response = await apiJson<AuthSuccessResponse>(
+      authPaths.refresh,
+      { method: 'POST' },
+      { skipRefresh: true },
+    );
 
     return authModel.deserializeSession(response);
   },
@@ -36,9 +39,8 @@ export const authService = {
   async logout() {
     const response = await apiJson<AuthActionSuccessResponse>(
       authPaths.logout,
-      {
-        method: 'POST',
-      },
+      { method: 'POST' },
+      { skipRefresh: true },
     );
 
     return response.data;

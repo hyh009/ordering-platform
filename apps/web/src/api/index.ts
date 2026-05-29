@@ -8,13 +8,29 @@ const defaultBaseUrl = 'http://localhost:9000';
 const apiPathPrefix = '/api';
 
 type ApiTokenProvider = () => string | null | undefined;
+type ApiRefreshHandler = () => Promise<boolean>;
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? defaultBaseUrl;
 
 let apiTokenProvider: ApiTokenProvider = () => null;
+let apiRefreshHandler: ApiRefreshHandler = () => Promise.resolve(false);
+let pendingRefresh: Promise<boolean> | null = null;
 
 export function setApiTokenProvider(provider: ApiTokenProvider) {
   apiTokenProvider = provider;
+}
+
+export function setApiRefreshHandler(handler: ApiRefreshHandler) {
+  apiRefreshHandler = handler;
+}
+
+function deduplicatedRefresh(): Promise<boolean> {
+  if (!pendingRefresh) {
+    pendingRefresh = apiRefreshHandler().finally(() => {
+      pendingRefresh = null;
+    });
+  }
+  return pendingRefresh;
 }
 
 function joinApiPath(path: string) {
@@ -64,9 +80,22 @@ function createApiHeaders(init?: RequestInit) {
   return headers;
 }
 
+type ApiJsonOptions = {
+  skipRefresh?: boolean;
+};
+
 export async function apiJson<TData>(
   path: string,
   init?: RequestInit,
+  options?: ApiJsonOptions,
+): Promise<TData> {
+  return apiJsonInternal<TData>(path, init, { isRetry: false, skipRefresh: options?.skipRefresh ?? false });
+}
+
+async function apiJsonInternal<TData>(
+  path: string,
+  init: RequestInit | undefined,
+  { isRetry, skipRefresh }: { isRetry: boolean; skipRefresh: boolean },
 ): Promise<TData> {
   try {
     const response = await fetch(apiUrl(path), {
@@ -86,6 +115,14 @@ export async function apiJson<TData>(
     }
 
     if (!response.ok) {
+      if (response.status === 401 && !isRetry && !skipRefresh) {
+        const refreshed = await deduplicatedRefresh();
+
+        if (refreshed) {
+          return apiJsonInternal<TData>(path, init, { isRetry: true, skipRefresh: false });
+        }
+      }
+
       throw normalizeApiError({
         response,
         body,

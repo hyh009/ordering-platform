@@ -3,7 +3,7 @@ import {
   hasApiErrorCode,
   isApiError,
 } from '@/api/apiError';
-import { setApiTokenProvider } from '@/api';
+import { setApiRefreshHandler, setApiTokenProvider } from '@/api';
 import { tDefault } from '@/app/i18n';
 import { createAuthActions } from '@/app/global/auth/auth.actions';
 import { authStore } from '@/app/global/auth/auth.store';
@@ -14,6 +14,18 @@ const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;
 
 setApiTokenProvider(() => authStore.getState().accessToken);
+
+setApiRefreshHandler(async () => {
+  try {
+    const session = await authService.refresh();
+
+    authActions.authSuccess(session);
+    return true;
+  } catch {
+    authActions.authAnonymous();
+    return false;
+  }
+});
 
 export type AuthSubmitResult =
   | {

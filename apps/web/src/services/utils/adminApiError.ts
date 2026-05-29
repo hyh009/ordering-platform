@@ -58,8 +58,8 @@ export function mapAdminApiError(error: unknown): AdminCommandFailure {
   if (hasApiErrorCode(error, 'VALIDATION_ERROR')) {
     return {
       message: tDefault(
-        'admin.errors.validation',
-        'Check the highlighted fields and try again.',
+        'admin.errors.invalidInput',
+        'Invalid input. Check your details and try again.',
       ),
       reason: 'invalid',
       status: 'failed',
