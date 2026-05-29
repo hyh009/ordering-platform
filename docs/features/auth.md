@@ -25,22 +25,19 @@ Backend:
 
 Frontend:
 
-- `apps/web/src/app/auth.commands.ts`
-- `apps/web/src/app/stores/auth.store.ts`
-- `apps/web/src/app/viewModel/useAuthVM.ts`
-- `apps/web/src/app/RequireAuth.tsx`
+- `apps/web/src/app/global/auth/auth.commands.ts`
+- `apps/web/src/app/global/auth/auth.store.ts`
+- `apps/web/src/app/global/auth/auth.actions.ts`
+- `apps/web/src/app/global/auth/useAuthVM.ts`
+- `apps/web/src/app/routing/RequireAuth.tsx`
+- `apps/web/src/api/index.ts` (401 interception and token refresh)
 - `apps/web/src/pages/login`
-- `apps/web/src/pages/register`
 - `apps/web/src/services/auth.service.ts`
 - `apps/web/src/models/auth.model.ts`
 
 Shared contracts:
 
 - `packages/shared/src/contracts/auth.ts`
-
-Temporary multi-tenant planning:
-
-- `docs/agent/temp/plan/multi-tenant-auth-20260515-1522.md`
 
 ## Token Model
 
@@ -123,6 +120,10 @@ Browser automatically sends refresh cookie
 ```
 
 `initialize()` deduplicates concurrent refresh calls so React StrictMode cannot send two simultaneous refresh requests during local development.
+
+## Expired Access Token (Silent Re-authentication)
+
+See `docs/features/token-refresh.md`.
 
 ## Logout
 
