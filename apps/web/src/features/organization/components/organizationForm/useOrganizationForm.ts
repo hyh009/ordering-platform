@@ -3,7 +3,7 @@ import type { OrganizationFormValues } from '@/models/organization';
 import type {
   OrganizationFormField,
   OrganizationFormFieldErrors,
-} from '@/features/organization/formFieldErrors';
+} from './organizationFormErrors';
 
 const initialValues: OrganizationFormValues = {
   name: '',

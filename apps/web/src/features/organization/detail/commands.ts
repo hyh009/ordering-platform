@@ -3,7 +3,7 @@ import { tDefault } from '@/app/i18n';
 import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
-} from '@/features/organization/formFieldErrors';
+} from '@/features/organization/components/organizationForm/organizationFormErrors';
 import type {
   Organization,
   UpdateOrganizationRequest,

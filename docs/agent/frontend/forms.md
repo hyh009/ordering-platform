@@ -180,6 +180,44 @@ shadcn primitives live in `src/shared/components/ui`.
 
 Do not use shadcn `Form`, `FormField`, `FormItem`, `FormControl`, or `FormMessage` by default. They do not match this app's page VM and page-local form hook baseline.
 
+## Form Error Helpers
+
+For reusable domain form components, colocate a `{formName}Errors.ts` file in the form folder.
+
+This file owns:
+
+- Field error type definitions
+- Validation logic: schema.safeParse + Zod issue → i18n field error messages
+- A `validate{FormName}` function the page VM calls before running commands
+
+Example:
+
+```txt
+src/features/organization/components/organizationForm/
+  OrganizationForm.tsx
+  useOrganizationForm.ts
+  organizationFormErrors.ts
+
+src/features/organization/membership/components/addMemberForm/
+  AddMemberForm.tsx
+  useAddMemberForm.ts
+  addMemberFormErrors.ts
+```
+
+The page VM calls the validate function and handles the result:
+
+```ts
+const validation = validateAddMemberForm(form.values);
+
+if (!validation.success) {
+  form.setFieldErrors(validation.fieldErrors);
+  form.setSubmitError(validation.submitError);
+  return;
+}
+
+await commands.addMember(organizationId, validation.data);
+```
+
 ## Boundaries
 
 Shared form components should not:

@@ -12,7 +12,7 @@ import {
 import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
-} from '@/features/organization/formFieldErrors';
+} from '@/features/organization/components/organizationForm/organizationFormErrors';
 import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,

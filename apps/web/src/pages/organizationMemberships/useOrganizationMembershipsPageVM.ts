@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import {
-  createOrganizationMembershipSchema,
-  updateOrganizationMembershipSchema,
-} from '@repo/shared';
+import { updateOrganizationMembershipSchema } from '@repo/shared';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
 import { useAddMemberForm } from '@/features/organization/membership/components/addMemberForm/useAddMemberForm';
+import { validateAddMemberForm } from '@/features/organization/membership/components/addMemberForm/addMemberFormErrors';
 import { createOrganizationMembershipListRuntime } from '@/features/organization/membership/runtime';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 import {
-  toCreateOrganizationMembershipRequest,
   toDisableOrganizationMembershipRequest,
   toUpdateOrganizationMembershipRoleRequest,
 } from '@/models/organizationMembership';
@@ -72,31 +69,11 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
   }, []);
 
   const submitAdd = useCallback(async () => {
-    const request = toCreateOrganizationMembershipRequest(addForm.values);
-    const validation = createOrganizationMembershipSchema.safeParse(request);
+    const validation = validateAddMemberForm(addForm.values);
 
     if (!validation.success) {
-      const raw = validation.error.flatten().fieldErrors;
-      addForm.setFieldErrors({
-        email: raw.email?.length
-          ? tDefault('admin.memberships.errors.email', 'Enter a valid email address.')
-          : undefined,
-        username: raw.username?.length
-          ? tDefault('admin.memberships.errors.username', 'Username is required.')
-          : undefined,
-        temporaryPassword: raw.temporaryPassword?.length
-          ? tDefault(
-              'admin.memberships.errors.temporaryPassword',
-              'Password must be at least 8 characters.',
-            )
-          : undefined,
-        role: raw.role?.length
-          ? tDefault('admin.memberships.errors.role', 'Select a role.')
-          : undefined,
-      });
-      addForm.setSubmitError(
-        tDefault('admin.errors.validation', 'Check the highlighted fields and try again.'),
-      );
+      addForm.setFieldErrors(validation.fieldErrors);
+      addForm.setSubmitError(validation.submitError);
       return;
     }
 
