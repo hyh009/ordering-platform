@@ -158,54 +158,9 @@ Navigate to /login
 
 Public login/register routes also read auth state so authenticated users can be redirected away from public auth pages.
 
-## Multi-Tenant Direction
-
-Auth is planned to support one platform user across multiple organizations.
-
-Current agreed direction:
-
-- use `Organization` as the tenant boundary
-- use `Store` as the operational boundary for menus, ordering, carts,
-  promotions, and store settings below `Organization`; one organization can
-  own multiple stores
-- use a dedicated membership model for organization-scoped roles
-- keep platform-wide permissions separate from organization-scoped permissions
-- platform super admin is represented by `isSuperAdmin`; regular registered
-  users default to `false`
-- organization roles are `org_owner`, `org_admin`, and `staff`
-- organization creation belongs to the super admin platform; a super admin
-  creates an organization and assigns an existing user as `org_owner`
-- for MVP, store access is authorized through `OrganizationMembership`;
-  organization owners and admins can manage all stores under the organization
-- `staff` members do not receive store management access by default for MVP;
-  store-specific staff permissions are deferred until `StoreMembership` is
-  introduced
-- user, organization, and store soft delete metadata is managed by the
-  `mongoose-delete` plugin; `status` is for business states such as `active`
-  and `disabled`
-- soft delete `deletedBy` stores the platform user id string that performed the
-  delete
-- regular registration creates only a platform user identity and does not create
-  an organization
-- organization and membership schema/collection naming uses camelCase, such as
-  `organizationMemberships`
-
-## Authorization Flow
-
-```txt
-User
-  -> OrganizationMembership (role: org_owner | org_admin | staff)
-  -> Organization
-  -> Store
-
-Store access is resolved through the parent organization.
-Store permissions are not checked directly in MVP.
-staff members have no store management access until StoreMembership is
-introduced.
-```
-
 ## Notes
 
+- Regular registration creates only a platform user identity; it does not create an organization.
 - Frontend cannot check whether a refresh token exists because it is an HttpOnly cookie.
 - `POST /auth/refresh` is the reliable session restoration check.
 - `GET /auth/me` would require an access token, which is lost after browser reload because access tokens are memory-only.

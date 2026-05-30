@@ -50,6 +50,8 @@ Use these locations:
 - Add new feature routes under `src/routes/v1`.
 - Register new route modules in `src/routes/v1/index.ts`.
 - Keep route handlers thin.
+- Follow the route prefix and middleware conventions in
+  `docs/features/permissions.md` when adding admin or merchant routes.
 - Use `validate` middleware for `body` and `params` validation only. For `query` params, call `schema.parse(req.query)` directly inside the handler — `req.query` is a getter-only property on `IncomingMessage` and cannot be reassigned.
 - Route handlers may call services and send responses.
 - Put meaningful branching, persistence, transformations, and permission checks in services.
