@@ -13,7 +13,7 @@ has been collected.
 
 Backend:
 
-- `apps/api/src/models/storeSettings/model.ts`
+- `apps/api/src/models/store/model.ts`
 - `apps/api/src/models/cart/model.ts`
 - `apps/api/src/models/order/model.ts`
 - `apps/api/src/models/counter/model.ts`
@@ -25,7 +25,11 @@ Schema:
 
 ## Ordering Modes
 
-`StoreSettings.orderModes` controls which order types are enabled and how they
+Cart, Order, and Counter records are store-scoped. Each stores both `storeId`
+and `organizationId`; services validate that both refer to the same ownership
+chain.
+
+`Store.operation.orderModes` controls which order types are enabled and how they
 are checked out:
 
 - `dine_in` supports `pay_later` and may support `pay_first`.

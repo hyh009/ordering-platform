@@ -2,10 +2,6 @@
 
 Persistent Mongo model overview for the ordering platform.
 
-The starter code is an architecture reference, not a data-compatibility
-contract. New ordering-platform collections should follow the schemas below
-instead of preserving old starter demo shapes.
-
 ## Current Domain Model
 
 ```mermaid
@@ -39,6 +35,7 @@ classDiagram
   class Organization {
     string id
     string name
+    string slug
     OrganizationStatus status
     OrganizationReviewStatus reviewStatus
     string? contactEmail
@@ -83,16 +80,17 @@ classDiagram
     Date updatedAt
   }
 
-  class StoreSettings {
+  class Store {
     string id
     string organizationId
-    LocalizedString displayName
-    LocalizedString? description
-    SupportedLocale defaultLocale
-    SupportedLocale[] supportedLocales
-    BusinessHour[] businessHours
-    number serviceFeeRate
-    StoreOrderMode[] orderModes
+    LocalizedString profile.displayName
+    LocalizedString? profile.description
+    SupportedLocale locale.defaultLocale
+    SupportedLocale[] locale.supportedLocales
+    BusinessHour[] operation.businessHours
+    number operation.serviceFeeRate
+    StoreOrderMode[] operation.orderModes
+    StoreStatus status
     boolean deleted
     Date createdAt
     Date updatedAt
@@ -109,6 +107,7 @@ classDiagram
   class Category {
     string id
     string organizationId
+    string storeId
     LocalizedString name
     LocalizedString? description
     string? imageUrl
@@ -125,6 +124,7 @@ classDiagram
   class Tag {
     string id
     string organizationId
+    string storeId
     LocalizedString name
     string? color
     number displayOrder
@@ -160,6 +160,7 @@ classDiagram
   class ProductModifier {
     string id
     string organizationId
+    string storeId
     LocalizedString name
     ProductModifierSelectionType selectionType
     number minSelect
@@ -178,6 +179,7 @@ classDiagram
   class Product {
     string id
     string organizationId
+    string storeId
     string categoryId
     LocalizedString name
     LocalizedString? description
@@ -201,7 +203,7 @@ classDiagram
   class Counter {
     string _id
     CounterScope scope
-    string organizationId
+    string storeId
     string businessDate
     number sequence
     Date createdAt
@@ -211,6 +213,7 @@ classDiagram
   class Cart {
     string id
     string organizationId
+    string storeId
     StoreOrderType orderType
     StoreSettingsCheckoutMode checkoutMode
     CartStatus status
@@ -231,6 +234,7 @@ classDiagram
   class Order {
     string id
     string organizationId
+    string storeId
     string? cartId
     StoreOrderType orderType
     StoreSettingsCheckoutMode checkoutMode
@@ -259,6 +263,7 @@ classDiagram
   class Promotion {
     string id
     string organizationId
+    string storeId
     LocalizedString name
     LocalizedString? description
     PromotionStatus status
@@ -330,15 +335,15 @@ classDiagram
   User "1" --> "*" AuthSession : userId
   User "1" --> "*" OrganizationMembership : userId
   Organization "1" --> "*" OrganizationMembership : organizationId
-  Organization "1" --> "0..1" StoreSettings : organizationId
-  Organization "1" --> "*" Category : organizationId
-  Organization "1" --> "*" Tag : organizationId
-  Organization "1" --> "*" ProductModifier : organizationId
-  Organization "1" --> "*" Product : organizationId
-  Organization "1" --> "*" Counter : organizationId
-  Organization "1" --> "*" Cart : organizationId
-  Organization "1" --> "*" Order : organizationId
-  Organization "1" --> "*" Promotion : organizationId
+  Organization "1" --> "*" Store : organizationId
+  Store "1" --> "*" Category : storeId
+  Store "1" --> "*" Tag : storeId
+  Store "1" --> "*" ProductModifier : storeId
+  Store "1" --> "*" Product : storeId
+  Store "1" --> "*" Counter : storeId
+  Store "1" --> "*" Cart : storeId
+  Store "1" --> "*" Order : storeId
+  Store "1" --> "*" Promotion : storeId
   Category "1" --> "*" Product : categoryId
   Product "*" --> "*" Tag : tagIds
   Product "*" --> "*" Allergen : allergenIds
@@ -359,17 +364,17 @@ classDiagram
   note for AuthSession "collection: auth_sessions\nunique: refreshTokenHash\nindex: userId + revokedAt\nTTL: expiresAt expireAfterSeconds 0"
   note for Organization "collection: organizations\nplugin: mongoose-delete\nindex: status"
   note for OrganizationMembership "collection: organizationMemberships\nunique: organizationId + userId\nindex: userId + status\nindex: organizationId + role + status"
-  note for StoreSettings "collection: storeSettings\nplugin: mongoose-delete\nunique: organizationId"
-  note for Category "collection: categories\nplugin: mongoose-delete\norg-owned menu category"
-  note for Tag "collection: tags\nplugin: mongoose-delete\norg-owned marketing tag"
+  note for Store "collection: stores\nplugin: mongoose-delete\nstore-level operational boundary\nindex: organizationId"
+  note for Category "collection: categories\nplugin: mongoose-delete\nstore-owned menu category"
+  note for Tag "collection: tags\nplugin: mongoose-delete\nstore-owned marketing tag"
   note for DietaryMarker "collection: dietaryMarkers\nglobal product metadata\nunique: key\nlifecycle: isActive"
   note for Allergen "collection: allergens\nglobal product metadata\nunique: key\nlifecycle: isActive"
-  note for ProductModifier "collection: productModifiers\nplugin: mongoose-delete\norg-owned product customization"
-  note for Product "collection: products\nplugin: mongoose-delete\norg-owned menu item"
-  note for Counter "collection: counters\ndaily per-organization sequence cursor"
+  note for ProductModifier "collection: productModifiers\nplugin: mongoose-delete\nstore-owned product customization"
+  note for Product "collection: products\nplugin: mongoose-delete\nstore-owned menu item"
+  note for Counter "collection: counters\ndaily per-store sequence cursor"
   note for Cart "collection: carts\noptimistic concurrency\nembedded participant snapshots"
   note for Order "collection: orders\noptimistic concurrency\ndaily display number generated by service"
-  note for Promotion "collection: promotions\nplugin: mongoose-delete\norg-owned discount definition"
+  note for Promotion "collection: promotions\nplugin: mongoose-delete\nstore-owned discount definition"
 ```
 
 ## Status Values
@@ -380,6 +385,11 @@ User:
 - `disabled`
 
 Organization:
+
+- `active`
+- `disabled`
+
+Store:
 
 - `active`
 - `disabled`
@@ -485,7 +495,7 @@ Product modifier selection type:
 
 ## Soft Delete
 
-`users`, `organizations`, `storeSettings`, `categories`, `tags`,
+`users`, `organizations`, `stores`, `categories`, `tags`,
 `productModifiers`, `products`, and `promotions` use the shared
 `mongoose-delete` plugin helper.
 
@@ -542,6 +552,7 @@ category availability and is available all day. Do not use empty
 - collection: `organizations`
 - index: `status`
 - plugin: `mongoose-delete`
+- `slug` is required, lowercase, max 120 characters; no unique index added yet
 
 `organizationMemberships`
 
@@ -550,27 +561,28 @@ category availability and is available all day. Do not use empty
 - index: `userId + status`
 - index: `organizationId + role + status`
 
-`storeSettings`
+`stores`
 
-- collection uses camelCase intentionally: `storeSettings`
+- collection: `stores`
 - plugin: `mongoose-delete`
-- unique index: `organizationId`
+- index: `organizationId` (for listing stores by organization)
+- `status` is `active` or `disabled`
+- `profile.displayName` requires a value for `locale.defaultLocale`
+- `locale.supportedLocales` must include `locale.defaultLocale`
 - localized strings currently use supported locales `en` and `zh-TW`
-- `displayName` requires a value for `defaultLocale`
-- `supportedLocales` must include `defaultLocale`
-- `serviceFeeRate` is a decimal rate from `0` to `1`
-- `orderModes` stores per-order-type availability and checkout timing
-- default `orderModes` enables `dine_in` with `pay_later` and `takeaway` with
-  `pay_first`
-- `orderModes` must include at least one mode, cannot repeat `type`, and must
-  include at least one enabled mode
+- `operation.serviceFeeRate` is a decimal rate from `0` to `1`
+- `operation.orderModes` stores per-order-type availability and checkout timing
+- default `operation.orderModes` enables `dine_in` with `pay_later` and
+  `takeaway` with `pay_first`
+- `operation.orderModes` must include at least one mode, cannot repeat `type`,
+  and must include at least one enabled mode
 - each order mode `checkoutMode` is `pay_first` or `pay_later`
 
 `categories`
 
 - collection: `categories`
 - plugin: `mongoose-delete`
-- organization-owned menu category
+- store-owned menu category; stores both `storeId` and `organizationId`
 - localized `name` requires at least one value
 - `availabilityRules: []` means the category is available all day
 - custom indexes not added yet
@@ -579,7 +591,7 @@ category availability and is available all day. Do not use empty
 
 - collection: `tags`
 - plugin: `mongoose-delete`
-- organization-owned marketing tag, such as popular or limited-time
+- store-owned marketing tag, such as popular or limited-time; stores both `storeId` and `organizationId`
 - localized `name` requires at least one value
 - custom indexes not added yet
 
@@ -605,7 +617,7 @@ category availability and is available all day. Do not use empty
 
 - collection uses camelCase intentionally: `productModifiers`
 - plugin: `mongoose-delete`
-- organization-owned product customization, such as milk choice or toppings
+- store-owned product customization, such as milk choice or toppings; stores both `storeId` and `organizationId`
 - localized `name` and option `name` require at least one value
 - `selectionType` is `single_choice` or `multiple_choice`
 - `minSelect` must be less than or equal to `maxSelect`
@@ -626,7 +638,7 @@ category availability and is available all day. Do not use empty
 
 - collection: `products`
 - plugin: `mongoose-delete`
-- organization-owned menu item
+- store-owned menu item; stores both `storeId` and `organizationId`
 - `categoryId` is required
 - localized `name` requires at least one value
 - localized `description` is optional
@@ -645,8 +657,8 @@ category availability and is available all day. Do not use empty
 
 - collection: `counters`
 - `scope` is currently `order_daily_sequence`
-- `organizationId` and `businessDate` identify the store-local business day
-- `_id` is built as `order_daily_sequence:<organizationId>:<businessDate>`
+- `storeId` and `businessDate` identify the store-local business day
+- `_id` is built as `order_daily_sequence:<storeId>:<businessDate>`
 - `_id` is the deterministic unique key for each store-local business day
 - `sequence` stores the last issued number and must be greater than or equal to
   `0`
@@ -701,7 +713,7 @@ category availability and is available all day. Do not use empty
 
 - collection: `promotions`
 - plugin: `mongoose-delete`
-- organization-owned discount definition
+- store-owned discount definition; stores both `storeId` and `organizationId`
 - localized `name` requires at least one value
 - `status` is `draft`, `active`, `paused`, or `expired`
 - `discountType` is `percentage` or `fixed_amount`
@@ -735,8 +747,3 @@ category availability and is available all day. Do not use empty
   are deferred to the promotion service/design layer
 - custom indexes not added yet
 
-## Starter Demo
-
-The existing Todo collection is starter demo code. Keep it only until the
-ordering schemas are ready, then replace it with organization-owned menu, cart,
-and order collections.

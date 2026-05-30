@@ -165,6 +165,9 @@ Auth is planned to support one platform user across multiple organizations.
 Current agreed direction:
 
 - use `Organization` as the tenant boundary
+- use `Store` as the operational boundary for menus, ordering, carts,
+  promotions, and store settings below `Organization`; one organization can
+  own multiple stores
 - use a dedicated membership model for organization-scoped roles
 - keep platform-wide permissions separate from organization-scoped permissions
 - platform super admin is represented by `isSuperAdmin`; regular registered
@@ -172,7 +175,12 @@ Current agreed direction:
 - organization roles are `org_owner`, `org_admin`, and `staff`
 - organization creation belongs to the super admin platform; a super admin
   creates an organization and assigns an existing user as `org_owner`
-- user and organization soft delete metadata is managed by the
+- for MVP, store access is authorized through `OrganizationMembership`;
+  organization owners and admins can manage all stores under the organization
+- `staff` members do not receive store management access by default for MVP;
+  store-specific staff permissions are deferred until `StoreMembership` is
+  introduced
+- user, organization, and store soft delete metadata is managed by the
   `mongoose-delete` plugin; `status` is for business states such as `active`
   and `disabled`
 - soft delete `deletedBy` stores the platform user id string that performed the
@@ -181,10 +189,20 @@ Current agreed direction:
   an organization
 - organization and membership schema/collection naming uses camelCase, such as
   `organizationMemberships`
-- do not replace Todo with menu/order schemas until tenant ownership is settled
 
-Detailed schema drafts, token tradeoffs, and open decisions live in the
-temporary plan linked above until they are agreed.
+## Authorization Flow
+
+```txt
+User
+  -> OrganizationMembership (role: org_owner | org_admin | staff)
+  -> Organization
+  -> Store
+
+Store access is resolved through the parent organization.
+Store permissions are not checked directly in MVP.
+staff members have no store management access until StoreMembership is
+introduced.
+```
 
 ## Notes
 
@@ -192,5 +210,3 @@ temporary plan linked above until they are agreed.
 - `POST /auth/refresh` is the reliable session restoration check.
 - `GET /auth/me` would require an access token, which is lost after browser reload because access tokens are memory-only.
 - Auth UI code should use `useAuthVM`; React views should not call `authCommands` or `authStore` directly.
-- Todo replacement should wait until the tenant model is agreed, because menu
-  and order data should belong to an organization.

@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Promotions define organization-owned discount rules that can be attached to
-future cart or order pricing flows.
+Promotions define store-owned discount rules that can be attached to future
+cart or order pricing flows.
 
 ## Code Map
 
@@ -136,8 +136,9 @@ The schema validates that `endsAt` is not earlier than `startsAt`.
 
 ## Data
 
-Promotions are stored in the `promotions` collection and belong to an
-organization through `organizationId`.
+Promotions are stored in the `promotions` collection and belong to a store
+through `storeId`. Each record also stores `organizationId` for query
+ergonomics; services validate that both refer to the same ownership chain.
 
 Promotion records use the shared soft-delete plugin. Business lifecycle is
 represented by `status`; deletion lifecycle is represented by plugin-managed
