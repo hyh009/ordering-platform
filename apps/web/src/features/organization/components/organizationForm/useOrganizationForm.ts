@@ -9,7 +9,7 @@ const initialValues: OrganizationFormValues = {
   name: '',
   ownerUserId: '',
   status: 'active',
-  domain: '',
+  slug: '',
   contactEmail: '',
   contactPhone: '',
   address: {
@@ -28,7 +28,7 @@ function areOrganizationFormValuesEqual(
     left.name === right.name &&
     left.ownerUserId === right.ownerUserId &&
     left.status === right.status &&
-    left.domain === right.domain &&
+    left.slug === right.slug &&
     left.contactEmail === right.contactEmail &&
     left.contactPhone === right.contactPhone &&
     left.address.city === right.address.city &&

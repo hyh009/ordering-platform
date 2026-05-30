@@ -127,8 +127,12 @@ const router = Router();
  *       required:
  *         - id
  *         - name
+ *         - slug
  *         - status
  *         - reviewStatus
+ *         - contactEmail
+ *         - contactPhone
+ *         - address
  *         - createdAt
  *         - updatedAt
  *       properties:
@@ -138,9 +142,9 @@ const router = Router();
  *         name:
  *           type: string
  *           example: Main Street Cafe
- *         domain:
+ *         slug:
  *           type: string
- *           example: mainstreet.com
+ *           example: main-street
  *         status:
  *           $ref: '#/components/schemas/OrganizationStatus'
  *         reviewStatus:
@@ -166,6 +170,7 @@ const router = Router();
  *       required:
  *         - id
  *         - name
+ *         - slug
  *         - status
  *         - reviewStatus
  *         - createdAt
@@ -177,9 +182,9 @@ const router = Router();
  *         name:
  *           type: string
  *           example: Main Street Cafe
- *         domain:
+ *         slug:
  *           type: string
- *           example: mainstreet.com
+ *           example: main-street
  *         status:
  *           $ref: '#/components/schemas/OrganizationStatus'
  *         reviewStatus:
@@ -326,7 +331,7 @@ const router = Router();
  *         required: false
  *         schema:
  *           type: string
- *         description: Search by organization name or domain
+ *         description: Search by organization name or slug
  *       - in: query
  *         name: status
  *         required: false
@@ -399,11 +404,18 @@ router.get<
  *             type: object
  *             required:
  *               - name
+ *               - slug
  *               - ownerUserId
+ *               - contactEmail
+ *               - contactPhone
+ *               - address
  *             properties:
  *               name:
  *                 type: string
  *                 example: Main Street Cafe
+ *               slug:
+ *                 type: string
+ *                 example: main-street
  *               ownerUserId:
  *                 type: string
  *                 example: user-123
@@ -540,6 +552,9 @@ router.get<
  *               name:
  *                 type: string
  *                 example: Main Street Cafe
+ *               slug:
+ *                 type: string
+ *                 example: main-street
  *               status:
  *                 $ref: '#/components/schemas/OrganizationStatus'
  *               reviewStatus:
@@ -547,16 +562,11 @@ router.get<
  *               contactEmail:
  *                 type: string
  *                 format: email
- *                 nullable: true
  *                 example: ops@example.com
  *               contactPhone:
- *                 allOf:
- *                   - $ref: '#/components/schemas/OrganizationPhone'
- *                 nullable: true
+ *                 $ref: '#/components/schemas/OrganizationPhone'
  *               address:
- *                 allOf:
- *                   - $ref: '#/components/schemas/OrganizationAddress'
- *                 nullable: true
+ *                 $ref: '#/components/schemas/OrganizationAddress'
  *     responses:
  *       200:
  *         description: Organization updated

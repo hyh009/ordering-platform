@@ -10,7 +10,7 @@ export const organizationModel = {
     return {
       id: dto.id,
       name: dto.name,
-      domain: dto.domain,
+      slug: dto.slug,
       reviewStatus: dto.reviewStatus,
       status: dto.status,
       createdAt: dto.createdAt,
@@ -25,7 +25,7 @@ export const organizationModel = {
       contactPhone: dto.contactPhone,
       id: dto.id,
       name: dto.name,
-      domain: dto.domain,
+      slug: dto.slug,
       reviewStatus: dto.reviewStatus,
       status: dto.status,
       createdAt: dto.createdAt,

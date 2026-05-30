@@ -4,10 +4,10 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
-  domain?: string | undefined;
-  contactEmail?: string | undefined;
-  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
-  address?: OrganizationEntity['address'] | undefined;
+  slug: string;
+  contactEmail: string;
+  contactPhone: OrganizationEntity['contactPhone'];
+  address: OrganizationEntity['address'];
 };
 
 export type ListOrganizationsInput = {
@@ -26,12 +26,12 @@ export type ListOrganizationsResult = {
 
 export type UpdateOrganizationInput = {
   name?: string | undefined;
-  domain?: string | undefined;
+  slug?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
-  contactEmail?: string | null | undefined;
-  contactPhone?: OrganizationEntity['contactPhone'] | null | undefined;
-  address?: OrganizationEntity['address'] | null | undefined;
+  contactEmail?: string | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
+  address?: OrganizationEntity['address'] | undefined;
 };
 
 export type OrganizationRepository = {

@@ -36,7 +36,7 @@ export type OrganizationFormValues = {
   name: string;
   ownerUserId: string;
   status: OrganizationStatus;
-  domain: string;
+  slug: string;
   contactEmail: string;
   contactPhone: string;
   address: {

@@ -42,7 +42,7 @@ export type OrganizationAddressDto = {
   schemaVersion: 1;
   formatted: string;
   tw: {
-    postalCode?: string | undefined;
+    postalCode: string;
     city: string;
     district: string;
     streetAddress: string;
@@ -60,7 +60,7 @@ export type OrganizationPhoneDto = {
 export type OrganizationListItemDto = {
   id: string;
   name: string;
-  domain?: string;
+  slug: string;
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
   createdAt: string;
@@ -68,9 +68,9 @@ export type OrganizationListItemDto = {
 };
 
 export type OrganizationDto = OrganizationListItemDto & {
-  contactEmail?: string;
-  contactPhone?: OrganizationPhoneDto;
-  address?: OrganizationAddressDto;
+  contactEmail: string;
+  contactPhone: OrganizationPhoneDto;
+  address: OrganizationAddressDto;
 };
 
 export type OrganizationMembershipDto = {
@@ -96,6 +96,13 @@ function paginationNumberSchema(schema: z.ZodNumber) {
 }
 
 const organizationOptionalTextSchema = z.string().trim().min(1).max(120);
+const organizationSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(120)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid organization slug');
 const taiwanPostalCodeSchema = z
   .string()
   .trim()
@@ -123,7 +130,7 @@ export const organizationTaiwanAddressSchema = z
     schemaVersion: z.literal(1),
     formatted: z.string().trim().min(1).max(360),
     tw: z.object({
-      postalCode: taiwanPostalCodeSchema.optional(),
+      postalCode: taiwanPostalCodeSchema,
       city: organizationOptionalTextSchema,
       district: organizationOptionalTextSchema,
       streetAddress: z.string().trim().min(1).max(240),
@@ -179,11 +186,11 @@ export const organizationPhoneSchema = organizationTaiwanPhoneSchema;
 
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  domain: z.string().trim().min(1).max(120).optional(),
+  slug: organizationSlugSchema,
   ownerUserId: z.string().trim().min(1),
-  contactEmail: z.email().trim().toLowerCase().optional(),
-  contactPhone: organizationPhoneSchema.optional(),
-  address: organizationAddressSchema.optional(),
+  contactEmail: z.email().trim().toLowerCase(),
+  contactPhone: organizationPhoneSchema,
+  address: organizationAddressSchema,
 });
 
 export const listOrganizationsQuerySchema = z
@@ -213,12 +220,12 @@ export const listOrganizationsQuerySchema = z
 export const updateOrganizationSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
-    domain: z.string().trim().min(1).max(120).optional(),
+    slug: organizationSlugSchema.optional(),
     status: z.enum(organizationStatuses).optional(),
     reviewStatus: z.enum(organizationReviewStatuses).optional(),
-    contactEmail: z.email().trim().toLowerCase().nullable().optional(),
-    contactPhone: organizationPhoneSchema.nullable().optional(),
-    address: organizationAddressSchema.nullable().optional(),
+    contactEmail: z.email().trim().toLowerCase().optional(),
+    contactPhone: organizationPhoneSchema.optional(),
+    address: organizationAddressSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',

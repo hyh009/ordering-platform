@@ -30,6 +30,7 @@ const organizationAddressSchema = new Schema(
     tw: {
       postalCode: {
         type: String,
+        required: true,
         trim: true,
         match: /^\d{3}(\d{2,3})?$/,
       },
@@ -102,8 +103,9 @@ const organizationSchema = new Schema<OrganizationEntity>(
       required: true,
       trim: true,
     },
-    domain: {
+    slug: {
       type: String,
+      required: true,
       trim: true,
       lowercase: true,
       maxlength: 120,
@@ -122,12 +124,19 @@ const organizationSchema = new Schema<OrganizationEntity>(
     },
     contactEmail: {
       type: String,
+      required: true,
       trim: true,
       lowercase: true,
       maxlength: 320,
     },
-    contactPhone: organizationPhoneSchema,
-    address: organizationAddressSchema,
+    contactPhone: {
+      type: organizationPhoneSchema,
+      required: true,
+    },
+    address: {
+      type: organizationAddressSchema,
+      required: true,
+    },
   },
   {
     collection: 'organizations',

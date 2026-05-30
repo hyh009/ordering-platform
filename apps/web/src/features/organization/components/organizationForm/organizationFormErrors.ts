@@ -24,9 +24,9 @@ function organizationValidationErrors() {
       'admin.organizations.validation.contactPhoneInvalid',
       'Enter a valid Taiwan phone number.',
     ),
-    domain: tDefault(
-      'admin.organizations.validation.domainInvalid',
-      'Enter a valid domain.',
+    slug: tDefault(
+      'admin.organizations.validation.slugInvalid',
+      'Enter a valid slug.',
     ),
     name: tDefault(
       'admin.organizations.validation.nameRequired',
@@ -85,7 +85,7 @@ function getOrganizationFieldErrorKey(
 
   if (
     field === 'contactEmail' ||
-    field === 'domain' ||
+    field === 'slug' ||
     field === 'name' ||
     field === 'ownerUserId' ||
     field === 'status'

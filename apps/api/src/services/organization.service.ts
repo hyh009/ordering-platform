@@ -35,11 +35,11 @@ import type { OrganizationEntity } from '@src/models/organization/model';
 
 export type CreateOrganizationInput = {
   name: string;
-  domain?: string | undefined;
+  slug: string;
   ownerUserId: string;
-  contactEmail?: string | undefined;
-  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
-  address?: OrganizationEntity['address'] | undefined;
+  contactEmail: string;
+  contactPhone: OrganizationEntity['contactPhone'];
+  address: OrganizationEntity['address'];
 };
 
 export type CreateOrganizationResult = {
@@ -49,12 +49,12 @@ export type CreateOrganizationResult = {
 
 export type UpdateOrganizationInput = {
   name?: string | undefined;
-  domain?: string | undefined;
+  slug?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
   reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
-  contactEmail?: string | null | undefined;
-  contactPhone?: OrganizationEntity['contactPhone'] | null | undefined;
-  address?: OrganizationEntity['address'] | null | undefined;
+  contactEmail?: string | undefined;
+  contactPhone?: OrganizationEntity['contactPhone'] | undefined;
+  address?: OrganizationEntity['address'] | undefined;
 };
 
 export type ListOrganizationsResult = ListOrganizationsSuccessResponse['data'];
@@ -122,10 +122,10 @@ export class OrganizationService {
 
     const organization = await organizationRepository.create({
       name: input.name,
-      domain: input.domain,
-      ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
-      ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
-      ...(input.address ? { address: input.address } : {}),
+      slug: input.slug,
+      contactEmail: input.contactEmail,
+      contactPhone: input.contactPhone,
+      address: input.address,
     });
 
     const ownerMembership = await this.createOwnerMembership(

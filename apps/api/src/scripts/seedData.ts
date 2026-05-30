@@ -7,6 +7,84 @@ import type { CreateAllergenInput } from '@src/repositories/allergen/repository'
 import type { CreateDietaryMarkerInput } from '@src/repositories/dietaryMarker/repository';
 import type { CreateOrganizationInput } from '@src/repositories/organization/repository';
 
+const taiwanSeedAddresses = [
+  {
+    postalCode: '100',
+    city: '台北市',
+    district: '中正區',
+    streetAddress: '忠孝西路一段1號',
+  },
+  {
+    postalCode: '104',
+    city: '台北市',
+    district: '中山區',
+    streetAddress: '南京東路二段88號',
+  },
+  {
+    postalCode: '403',
+    city: '台中市',
+    district: '西區',
+    streetAddress: '公益路161號',
+  },
+  {
+    postalCode: '700',
+    city: '台南市',
+    district: '中西區',
+    streetAddress: '民生路一段20號',
+  },
+  {
+    postalCode: '802',
+    city: '高雄市',
+    district: '苓雅區',
+    streetAddress: '四維三路2號',
+  },
+] as const;
+
+function toSeedSlug(value: string, index: number) {
+  const label = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+
+  return label || `organization-${index + 1}`;
+}
+
+function buildSeedPhone(
+  index: number,
+): CreateOrganizationInput['contactPhone'] {
+  const lineNumber = String(12_345_678 + index)
+    .slice(-8)
+    .padStart(8, '0');
+  const nationalNumber = `09${lineNumber}`;
+
+  return {
+    countryCode: 'TW',
+    e164: `+8869${lineNumber}`,
+    nationalNumber,
+    type: 'mobile',
+  };
+}
+
+function buildSeedAddress(index: number): CreateOrganizationInput['address'] {
+  const address =
+    taiwanSeedAddresses[index % taiwanSeedAddresses.length] ??
+    taiwanSeedAddresses[0];
+  const streetAddress = `${address.streetAddress}${Math.floor(index / taiwanSeedAddresses.length) + 1}樓`;
+
+  return {
+    countryCode: 'TW',
+    schemaVersion: 1,
+    formatted: `${address.postalCode}${address.city}${address.district}${streetAddress}`,
+    tw: {
+      postalCode: address.postalCode,
+      city: address.city,
+      district: address.district,
+      streetAddress,
+    },
+  };
+}
+
 export async function seedAllergens() {
   const existingAllergens = await allergenRepository.list({
     isActive: undefined,
@@ -86,27 +164,14 @@ export async function seedOrganizations(count = 10) {
 
   for (let i = 0; i < count; i++) {
     const name = faker.company.name();
+    const slug = toSeedSlug(name, i);
 
     const input: CreateOrganizationInput = {
       name,
-      contactEmail: faker.internet.email(),
-      contactPhone: {
-        countryCode: 'TW',
-        e164: '+886912345678',
-        nationalNumber: '0912345678',
-        type: 'mobile',
-      },
-      address: {
-        countryCode: 'TW',
-        schemaVersion: 1,
-        formatted: '100台北市中正區忠孝西路一段1號',
-        tw: {
-          city: '台北市',
-          district: '中正區',
-          postalCode: '100',
-          streetAddress: '忠孝西路一段1號',
-        },
-      },
+      slug,
+      contactEmail: `owner+${i + 1}@${slug}.example.com`,
+      contactPhone: buildSeedPhone(i),
+      address: buildSeedAddress(i),
     };
 
     const existingOrg = await organizationRepository.findByName(name);

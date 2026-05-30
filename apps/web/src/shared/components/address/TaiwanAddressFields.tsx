@@ -25,6 +25,7 @@ export type TaiwanAddressFieldErrors = Partial<
 
 type TaiwanAddressFieldsProps = {
   errors?: TaiwanAddressFieldErrors;
+  required?: boolean;
   value: TaiwanAddressValue;
   onChange: (value: TaiwanAddressValue) => void;
 };
@@ -62,6 +63,7 @@ function getAddressValueLabel(value: TaiwanAddressValue) {
 
 export function TaiwanAddressFields({
   errors = {},
+  required = false,
   value,
   onChange,
 }: TaiwanAddressFieldsProps) {
@@ -184,6 +186,7 @@ export function TaiwanAddressFields({
       <Field
         error={errors.postalCode}
         label={tDefault('common.address.postalCode', 'Postal code')}
+        required={required}
         showErrorMessage={false}
       >
         <SearchableSelect
@@ -219,6 +222,7 @@ export function TaiwanAddressFields({
         <Field
           error={errors.city}
           label={tDefault('common.address.city', 'City')}
+          required={required}
           showErrorMessage={false}
         >
           <OptionsSelect
@@ -236,6 +240,7 @@ export function TaiwanAddressFields({
         <Field
           error={errors.district}
           label={tDefault('common.address.district', 'District')}
+          required={required}
           showErrorMessage={false}
         >
           <OptionsSelect
@@ -260,6 +265,7 @@ export function TaiwanAddressFields({
       <Field
         error={errors.streetAddress}
         label={tDefault('common.address.streetAddress', 'Street address')}
+        required={required}
         showErrorMessage={false}
       >
         <Input

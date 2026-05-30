@@ -1,11 +1,16 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { organizationStatuses } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { TaiwanAddressFields } from '@/shared/components/address/TaiwanAddressFields';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
+import { SearchableSelect } from '@/shared/components/form/SearchableSelect';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { userService } from '@/services/userService';
+import type { UserListItem } from '@/models/user.types';
 import type { OrganizationFormVM } from './useOrganizationForm';
 
 type OrganizationFormProps = {
@@ -29,6 +34,65 @@ export function OrganizationForm({
 }: OrganizationFormProps) {
   const { tDefault } = useAppTranslation();
   const shouldShowSubmitError = form.submitError && !form.hasFieldErrors();
+
+  const [userSearch, setUserSearch] = useState('');
+  const debouncedUserSearch = useDebouncedValue(userSearch, 300);
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+
+  useEffect(() => {
+    if (!showOwnerUserId) return;
+
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (isMounted) {
+        setIsSearchingUsers(true);
+      }
+    });
+
+    userService
+      .listUsers({ limit: 10, offset: 0, keyword: debouncedUserSearch })
+      .then((res) => {
+        if (isMounted) {
+          setUsers(res.users);
+          setIsSearchingUsers(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsSearchingUsers(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedUserSearch, showOwnerUserId]);
+
+  const userOptions = useMemo(() => {
+    return users.map((user) => ({
+      label: `${user.email} (${user.username})`,
+      searchLabel: user.email,
+      value: user.id,
+    }));
+  }, [users]);
+
+  const selectedUserOption = useMemo(() => {
+    if (!form.values.ownerUserId) return null;
+    const user = users.find((u) => u.id === form.values.ownerUserId);
+    if (user) {
+      return {
+        label: `${user.email} (${user.username})`,
+        searchLabel: user.email,
+        value: user.id,
+      };
+    }
+    return {
+      label: form.values.ownerUserId,
+      searchLabel: form.values.ownerUserId,
+      value: form.values.ownerUserId,
+    };
+  }, [users, form.values.ownerUserId]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,23 +130,37 @@ export function OrganizationForm({
           label={tDefault('admin.organizations.ownerUserId', 'Owner user ID')}
           required
         >
-          <Input
+          <SearchableSelect
+            emptyMessage={tDefault(
+              'admin.organizations.noUsersFound',
+              'No users found',
+            )}
+            isLoading={isSearchingUsers}
+            options={userOptions}
+            placeholder={tDefault(
+              'admin.organizations.searchUser',
+              'Search user by email or username...',
+            )}
+            searchValue={userSearch}
+            selectedOption={selectedUserOption}
             value={form.values.ownerUserId}
-            onChange={(event) => {
-              form.setField('ownerUserId', event.target.value);
+            onSearchChange={setUserSearch}
+            onValueChange={(value) => {
+              form.setField('ownerUserId', value);
             }}
           />
         </Field>
       ) : null}
 
       <Field
-        error={form.fieldErrors.domain}
-        label={tDefault('admin.organizations.domain', 'Domain')}
+        error={form.fieldErrors.slug}
+        label={tDefault('admin.organizations.slug', 'Slug')}
+        required
       >
         <Input
-          value={form.values.domain}
+          value={form.values.slug}
           onChange={(event) => {
-            form.setField('domain', event.target.value);
+            form.setField('slug', event.target.value);
           }}
         />
       </Field>
@@ -94,6 +172,7 @@ export function OrganizationForm({
       <Field
         error={form.fieldErrors.contactEmail}
         label={tDefault('admin.organizations.contactEmail', 'Email')}
+        required
       >
         <Input
           type="email"
@@ -107,6 +186,7 @@ export function OrganizationForm({
       <Field
         error={form.fieldErrors.contactPhone}
         label={tDefault('admin.organizations.contactPhone', 'Phone')}
+        required
       >
         <Input
           value={form.values.contactPhone}
@@ -127,6 +207,7 @@ export function OrganizationForm({
           postalCode: form.fieldErrors['address.postalCode'],
           streetAddress: form.fieldErrors['address.streetAddress'],
         }}
+        required
         value={form.values.address}
         onChange={form.setAddress}
       />

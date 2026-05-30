@@ -5,6 +5,7 @@ import authRouter from './auth';
 import dietaryMarkersRouter from './dietaryMarkers';
 import healthRouter from './health';
 import organizationsRouter from './organizations';
+import usersRouter from './users';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/allergens', allergensRouter);
 router.use('/dietary-markers', dietaryMarkersRouter);
 router.use('/health', healthRouter);
 router.use('/organizations', organizationsRouter);
+router.use('/users', usersRouter);
 
 export default router;

@@ -11,7 +11,7 @@ export function valuesFromOrganization(
     name: organization.name,
     ownerUserId: '',
     status: organization.status,
-    domain: organization.domain || '',
+    slug: organization.slug || '',
     contactEmail:
       'contactEmail' in organization ? organization.contactEmail || '' : '',
     contactPhone:

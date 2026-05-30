@@ -19,18 +19,18 @@ type TestUser = {
 type TestOrganization = {
   id: string;
   name: string;
-  domain?: string;
+  slug: string;
   status: 'active' | 'disabled';
   reviewStatus: 'pending' | 'approved' | 'rejected';
-  contactEmail?: string;
-  contactPhone?: {
+  contactEmail: string;
+  contactPhone: {
     countryCode: 'TW';
     e164: string;
     nationalNumber: string;
     type: 'mobile' | 'landline' | 'toll_free';
     extension?: string;
   };
-  address?: {
+  address: {
     countryCode: 'TW';
     schemaVersion: 1;
     formatted: string;
@@ -61,6 +61,42 @@ const repositoryMocks = vi.hoisted(() => {
   let memberships: TestOrganizationMembership[] = [];
   let organizationIdCounter = 1;
   let membershipIdCounter = 1;
+
+  function toTestSlug(value: string) {
+    return (
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'organization'
+    );
+  }
+
+  function createTestTaiwanPhone(
+    nationalNumber = '0912345678',
+  ): TestOrganization['contactPhone'] {
+    return {
+      countryCode: 'TW',
+      e164: `+886${nationalNumber.slice(1)}`,
+      nationalNumber,
+      type: nationalNumber.startsWith('09') ? 'mobile' : 'landline',
+    };
+  }
+
+  function createTestTaiwanAddress(
+    streetAddress = '忠孝西路一段1號',
+  ): TestOrganization['address'] {
+    return {
+      countryCode: 'TW',
+      schemaVersion: 1,
+      formatted: `100台北市中正區${streetAddress}`,
+      tw: {
+        postalCode: '100',
+        city: '台北市',
+        district: '中正區',
+        streetAddress,
+      },
+    };
+  }
 
   function cloneUser(user: TestUser): TestUser {
     return {
@@ -112,7 +148,7 @@ const repositoryMocks = vi.hoisted(() => {
           filtered = filtered.filter(
             (o) =>
               o.name.toLowerCase().includes(k) ||
-              o.domain?.toLowerCase().includes(k),
+              o.slug?.toLowerCase().includes(k),
           );
         }
 
@@ -147,21 +183,21 @@ const repositoryMocks = vi.hoisted(() => {
       },
       async create(input: {
         name: string;
-        domain?: string;
-        contactEmail?: string;
-        contactPhone?: TestOrganization['contactPhone'];
-        address?: TestOrganization['address'];
+        slug: string;
+        contactEmail: string;
+        contactPhone: TestOrganization['contactPhone'];
+        address: TestOrganization['address'];
       }) {
         const now = new Date();
         const organization: TestOrganization = {
           id: `org-${organizationIdCounter}`,
           name: input.name.trim(),
-          domain: input.domain?.trim().toLowerCase(),
+          slug: input.slug.trim().toLowerCase(),
           status: 'active',
           reviewStatus: 'pending',
-          ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
-          ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
-          ...(input.address ? { address: input.address } : {}),
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+          address: input.address,
           createdAt: now,
           updatedAt: now,
         };
@@ -177,7 +213,7 @@ const repositoryMocks = vi.hoisted(() => {
           Pick<
             TestOrganization,
             | 'name'
-            | 'domain'
+            | 'slug'
             | 'status'
             | 'reviewStatus'
             | 'contactEmail'
@@ -204,8 +240,7 @@ const repositoryMocks = vi.hoisted(() => {
         };
 
         if (input.name !== undefined) updatedOrganization.name = input.name;
-        if (input.domain !== undefined)
-          updatedOrganization.domain = input.domain;
+        if (input.slug !== undefined) updatedOrganization.slug = input.slug;
         if (input.status !== undefined)
           updatedOrganization.status = input.status;
         if (input.reviewStatus !== undefined) {
@@ -288,7 +323,7 @@ const repositoryMocks = vi.hoisted(() => {
     addOrganization(input: {
       id: string;
       name: string;
-      domain?: string;
+      slug?: string;
       status?: 'active' | 'disabled';
       reviewStatus?: 'pending' | 'approved' | 'rejected';
       contactEmail?: string;
@@ -302,12 +337,12 @@ const repositoryMocks = vi.hoisted(() => {
         {
           id: input.id,
           name: input.name,
-          domain: input.domain,
+          slug: input.slug ?? toTestSlug(input.name),
           status: input.status ?? 'active',
           reviewStatus: input.reviewStatus ?? 'pending',
-          ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
-          ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
-          ...(input.address ? { address: input.address } : {}),
+          contactEmail: input.contactEmail ?? 'ops@example.com',
+          contactPhone: input.contactPhone ?? createTestTaiwanPhone(),
+          address: input.address ?? createTestTaiwanAddress(),
           createdAt: now,
           updatedAt: now,
         },
@@ -410,6 +445,7 @@ describe('organizations API', () => {
           {
             id: 'org-1',
             name: 'Main Street Cafe',
+            slug: 'main-street-cafe',
             status: 'active',
             reviewStatus: 'pending',
             createdAt: expect.any(String),
@@ -418,6 +454,7 @@ describe('organizations API', () => {
           {
             id: 'org-2',
             name: 'Night Market Tea',
+            slug: 'night-market-tea',
             status: 'disabled',
             reviewStatus: 'pending',
             createdAt: expect.any(String),
@@ -467,6 +504,7 @@ describe('organizations API', () => {
           {
             id: 'org-2',
             name: 'Night Market Tea',
+            slug: 'night-market-tea',
             status: 'active',
             reviewStatus: 'pending',
             createdAt: expect.any(String),
@@ -482,7 +520,7 @@ describe('organizations API', () => {
     });
   });
 
-  it('allows a super admin to search organizations by name or domain', async () => {
+  it('allows a super admin to search organizations by name or slug', async () => {
     const app = createApp();
     repositoryMocks.addUser({
       id: 'user-super-admin',
@@ -491,17 +529,17 @@ describe('organizations API', () => {
     repositoryMocks.addOrganization({
       id: 'org-1',
       name: 'Main Street Cafe',
-      domain: 'mainstreet.com',
+      slug: 'main-street',
     });
     repositoryMocks.addOrganization({
       id: 'org-2',
       name: 'Night Market Tea',
-      domain: 'nightmarket.com',
+      slug: 'night-market',
     });
     repositoryMocks.addOrganization({
       id: 'org-3',
       name: 'Station Bento',
-      domain: 'station.com',
+      slug: 'station',
     });
 
     // Search by name
@@ -516,9 +554,9 @@ describe('organizations API', () => {
     expect(response1.body.data.organizations).toHaveLength(1);
     expect(response1.body.data.organizations[0].name).toBe('Main Street Cafe');
 
-    // Search by domain
+    // Search by slug
     const response2 = await request(app)
-      .get('/api/v1/organizations?keyword=nightmarket')
+      .get('/api/v1/organizations?keyword=night-market')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -626,6 +664,7 @@ describe('organizations API', () => {
         organization: {
           id: 'org-1',
           name: 'Main Street Cafe',
+          slug: 'main-street-cafe',
           status: 'active',
           reviewStatus: 'pending',
           contactEmail: 'ops@example.com',
@@ -671,6 +710,7 @@ describe('organizations API', () => {
         organization: {
           id: 'org-1',
           name: 'Updated Cafe',
+          slug: 'main-street-cafe',
           status: 'disabled',
           reviewStatus: 'approved',
           contactEmail: 'ops@example.com',
@@ -683,7 +723,7 @@ describe('organizations API', () => {
     });
   });
 
-  it('allows a super admin to clear nullable organization contact fields', async () => {
+  it('rejects clearing required organization contact fields', async () => {
     const app = createApp();
     repositoryMocks.addUser({
       id: 'user-super-admin',
@@ -709,19 +749,11 @@ describe('organizations API', () => {
         address: null,
       });
 
-    expect(response.status, JSON.stringify(response.body)).toBe(200);
-    expect(response.body).toEqual({
-      status: 'success',
-      data: {
-        organization: {
-          id: 'org-1',
-          name: 'Main Street Cafe',
-          status: 'active',
-          reviewStatus: 'pending',
-          createdAt: expect.any(String),
-          updatedAt: expect.any(String),
-        },
-      },
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
     });
   });
 
@@ -741,7 +773,7 @@ describe('organizations API', () => {
       )
       .send({
         name: 'Main Street Cafe',
-        domain: 'mainstreet.com',
+        slug: 'main-street',
         ownerUserId: 'user-owner',
         contactEmail: 'ops@example.com',
         contactPhone: createTaiwanPhone(),
@@ -755,7 +787,7 @@ describe('organizations API', () => {
         organization: {
           id: 'org-1',
           name: 'Main Street Cafe',
-          domain: 'mainstreet.com',
+          slug: 'main-street',
           status: 'active',
           reviewStatus: 'pending',
           contactEmail: 'ops@example.com',
@@ -889,7 +921,11 @@ describe('organizations API', () => {
       )
       .send({
         name: 'Main Street Cafe',
+        slug: 'main-street',
         ownerUserId: 'user-missing',
+        contactEmail: 'ops@example.com',
+        contactPhone: createTaiwanPhone(),
+        address: createTaiwanAddress(),
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(404);
@@ -920,7 +956,11 @@ describe('organizations API', () => {
       )
       .send({
         name: 'Main Street Cafe',
+        slug: 'main-street',
         ownerUserId: 'user-owner',
+        contactEmail: 'ops@example.com',
+        contactPhone: createTaiwanPhone(),
+        address: createTaiwanAddress(),
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(403);

@@ -8,15 +8,11 @@ import type {
 
 function toAddressRequest(
   values: OrganizationFormValues,
-): OrganizationAddressDto | undefined {
+): OrganizationAddressDto {
   const postalCode = values.address.postalCode.trim();
   const city = values.address.city.trim();
   const district = values.address.district.trim();
   const streetAddress = values.address.streetAddress.trim();
-
-  if (!postalCode && !city && !district && !streetAddress) {
-    return undefined;
-  }
 
   return {
     countryCode: 'TW',
@@ -25,7 +21,7 @@ function toAddressRequest(
       .filter(Boolean)
       .join(''),
     tw: {
-      ...(postalCode ? { postalCode } : {}),
+      postalCode,
       city,
       district,
       streetAddress,
@@ -33,16 +29,8 @@ function toAddressRequest(
   };
 }
 
-function toAddressUpdateRequest(values: OrganizationFormValues) {
-  return toAddressRequest(values) ?? null;
-}
-
-function toTaiwanPhoneRequest(value: string): OrganizationPhoneDto | undefined {
+function toTaiwanPhoneRequest(value: string): OrganizationPhoneDto {
   const nationalNumber = value.replace(/[^\d]/g, '');
-
-  if (!nationalNumber) {
-    return undefined;
-  }
 
   let type: OrganizationPhoneDto['type'] = 'landline';
   if (nationalNumber.startsWith('09')) {
@@ -65,8 +53,8 @@ export function toCreateOrganizationRequest(
   return {
     name: values.name.trim(),
     ownerUserId: values.ownerUserId.trim(),
-    domain: values.domain.trim() || undefined,
-    contactEmail: values.contactEmail.trim() || undefined,
+    slug: values.slug.trim(),
+    contactEmail: values.contactEmail.trim(),
     contactPhone: toTaiwanPhoneRequest(values.contactPhone),
     address: toAddressRequest(values),
   };
@@ -78,9 +66,9 @@ export function toUpdateOrganizationRequest(
   return {
     name: values.name.trim(),
     status: values.status,
-    domain: values.domain.trim() || undefined,
-    contactEmail: values.contactEmail.trim() || null,
-    contactPhone: toTaiwanPhoneRequest(values.contactPhone) ?? null,
-    address: toAddressUpdateRequest(values),
+    slug: values.slug.trim(),
+    contactEmail: values.contactEmail.trim(),
+    contactPhone: toTaiwanPhoneRequest(values.contactPhone),
+    address: toAddressRequest(values),
   };
 }

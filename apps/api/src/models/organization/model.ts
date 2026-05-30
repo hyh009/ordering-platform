@@ -15,12 +15,12 @@ export type OrganizationPhoneEntity = OrganizationPhoneDto;
 export type OrganizationEntity = {
   id: string;
   name: string;
-  domain?: string;
+  slug: string;
   status: OrganizationStatus;
   reviewStatus: OrganizationReviewStatus;
-  contactEmail?: string;
-  contactPhone?: OrganizationPhoneEntity;
-  address?: OrganizationAddressEntity;
+  contactEmail: string;
+  contactPhone: OrganizationPhoneEntity;
+  address: OrganizationAddressEntity;
   createdAt: Date;
   updatedAt: Date;
 };

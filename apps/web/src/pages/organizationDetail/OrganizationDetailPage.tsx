@@ -64,9 +64,7 @@ export function OrganizationDetailPage() {
             <h1 className="text-3xl font-bold tracking-tight">
               {vm.organization.name}
             </h1>
-            <p className="mt-1 text-muted-foreground">
-              {vm.organization.domain}
-            </p>
+            <p className="mt-1 text-muted-foreground">{vm.organization.slug}</p>
           </div>
           <div className="flex gap-2">
             <Link
@@ -110,10 +108,10 @@ export function OrganizationDetailPage() {
                 </div>
                 <div className="col-span-1">
                   <dt className="font-medium text-muted-foreground">
-                    {tDefault('admin.organizations.domain', 'Domain')}
+                    {tDefault('admin.organizations.slug', 'Slug')}
                   </dt>
                   <dd className="mt-1 font-semibold text-foreground">
-                    {vm.organization.domain || 'N/A'}
+                    {vm.organization.slug || 'N/A'}
                   </dd>
                 </div>
                 <div className="col-span-2">

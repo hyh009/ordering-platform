@@ -12,6 +12,7 @@ import type {
   ListOrganizationsInput,
   UpdateOrganizationInput,
 } from '@src/repositories/organization/repository';
+import type { FilterQuery } from 'mongoose';
 
 function toValidContactPhone(value: unknown) {
   const result = organizationPhoneSchema.safeParse(value);
@@ -31,17 +32,19 @@ function toOrganizationEntity(
   const contactPhone = toValidContactPhone(organization.contactPhone);
   const address = toValidAddress(organization.address);
 
+  if (!contactPhone || !address) {
+    throw new Error('Database contains invalid organization address or phone');
+  }
+
   return {
     id: organization.id,
     name: organization.name,
-    ...(organization.domain ? { domain: organization.domain } : {}),
+    slug: organization.slug,
     status: organization.status,
     reviewStatus: organization.reviewStatus ?? 'pending',
-    ...(organization.contactEmail
-      ? { contactEmail: organization.contactEmail }
-      : {}),
-    ...(contactPhone ? { contactPhone } : {}),
-    ...(address ? { address } : {}),
+    contactEmail: organization.contactEmail,
+    contactPhone,
+    address,
     createdAt: organization.createdAt,
     updatedAt: organization.updatedAt,
   };
@@ -49,11 +52,11 @@ function toOrganizationEntity(
 
 export const organizationMongoRepository = {
   async list(input: ListOrganizationsInput) {
-    const filter: Record<string, any> = {};
+    const filter: FilterQuery<OrganizationEntity> = {};
 
     if (input.keyword) {
       const regex = new RegExp(input.keyword, 'i');
-      filter.$or = [{ name: regex }, { domain: regex }];
+      filter.$or = [{ name: regex }, { slug: regex }];
     }
 
     if (input.status) {
@@ -109,16 +112,12 @@ export const organizationMongoRepository = {
     const organization = await OrganizationMongoModel.create({
       id: `org-${randomUUID()}`,
       name: input.name.trim(),
-      ...(input.domain ? { domain: input.domain.trim().toLowerCase() } : {}),
+      slug: input.slug.trim().toLowerCase(),
       status: 'active',
       reviewStatus: 'pending',
-      ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
-      ...(input.contactPhone
-        ? { contactPhone: organizationPhoneSchema.parse(input.contactPhone) }
-        : {}),
-      ...(input.address
-        ? { address: organizationAddressSchema.parse(input.address) }
-        : {}),
+      contactEmail: input.contactEmail,
+      contactPhone: organizationPhoneSchema.parse(input.contactPhone),
+      address: organizationAddressSchema.parse(input.address),
     });
 
     return toOrganizationEntity(organization.toObject());
@@ -127,7 +126,7 @@ export const organizationMongoRepository = {
   async update(organizationId: string, input: UpdateOrganizationInput) {
     const update: Partial<OrganizationEntity> = {
       ...(input.name ? { name: input.name.trim() } : {}),
-      ...(input.domain ? { domain: input.domain.trim().toLowerCase() } : {}),
+      ...(input.slug ? { slug: input.slug.trim().toLowerCase() } : {}),
       ...(input.status ? { status: input.status } : {}),
       ...(input.reviewStatus ? { reviewStatus: input.reviewStatus } : {}),
       ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
@@ -138,18 +137,10 @@ export const organizationMongoRepository = {
         ? { address: organizationAddressSchema.parse(input.address) }
         : {}),
     };
-    const unset: Record<string, string> = {
-      ...(input.contactEmail === null ? { contactEmail: '' } : {}),
-      ...(input.contactPhone === null ? { contactPhone: '' } : {}),
-      ...(input.address === null ? { address: '' } : {}),
-    };
 
     const organization = await OrganizationMongoModel.findOneAndUpdate(
       { id: organizationId },
-      {
-        ...(Object.keys(update).length > 0 ? { $set: update } : {}),
-        ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
-      },
+      { $set: update },
       { new: true, runValidators: true },
     )
       .lean<OrganizationEntity>()
