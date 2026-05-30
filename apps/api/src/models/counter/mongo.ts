@@ -16,7 +16,7 @@ const counterSchema = new Schema<CounterEntity>(
       required: true,
       enum: counterScopes,
     },
-    organizationId: {
+    storeId: {
       type: String,
       required: true,
       trim: true,

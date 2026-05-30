@@ -6,6 +6,7 @@ import type {
 export type CategoryEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   name: LocalizedString;
   description?: LocalizedString;
   imageUrl?: string;

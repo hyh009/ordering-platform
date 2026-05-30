@@ -96,11 +96,16 @@ const promotionSchema = new Schema<PromotionEntity>(
       required: true,
       trim: true,
     },
+    storeId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     name: {
       type: localizedStringSchema,
       required: true,
       // Cross-document default-locale validation belongs in the service layer,
-      // because the default locale lives in StoreSettings.
+      // because the default locale lives in Store.
       validate: {
         validator(value: LocalizedString | null | undefined) {
           return hasAtLeastOneLocalizedValue(value);

@@ -24,6 +24,7 @@ export type ProductModifierOption = {
 export type ProductModifierEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   name: LocalizedString;
   selectionType: ProductModifierSelectionType;
   minSelect: number;

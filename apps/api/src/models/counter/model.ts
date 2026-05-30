@@ -5,7 +5,7 @@ export type CounterScope = (typeof counterScopes)[number];
 export type CounterEntity = {
   _id: string;
   scope: CounterScope;
-  organizationId: string;
+  storeId: string;
   businessDate: string;
   sequence: number;
   createdAt: Date;
@@ -13,8 +13,8 @@ export type CounterEntity = {
 };
 
 export function buildDailyOrderCounterId(
-  organizationId: string,
+  storeId: string,
   businessDate: string,
 ): string {
-  return `order_daily_sequence:${organizationId}:${businessDate}`;
+  return `order_daily_sequence:${storeId}:${businessDate}`;
 }

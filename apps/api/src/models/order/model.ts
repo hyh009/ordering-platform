@@ -3,9 +3,9 @@ import type {
   OrderingParticipantSnapshot,
 } from '@src/models/cart/model';
 import type {
+  StoreCheckoutMode,
   StoreOrderType,
-  StoreSettingsCheckoutMode,
-} from '@src/models/storeSettings/model';
+} from '@src/models/store/model';
 
 export const orderStatuses = [
   'pending_payment',
@@ -53,9 +53,10 @@ export type OrderBatchSnapshot = {
 export type OrderEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   cartId?: string;
   orderType: StoreOrderType;
-  checkoutMode: StoreSettingsCheckoutMode;
+  checkoutMode: StoreCheckoutMode;
   businessDate: string;
   dailySequence: number;
   displayNumber: string;

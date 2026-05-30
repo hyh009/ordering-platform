@@ -5,9 +5,9 @@ import {
 } from '@src/models/common/localizedString.mongo';
 import { mongoValidationMessages } from '@src/models/common/validationMessages';
 import {
+  storeCheckoutModes,
   storeOrderTypes,
-  storeSettingsCheckoutModes,
-} from '@src/models/storeSettings/model';
+} from '@src/models/store/model';
 import { model, models, Schema } from 'mongoose';
 
 import type {
@@ -148,6 +148,11 @@ const cartSchema = new Schema<CartEntity>(
       required: true,
       trim: true,
     },
+    storeId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     orderType: {
       type: String,
       required: true,
@@ -156,7 +161,7 @@ const cartSchema = new Schema<CartEntity>(
     checkoutMode: {
       type: String,
       required: true,
-      enum: storeSettingsCheckoutModes,
+      enum: storeCheckoutModes,
     },
     status: {
       type: String,

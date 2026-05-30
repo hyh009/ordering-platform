@@ -121,6 +121,7 @@ export type PromotionTemplateValidationResult = {
 export type CreatePromotionDataFromTemplateInput = {
   id: string;
   organizationId: string;
+  storeId: string;
   input: PromotionTemplateInput;
 };
 
@@ -416,6 +417,7 @@ function getPromotionTarget(input: PromotionTemplateInput): PromotionTarget {
 export function createPromotionDataFromTemplateInput({
   id,
   organizationId,
+  storeId,
   input,
 }: CreatePromotionDataFromTemplateInput): PromotionCreateData {
   const validation = validatePromotionTemplateInput(input);
@@ -428,6 +430,7 @@ export function createPromotionDataFromTemplateInput({
   const promotionData: PromotionCreateData = {
     id,
     organizationId,
+    storeId,
     name: input.name,
     status: 'draft',
     discountType: input.discountType,

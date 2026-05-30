@@ -1,8 +1,8 @@
 import type { LocalizedString } from '@src/models/common/model';
 import type {
+  StoreCheckoutMode,
   StoreOrderType,
-  StoreSettingsCheckoutMode,
-} from '@src/models/storeSettings/model';
+} from '@src/models/store/model';
 
 export const cartStatuses = ['active', 'checked_out', 'abandoned'] as const;
 
@@ -44,8 +44,9 @@ export type CartItemSnapshot = {
 export type CartEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   orderType: StoreOrderType;
-  checkoutMode: StoreSettingsCheckoutMode;
+  checkoutMode: StoreCheckoutMode;
   status: CartStatus;
   joinCode?: string;
   tableNumber?: string;

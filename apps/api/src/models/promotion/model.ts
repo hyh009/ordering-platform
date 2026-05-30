@@ -46,6 +46,7 @@ export type PromotionTarget =
 export type PromotionEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   name: LocalizedString;
   description?: LocalizedString;
   status: PromotionStatus;

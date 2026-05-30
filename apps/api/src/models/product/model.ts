@@ -6,6 +6,7 @@ import type {
 export type ProductEntity = {
   id: string;
   organizationId: string;
+  storeId: string;
   categoryId: string;
   name: LocalizedString;
   description?: LocalizedString;

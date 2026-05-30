@@ -8,9 +8,9 @@ import {
   orderStatuses,
 } from '@src/models/order/model';
 import {
+  storeCheckoutModes,
   storeOrderTypes,
-  storeSettingsCheckoutModes,
-} from '@src/models/storeSettings/model';
+} from '@src/models/store/model';
 import { model, models, Schema } from 'mongoose';
 
 import type { OrderBatchSnapshot, OrderEntity } from '@src/models/order/model';
@@ -78,6 +78,11 @@ const orderSchema = new Schema<OrderEntity>(
       required: true,
       trim: true,
     },
+    storeId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     cartId: {
       type: String,
       trim: true,
@@ -90,7 +95,7 @@ const orderSchema = new Schema<OrderEntity>(
     checkoutMode: {
       type: String,
       required: true,
-      enum: storeSettingsCheckoutModes,
+      enum: storeCheckoutModes,
     },
     businessDate: {
       type: String,
