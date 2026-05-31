@@ -1,16 +1,23 @@
 import {
   createOrganizationMembershipSchema,
   createOrganizationSchema,
+  createStoreSchema,
   listOrganizationMembershipsQuerySchema,
   listOrganizationsQuerySchema,
+  listStoresQuerySchema,
   organizationMembershipParamsSchema,
   organizationParamsSchema,
+  storeWithOrgParamsSchema,
   updateOrganizationMembershipSchema,
   updateOrganizationSchema,
+  updateStoreSchema,
 } from '@repo/shared';
 import { requireAuth, requireSuperAdmin } from '@src/middlewares/auth';
 import { validate } from '@src/middlewares/validate';
 import { organizationService } from '@src/services/organization.service';
+import { storeService } from '@src/services/store.service';
+import { ERROR_CODES } from '@src/utils/errorCode';
+import { NotFoundError } from '@src/utils/errors';
 import { Router } from 'express';
 
 import type {
@@ -18,15 +25,22 @@ import type {
   CreateOrganizationMembershipSuccessResponse,
   CreateOrganizationRequest,
   CreateOrganizationSuccessResponse,
+  CreateStoreRequest,
+  CreateStoreSuccessResponse,
   GetOrganizationSuccessResponse,
+  GetStoreSuccessResponse,
   ListOrganizationMembershipsSuccessResponse,
   ListOrganizationsSuccessResponse,
+  ListStoresSuccessResponse,
   OrganizationMembershipParams,
   OrganizationParams,
+  StoreWithOrgParams,
   UpdateOrganizationMembershipRequest,
   UpdateOrganizationMembershipSuccessResponse,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
+  UpdateStoreRequest,
+  UpdateStoreSuccessResponse,
 } from '@repo/shared';
 
 const router = Router();
@@ -677,6 +691,72 @@ router.patch<
     );
 
     res.json({ status: 'success', data: { membership } });
+  },
+);
+
+// ── Store sub-routes (super admin) ────────────────────────────────────────────
+
+router.post<OrganizationParams, CreateStoreSuccessResponse, CreateStoreRequest>(
+  '/:organizationId/stores',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(organizationParamsSchema, 'params'),
+  validate(createStoreSchema),
+  async (req, res) => {
+    const store = await storeService.createStore({
+      organizationId: req.params.organizationId,
+      profile: req.body.profile,
+      locale: req.body.locale,
+      operation: req.body.operation,
+    });
+
+    res.status(201).json({ status: 'success', data: { store } });
+  },
+);
+
+router.get<OrganizationParams, ListStoresSuccessResponse, Record<string, never>>(
+  '/:organizationId/stores',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(organizationParamsSchema, 'params'),
+  async (req, res) => {
+    const query = listStoresQuerySchema.parse(req.query);
+    const data = await storeService.listStores(req.params.organizationId, query);
+
+    res.json({ status: 'success', data });
+  },
+);
+
+router.get<StoreWithOrgParams, GetStoreSuccessResponse, Record<string, never>>(
+  '/:organizationId/stores/:storeId',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(storeWithOrgParamsSchema, 'params'),
+  async (req, res) => {
+    const store = await storeService.getStore(req.params.storeId);
+
+    if (store.organizationId !== req.params.organizationId) {
+      throw new NotFoundError('Store not found', ERROR_CODES.STORE_NOT_FOUND);
+    }
+
+    res.json({ status: 'success', data: { store } });
+  },
+);
+
+router.patch<StoreWithOrgParams, UpdateStoreSuccessResponse, UpdateStoreRequest>(
+  '/:organizationId/stores/:storeId',
+  requireAuth,
+  requireSuperAdmin(),
+  validate(storeWithOrgParamsSchema, 'params'),
+  validate(updateStoreSchema),
+  async (req, res) => {
+    const store = await storeService.updateStore(
+      req.params.storeId,
+      req.params.organizationId,
+      req.body,
+    );
+
+    res.json({ status: 'success', data: { store } });
   },
 );
 

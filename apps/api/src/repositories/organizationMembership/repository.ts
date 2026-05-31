@@ -40,6 +40,10 @@ export type OrganizationMembershipRepository = {
   findById(
     membershipId: string,
   ): Promise<OrganizationMembershipEntity | null>;
+  findByUserAndOrganization(
+    userId: string,
+    organizationId: string,
+  ): Promise<OrganizationMembershipEntity | null>;
   update(
     membershipId: string,
     input: UpdateOrganizationMembershipInput,

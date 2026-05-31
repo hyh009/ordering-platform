@@ -68,6 +68,17 @@ export const organizationMembershipMongoRepository = {
     return doc ? toOrganizationMembershipEntity(doc) : null;
   },
 
+  async findByUserAndOrganization(userId: string, organizationId: string) {
+    const doc = await OrganizationMembershipMongoModel.findOne({
+      userId,
+      organizationId,
+    })
+      .lean()
+      .exec();
+
+    return doc ? toOrganizationMembershipEntity(doc) : null;
+  },
+
   async update(membershipId: string, input: UpdateOrganizationMembershipInput) {
     const doc = await OrganizationMembershipMongoModel.findOneAndUpdate(
       { id: membershipId },

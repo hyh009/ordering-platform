@@ -11,6 +11,8 @@ declare global {
 
     interface Request {
       requestId: string;
+      /** Set by requireOrgRole when organizationId is resolved via a storeId lookup */
+      resolvedOrganizationId?: string;
     }
   }
 }
