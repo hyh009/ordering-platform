@@ -14,6 +14,23 @@ import type {
 } from '@src/repositories/organization/repository';
 import type { FilterQuery } from 'mongoose';
 
+const organizationEntityKeyCoverage: Record<
+  Exclude<
+    keyof OrganizationEntity,
+    | 'id'
+    | 'name'
+    | 'slug'
+    | 'status'
+    | 'reviewStatus'
+    | 'contactEmail'
+    | 'contactPhone'
+    | 'address'
+    | 'createdAt'
+    | 'updatedAt'
+  >,
+  never
+> = {};
+
 function toValidContactPhone(value: unknown) {
   const result = organizationPhoneSchema.safeParse(value);
 
@@ -29,6 +46,8 @@ function toValidAddress(value: unknown) {
 function toOrganizationEntity(
   organization: OrganizationEntity,
 ): OrganizationEntity {
+  void organizationEntityKeyCoverage;
+
   const contactPhone = toValidContactPhone(organization.contactPhone);
   const address = toValidAddress(organization.address);
 

@@ -10,22 +10,39 @@ import type {
 } from '@src/repositories/organizationMembership/repository';
 import type { ClientSession } from 'mongoose';
 
+const organizationMembershipEntityKeys = [
+  'id',
+  'organizationId',
+  'userId',
+  'role',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const satisfies readonly (keyof OrganizationMembershipEntity)[];
+
+const organizationMembershipEntityKeyCoverage: Record<
+  Exclude<
+    keyof OrganizationMembershipEntity,
+    (typeof organizationMembershipEntityKeys)[number]
+  >,
+  never
+> = {};
+
 function toOrganizationMembershipEntity(
   membership: OrganizationMembershipEntity,
 ): OrganizationMembershipEntity {
-  return {
-    id: membership.id,
-    organizationId: membership.organizationId,
-    userId: membership.userId,
-    role: membership.role,
-    status: membership.status,
-    createdAt: membership.createdAt,
-    updatedAt: membership.updatedAt,
-  };
+  void organizationMembershipEntityKeyCoverage;
+
+  return Object.fromEntries(
+    organizationMembershipEntityKeys.map((key) => [key, membership[key]]),
+  ) as OrganizationMembershipEntity;
 }
 
 export const organizationMembershipMongoRepository = {
-  async create(input: CreateOrganizationMembershipInput, session?: ClientSession) {
+  async create(
+    input: CreateOrganizationMembershipInput,
+    session?: ClientSession,
+  ) {
     const doc = new OrganizationMembershipMongoModel({
       id: `org-membership-${randomUUID()}`,
       organizationId: input.organizationId,

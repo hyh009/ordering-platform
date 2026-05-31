@@ -8,10 +8,11 @@ import { ProductModifierMongoModel } from '../src/models/productModifier/mongo.j
 import { TagMongoModel } from '../src/models/tag/mongo.js';
 
 describe('menu catalog Mongo models', () => {
-  it('accepts an organization-owned category', () => {
+  it('accepts a store-owned category', () => {
     const category = new CategoryMongoModel({
       id: 'category-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Coffee',
       },
@@ -37,10 +38,11 @@ describe('menu catalog Mongo models', () => {
     expect(category.validateSync()).toBeUndefined();
   });
 
-  it('accepts an organization-owned marketing tag', () => {
+  it('accepts a store-owned marketing tag', () => {
     const tag = new TagMongoModel({
       id: 'tag-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Popular',
       },
@@ -83,10 +85,11 @@ describe('menu catalog Mongo models', () => {
     expect(allergen.validateSync()).toBeUndefined();
   });
 
-  it('accepts an organization-owned product modifier', () => {
+  it('accepts a store-owned product modifier', () => {
     const modifier = new ProductModifierMongoModel({
       id: 'modifier-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Milk',
       },
@@ -114,10 +117,11 @@ describe('menu catalog Mongo models', () => {
     expect(modifier.validateSync()).toBeUndefined();
   });
 
-  it('accepts an organization-owned product', () => {
+  it('accepts a store-owned product', () => {
     const product = new ProductMongoModel({
       id: 'product-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       categoryId: 'category-1',
       name: {
         en: 'Latte',
@@ -144,6 +148,7 @@ describe('menu catalog Mongo models', () => {
     const category = new CategoryMongoModel({
       id: 'category-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {},
     });
 
@@ -171,6 +176,7 @@ describe('menu catalog Mongo models', () => {
     const category = new CategoryMongoModel({
       id: 'category-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Coffee',
       },
@@ -192,6 +198,7 @@ describe('menu catalog Mongo models', () => {
     const modifier = new ProductModifierMongoModel({
       id: 'modifier-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Toppings',
       },
@@ -217,6 +224,7 @@ describe('menu catalog Mongo models', () => {
     const modifier = new ProductModifierMongoModel({
       id: 'modifier-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Toppings',
       },
@@ -242,6 +250,7 @@ describe('menu catalog Mongo models', () => {
     const modifier = new ProductModifierMongoModel({
       id: 'modifier-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Size',
       },
@@ -267,6 +276,7 @@ describe('menu catalog Mongo models', () => {
     const product = new ProductMongoModel({
       id: 'product-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       categoryId: 'category-1',
       name: {
         en: 'Latte',

@@ -5,7 +5,7 @@ import { PromotionMongoModel } from '../src/models/promotion/mongo.js';
 import type { PromotionTarget } from '../src/models/promotion/model.js';
 
 describe('promotion Mongo model', () => {
-  it('accepts an organization-owned order promotion', () => {
+  it('accepts a store-owned order promotion', () => {
     const target = {
       scope: 'order',
       excludedProductIds: ['product-excluded'],
@@ -14,6 +14,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Lunch discount',
       },
@@ -49,6 +50,7 @@ describe('promotion Mongo model', () => {
     const categoryPromotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Drinks discount',
       },
@@ -61,6 +63,7 @@ describe('promotion Mongo model', () => {
     const productPromotion = new PromotionMongoModel({
       id: 'promotion-2',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Latte discount',
       },
@@ -82,6 +85,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Lunch discount',
       },
@@ -104,6 +108,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {},
       discountType: 'fixed_amount',
       discountValue: 20,
@@ -123,6 +128,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid discount',
       },
@@ -144,6 +150,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid date range',
       },
@@ -166,6 +173,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid target',
       },
@@ -188,6 +196,7 @@ describe('promotion Mongo model', () => {
     const categoryPromotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid category target',
       },
@@ -202,6 +211,7 @@ describe('promotion Mongo model', () => {
     const productPromotion = new PromotionMongoModel({
       id: 'promotion-2',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid product target',
       },
@@ -230,6 +240,7 @@ describe('promotion Mongo model', () => {
     const promotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid product target',
       },
@@ -253,6 +264,7 @@ describe('promotion Mongo model', () => {
     const orderItemPromotion = new PromotionMongoModel({
       id: 'promotion-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid order basis',
       },
@@ -267,6 +279,7 @@ describe('promotion Mongo model', () => {
     const itemThresholdPromotion = new PromotionMongoModel({
       id: 'promotion-2',
       organizationId: 'org-1',
+      storeId: 'store-1',
       name: {
         en: 'Invalid threshold basis',
       },

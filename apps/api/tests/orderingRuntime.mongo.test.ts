@@ -9,29 +9,30 @@ import { CounterMongoModel } from '../src/models/counter/mongo.js';
 import { OrderMongoModel } from '../src/models/order/mongo.js';
 
 describe('ordering runtime Mongo models', () => {
-  it('builds daily per-organization counter ids', () => {
-    expect(buildDailyOrderCounterId('org-1', '2026-05-16')).toBe(
-      'order_daily_sequence:org-1:2026-05-16',
+  it('builds daily per-store counter ids', () => {
+    expect(buildDailyOrderCounterId('store-1', '2026-05-16')).toBe(
+      'order_daily_sequence:store-1:2026-05-16',
     );
   });
 
   it('accepts a daily order counter', () => {
     const counter = new CounterMongoModel({
-      _id: buildDailyOrderCounterId('org-1', '2026-05-16'),
+      _id: buildDailyOrderCounterId('store-1', '2026-05-16'),
       scope: 'order_daily_sequence',
-      organizationId: 'org-1',
+      storeId: 'store-1',
       businessDate: '2026-05-16',
       sequence: 23,
     } satisfies Partial<CounterEntity>);
 
     expect(counter.validateSync()).toBeUndefined();
-    expect(counter._id).toBe('order_daily_sequence:org-1:2026-05-16');
+    expect(counter._id).toBe('order_daily_sequence:store-1:2026-05-16');
   });
 
   it('accepts a dine-in active cart with embedded participant snapshots', () => {
     const cart = new CartMongoModel({
       id: 'cart-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       tableNumber: 'A1',
@@ -84,6 +85,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       cartId: 'cart-1',
       orderType: 'takeaway',
       checkoutMode: 'pay_first',
@@ -150,6 +152,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       businessDate: '2026-05-16',
@@ -173,6 +176,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       businessDate: '2026-05-16',
@@ -191,6 +195,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       businessDate: '2026-05-16',
@@ -217,6 +222,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'takeaway',
       checkoutMode: 'pay_first',
       businessDate: '2026-05-16',
@@ -240,6 +246,7 @@ describe('ordering runtime Mongo models', () => {
     const cart = new CartMongoModel({
       id: 'cart-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       serviceFeeRate: 1.5,
@@ -272,6 +279,7 @@ describe('ordering runtime Mongo models', () => {
     const cart = new CartMongoModel({
       id: 'cart-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       items: [
@@ -316,6 +324,7 @@ describe('ordering runtime Mongo models', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
+      storeId: 'store-1',
       orderType: 'takeaway',
       checkoutMode: 'pay_first',
       businessDate: '2026-05-16',

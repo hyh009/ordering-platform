@@ -9,17 +9,28 @@ import type {
   UpdateStoreInput,
 } from '@src/repositories/store/repository';
 
+const storeEntityKeys = [
+  'id',
+  'organizationId',
+  'profile',
+  'locale',
+  'operation',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const satisfies readonly (keyof StoreEntity)[];
+
+const storeEntityKeyCoverage: Record<
+  Exclude<keyof StoreEntity, (typeof storeEntityKeys)[number]>,
+  never
+> = {};
+
 function toStoreEntity(doc: StoreEntity): StoreEntity {
-  return {
-    id: doc.id,
-    organizationId: doc.organizationId,
-    profile: doc.profile,
-    locale: doc.locale,
-    operation: doc.operation,
-    status: doc.status,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
-  };
+  void storeEntityKeyCoverage;
+
+  return Object.fromEntries(
+    storeEntityKeys.map((key) => [key, doc[key]]),
+  ) as StoreEntity;
 }
 
 export const storeMongoRepository = {

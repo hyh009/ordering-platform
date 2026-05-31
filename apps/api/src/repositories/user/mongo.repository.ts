@@ -10,11 +10,29 @@ type MongoUserRecord = Omit<UserEntity, 'isSuperAdmin'> & {
   isSuperAdmin?: boolean;
 };
 
+const userEntityKeyCoverage: Record<
+  Exclude<
+    keyof UserEntity,
+    | 'id'
+    | 'email'
+    | 'username'
+    | 'passwordHash'
+    | 'isSuperAdmin'
+    | 'status'
+    | 'tokenVersion'
+    | 'createdAt'
+    | 'updatedAt'
+  >,
+  never
+> = {};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
 function toUserEntity(user: MongoUserRecord): UserEntity {
+  void userEntityKeyCoverage;
+
   return {
     id: user.id,
     email: user.email,

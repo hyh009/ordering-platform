@@ -9,7 +9,17 @@ import type {
   UpdateAllergenInput,
 } from '@src/repositories/allergen/repository';
 
+const allergenEntityKeyCoverage: Record<
+  Exclude<
+    keyof AllergenEntity,
+    'id' | 'key' | 'name' | 'icon' | 'isActive' | 'createdAt' | 'updatedAt'
+  >,
+  never
+> = {};
+
 function toAllergenEntity(allergen: AllergenEntity): AllergenEntity {
+  void allergenEntityKeyCoverage;
+
   return {
     id: allergen.id,
     key: allergen.key,

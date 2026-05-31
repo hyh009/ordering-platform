@@ -72,9 +72,9 @@ Define:
 Use clear field names that match backend domain language.
 
 Keep cross-document business validation in services. For example, an
-organization-owned localized name may require a value for the organization's
-default locale, but that default locale lives in `StoreSettings`; the schema can
-only enforce a local minimum such as "has at least one localized value."
+store-owned localized name may require a value for the store's default locale,
+but that default locale lives in `Store`; the schema can only enforce a local
+minimum such as "has at least one localized value."
 
 ## Schema Options
 

@@ -9,9 +9,26 @@ import type {
   UpdateDietaryMarkerInput,
 } from '@src/repositories/dietaryMarker/repository';
 
+const dietaryMarkerEntityKeyCoverage: Record<
+  Exclude<
+    keyof DietaryMarkerEntity,
+    | 'id'
+    | 'key'
+    | 'name'
+    | 'icon'
+    | 'type'
+    | 'isActive'
+    | 'createdAt'
+    | 'updatedAt'
+  >,
+  never
+> = {};
+
 function toDietaryMarkerEntity(
   dietaryMarker: DietaryMarkerEntity,
 ): DietaryMarkerEntity {
+  void dietaryMarkerEntityKeyCoverage;
+
   return {
     id: dietaryMarker.id,
     key: dietaryMarker.key,

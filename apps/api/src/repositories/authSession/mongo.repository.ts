@@ -7,7 +7,24 @@ import type {
   CreateAuthSessionInput,
 } from '@src/models/authSession/model';
 
+const authSessionEntityKeyCoverage: Record<
+  Exclude<
+    keyof AuthSessionEntity,
+    | 'id'
+    | 'userId'
+    | 'refreshTokenHash'
+    | 'expiresAt'
+    | 'revokedAt'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'lastUsedAt'
+  >,
+  never
+> = {};
+
 function toAuthSessionEntity(session: AuthSessionEntity): AuthSessionEntity {
+  void authSessionEntityKeyCoverage;
+
   return {
     id: session.id,
     userId: session.userId,

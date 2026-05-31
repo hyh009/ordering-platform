@@ -15,6 +15,7 @@ Use this guide when a new feature adds or changes backend behavior in `apps/api`
 - Define the schema/model before route implementation.
 - Discuss MongoDB indexes with the user before adding them.
 - Follow `docs/agent/backend/mongo-schema.md`.
+- Follow `docs/agent/backend/repository.md` when adding or changing data access.
 
 ## 2. API and Backend Flow
 

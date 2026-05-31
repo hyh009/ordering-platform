@@ -101,7 +101,7 @@ classDiagram
   class StoreOrderMode {
     StoreOrderType type
     boolean isEnabled
-    StoreSettingsCheckoutMode checkoutMode
+    StoreCheckoutMode checkoutMode
   }
 
   class Category {
@@ -215,7 +215,7 @@ classDiagram
     string organizationId
     string storeId
     StoreOrderType orderType
-    StoreSettingsCheckoutMode checkoutMode
+    StoreCheckoutMode checkoutMode
     CartStatus status
     string? joinCode
     string? tableNumber
@@ -237,7 +237,7 @@ classDiagram
     string storeId
     string? cartId
     StoreOrderType orderType
-    StoreSettingsCheckoutMode checkoutMode
+    StoreCheckoutMode checkoutMode
     string businessDate
     number dailySequence
     string displayNumber
@@ -746,4 +746,3 @@ category availability and is available all day. Do not use empty
 - buy-X-get-Y, bundle thresholds, stacking rules, and order-total calculation
   are deferred to the promotion service/design layer
 - custom indexes not added yet
-
