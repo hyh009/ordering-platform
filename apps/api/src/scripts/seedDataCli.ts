@@ -1,8 +1,13 @@
 import 'dotenv/config';
-import mongoose from 'mongoose';
 import { connectMongo } from '@src/config/db';
 import { logger } from '@src/utils/logger';
-import { seedAllergens, seedDietaryMarkers, seedOrganizations } from './seedData';
+import mongoose from 'mongoose';
+
+import {
+  seedAllergens,
+  seedDietaryMarkers,
+  seedOrganizations,
+} from './seedData';
 
 async function run() {
   try {
