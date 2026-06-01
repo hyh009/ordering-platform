@@ -1,6 +1,6 @@
 export const PATHS = {
   AUTH: {
-    LOGIN: '/admin/login',
+    LOGIN: '/login',
   },
   SUPER_ADMIN: {
     ROOT: '/admin',
