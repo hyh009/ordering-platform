@@ -117,6 +117,16 @@ export const organizationMongoRepository = {
     return organization ? toOrganizationEntity(organization) : null;
   },
 
+  async findByIds(organizationIds: string[]) {
+    const organizations = await OrganizationMongoModel.find({
+      id: { $in: organizationIds },
+    })
+      .lean<OrganizationEntity[]>()
+      .exec();
+
+    return organizations.map(toOrganizationEntity);
+  },
+
   async findByName(name: string) {
     const organization = await OrganizationMongoModel.findOne({
       name,

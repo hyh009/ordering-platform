@@ -85,6 +85,17 @@ export const organizationMembershipMongoRepository = {
     return doc ? toOrganizationMembershipEntity(doc) : null;
   },
 
+  async listByUser(userId: string) {
+    const docs = await OrganizationMembershipMongoModel.find({
+      userId,
+      status: 'active',
+    })
+      .lean()
+      .exec();
+
+    return docs.map(toOrganizationMembershipEntity);
+  },
+
   async findByUserAndOrganization(userId: string, organizationId: string) {
     const doc = await OrganizationMembershipMongoModel.findOne({
       userId,

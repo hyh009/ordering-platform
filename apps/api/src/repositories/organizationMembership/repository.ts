@@ -40,6 +40,7 @@ export type OrganizationMembershipRepository = {
   findById(
     membershipId: string,
   ): Promise<OrganizationMembershipEntity | null>;
+  listByUser(userId: string): Promise<OrganizationMembershipEntity[]>;
   findByUserAndOrganization(
     userId: string,
     organizationId: string,

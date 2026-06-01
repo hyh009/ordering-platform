@@ -4,6 +4,8 @@ import { authConfig } from '@src/config/auth';
 import { env } from '@src/config/env';
 import { toAuthUserDto } from '@src/models/user/mapper';
 import { authSessionRepository } from '@src/repositories/authSession/repository';
+import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
+import { organizationRepository } from '@src/repositories/organization/repository';
 import { userRepository } from '@src/repositories/user/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import {
@@ -15,7 +17,7 @@ import { isMongoDuplicateKeyError } from '@src/utils/mongoError';
 import bcrypt from 'bcryptjs';
 import { sign } from 'jsonwebtoken';
 
-import type { AuthUserDto } from '@repo/shared';
+import type { AuthUserDto, UserOrgMembershipDto } from '@repo/shared';
 import type { UserEntity } from '@src/models/user/model';
 
 export type AuthResult = {
@@ -68,17 +70,42 @@ function createAccessToken(user: UserEntity) {
   });
 }
 
+async function fetchActiveUser(userId: string): Promise<UserEntity | null> {
+  const user = await userRepository.findById(userId);
+  if (!user || user.status !== 'active') return null;
+  return user;
+}
+
+async function loadUserMembershipDtos(userId: string): Promise<UserOrgMembershipDto[]> {
+  const memberships = await organizationMembershipRepository.listByUser(userId);
+
+  if (memberships.length === 0) return [];
+
+  const orgIds = memberships.map((m) => m.organizationId);
+  const orgs = await organizationRepository.findByIds(orgIds);
+  const orgMap = new Map(orgs.map((o) => [o.id, o]));
+
+  return memberships.map((m) => ({
+    organizationId: m.organizationId,
+    organizationName: orgMap.get(m.organizationId)?.name ?? '',
+    role: m.role,
+  }));
+}
+
 async function createAuthResult(user: UserEntity): Promise<AuthResult> {
   const refreshToken = createRefreshToken();
 
-  await authSessionRepository.create({
-    userId: user.id,
-    refreshTokenHash: hashRefreshToken(refreshToken),
-    expiresAt: getRefreshExpiresAt(),
-  });
+  const [, memberships] = await Promise.all([
+    authSessionRepository.create({
+      userId: user.id,
+      refreshTokenHash: hashRefreshToken(refreshToken),
+      expiresAt: getRefreshExpiresAt(),
+    }),
+    loadUserMembershipDtos(user.id),
+  ]);
 
   return {
-    user: toAuthUserDto(user),
+    user: toAuthUserDto(user, memberships),
     accessToken: createAccessToken(user),
     refreshToken,
   };
@@ -218,9 +245,9 @@ export class AuthService {
       return null;
     }
 
-    const user = await userRepository.findById(payload.sub);
+    const user = await fetchActiveUser(payload.sub);
 
-    if (!user || user.status !== 'active') {
+    if (!user) {
       return null;
     }
 
@@ -228,7 +255,18 @@ export class AuthService {
       return null;
     }
 
-    return toAuthUserDto(user);
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      isSuperAdmin: user.isSuperAdmin,
+    };
+  }
+
+  public async getAuthUser(user: Express.User): Promise<AuthUserDto> {
+    const memberships = await loadUserMembershipDtos(user.id);
+
+    return { ...user, memberships };
   }
 }
 

@@ -37,6 +37,7 @@ export type UpdateOrganizationInput = {
 export type OrganizationRepository = {
   list(input: ListOrganizationsInput): Promise<ListOrganizationsResult>;
   findById(organizationId: string): Promise<OrganizationEntity | null>;
+  findByIds(organizationIds: string[]): Promise<OrganizationEntity[]>;
   findByName(name: string): Promise<OrganizationEntity | null>;
   create(input: CreateOrganizationInput): Promise<OrganizationEntity>;
   update(

@@ -425,12 +425,12 @@ router.post<Record<string, never>, AuthActionSuccessResponse>(
 router.get<Record<string, never>, AuthUserSuccessResponse>(
   '/me',
   requireAuth,
-  (req, res) => {
-    const user = req.user;
-
-    if (!user) {
+  async (req, res) => {
+    if (!req.user) {
       throw new Error('Authenticated user missing after requireAuth.');
     }
+
+    const user = await authService.getAuthUser(req.user);
 
     res.json({
       status: 'success',

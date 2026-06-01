@@ -211,6 +211,20 @@ vi.mock('@src/repositories/authSession/repository', () => ({
   authSessionRepository: repositoryMocks.authSessionRepository,
 }));
 
+vi.mock('@src/repositories/organizationMembership/repository', () => ({
+  organizationMembershipRepository: {
+    listByUser: vi.fn().mockResolvedValue([]),
+    findByUserAndOrganization: vi.fn().mockResolvedValue(null),
+  },
+}));
+
+vi.mock('@src/repositories/organization/repository', () => ({
+  organizationRepository: {
+    findById: vi.fn().mockResolvedValue(null),
+    findByIds: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 const credentials = {
   email: 'user@example.com',
   username: 'ordering-user',
