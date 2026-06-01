@@ -47,6 +47,10 @@ agent_docs:
         use_when: Changing shared API contracts in packages/shared.
 
   backend:
+    - name: backend-route-development
+      path: docs/agent/backend/route-development.md
+      use_when: Adding or changing an API route handler.
+
     - name: backend-architecture
       path: docs/agent/backend/architecture.md
       use_when: Adding or updating backend code.
