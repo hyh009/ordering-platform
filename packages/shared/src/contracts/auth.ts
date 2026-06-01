@@ -1,16 +1,24 @@
 import { z } from 'zod';
 
 import type { ApiSuccessResponse } from './api.js';
+import type { OrganizationMembershipRole } from './organization.js';
 
 export const userStatuses = ['active', 'disabled'] as const;
 
 export type UserStatus = (typeof userStatuses)[number];
+
+export type UserOrgMembershipDto = {
+  organizationId: string;
+  organizationName: string;
+  role: OrganizationMembershipRole;
+};
 
 export type AuthUserDto = {
   id: string;
   email: string;
   username: string;
   isSuperAdmin: boolean;
+  memberships: UserOrgMembershipDto[];
 };
 
 export const passwordRuleMessage =

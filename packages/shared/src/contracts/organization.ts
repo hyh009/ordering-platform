@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ApiSuccessResponse, OffsetPaginationDto } from './api.js';
+import { offsetPaginationQuerySchema } from './pagination.js';
 
 export const organizationStatuses = ['active', 'disabled'] as const;
 export const organizationReviewStatuses = [
@@ -87,13 +88,6 @@ export type OrganizationMembershipWithUserDto = OrganizationMembershipDto & {
   userEmail: string;
   userUsername: string;
 };
-
-function paginationNumberSchema(schema: z.ZodNumber) {
-  return z.preprocess(
-    (value) => (value === undefined ? undefined : Number(value)),
-    schema,
-  );
-}
 
 const organizationOptionalTextSchema = z.string().trim().min(1).max(120);
 const organizationSlugSchema = z
@@ -193,14 +187,8 @@ export const createOrganizationSchema = z.object({
   address: organizationAddressSchema,
 });
 
-export const listOrganizationsQuerySchema = z
-  .object({
-    offset: paginationNumberSchema(z.number().int().min(0))
-      .optional()
-      .default(0),
-    limit: paginationNumberSchema(z.number().int().min(1).max(100))
-      .optional()
-      .default(20),
+export const listOrganizationsQuerySchema = offsetPaginationQuerySchema
+  .extend({
     keyword: z.string().trim().optional(),
     status: z.enum(organizationStatuses).optional(),
     sortBy: z
@@ -235,15 +223,7 @@ export const organizationParamsSchema = z.object({
   organizationId: z.string().trim().min(1),
 });
 
-export const listOrganizationMembershipsQuerySchema = z
-  .object({
-    offset: paginationNumberSchema(z.number().int().min(0))
-      .optional()
-      .default(0),
-    limit: paginationNumberSchema(z.number().int().min(1).max(100))
-      .optional()
-      .default(20),
-  })
+export const listOrganizationMembershipsQuerySchema = offsetPaginationQuerySchema
   .optional()
   .default({ offset: 0, limit: 20 });
 

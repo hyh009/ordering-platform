@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ApiSuccessResponse, OffsetPaginationDto } from './api.js';
 import { supportedLocales } from './metadata.js';
 import type { LocalizedStringDto, SupportedLocale } from './metadata.js';
+import { offsetPaginationQuerySchema } from './pagination.js';
 
 export const storeStatuses = ['active', 'disabled'] as const;
 export const storeCheckoutModes = ['pay_first', 'pay_later'] as const;
@@ -64,13 +65,6 @@ export type CreateStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>
 export type UpdateStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>;
 
 // ── Request schemas ────────────────────────────────────────────────────────────
-
-function paginationNumberSchema(schema: z.ZodNumber) {
-  return z.preprocess(
-    (value) => (value === undefined ? undefined : Number(value)),
-    schema,
-  );
-}
 
 const storeDisplayNameSchema = z.object({
   en: z.string().trim().min(1).max(200).optional(),
@@ -153,18 +147,15 @@ export const storeWithOrgParamsSchema = z.object({
   storeId: z.string().trim().min(1),
 });
 
-export const listStoresQuerySchema = z
-  .object({
-    offset: paginationNumberSchema(z.number().int().min(0)).optional().default(0),
-    limit: paginationNumberSchema(z.number().int().min(1).max(100))
-      .optional()
-      .default(20),
-  })
-  .optional()
-  .default({ offset: 0, limit: 20 });
+export const listStoresQuerySchema = offsetPaginationQuerySchema.optional().default({ offset: 0, limit: 20 });
+
+export const listMerchantStoresQuerySchema = offsetPaginationQuerySchema.extend({
+  organizationId: z.string().trim().min(1),
+});
 
 export type CreateStoreRequest = z.infer<typeof createStoreSchema>;
 export type UpdateStoreRequest = z.infer<typeof updateStoreSchema>;
 export type StoreParams = z.infer<typeof storeParamsSchema>;
 export type StoreWithOrgParams = z.infer<typeof storeWithOrgParamsSchema>;
 export type ListStoresQuery = z.infer<typeof listStoresQuerySchema>;
+export type ListMerchantStoresQuery = z.infer<typeof listMerchantStoresQuerySchema>;
