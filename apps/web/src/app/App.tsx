@@ -8,18 +8,18 @@ import { PATHS } from '@/app/routing/paths';
 import { PublicOnly } from '@/app/routing/PublicOnly';
 import { RequireAuth } from '@/app/routing/RequireAuth';
 import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
-import { AllergenListPage } from '@/pages/allergenList/AllergenListPage';
-import { CategoryListPage } from '@/pages/categoryList/CategoryListPage';
-import { DietaryMarkerListPage } from '@/pages/dietaryMarkerList/DietaryMarkerListPage';
+import { AllergenListPage } from '@/pages/admin/allergenList/AllergenListPage';
+import { DietaryMarkerListPage } from '@/pages/admin/dietaryMarkerList/DietaryMarkerListPage';
+import { OrganizationDetailPage } from '@/pages/admin/organizationDetail/OrganizationDetailPage';
+import { OrganizationListPage } from '@/pages/admin/organizationList/OrganizationListPage';
+import { OrganizationMembershipsPage } from '@/pages/admin/organizationMemberships/OrganizationMembershipsPage';
 import { LoginPage } from '@/pages/login/LoginPage';
-import { MenuPage } from '@/pages/menu/MenuPage';
+import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
+import { MenuPage } from '@/pages/merchant/menu/MenuPage';
+import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
+import { StoreSettingsPage } from '@/pages/merchant/storeSettings/StoreSettingsPage';
+import { TagListPage } from '@/pages/merchant/tagList/TagListPage';
 import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
-import { OrderListPage } from '@/pages/orderList/OrderListPage';
-import { OrganizationDetailPage } from '@/pages/organizationDetail/OrganizationDetailPage';
-import { OrganizationListPage } from '@/pages/organizationList/OrganizationListPage';
-import { OrganizationMembershipsPage } from '@/pages/organizationMemberships/OrganizationMembershipsPage';
-import { StoreSettingsPage } from '@/pages/storeSettings/StoreSettingsPage';
-import { TagListPage } from '@/pages/tagList/TagListPage';
 
 export function App() {
   const auth = useAuthVM();
