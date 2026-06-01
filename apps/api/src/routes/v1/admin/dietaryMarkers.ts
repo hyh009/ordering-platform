@@ -100,7 +100,7 @@ const router = Router();
  * /v1/admin/dietary-markers:
  *   get:
  *     tags:
- *       - Dietary Markers
+ *       - Admin / Dietary Markers
  *     summary: List dietary markers
  *     security:
  *       - bearerAuth: []
@@ -147,7 +147,7 @@ router.get<
  * /v1/admin/dietary-markers:
  *   post:
  *     tags:
- *       - Dietary Markers
+ *       - Admin / Dietary Markers
  *     summary: Create a dietary marker
  *     security:
  *       - bearerAuth: []
@@ -221,7 +221,7 @@ router.post<
  * /v1/admin/dietary-markers/{dietaryMarkerId}:
  *   patch:
  *     tags:
- *       - Dietary Markers
+ *       - Admin / Dietary Markers
  *     summary: Update dietary marker metadata
  *     description: The dietary marker key is create-only and cannot be updated here.
  *     security:

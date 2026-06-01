@@ -103,7 +103,7 @@ const router = Router();
  * /v1/admin/allergens:
  *   get:
  *     tags:
- *       - Allergens
+ *       - Admin / Allergens
  *     summary: List allergens
  *     security:
  *       - bearerAuth: []
@@ -148,7 +148,7 @@ router.get<
  * /v1/admin/allergens:
  *   post:
  *     tags:
- *       - Allergens
+ *       - Admin / Allergens
  *     summary: Create an allergen
  *     security:
  *       - bearerAuth: []
@@ -220,7 +220,7 @@ router.post<
  * /v1/admin/allergens/{allergenId}:
  *   patch:
  *     tags:
- *       - Allergens
+ *       - Admin / Allergens
  *     summary: Update allergen metadata
  *     description: The allergen key is create-only and cannot be updated here.
  *     security:

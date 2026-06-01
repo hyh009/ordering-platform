@@ -55,10 +55,47 @@ type TestOrganizationMembership = {
   updatedAt: Date;
 };
 
+type TestStore = {
+  id: string;
+  organizationId: string;
+  profile: {
+    displayName: {
+      en?: string;
+      'zh-TW': string;
+    };
+    description?: {
+      en?: string;
+      'zh-TW'?: string;
+    };
+  };
+  locale: {
+    defaultLocale: 'en' | 'zh-TW';
+    supportedLocales: ('en' | 'zh-TW')[];
+  };
+  operation: {
+    businessHours: {
+      dayOfWeek: number;
+      isOpen: boolean;
+      openTime?: string;
+      closeTime?: string;
+    }[];
+    serviceFeeRate: number;
+    orderModes: {
+      type: 'dine_in' | 'takeaway';
+      isEnabled: boolean;
+      checkoutMode: 'pay_first' | 'pay_later';
+    }[];
+  };
+  status: 'active' | 'disabled';
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 const repositoryMocks = vi.hoisted(() => {
   let users: TestUser[] = [];
   let organizations: TestOrganization[] = [];
   let memberships: TestOrganizationMembership[] = [];
+  let stores: TestStore[] = [];
   let organizationIdCounter = 1;
   let membershipIdCounter = 1;
 
@@ -124,10 +161,26 @@ const repositoryMocks = vi.hoisted(() => {
     };
   }
 
+  function cloneStore(store: TestStore): TestStore {
+    return {
+      ...store,
+      createdAt: new Date(store.createdAt),
+      updatedAt: new Date(store.updatedAt),
+    };
+  }
+
   return {
     userRepository: {
       async findById(userId: string) {
         const user = users.find((item) => item.id === userId);
+
+        return user ? cloneUser(user) : null;
+      },
+      async findByIds(userIds: string[]) {
+        return users.filter((item) => userIds.includes(item.id)).map(cloneUser);
+      },
+      async findByEmail(email: string) {
+        const user = users.find((item) => item.email === email);
 
         return user ? cloneUser(user) : null;
       },
@@ -270,6 +323,22 @@ const repositoryMocks = vi.hoisted(() => {
       },
     },
     organizationMembershipRepository: {
+      async listByOrganization(input: {
+        organizationId: string;
+        offset: number;
+        limit: number;
+      }) {
+        const filtered = memberships.filter(
+          (item) => item.organizationId === input.organizationId,
+        );
+
+        return {
+          memberships: filtered
+            .slice(input.offset, input.offset + input.limit)
+            .map(cloneMembership),
+          total: filtered.length,
+        };
+      },
       async create(input: {
         organizationId: string;
         userId: string;
@@ -292,10 +361,34 @@ const repositoryMocks = vi.hoisted(() => {
         return cloneMembership(membership);
       },
     },
+    storeRepository: {
+      async findById(storeId: string) {
+        const store = stores.find((item) => item.id === storeId);
+
+        return store ? cloneStore(store) : null;
+      },
+      async listByOrganization(input: {
+        organizationId: string;
+        offset: number;
+        limit: number;
+      }) {
+        const filtered = stores.filter(
+          (item) => item.organizationId === input.organizationId,
+        );
+
+        return {
+          stores: filtered
+            .slice(input.offset, input.offset + input.limit)
+            .map(cloneStore),
+          total: filtered.length,
+        };
+      },
+    },
     reset() {
       users = [];
       organizations = [];
       memberships = [];
+      stores = [];
       organizationIdCounter = 1;
       membershipIdCounter = 1;
     },
@@ -348,6 +441,44 @@ const repositoryMocks = vi.hoisted(() => {
         },
       ];
     },
+    addStore(input: {
+      id: string;
+      organizationId: string;
+      displayName?: string;
+    }) {
+      const now = new Date();
+      stores = [
+        ...stores,
+        {
+          id: input.id,
+          organizationId: input.organizationId,
+          profile: {
+            displayName: {
+              'zh-TW': input.displayName ?? '主街咖啡',
+              en: input.displayName ?? 'Main Street Cafe',
+            },
+          },
+          locale: {
+            defaultLocale: 'zh-TW',
+            supportedLocales: ['zh-TW', 'en'],
+          },
+          operation: {
+            businessHours: [{ dayOfWeek: 1, isOpen: true }],
+            serviceFeeRate: 0.1,
+            orderModes: [
+              {
+                type: 'dine_in',
+                isEnabled: true,
+                checkoutMode: 'pay_first',
+              },
+            ],
+          },
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+    },
   };
 });
 
@@ -362,6 +493,10 @@ vi.mock('@src/repositories/organization/repository', () => ({
 vi.mock('@src/repositories/organizationMembership/repository', () => ({
   organizationMembershipRepository:
     repositoryMocks.organizationMembershipRepository,
+}));
+
+vi.mock('@src/repositories/store/repository', () => ({
+  storeRepository: repositoryMocks.storeRepository,
 }));
 
 function createAccessToken(userId: string, isSuperAdmin = false) {
@@ -672,6 +807,73 @@ describe('organizations API', () => {
           address: createTaiwanAddress(),
           createdAt: expect.any(String),
           updatedAt: expect.any(String),
+        },
+      },
+    });
+  });
+
+  it('keeps organization params available in nested memberships routes', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/admin/organizations/org-1/memberships')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        memberships: [],
+        pagination: {
+          offset: 0,
+          limit: 20,
+          total: 0,
+        },
+      },
+    });
+  });
+
+  it('keeps organization params available in nested store routes', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({
+      id: 'user-super-admin',
+      isSuperAdmin: true,
+    });
+    repositoryMocks.addOrganization({
+      id: 'org-1',
+      name: 'Main Street Cafe',
+    });
+    repositoryMocks.addStore({
+      id: 'store-1',
+      organizationId: 'org-1',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/admin/organizations/org-1/stores/store-1')
+      .set(
+        'Authorization',
+        `Bearer ${createAccessToken('user-super-admin', true)}`,
+      );
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body).toMatchObject({
+      status: 'success',
+      data: {
+        store: {
+          id: 'store-1',
+          organizationId: 'org-1',
+          status: 'active',
         },
       },
     });

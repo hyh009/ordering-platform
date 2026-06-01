@@ -54,6 +54,21 @@ Use these locations:
   `docs/features/permissions.md` when adding admin or merchant routes.
 - Route modules may be split by actor prefix, resource, capability, or
   middleware boundary. A domain does not need every endpoint in one route file.
+- Prefer route files that mirror URL patterns when a module grows large:
+  `organizations/[organizationId]/stores/[storeId].ts` should map to
+  `/organizations/:organizationId/stores/:storeId`.
+- Put route aggregation in `_router.ts`. Keep path-specific `index.ts` files
+  for the directory's own collection path, such as `GET /organizations` and
+  `POST /organizations`.
+- When a path parameter has child routes, make it a folder and put its own
+  route handlers in `[param]/index.ts`, not a sibling `[param].ts` file.
+- Name path parameter folders or files with square brackets, such as
+  `[organizationId].ts`. Use underscore-prefixed files for non-route helpers,
+  such as `_openapi.ts`.
+- Keep OpenAPI component files near the route subtree that owns them. Root
+  `_openapi.ts` should contain only components shared by that route subtree;
+  nested resources such as `memberships/` or `stores/` should keep their own
+  `_openapi.ts`.
 - Use `validate` middleware for `body` and `params` validation only. For `query` params, call `schema.parse(req.query)` directly inside the handler — `req.query` is a getter-only property on `IncomingMessage` and cannot be reassigned.
 - Route handlers may call services and send responses.
 - Put meaningful branching, persistence, transformations, and permission checks in services.
