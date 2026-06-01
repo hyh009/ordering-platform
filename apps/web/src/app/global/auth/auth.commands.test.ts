@@ -5,6 +5,20 @@ import type { AuthSession } from '@/models/auth.types';
 import { authService } from '@/services/auth.service';
 import { authCommands } from './auth.commands';
 
+vi.mock('@/app/global/activeOrg/activeOrg.commands', () => ({
+  activeOrgCommands: {
+    initialize: vi.fn(),
+    clearOrg: vi.fn(),
+  },
+}));
+
+vi.mock('@/app/global/activeStore/activeStore.commands', () => ({
+  activeStoreCommands: {
+    initialize: vi.fn(),
+    clearStore: vi.fn(),
+  },
+}));
+
 vi.mock('@/services/auth.service', () => ({
   authService: {
     login: vi.fn(),
@@ -20,6 +34,7 @@ const session: AuthSession = {
     id: 'user-1',
     isSuperAdmin: false,
     username: 'ordering-user',
+    memberships: [],
   },
 };
 

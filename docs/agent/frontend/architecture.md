@@ -25,7 +25,7 @@ Feature Store -> Page VM Hook via useStore(...) -> View re-renders
 
 ## Core Rules
 
-- Pages live in `src/pages`.
+- Pages live in `src/pages`. Platform pages are grouped into platform subfolders. Cross-platform pages such as `login` and `notFound` stay at `src/pages/` root.
 - Features are based on domain, not page.
 - App-wide runtime modules live under `src/app/global/<module>`.
 - Feature stores and feature actions live under `src/features/<domain>`.
@@ -125,7 +125,7 @@ Base API client behavior and endpoint paths stay in `src/api`.
 Place components by ownership:
 
 - App shell, route guards, and error boundaries go in `src/app`.
-- Page-only components stay in `src/pages/<pageName>`.
+- Page-only components stay in the page's folder under `src/pages`.
 - Domain reusable components go in `src/features/<domain>/components`.
 - Project-generic reusable components go in `src/shared/components`.
 

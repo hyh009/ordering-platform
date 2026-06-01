@@ -7,6 +7,8 @@ import { setApiRefreshHandler, setApiTokenProvider } from '@/api';
 import { tDefault } from '@/app/i18n';
 import { createAuthActions } from '@/app/global/auth/auth.actions';
 import { authStore } from '@/app/global/auth/auth.store';
+import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
+import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import { authService } from '@/services/auth.service';
 import type { AuthUserDto, LoginRequest } from '@/models/auth.types';
 
@@ -67,6 +69,8 @@ export const authCommands = {
       const session = await authService.login(input);
 
       authActions.authSuccess(session);
+      const orgId = activeOrgCommands.initialize(session.user.memberships);
+      activeStoreCommands.initialize(orgId);
       return {
         status: 'authenticated',
         user: session.user,
@@ -89,6 +93,8 @@ export const authCommands = {
       await authService.logout();
 
       authActions.authAnonymous();
+      activeOrgCommands.clearOrg();
+      activeStoreCommands.clearStore();
       return {
         status: 'logged-out',
       };
@@ -104,13 +110,20 @@ export const authCommands = {
 async function initializeAuth() {
   authActions.authChecking();
 
-  try {
-    const session = await authService.refresh();
+  let session;
 
-    authActions.authSuccess(session);
+  try {
+    session = await authService.refresh();
   } catch {
     authActions.authAnonymous();
+    activeOrgCommands.clearOrg();
+    activeStoreCommands.clearStore();
+    return;
   }
+
+  authActions.authSuccess(session);
+  const orgId = activeOrgCommands.initialize(session.user.memberships);
+  activeStoreCommands.initialize(orgId);
 }
 
 function mapAuthSubmitError(

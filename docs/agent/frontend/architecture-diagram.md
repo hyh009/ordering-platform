@@ -40,10 +40,12 @@ React View re-renders
 
 ```txt
 Page view + page VM hook
-  -> src/pages/<pageName>
+  -> src/pages/<platform>/<pageName>  (admin or merchant)
+  -> src/pages/<pageName>             (cross-platform: login, notFound)
 
 Page-only commands
-  -> src/pages/<pageName>
+  -> src/pages/<platform>/<pageName>  (admin or merchant)
+  -> src/pages/<pageName>             (cross-platform: login, notFound)
 
 App-wide runtime modules
   -> src/app/global/<module>
@@ -70,14 +72,14 @@ Command/runtime ownership details
   -> docs/agent/frontend/commands.md
 
 Page-only form hook and process/UI state
-  -> src/pages/<pageName>/use<PageName>PageVM.ts
-  -> src/pages/<pageName>/use<PageName>Form.ts
+  -> src/pages/<platform>/<pageName>/use<PageName>PageVM.ts
+  -> src/pages/<platform>/<pageName>/use<PageName>Form.ts
 
 Reusable domain form view + form hook
   -> src/features/<domain>/components/<domainForm>/
 
 Page async flow
-  -> src/pages/<pageName>/<pageName>Page.commands.ts
+  -> src/pages/<platform>/<pageName>/<pageName>Page.commands.ts
 
 Feature state mutations
   -> src/features/<domain>/<slice>/actions.ts
@@ -134,10 +136,12 @@ src/
   services/
 
   pages/
-    <pageName>/
-      <PageName>Page.tsx
-      use<PageName>PageVM.ts
-      <pageName>Page.commands.ts
+    admin/
+      <pageName>/
+    merchant/
+      <pageName>/
+    login/           # cross-platform
+    notFound/        # cross-platform
 
   features/
     <domain>/

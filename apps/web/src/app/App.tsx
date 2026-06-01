@@ -6,6 +6,7 @@ import { AppLayout, MerchantLayout, SuperAdminLayout } from '@/app/layout/AppLay
 import { PublicLayout } from '@/app/layout/PublicLayout';
 import { PATHS } from '@/app/routing/paths';
 import { PublicOnly } from '@/app/routing/PublicOnly';
+import { RequireActiveStore } from '@/app/routing/RequireActiveStore';
 import { RequireAuth } from '@/app/routing/RequireAuth';
 import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
 import { AllergenListPage } from '@/pages/admin/allergenList/AllergenListPage';
@@ -17,6 +18,8 @@ import { LoginPage } from '@/pages/login/LoginPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { MenuPage } from '@/pages/merchant/menu/MenuPage';
 import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
+import { OrgSelectPage } from '@/pages/merchant/orgSelect/OrgSelectPage';
+import { StoreSelectPage } from '@/pages/merchant/storeSelect/StoreSelectPage';
 import { StoreSettingsPage } from '@/pages/merchant/storeSettings/StoreSettingsPage';
 import { TagListPage } from '@/pages/merchant/tagList/TagListPage';
 import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
@@ -47,7 +50,7 @@ export function App() {
                   to={
                     auth.user?.isSuperAdmin
                       ? PATHS.SUPER_ADMIN.ORGANIZATIONS
-                      : PATHS.MERCHANT.MENU
+                      : PATHS.MERCHANT.SELECT_ORG
                   }
                 />
               }
@@ -93,25 +96,35 @@ export function App() {
               </Route>
             </Route>
 
-            {/* Merchant platform: /merchant/* with sidebar */}
-            <Route element={<MerchantLayout />}>
+            {/* Merchant selection: no sidebar */}
+            <Route element={<AppLayout />}>
               <Route
                 element={
-                  <Navigate replace to={PATHS.MERCHANT.MENU} />
+                  <Navigate replace to={PATHS.MERCHANT.SELECT_ORG} />
                 }
                 path={PATHS.MERCHANT.ROOT}
               />
-              <Route element={<MenuPage />} path={PATHS.MERCHANT.MENU} />
-              <Route element={<OrderListPage />} path={PATHS.MERCHANT.ORDERS} />
-              <Route
-                element={<StoreSettingsPage />}
-                path={PATHS.MERCHANT.STORE_SETTINGS}
-              />
-              <Route
-                element={<CategoryListPage />}
-                path={PATHS.MERCHANT.CATEGORIES}
-              />
-              <Route element={<TagListPage />} path={PATHS.MERCHANT.TAGS} />
+              <Route element={<OrgSelectPage />} path={PATHS.MERCHANT.SELECT_ORG} />
+              <Route element={<StoreSelectPage />} path={PATHS.MERCHANT.SELECT_STORE} />
+            </Route>
+
+            {/* Merchant platform: /merchant/* with sidebar */}
+            <Route element={<MerchantLayout />}>
+              {/* Store-scoped pages require active org and store selection */}
+              <Route element={<RequireActiveStore />}>
+                <Route element={<MenuPage />} path={PATHS.MERCHANT.MENU} />
+                <Route element={<OrderListPage />} path={PATHS.MERCHANT.ORDERS} />
+                <Route
+                  element={<StoreSettingsPage />}
+                  path={PATHS.MERCHANT.STORE_SETTINGS}
+                />
+                <Route
+                  element={<CategoryListPage />}
+                  path={PATHS.MERCHANT.CATEGORIES}
+                />
+                <Route element={<TagListPage />} path={PATHS.MERCHANT.TAGS} />
+              </Route>
+
               <Route element={<NotFoundPage embedded />} path="/merchant/*" />
             </Route>
 

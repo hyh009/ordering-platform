@@ -16,6 +16,8 @@ export const PATHS = {
   },
   MERCHANT: {
     ROOT: '/merchant',
+    SELECT_ORG: '/merchant/select-org',
+    SELECT_STORE: '/merchant/select-store',
     MENU: '/merchant/menu',
     ORDERS: '/merchant/orders',
     STORE_SETTINGS: '/merchant/store-settings',
