@@ -359,7 +359,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/allergens')
+      .get('/api/v1/admin/allergens')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -384,7 +384,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .post('/api/v1/allergens')
+      .post('/api/v1/admin/allergens')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -424,7 +424,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .post('/api/v1/allergens')
+      .post('/api/v1/admin/allergens')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -457,7 +457,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .patch('/api/v1/allergens/allergen-1')
+      .patch('/api/v1/admin/allergens/allergen-1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -498,7 +498,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/dietary-markers?isActive=false')
+      .get('/api/v1/admin/dietary-markers?isActive=false')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -524,7 +524,7 @@ describe('metadata API', () => {
     });
 
     const createResponse = await request(app)
-      .post('/api/v1/dietary-markers')
+      .post('/api/v1/admin/dietary-markers')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -543,7 +543,7 @@ describe('metadata API', () => {
     );
 
     const updateResponse = await request(app)
-      .patch('/api/v1/dietary-markers/dietary-marker-1')
+      .patch('/api/v1/admin/dietary-markers/dietary-marker-1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -575,7 +575,7 @@ describe('metadata API', () => {
     repositoryMocks.addUser({ id: 'user-admin' });
 
     const response = await request(app)
-      .get('/api/v1/allergens')
+      .get('/api/v1/admin/allergens')
       .set('Authorization', `Bearer ${createAccessToken('user-admin')}`);
 
     expect(response.status).toBe(403);
@@ -595,7 +595,7 @@ describe('metadata API', () => {
     });
 
     const response = await request(app)
-      .patch('/api/v1/dietary-markers/dietary-marker-missing')
+      .patch('/api/v1/admin/dietary-markers/dietary-marker-missing')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,

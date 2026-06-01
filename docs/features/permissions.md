@@ -23,13 +23,21 @@ management access until `StoreMembership` is introduced.
 ## Route Prefixes
 
 Platform admin and merchant operations are served under separate route prefixes
-with separate middleware chains:
+with separate middleware chains. Prefixes are actor surfaces, not resource
+grouping labels:
 
 - `/api/v1/admin/...` — super admin only; protected by `requireSuperAdmin()`
 - `/api/v1/merchant/...` — org members only; protected by `requireOrgRole(...roles)`
 
 Super admin routes and org member routes are never the same route handler with
 branching logic.
+
+Actor-specific operations should stay under the actor prefix even when the
+resource name is generic. For example, super-admin organization management
+belongs under `/api/v1/admin/...`, while organization-member store or menu
+management belongs under `/api/v1/merchant/...`; do not move these operations to
+top-level resource paths only because the resource is named `organizations`,
+`stores`, or `products`.
 
 ## requireSuperAdmin Middleware
 
@@ -51,16 +59,16 @@ Organization resolution:
 
 ## Resource Permission Boundaries
 
-| Resource | org_owner | org_admin | staff |
-|---|---|---|---|
-| OrganizationMembership | CRUD | CRUD | read |
-| Store | CRUD | CRUD | read |
-| Category | CRUD | CRUD | read |
-| Tag | CRUD | CRUD | read |
-| ProductModifier | CRUD | CRUD | read |
-| Product | CRUD | CRUD | read |
-| Promotion | CRUD | CRUD | — |
-| Order (management actions) | yes | yes | yes |
+| Resource                   | org_owner | org_admin | staff |
+| -------------------------- | --------- | --------- | ----- |
+| OrganizationMembership     | CRUD      | CRUD      | read  |
+| Store                      | CRUD      | CRUD      | read  |
+| Category                   | CRUD      | CRUD      | read  |
+| Tag                        | CRUD      | CRUD      | read  |
+| ProductModifier            | CRUD      | CRUD      | read  |
+| Product                    | CRUD      | CRUD      | read  |
+| Promotion                  | CRUD      | CRUD      | —     |
+| Order (management actions) | yes       | yes       | yes   |
 
 Notes:
 

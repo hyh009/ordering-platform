@@ -431,7 +431,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/organizations')
+      .get('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -490,7 +490,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/organizations?offset=1&limit=1')
+      .get('/api/v1/admin/organizations?offset=1&limit=1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -544,7 +544,7 @@ describe('organizations API', () => {
 
     // Search by name
     const response1 = await request(app)
-      .get('/api/v1/organizations?keyword=Cafe')
+      .get('/api/v1/admin/organizations?keyword=Cafe')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -556,7 +556,7 @@ describe('organizations API', () => {
 
     // Search by slug
     const response2 = await request(app)
-      .get('/api/v1/organizations?keyword=night-market')
+      .get('/api/v1/admin/organizations?keyword=night-market')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -585,7 +585,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/organizations?status=disabled')
+      .get('/api/v1/admin/organizations?status=disabled')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -615,7 +615,7 @@ describe('organizations API', () => {
 
     // Sort by name asc
     const response1 = await request(app)
-      .get('/api/v1/organizations?sortBy=name&sortDirection=asc')
+      .get('/api/v1/admin/organizations?sortBy=name&sortDirection=asc')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -626,7 +626,7 @@ describe('organizations API', () => {
 
     // Sort by createdAt desc
     const response2 = await request(app)
-      .get('/api/v1/organizations?sortBy=createdAt&sortDirection=desc')
+      .get('/api/v1/admin/organizations?sortBy=createdAt&sortDirection=desc')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -651,7 +651,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/organizations/org-1')
+      .get('/api/v1/admin/organizations/org-1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -689,7 +689,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .patch('/api/v1/organizations/org-1')
+      .patch('/api/v1/admin/organizations/org-1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -738,7 +738,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .patch('/api/v1/organizations/org-1')
+      .patch('/api/v1/admin/organizations/org-1')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -766,7 +766,7 @@ describe('organizations API', () => {
     repositoryMocks.addUser({ id: 'user-owner' });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -818,7 +818,7 @@ describe('organizations API', () => {
     repositoryMocks.addUser({ id: 'user-owner' });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -856,7 +856,7 @@ describe('organizations API', () => {
     repositoryMocks.addUser({ id: 'user-owner' });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -890,7 +890,7 @@ describe('organizations API', () => {
     repositoryMocks.addUser({ id: 'user-admin' });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set('Authorization', `Bearer ${createAccessToken('user-admin')}`)
       .send({
         name: 'Main Street Cafe',
@@ -914,7 +914,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -949,7 +949,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .post('/api/v1/organizations')
+      .post('/api/v1/admin/organizations')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,
@@ -980,7 +980,7 @@ describe('organizations API', () => {
     });
 
     const response = await request(app)
-      .get('/api/v1/organizations/org-missing')
+      .get('/api/v1/admin/organizations/org-missing')
       .set(
         'Authorization',
         `Bearer ${createAccessToken('user-super-admin', true)}`,

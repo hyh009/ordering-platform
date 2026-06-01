@@ -1,21 +1,21 @@
 import { Router } from 'express';
 
-import allergensRouter from './allergens';
+import allergensRouter from './admin/allergens';
+import dietaryMarkersRouter from './admin/dietaryMarkers';
+import organizationsRouter from './admin/organizations';
+import usersRouter from './admin/users';
 import authRouter from './auth';
-import dietaryMarkersRouter from './dietaryMarkers';
 import healthRouter from './health';
 import merchantStoresRouter from './merchant/stores';
-import organizationsRouter from './organizations';
-import usersRouter from './users';
 
 const router = Router();
 
 router.use('/auth', authRouter);
-router.use('/allergens', allergensRouter);
-router.use('/dietary-markers', dietaryMarkersRouter);
+router.use('/admin/allergens', allergensRouter);
+router.use('/admin/dietary-markers', dietaryMarkersRouter);
+router.use('/admin/organizations', organizationsRouter);
+router.use('/admin/users', usersRouter);
 router.use('/health', healthRouter);
 router.use('/merchant/stores', merchantStoresRouter);
-router.use('/organizations', organizationsRouter);
-router.use('/users', usersRouter);
 
 export default router;

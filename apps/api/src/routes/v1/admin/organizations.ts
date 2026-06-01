@@ -317,7 +317,7 @@ const router = Router();
 
 /**
  * @openapi
- * /v1/organizations:
+ * /v1/admin/organizations:
  *   get:
  *     tags:
  *       - Organizations
@@ -403,7 +403,7 @@ router.get<
 
 /**
  * @openapi
- * /v1/organizations:
+ * /v1/admin/organizations:
  *   post:
  *     tags:
  *       - Organizations
@@ -482,7 +482,7 @@ router.post<
 
 /**
  * @openapi
- * /v1/organizations/{organizationId}:
+ * /v1/admin/organizations/{organizationId}:
  *   get:
  *     tags:
  *       - Organizations
@@ -542,7 +542,7 @@ router.get<
 
 /**
  * @openapi
- * /v1/organizations/{organizationId}:
+ * /v1/admin/organizations/{organizationId}:
  *   patch:
  *     tags:
  *       - Organizations
@@ -714,14 +714,21 @@ router.post<OrganizationParams, CreateStoreSuccessResponse, CreateStoreRequest>(
   },
 );
 
-router.get<OrganizationParams, ListStoresSuccessResponse, Record<string, never>>(
+router.get<
+  OrganizationParams,
+  ListStoresSuccessResponse,
+  Record<string, never>
+>(
   '/:organizationId/stores',
   requireAuth,
   requireSuperAdmin(),
   validate(organizationParamsSchema, 'params'),
   async (req, res) => {
     const query = listStoresQuerySchema.parse(req.query);
-    const data = await storeService.listStores(req.params.organizationId, query);
+    const data = await storeService.listStores(
+      req.params.organizationId,
+      query,
+    );
 
     res.json({ status: 'success', data });
   },
@@ -743,7 +750,11 @@ router.get<StoreWithOrgParams, GetStoreSuccessResponse, Record<string, never>>(
   },
 );
 
-router.patch<StoreWithOrgParams, UpdateStoreSuccessResponse, UpdateStoreRequest>(
+router.patch<
+  StoreWithOrgParams,
+  UpdateStoreSuccessResponse,
+  UpdateStoreRequest
+>(
   '/:organizationId/stores/:storeId',
   requireAuth,
   requireSuperAdmin(),

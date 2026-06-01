@@ -1,8 +1,8 @@
 import {
-  allergenParamsSchema,
-  createAllergenSchema,
+  createDietaryMarkerSchema,
+  dietaryMarkerParamsSchema,
   metadataActiveFilterSchema,
-  updateAllergenSchema,
+  updateDietaryMarkerSchema,
 } from '@repo/shared';
 import { requireAuth, requireSuperAdmin } from '@src/middlewares/auth';
 import { validate } from '@src/middlewares/validate';
@@ -10,13 +10,13 @@ import { metadataService } from '@src/services/metadata.service';
 import { Router } from 'express';
 
 import type {
-  AllergenParams,
-  CreateAllergenRequest,
-  CreateAllergenSuccessResponse,
-  ListAllergensSuccessResponse,
+  CreateDietaryMarkerRequest,
+  CreateDietaryMarkerSuccessResponse,
+  DietaryMarkerParams,
+  ListDietaryMarkersSuccessResponse,
   MetadataActiveFilter,
-  UpdateAllergenRequest,
-  UpdateAllergenSuccessResponse,
+  UpdateDietaryMarkerRequest,
+  UpdateDietaryMarkerSuccessResponse,
 } from '@repo/shared';
 
 const router = Router();
@@ -25,40 +25,37 @@ const router = Router();
  * @openapi
  * components:
  *   schemas:
- *     LocalizedMetadataName:
- *       type: object
- *       required:
- *         - zh-TW
- *       properties:
- *         en:
- *           type: string
- *           example: Peanut
- *         zh-TW:
- *           type: string
- *           example: 花生
- *     Allergen:
+ *     DietaryMarkerType:
+ *       type: string
+ *       enum:
+ *         - dietary
+ *         - regulatory
+ *     DietaryMarker:
  *       type: object
  *       required:
  *         - id
  *         - key
  *         - name
+ *         - type
  *         - isActive
  *       properties:
  *         id:
  *           type: string
- *           example: allergen-123
+ *           example: dietary-marker-123
  *         key:
  *           type: string
- *           example: peanut
+ *           example: vegetarian
  *         name:
  *           $ref: '#/components/schemas/LocalizedMetadataName'
  *         icon:
  *           type: string
- *           example: nut
+ *           example: leaf
+ *         type:
+ *           $ref: '#/components/schemas/DietaryMarkerType'
  *         isActive:
  *           type: boolean
  *           example: true
- *     AllergenListSuccessResponse:
+ *     DietaryMarkerListSuccessResponse:
  *       type: object
  *       required:
  *         - status
@@ -72,13 +69,13 @@ const router = Router();
  *         data:
  *           type: object
  *           required:
- *             - allergens
+ *             - dietaryMarkers
  *           properties:
- *             allergens:
+ *             dietaryMarkers:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Allergen'
- *     AllergenResourceSuccessResponse:
+ *                 $ref: '#/components/schemas/DietaryMarker'
+ *     DietaryMarkerResourceSuccessResponse:
  *       type: object
  *       required:
  *         - status
@@ -92,19 +89,19 @@ const router = Router();
  *         data:
  *           type: object
  *           required:
- *             - allergen
+ *             - dietaryMarker
  *           properties:
- *             allergen:
- *               $ref: '#/components/schemas/Allergen'
+ *             dietaryMarker:
+ *               $ref: '#/components/schemas/DietaryMarker'
  */
 
 /**
  * @openapi
- * /v1/allergens:
+ * /v1/admin/dietary-markers:
  *   get:
  *     tags:
- *       - Allergens
- *     summary: List allergens
+ *       - Dietary Markers
+ *     summary: List dietary markers
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -120,36 +117,38 @@ const router = Router();
  *           default: "true"
  *     responses:
  *       200:
- *         description: Allergens returned
+ *         description: Dietary markers returned
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AllergenListSuccessResponse'
+ *               $ref: '#/components/schemas/DietaryMarkerListSuccessResponse'
  */
 router.get<
   Record<string, never>,
-  ListAllergensSuccessResponse,
+  ListDietaryMarkersSuccessResponse,
   Record<string, never>,
   { isActive: MetadataActiveFilter }
 >('/', requireAuth, requireSuperAdmin(), async (req, res) => {
   const query = metadataActiveFilterSchema.parse(req.query);
-  const allergens = await metadataService.listAllergens(query.isActive);
+  const dietaryMarkers = await metadataService.listDietaryMarkers(
+    query.isActive,
+  );
 
   res.json({
     status: 'success',
     data: {
-      allergens,
+      dietaryMarkers,
     },
   });
 });
 
 /**
  * @openapi
- * /v1/allergens:
+ * /v1/admin/dietary-markers:
  *   post:
  *     tags:
- *       - Allergens
- *     summary: Create an allergen
+ *       - Dietary Markers
+ *     summary: Create a dietary marker
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -164,52 +163,54 @@ router.get<
  *             properties:
  *               key:
  *                 type: string
- *                 example: peanut
+ *                 example: vegetarian
  *               name:
  *                 $ref: '#/components/schemas/LocalizedMetadataName'
  *               icon:
  *                 type: string
- *                 example: nut
+ *                 example: leaf
+ *               type:
+ *                 $ref: '#/components/schemas/DietaryMarkerType'
  *               isActive:
  *                 type: boolean
  *                 example: true
  *     responses:
  *       201:
- *         description: Allergen created
+ *         description: Dietary marker created
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AllergenResourceSuccessResponse'
+ *               $ref: '#/components/schemas/DietaryMarkerResourceSuccessResponse'
  *       409:
- *         description: Allergen key already exists
+ *         description: Dietary marker key already exists
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               allergenAlreadyExists:
+ *               dietaryMarkerAlreadyExists:
  *                 value:
  *                   status: error
  *                   statusCode: 409
- *                   code: ALLERGEN_ALREADY_EXISTS
- *                   message: Allergen already exists
+ *                   code: DIETARY_MARKER_ALREADY_EXISTS
+ *                   message: Dietary marker already exists
  */
 router.post<
   Record<string, never>,
-  CreateAllergenSuccessResponse,
-  CreateAllergenRequest
+  CreateDietaryMarkerSuccessResponse,
+  CreateDietaryMarkerRequest
 >(
   '/',
   requireAuth,
   requireSuperAdmin(),
-  validate(createAllergenSchema),
+  validate(createDietaryMarkerSchema),
   async (req, res) => {
-    const allergen = await metadataService.createAllergen(req.body);
+    const dietaryMarker = await metadataService.createDietaryMarker(req.body);
 
     res.status(201).json({
       status: 'success',
       data: {
-        allergen,
+        dietaryMarker,
       },
     });
   },
@@ -217,21 +218,21 @@ router.post<
 
 /**
  * @openapi
- * /v1/allergens/{allergenId}:
+ * /v1/admin/dietary-markers/{dietaryMarkerId}:
  *   patch:
  *     tags:
- *       - Allergens
- *     summary: Update allergen metadata
- *     description: The allergen key is create-only and cannot be updated here.
+ *       - Dietary Markers
+ *     summary: Update dietary marker metadata
+ *     description: The dietary marker key is create-only and cannot be updated here.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: allergenId
+ *         name: dietaryMarkerId
  *         required: true
  *         schema:
  *           type: string
- *         example: allergen-123
+ *         example: dietary-marker-123
  *     requestBody:
  *       required: true
  *       content:
@@ -244,51 +245,53 @@ router.post<
  *               icon:
  *                 type: string
  *                 nullable: true
- *                 example: nut
+ *                 example: leaf
+ *               type:
+ *                 $ref: '#/components/schemas/DietaryMarkerType'
  *               isActive:
  *                 type: boolean
  *                 example: false
  *     responses:
  *       200:
- *         description: Allergen updated
+ *         description: Dietary marker updated
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AllergenResourceSuccessResponse'
+ *               $ref: '#/components/schemas/DietaryMarkerResourceSuccessResponse'
  *       404:
- *         description: Allergen not found
+ *         description: Dietary marker not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               allergenNotFound:
+ *               dietaryMarkerNotFound:
  *                 value:
  *                   status: error
  *                   statusCode: 404
- *                   code: ALLERGEN_NOT_FOUND
- *                   message: Allergen not found
+ *                   code: DIETARY_MARKER_NOT_FOUND
+ *                   message: Dietary marker not found
  */
 router.patch<
-  AllergenParams,
-  UpdateAllergenSuccessResponse,
-  UpdateAllergenRequest
+  DietaryMarkerParams,
+  UpdateDietaryMarkerSuccessResponse,
+  UpdateDietaryMarkerRequest
 >(
-  '/:allergenId',
+  '/:dietaryMarkerId',
   requireAuth,
   requireSuperAdmin(),
-  validate(allergenParamsSchema, 'params'),
-  validate(updateAllergenSchema),
+  validate(dietaryMarkerParamsSchema, 'params'),
+  validate(updateDietaryMarkerSchema),
   async (req, res) => {
-    const allergen = await metadataService.updateAllergen(
-      req.params.allergenId,
+    const dietaryMarker = await metadataService.updateDietaryMarker(
+      req.params.dietaryMarkerId,
       req.body,
     );
 
     res.json({
       status: 'success',
       data: {
-        allergen,
+        dietaryMarker,
       },
     });
   },
