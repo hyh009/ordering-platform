@@ -5,8 +5,7 @@ pnpm workspaces.
 
 The project was cloned from a starter template, but the starter is only an
 architecture and workflow reference. Starter demo data, copy, and domain shapes
-do not need backward compatibility. The current Todo demo is kept temporarily
-until the ordering domain replaces it.
+do not need backward compatibility.
 
 ## Foundation
 
