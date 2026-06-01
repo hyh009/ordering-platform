@@ -14,7 +14,8 @@
     }
   },
   "scripts": {
-    "build": "tsc && node scripts/write-cjs.mjs"
+    "build": "tsc && node scripts/write-cjs.mjs",
+    "dev": "tsc --watch --preserveWatchOutput"
   },
   "dependencies": {
     "zod": "^4.4.3"

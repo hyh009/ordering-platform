@@ -6,7 +6,7 @@
   "scripts": {
     "test": "pnpm --filter @repo/shared run build && vitest run",
     "test:watch": "vitest",
-    "dev": "pnpm --filter @repo/shared run build && tsx watch src/server.ts",
+    "dev": "pnpm --filter @repo/shared run build && concurrently -n shared,api -c blue,green \"pnpm --filter @repo/shared run dev\" \"tsx watch src/server.ts\"",
     "build": "pnpm --filter @repo/shared run build && pnpm run build:app",
     "build:app": "tsc && tsc-alias",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"vitest.config.ts\"",
