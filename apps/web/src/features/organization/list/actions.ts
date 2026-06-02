@@ -2,7 +2,7 @@ import type {
   OrganizationListItem,
   OrganizationListPage,
 } from '@/models/organization';
-import type { OrganizationListState } from './store';
+import type { OrganizationListState, OrganizationReviewStatusFilter } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createOrganizationListActions(
@@ -33,6 +33,10 @@ export function createOrganizationListActions(
         error,
         isLoading: false,
       });
+    },
+
+    filterChanged(reviewStatusFilter: OrganizationReviewStatusFilter) {
+      store.setState({ reviewStatusFilter });
     },
   };
 }

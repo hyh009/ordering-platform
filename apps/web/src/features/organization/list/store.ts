@@ -2,13 +2,17 @@ import { createStore } from 'zustand/vanilla';
 import type {
   OrganizationListItem,
   OrganizationListPage,
+  OrganizationReviewStatus,
 } from '@/models/organization';
+
+export type OrganizationReviewStatusFilter = OrganizationReviewStatus | 'all';
 
 export type OrganizationListState = {
   error: string | null;
   isLoading: boolean;
   organizations: OrganizationListItem[];
   pagination: OrganizationListPage;
+  reviewStatusFilter: OrganizationReviewStatusFilter;
 };
 
 export function createOrganizationListStore() {
@@ -21,5 +25,6 @@ export function createOrganizationListStore() {
       offset: 0,
       total: 0,
     },
+    reviewStatusFilter: 'all',
   }));
 }

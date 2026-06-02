@@ -63,7 +63,7 @@ export function AppHeader({
 
   if (isSuperAdmin) {
     return (
-      <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-5 md:px-8">
+      <header className="flex h-(--app-header-height) items-center justify-between gap-4 border-b border-border bg-card px-5 md:px-8">
         <div className="flex shrink-0 items-center gap-2">
           <img alt="" className="h-8 w-8 shrink-0" src={logoUrl} />
           <span className="text-sm font-bold text-foreground">{appName}</span>
@@ -89,7 +89,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-5 md:px-8">
+    <header className="flex h-(--app-header-height) items-center justify-between gap-4 border-b border-border bg-card px-5 md:px-8">
       <div className="flex items-center gap-2">
         <img alt="" className="h-8 w-8 shrink-0" src={logoUrl} />
         <span className="text-sm font-bold text-foreground">{appName}</span>

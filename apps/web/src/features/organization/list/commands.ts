@@ -3,7 +3,12 @@ import {
   createOrganizationSchema,
   updateOrganizationSchema,
 } from '@/models/organization';
-import type { Organization } from '@/models/organization';
+import type {
+  Organization,
+  OrganizationReviewStatus,
+  CreateOrganizationRequest,
+  UpdateOrganizationRequest,
+} from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
 import {
   mapAdminApiError,
@@ -13,10 +18,6 @@ import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
 } from '@/features/organization/components/organizationForm/organizationFormErrors';
-import type {
-  CreateOrganizationRequest,
-  UpdateOrganizationRequest,
-} from '@/models/organization';
 import type { OrganizationListActions } from './actions';
 
 export type OrganizationListCommandFieldErrors = OrganizationFormFieldErrors;
@@ -43,7 +44,12 @@ export type OrganizationListCommands = {
   loadOrganizations(input: {
     limit: number;
     offset: number;
+    reviewStatus?: OrganizationReviewStatus;
   }): Promise<LoadOrganizationsResult>;
+  reviewOrganization(
+    organizationId: string,
+    reviewStatus: OrganizationReviewStatus,
+  ): Promise<SaveOrganizationListResult>;
   updateOrganization(
     organizationId: string,
     input: UpdateOrganizationRequest,
@@ -100,7 +106,11 @@ export function createOrganizationListCommands(
       actions.loadStarted();
 
       try {
-        const result = await organizationService.listOrganizations(input);
+        const result = await organizationService.listOrganizations({
+          limit: input.limit,
+          offset: input.offset,
+          reviewStatus: input.reviewStatus,
+        });
 
         actions.loadSucceeded({
           organizations: result.organizations,
@@ -135,6 +145,22 @@ export function createOrganizationListCommands(
       try {
         const organization =
           await organizationService.createOrganization(input);
+
+        return {
+          organization,
+          status: 'saved',
+        };
+      } catch (error) {
+        return mapAdminApiError(error);
+      }
+    },
+
+    async reviewOrganization(organizationId, reviewStatus) {
+      try {
+        const organization = await organizationService.updateOrganization(
+          organizationId,
+          { reviewStatus },
+        );
 
         return {
           organization,

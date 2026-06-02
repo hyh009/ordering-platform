@@ -1,5 +1,6 @@
 export {
   createOrganizationSchema,
+  organizationReviewStatuses,
   organizationStatuses,
   updateOrganizationSchema,
 } from '@repo/shared';
@@ -23,6 +24,7 @@ export type {
   OrganizationListItemDto,
   OrganizationListPage,
   OrganizationPhoneDto,
+  OrganizationReviewStatus,
   OrganizationStatus,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,

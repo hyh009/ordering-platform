@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
+import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
+import { tDefault } from '@/app/i18n';
 import { useOrganizationForm } from '@/features/organization/components/organizationForm/useOrganizationForm';
 import { createOrganizationListRuntime } from '@/features/organization/list/runtime';
+import type { OrganizationReviewStatusFilter } from '@/features/organization/list/store';
 import { toCreateOrganizationRequest } from '@/models/organization';
+import type { OrganizationReviewStatus } from '@/models/organization';
 import {
   useOffsetPaginationControls,
   type OffsetPaginationLoadPageInput,
@@ -14,29 +18,55 @@ function createOrganizationListPageContext() {
   const commands = createOrganizationListPageCommands(actions);
 
   return {
+    actions,
     commands,
     store,
   };
 }
 
 export function useOrganizationListPageVM() {
-  const [{ commands, store }] = useState(createOrganizationListPageContext);
+  const [{ actions, commands, store }] = useState(
+    createOrganizationListPageContext,
+  );
   const form = useOrganizationForm();
+  const feedbackVM = useFeedbackVM();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const organizations = useStore(store, (state) => state.organizations);
   const isLoading = useStore(store, (state) => state.isLoading);
   const error = useStore(store, (state) => state.error);
   const pagination = useStore(store, (state) => state.pagination);
+  const reviewStatusFilter = useStore(
+    store,
+    (state) => state.reviewStatusFilter,
+  );
 
   const loadPage = useCallback(
-    async function loadPage({ limit, offset }: OffsetPaginationLoadPageInput) {
+    async function loadPage({
+      limit,
+      offset,
+      reviewStatus,
+    }: OffsetPaginationLoadPageInput & {
+      reviewStatus?: OrganizationReviewStatus;
+    }) {
       await commands.loadOrganizations({
         limit,
         offset,
+        reviewStatus,
       });
     },
     [commands],
+  );
+
+  const loadCurrentFilterPage = useCallback(
+    async (input: OffsetPaginationLoadPageInput) => {
+      await loadPage({
+        ...input,
+        reviewStatus:
+          reviewStatusFilter === 'all' ? undefined : reviewStatusFilter,
+      });
+    },
+    [loadPage, reviewStatusFilter],
   );
 
   const {
@@ -47,16 +77,24 @@ export function useOrganizationListPageVM() {
     previousPage,
     totalPages,
   } = useOffsetPaginationControls({
-    loadPage,
+    loadPage: loadCurrentFilterPage,
     pagination,
   });
 
   useEffect(() => {
-    void loadPage({
+    void loadCurrentFilterPage({
       limit: pagination.limit,
       offset: 0,
     });
-  }, [loadPage, pagination.limit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewStatusFilter]);
+
+  const setFilter = useCallback(
+    (filter: OrganizationReviewStatusFilter) => {
+      actions.filterChanged(filter);
+    },
+    [actions],
+  );
 
   const openCreateModal = useCallback(() => {
     form.reset();
@@ -80,16 +118,52 @@ export function useOrganizationListPageVM() {
 
     if (result.status === 'saved') {
       closeCreateModal();
-      await loadPage({
+      await loadCurrentFilterPage({
         limit: pagination.limit,
-        offset: 0, // Go back to first page to see the new item
+        offset: 0,
       });
       return;
     }
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [closeCreateModal, commands, form, loadPage, pagination.limit]);
+  }, [closeCreateModal, commands, form, loadCurrentFilterPage, pagination.limit]);
+
+  const reviewOrganization = useCallback(
+    async (
+      organizationId: string,
+      organizationName: string,
+      reviewStatus: 'approved' | 'rejected',
+    ) => {
+      const isApprove = reviewStatus === 'approved';
+      const confirmed = await feedbackVM.confirm({
+        title: tDefault(
+          isApprove
+            ? 'admin.organizations.approveConfirmTitle'
+            : 'admin.organizations.rejectConfirmTitle',
+          isApprove ? 'Approve organization?' : 'Reject organization?',
+        ),
+        message: tDefault(
+          isApprove
+            ? 'admin.organizations.approveConfirmMessage'
+            : 'admin.organizations.rejectConfirmMessage',
+          isApprove
+            ? 'This will mark "{{name}}" as approved.'
+            : 'This will mark "{{name}}" as rejected.',
+          { name: organizationName },
+        ),
+      });
+
+      if (!confirmed) return;
+
+      await commands.reviewOrganization(organizationId, reviewStatus);
+      await loadCurrentFilterPage({
+        limit: pagination.limit,
+        offset: pagination.offset,
+      });
+    },
+    [commands, feedbackVM, loadCurrentFilterPage, pagination],
+  );
 
   return {
     error,
@@ -98,7 +172,6 @@ export function useOrganizationListPageVM() {
     hasPreviousPage,
     isCreateModalOpen,
     isLoading,
-    loadPage,
     nextPage,
     organizations,
     openCreateModal,
@@ -106,6 +179,9 @@ export function useOrganizationListPageVM() {
     page,
     pagination,
     previousPage,
+    reviewOrganization,
+    reviewStatusFilter,
+    setFilter,
     submitCreate,
     totalPages,
   };

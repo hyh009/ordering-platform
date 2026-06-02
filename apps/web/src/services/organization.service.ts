@@ -11,6 +11,7 @@ import type {
   GetOrganizationSuccessResponse,
   ListOrganizationsSuccessResponse,
   OrganizationListPage,
+  OrganizationReviewStatus,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
 } from '@/models/organization';
@@ -29,11 +30,18 @@ import type {
 } from '@repo/shared';
 
 export const organizationService = {
-  async listOrganizations(input: { limit: number; offset: number }) {
+  async listOrganizations(input: {
+    limit: number;
+    offset: number;
+    reviewStatus?: OrganizationReviewStatus;
+  }) {
     const params = new URLSearchParams({
       limit: String(input.limit),
       offset: String(input.offset),
     });
+    if (input.reviewStatus) {
+      params.set('reviewStatus', input.reviewStatus);
+    }
     const response = await apiJson<ListOrganizationsSuccessResponse>(
       `${organizationPaths.list}?${params.toString()}`,
     );
@@ -47,7 +55,7 @@ export const organizationService = {
         {
           limit: input.limit,
           offset: input.offset,
-          total: response.data.organizations.length,
+          total: response.data.pagination.total,
         },
       ),
     };

@@ -11,7 +11,10 @@ export type SaveOrganizationResult = SaveOrganizationListResult;
 
 export type OrganizationListPageCommands = Pick<
   OrganizationListCommands,
-  'createOrganization' | 'loadOrganizations' | 'updateOrganization'
+  | 'createOrganization'
+  | 'loadOrganizations'
+  | 'reviewOrganization'
+  | 'updateOrganization'
 >;
 
 export function createOrganizationListPageCommands(
@@ -24,6 +27,7 @@ export function createOrganizationListPageCommands(
   return {
     createOrganization: base.createOrganization,
     loadOrganizations: base.loadOrganizations,
+    reviewOrganization: base.reviewOrganization,
     updateOrganization: base.updateOrganization,
     ...overrides,
   };

@@ -28,10 +28,10 @@ type AppShellProps = AppHeaderProps & {
 
 export function AppShell({ children, sidebar, ...headerProps }: AppShellProps) {
   return (
-    <div className={sidebar ? 'flex h-screen flex-col' : 'min-h-screen'}>
+    <div className={sidebar ? undefined : 'min-h-screen'}>
       <AppHeader {...headerProps} />
       {sidebar ? (
-        <div className="flex min-h-0 flex-1">
+        <div className="app-shell-body flex">
           {sidebar}
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
