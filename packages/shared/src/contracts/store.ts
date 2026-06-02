@@ -53,10 +53,18 @@ export type StoreDto = {
   updatedAt: string;
 };
 
+export type StoreListItemDto = {
+  id: string;
+  profile: Pick<StoreProfileDto, 'displayName'>;
+  locale: StoreLocaleDto;
+  status: StoreStatus;
+  updatedAt: string;
+};
+
 export type GetStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>;
 
 export type ListStoresSuccessResponse = ApiSuccessResponse<{
-  stores: StoreDto[];
+  stores: StoreListItemDto[];
   pagination: OffsetPaginationDto;
 }>;
 
