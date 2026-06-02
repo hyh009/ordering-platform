@@ -1,8 +1,8 @@
 import { createStore } from 'zustand/vanilla';
-import type { Store } from '@/models/store';
+import type { StoreListItem } from '@/models/store';
 
 export type StoreListState = {
-  stores: Store[];
+  stores: StoreListItem[];
   isLoading: boolean;
   error: string | null;
 };

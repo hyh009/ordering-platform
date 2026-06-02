@@ -1,4 +1,4 @@
-import type { Store } from '@/models/store';
+import type { StoreListItem } from '@/models/store';
 import type { StoreListStore } from './store';
 
 export function createStoreListActions(storeInstance: StoreListStore) {
@@ -7,7 +7,7 @@ export function createStoreListActions(storeInstance: StoreListStore) {
       storeInstance.setState({ isLoading: true, error: null });
     },
 
-    setStores(stores: Store[]) {
+    setStores(stores: StoreListItem[]) {
       storeInstance.setState({ stores, isLoading: false, error: null });
     },
 

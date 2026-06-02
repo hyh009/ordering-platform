@@ -3,7 +3,7 @@ import { merchantStorePaths } from '@/api/paths/store.paths';
 import { storeModel } from '@/models/store';
 
 import type { GetStoreSuccessResponse, ListStoresSuccessResponse } from '@repo/shared';
-import type { Store } from '@/models/store';
+import type { Store, StoreListItem } from '@/models/store';
 
 export const storeService = {
   async getStore(storeId: string): Promise<Store> {
@@ -14,7 +14,7 @@ export const storeService = {
     return storeModel.deserialize(response.data.store);
   },
 
-  async listStores(organizationId: string, options: { offset?: number; limit?: number } = {}): Promise<{ stores: Store[]; total: number }> {
+  async listStores(organizationId: string, options: { offset?: number; limit?: number } = {}): Promise<{ stores: StoreListItem[]; total: number }> {
     const params = new URLSearchParams({ organizationId });
 
     if (options.offset !== undefined) params.set('offset', String(options.offset));
@@ -25,7 +25,7 @@ export const storeService = {
     );
 
     return {
-      stores: response.data.stores.map(storeModel.deserialize),
+      stores: response.data.stores,
       total: response.data.pagination.total,
     };
   },

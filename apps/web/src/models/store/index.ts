@@ -1,2 +1,2 @@
 export { storeModel } from './model';
-export type { Store, StoreStatus } from './types';
+export type { Store, StoreListItem, StoreStatus } from './types';
