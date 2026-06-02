@@ -11,10 +11,11 @@ import {
   mapAdminApiError,
   type AdminCommandFailure,
 } from '@/services/utils/adminApiError';
+import { mapMetadataFieldErrors } from '../metadataFieldErrors';
 import type { AllergenListActions } from './actions';
 
 export type AllergenCommandFieldErrors = Partial<
-  Record<'key' | 'zhTw' | 'en', string>
+  Record<'key' | 'name', string>
 >;
 
 export type LoadAllergensResult =
@@ -40,35 +41,6 @@ export type AllergenListCommands = {
     input: UpdateAllergenRequest,
   ): Promise<SaveAllergenResult>;
 };
-
-function fieldErrorForPath(path: string) {
-  if (path === 'key') {
-    return tDefault(
-      'admin.metadata.validation.key',
-      'Use lowercase letters, numbers, hyphens, or underscores.',
-    );
-  }
-
-  if (path === 'name.zh-TW') {
-    return tDefault(
-      'admin.metadata.validation.zhTwRequired',
-      'Chinese name is required.',
-    );
-  }
-
-  return tDefault('admin.validation.invalidField', 'This field is invalid.');
-}
-
-function mapAllergenFieldErrors(issues: Array<{ path: PropertyKey[] }>) {
-  return Object.fromEntries(
-    issues.map((issue) => {
-      const path = issue.path.map(String).join('.');
-      const field = path === 'name.zh-TW' ? 'zhTw' : String(issue.path[0]);
-
-      return [field, fieldErrorForPath(path)];
-    }),
-  ) as AllergenCommandFieldErrors;
-}
 
 export function createAllergenListCommands(
   actions: AllergenListActions,
@@ -97,7 +69,7 @@ export function createAllergenListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapAllergenFieldErrors(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(validation.error.issues),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -125,7 +97,7 @@ export function createAllergenListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapAllergenFieldErrors(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(validation.error.issues),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',

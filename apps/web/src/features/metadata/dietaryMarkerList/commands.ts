@@ -14,10 +14,11 @@ import {
   mapAdminApiError,
   type AdminCommandFailure,
 } from '@/services/utils/adminApiError';
+import { mapMetadataFieldErrors } from '../metadataFieldErrors';
 import type { DietaryMarkerListActions } from './actions';
 
 export type DietaryMarkerCommandFieldErrors = Partial<
-  Record<'key' | 'zhTw' | 'en', string>
+  Record<'key' | 'name', string>
 >;
 
 export type LoadDietaryMarkersResult =
@@ -48,35 +49,6 @@ export type DietaryMarkerListCommands = {
   ): Promise<SaveDietaryMarkerResult>;
 };
 
-function fieldErrorForPath(path: string) {
-  if (path === 'key') {
-    return tDefault(
-      'admin.metadata.validation.key',
-      'Use lowercase letters, numbers, hyphens, or underscores.',
-    );
-  }
-
-  if (path === 'name.zh-TW') {
-    return tDefault(
-      'admin.metadata.validation.zhTwRequired',
-      'Chinese name is required.',
-    );
-  }
-
-  return tDefault('admin.validation.invalidField', 'This field is invalid.');
-}
-
-function mapDietaryMarkerFieldErrors(issues: Array<{ path: PropertyKey[] }>) {
-  return Object.fromEntries(
-    issues.map((issue) => {
-      const path = issue.path.map(String).join('.');
-      const field = path === 'name.zh-TW' ? 'zhTw' : String(issue.path[0]);
-
-      return [field, fieldErrorForPath(path)];
-    }),
-  ) as DietaryMarkerCommandFieldErrors;
-}
-
 export function createDietaryMarkerListCommands(
   actions: DietaryMarkerListActions,
 ): DietaryMarkerListCommands {
@@ -105,7 +77,7 @@ export function createDietaryMarkerListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapDietaryMarkerFieldErrors(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(validation.error.issues),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -133,7 +105,7 @@ export function createDietaryMarkerListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapDietaryMarkerFieldErrors(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(validation.error.issues),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',

@@ -1,16 +1,16 @@
-import { useState } from 'react';
 import type {
   Allergen,
   CreateAllergenRequest,
+  LocalizedStringDto,
   UpdateAllergenRequest,
 } from '@/models/metadata';
+import { useFormState } from '@/shared/hooks/useFormState';
 
 export type AllergenFormValues = {
-  en: string;
   icon: string;
   isActive: boolean;
   key: string;
-  zhTw: string;
+  name: LocalizedStringDto;
 };
 
 export type AllergenFormField = keyof AllergenFormValues;
@@ -19,19 +19,11 @@ export type AllergenFormFieldErrors = Partial<
 >;
 
 const initialValues: AllergenFormValues = {
-  en: '',
   icon: '',
   isActive: true,
   key: '',
-  zhTw: '',
+  name: {},
 };
-
-function nameFromValues(values: AllergenFormValues) {
-  return {
-    en: values.en.trim() || undefined,
-    'zh-TW': values.zhTw.trim(),
-  };
-}
 
 export function toCreateAllergenRequest(
   values: AllergenFormValues,
@@ -42,7 +34,7 @@ export function toCreateAllergenRequest(
     icon: icon || undefined,
     isActive: values.isActive,
     key: values.key.trim(),
-    name: nameFromValues(values),
+    name: values.name as CreateAllergenRequest['name'],
   };
 }
 
@@ -54,54 +46,19 @@ export function toUpdateAllergenRequest(
   return {
     icon: icon || null,
     isActive: values.isActive,
-    name: nameFromValues(values),
+    name: values.name as UpdateAllergenRequest['name'],
   };
 }
 
 export function valuesFromAllergen(allergen: Allergen): AllergenFormValues {
   return {
-    en: allergen.name.en ?? '',
     icon: allergen.icon ?? '',
     isActive: allergen.isActive,
     key: allergen.key,
-    zhTw: allergen.name['zh-TW'] ?? '',
+    name: allergen.name,
   };
 }
 
 export function useAllergenForm() {
-  const [values, setValues] = useState<AllergenFormValues>(initialValues);
-  const [fieldErrors, setFieldErrors] = useState<AllergenFormFieldErrors>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  function reset(nextValues: AllergenFormValues = initialValues) {
-    setValues(nextValues);
-    setFieldErrors({});
-    setSubmitError(null);
-    setIsSubmitting(false);
-  }
-
-  function setField(name: AllergenFormField, value: string | boolean) {
-    setValues((current) => ({
-      ...current,
-      [name]: value,
-    }));
-    setFieldErrors((current) => ({
-      ...current,
-      [name]: undefined,
-    }));
-    setSubmitError(null);
-  }
-
-  return {
-    fieldErrors,
-    isSubmitting,
-    reset,
-    setField,
-    setFieldErrors,
-    setIsSubmitting,
-    setSubmitError,
-    submitError,
-    values,
-  };
+  return useFormState(initialValues);
 }

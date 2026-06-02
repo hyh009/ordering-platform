@@ -1,9 +1,9 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
-import { LocalizedNameFields } from '@/features/metadata/components/LocalizedNameFields';
 import { getLocalizedText } from '@/models/metadata';
 import type { MetadataActiveFilter } from '@/models/metadata';
 import { Field } from '@/shared/components/form/Field';
+import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
@@ -183,18 +183,18 @@ export function AllergenListPage() {
               }}
             />
           </Field>
-          <LocalizedNameFields
-            errors={{
-              en: vm.form.fieldErrors.en,
-              zhTw: vm.form.fieldErrors.zhTw,
-            }}
-            values={{
-              en: vm.form.values.en,
-              zhTw: vm.form.values.zhTw,
-            }}
-            onFieldChange={(field, value) => {
-              vm.form.setField(field, value);
-            }}
+          <Field
+            error={vm.form.fieldErrors.name}
+            label={tDefault('admin.metadata.name', 'Name')}
+            required
+            renderControl={
+              <LocalizedStringInput
+                defaultLocale="zh-TW"
+                disabled={vm.form.isSubmitting}
+                onChange={(v) => vm.form.setField('name', v)}
+                value={vm.form.values.name}
+              />
+            }
           />
           <Field
             error={vm.form.fieldErrors.icon}
