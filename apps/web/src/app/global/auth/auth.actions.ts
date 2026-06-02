@@ -1,4 +1,4 @@
-import type { AuthSession } from '@/models/auth.types';
+import type { AuthSession } from '@/models/auth';
 import type { AuthState } from '@/app/global/auth/auth.store';
 import type { StoreApi } from 'zustand/vanilla';
 

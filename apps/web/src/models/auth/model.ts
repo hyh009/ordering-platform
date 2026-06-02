@@ -1,4 +1,4 @@
-import type { AuthSession, AuthSuccessResponse } from './auth.types';
+import type { AuthSession, AuthSuccessResponse } from './types';
 
 export const authModel = {
   deserializeSession(response: AuthSuccessResponse): AuthSession {

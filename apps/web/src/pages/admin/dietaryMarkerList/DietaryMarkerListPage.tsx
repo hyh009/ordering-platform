@@ -1,12 +1,11 @@
 import type { FormEvent } from 'react';
-import { dietaryMarkerTypes } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { LocalizedNameFields } from '@/features/metadata/components/LocalizedNameFields';
-import { getLocalizedText } from '@/models/metadata.model';
+import { dietaryMarkerTypes, getLocalizedText } from '@/models/metadata';
 import type {
   DietaryMarkerType,
   MetadataActiveFilter,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 import { Field } from '@/shared/components/form/Field';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';

@@ -4,7 +4,7 @@ import type {
   DietaryMarker,
   DietaryMarkerType,
   UpdateDietaryMarkerRequest,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 
 export type DietaryMarkerFormValues = {
   en: string;

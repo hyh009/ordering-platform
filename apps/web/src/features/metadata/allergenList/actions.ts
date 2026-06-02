@@ -1,4 +1,4 @@
-import type { Allergen } from '@/models/metadata.types';
+import type { Allergen } from '@/models/metadata';
 import type { AllergenListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 

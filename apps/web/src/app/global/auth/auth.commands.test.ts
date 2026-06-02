@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/apiError';
 import { authStore } from '@/app/global/auth/auth.store';
-import type { AuthSession } from '@/models/auth.types';
+import type { AuthSession } from '@/models/auth';
 import { authService } from '@/services/auth.service';
 import { authCommands } from './auth.commands';
 

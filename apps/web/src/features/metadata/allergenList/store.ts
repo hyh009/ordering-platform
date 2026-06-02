@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { Allergen } from '@/models/metadata.types';
+import type { Allergen } from '@/models/metadata';
 
 export type AllergenListState = {
   allergens: Allergen[];

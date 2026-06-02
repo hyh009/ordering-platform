@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { DietaryMarker } from '@/models/metadata.types';
+import type { DietaryMarker } from '@/models/metadata';
 
 export type DietaryMarkerListState = {
   dietaryMarkers: DietaryMarker[];

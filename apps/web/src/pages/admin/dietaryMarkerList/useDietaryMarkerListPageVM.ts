@@ -2,10 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
 import { createDietaryMarkerListRuntime } from '@/features/metadata/dietaryMarkerList/runtime';
-import type {
-  DietaryMarker,
-  MetadataActiveFilter,
-} from '@/models/metadata.types';
+import type { DietaryMarker, MetadataActiveFilter } from '@/models/metadata';
 import { createDietaryMarkerListPageCommands } from './dietaryMarkerListPage.commands';
 import {
   toCreateDietaryMarkerRequest,

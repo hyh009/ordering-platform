@@ -1,5 +1,5 @@
 import { authCommands } from '@/app/global/auth/auth.commands';
-import type { AuthUserDto, LoginRequest } from '@/models/auth.types';
+import type { AuthUserDto, LoginRequest } from '@/models/auth';
 
 type LoginFieldErrors = Partial<Record<keyof LoginRequest, string>>;
 

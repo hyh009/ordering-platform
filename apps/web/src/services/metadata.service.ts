@@ -1,6 +1,6 @@
 import { apiJson } from '@/api';
 import { metadataPaths } from '@/api/paths/metadata.paths';
-import { metadataModel } from '@/models/metadata.model';
+import { metadataModel } from '@/models/metadata';
 import type {
   CreateAllergenRequest,
   CreateAllergenSuccessResponse,
@@ -13,7 +13,7 @@ import type {
   UpdateAllergenSuccessResponse,
   UpdateDietaryMarkerRequest,
   UpdateDietaryMarkerSuccessResponse,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 
 function withActiveFilter(path: string, isActive: MetadataActiveFilter) {
   const params = new URLSearchParams({

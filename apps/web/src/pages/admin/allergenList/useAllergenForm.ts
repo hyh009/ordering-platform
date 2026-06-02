@@ -3,7 +3,7 @@ import type {
   Allergen,
   CreateAllergenRequest,
   UpdateAllergenRequest,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 
 export type AllergenFormValues = {
   en: string;

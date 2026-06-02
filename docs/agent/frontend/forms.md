@@ -158,6 +158,27 @@ On save:
 - update the feature store with the saved result
 - reset or realign the page-local draft state after success
 
+## Form Labels And Options
+
+Keep form labels, option labels, and helper text user-facing and localized.
+
+Use domain model `display.ts` helpers for domain-owned labels, such as enum
+option labels, translated option labels, locale labels, and localized text
+fallback helpers.
+
+Examples:
+
+```txt
+src/models/store/display.ts
+src/models/metadata/display.ts
+```
+
+Components import these helpers through `@/models/<domain>`, not from the
+private `display.ts` file.
+
+Keep component-local labels in the component only when they are page-specific
+and not reusable across the domain.
+
 ## Shared Components
 
 Use shared `Field` wrappers with shadcn UI primitives.

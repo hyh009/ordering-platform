@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LoginRequest } from '@/models/auth.types';
+import type { LoginRequest } from '@/models/auth';
 
 export type LoginFieldErrors = Partial<Record<keyof LoginRequest, string>>;
 

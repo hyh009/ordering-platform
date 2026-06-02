@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla';
-import type { AuthUserDto } from '@/models/auth.types';
+import type { AuthUserDto } from '@/models/auth';
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated';
 

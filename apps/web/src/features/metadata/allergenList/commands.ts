@@ -1,11 +1,11 @@
-import { createAllergenSchema, updateAllergenSchema } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
+import { createAllergenSchema, updateAllergenSchema } from '@/models/metadata';
 import type {
   Allergen,
   CreateAllergenRequest,
   MetadataActiveFilter,
   UpdateAllergenRequest,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 import { metadataService } from '@/services/metadata.service';
 import {
   mapAdminApiError,

@@ -1,7 +1,7 @@
 import { apiJson } from '@/api';
 import { userPaths } from '@/api/paths/user.paths';
-import { userModel } from '@/models/user.model';
-import type { ListUsersSuccessResponse } from '@repo/shared';
+import { userModel } from '@/models/user';
+import type { ListUsersSuccessResponse } from '@/models/user';
 
 export const userService = {
   async listUsers(input: { limit: number; offset: number; keyword?: string }) {

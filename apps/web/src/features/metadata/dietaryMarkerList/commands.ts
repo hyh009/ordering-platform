@@ -1,14 +1,14 @@
+import { tDefault } from '@/app/i18n';
 import {
   createDietaryMarkerSchema,
   updateDietaryMarkerSchema,
-} from '@repo/shared';
-import { tDefault } from '@/app/i18n';
+} from '@/models/metadata';
 import type {
   CreateDietaryMarkerRequest,
   DietaryMarker,
   MetadataActiveFilter,
   UpdateDietaryMarkerRequest,
-} from '@/models/metadata.types';
+} from '@/models/metadata';
 import { metadataService } from '@/services/metadata.service';
 import {
   mapAdminApiError,

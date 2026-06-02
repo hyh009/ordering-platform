@@ -1,6 +1,6 @@
 import { activeOrgActions } from './activeOrg.actions';
 
-import type { UserOrgMembershipDto } from '@/models/auth.types';
+import type { UserOrgMembershipDto } from '@/models/auth';
 
 const STORAGE_KEY = 'activeOrgId';
 

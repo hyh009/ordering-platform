@@ -2,7 +2,8 @@
 
 Use this guide as the frontend architecture entry point.
 
-For detailed decisions, use the focused guides listed in `Related Docs`.
+For detailed decisions, use the focused guides listed in `Related Docs`. Use
+`docs/agent/frontend/code-placement.md` for the quick "what goes where" map.
 
 ## Flow
 
@@ -98,12 +99,13 @@ Use root-level `src/models` for frontend model types and pure DTO conversion
 helpers.
 
 Any domain may use a domain folder when that keeps model-boundary files easier
-to scan:
+to scan. Use `docs/agent/frontend/code-placement.md` for the file placement map.
 
 ```txt
 src/models/<domain>/
   types.ts
   model.ts
+  display.ts        # optional
   requestMapper.ts  # optional
   formMapper.ts     # optional
   index.ts
@@ -144,6 +146,7 @@ src/features/<domain>/components/<componentName>/
 
 - `docs/agent/frontend/architecture-diagram.md` for the quick folder and flow map.
 - `docs/agent/frontend/architecture-validation.md` for boundary checks before finishing.
+- `docs/agent/frontend/code-placement.md` for the quick code placement map.
 - `docs/agent/frontend/state-ownership.md` for app/global vs feature vs page vs component state.
 - `docs/agent/frontend/commands.md` for page commands, feature commands, wrappers, overrides, and runtime wiring.
 - `docs/agent/frontend/forms.md` for page-local form state and submit flow.

@@ -25,7 +25,8 @@ Keep backend internals out of shared:
 - API routes may import shared request/response types for Express route generics.
 - API services should map backend entities to shared DTOs in `apps/api/src/models/<domain>/mapper.ts`.
 - Backend models and services should define their own domain/input/output types and only reuse shared public enums/unions when useful.
-- Web services may import shared DTO and response types, then map DTOs into frontend models in `src/models`.
+- Web domain model boundaries may re-export shared DTO types, zod schemas, and stable public constants through `apps/web/src/models/<domain>/index.ts`; pages, features, and services should import those through `@/models/<domain>`.
+- Web services may import shared DTO and response types through the domain model boundary, then map DTOs into frontend models in `src/models`.
 - If an API response shape differs by endpoint, create a separate contract type instead of forcing a generic one.
 
 ## Naming

@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import { LocalizedNameFields } from '@/features/metadata/components/LocalizedNameFields';
-import { getLocalizedText } from '@/models/metadata.model';
-import type { MetadataActiveFilter } from '@/models/metadata.types';
+import { getLocalizedText } from '@/models/metadata';
+import type { MetadataActiveFilter } from '@/models/metadata';
 import { Field } from '@/shared/components/form/Field';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';

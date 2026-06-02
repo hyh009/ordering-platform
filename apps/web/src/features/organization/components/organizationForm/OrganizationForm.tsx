@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { organizationStatuses } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
+import { organizationStatuses } from '@/models/organization';
 import { TaiwanAddressFields } from '@/shared/components/address/TaiwanAddressFields';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
@@ -10,7 +10,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { userService } from '@/services/userService';
-import type { UserListItem } from '@/models/user.types';
+import type { UserListItem } from '@/models/user';
 import type { OrganizationFormVM } from './useOrganizationForm';
 
 type OrganizationFormProps = {

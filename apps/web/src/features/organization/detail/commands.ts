@@ -1,9 +1,9 @@
-import { updateOrganizationSchema } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
 import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
 } from '@/features/organization/components/organizationForm/organizationFormErrors';
+import { updateOrganizationSchema } from '@/models/organization';
 import type {
   Organization,
   UpdateOrganizationRequest,
@@ -23,10 +23,14 @@ export type LoadOrganizationDetailResult =
 
 export type SaveOrganizationDetailResult =
   | { organization: Organization; status: 'saved' }
-  | (AdminCommandFailure & { fieldErrors?: OrganizationDetailCommandFieldErrors });
+  | (AdminCommandFailure & {
+      fieldErrors?: OrganizationDetailCommandFieldErrors;
+    });
 
 export type OrganizationDetailCommands = {
-  loadOrganization(organizationId: string): Promise<LoadOrganizationDetailResult>;
+  loadOrganization(
+    organizationId: string,
+  ): Promise<LoadOrganizationDetailResult>;
   saveOrganizationDetail(
     organizationId: string,
     input: UpdateOrganizationRequest,
@@ -90,7 +94,8 @@ export function createOrganizationDetailCommands(
       actions.storesLoadStarted();
 
       try {
-        const result = await organizationService.listAdminStores(organizationId);
+        const result =
+          await organizationService.listAdminStores(organizationId);
 
         actions.storesLoadSucceeded(result.stores);
         return { status: 'loaded' };
@@ -118,6 +123,5 @@ export function createOrganizationDetailCommands(
         actions.ownerLoadFailed();
       }
     },
-
   };
 }

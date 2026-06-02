@@ -1,8 +1,8 @@
+import { tDefault } from '@/app/i18n';
 import {
   createOrganizationSchema,
   updateOrganizationSchema,
-} from '@repo/shared';
-import { tDefault } from '@/app/i18n';
+} from '@/models/organization';
 import type { Organization } from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
 import {

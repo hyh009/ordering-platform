@@ -1,4 +1,4 @@
-import type { DietaryMarker } from '@/models/metadata.types';
+import type { DietaryMarker } from '@/models/metadata';
 import type { DietaryMarkerListState } from './store';
 import type { StoreApi } from 'zustand/vanilla';
 

@@ -1,13 +1,13 @@
 import { apiJson } from '@/api';
 import { authPaths } from '@/api/paths/auth.paths';
-import { authModel } from '@/models/auth.model';
+import { authModel } from '@/models/auth';
 import type {
   AuthActionSuccessResponse,
   AuthSession,
   AuthSuccessResponse,
   AuthUserSuccessResponse,
   LoginRequest,
-} from '@/models/auth.types';
+} from '@/models/auth';
 
 export const authService = {
   async login(input: LoginRequest): Promise<AuthSession> {

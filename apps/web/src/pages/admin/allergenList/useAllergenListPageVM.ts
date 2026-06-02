@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
 import { createAllergenListRuntime } from '@/features/metadata/allergenList/runtime';
-import type { Allergen, MetadataActiveFilter } from '@/models/metadata.types';
+import type { Allergen, MetadataActiveFilter } from '@/models/metadata';
 import { createAllergenListPageCommands } from './allergenListPage.commands';
 import {
   toCreateAllergenRequest,

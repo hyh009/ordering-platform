@@ -10,7 +10,7 @@ import { authStore } from '@/app/global/auth/auth.store';
 import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import { authService } from '@/services/auth.service';
-import type { AuthUserDto, LoginRequest } from '@/models/auth.types';
+import type { AuthUserDto, LoginRequest } from '@/models/auth';
 
 const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;

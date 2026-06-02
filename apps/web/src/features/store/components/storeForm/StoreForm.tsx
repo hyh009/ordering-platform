@@ -5,7 +5,7 @@ import {
   storeCheckoutModes,
 } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
-import { getSupportedCustomerLocaleLabel } from '@/models/metadata.model';
+import { getSupportedCustomerLocaleLabel } from '@/models/metadata';
 import {
   getStoreCheckoutModeLabel,
   getStoreOrderTypeLabel,
