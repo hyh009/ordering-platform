@@ -24,7 +24,7 @@ export type StoreFormValues = {
   orderModes: OrderModeFormValue[];
 };
 
-export type StoreFormFieldErrors = Partial<Record<string, string>>;
+export type StoreFormFieldErrors = Partial<Record<keyof StoreFormValues, string>>;
 
 const DEFAULT_BUSINESS_HOURS: BusinessHourFormValue[] = [0, 1, 2, 3, 4, 5, 6].map(
   (day) => ({

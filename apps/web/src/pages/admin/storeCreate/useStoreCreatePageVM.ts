@@ -1,52 +1,42 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PATHS } from '@/app/routing/paths';
+import { validateStoreForm } from '@/features/store/components/storeForm/storeFormErrors';
 import { useStoreForm } from '@/features/store/components/storeForm/useStoreForm';
-import { toCreateStoreRequest } from '@/features/store/components/storeForm/storeFormMapper';
-import { organizationService } from '@/services/organization.service';
-import { mapAdminApiError } from '@/services/utils/adminApiError';
+import { createStoreCreatePageCommands } from './storeCreatePage.commands';
 
 export function useStoreCreatePageVM(organizationId: string, organizationName?: string) {
   const navigate = useNavigate();
   const form = useStoreForm();
+  const [commands] = useState(createStoreCreatePageCommands);
 
   const cancel = useCallback(() => {
-    void navigate(
-      PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
-    );
+    void navigate(PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId));
   }, [navigate, organizationId]);
 
   const submit = useCallback(async () => {
-    const zhTW = form.values.displayName['zh-TW']?.trim();
-    if (!zhTW) {
-      form.setFieldErrors({ displayName: 'Store name (繁體中文) is required.' });
-      return;
-    }
+    const validation = validateStoreForm(form.values);
 
-    if (form.values.supportedLocales.length === 0) {
-      form.setFieldErrors({ supportedLocales: 'At least one locale is required.' });
+    if (!validation.success) {
+      form.setFieldErrors(validation.fieldErrors);
+      form.setSubmitError(validation.submitError);
       return;
     }
 
     form.setIsSubmitting(true);
     form.setSubmitError(null);
 
-    try {
-      await organizationService.createAdminStore(
-        organizationId,
-        toCreateStoreRequest(form.values),
-      );
+    const result = await commands.createStore(organizationId, validation.data);
 
+    if (result.status === 'created') {
       form.reset();
-      void navigate(
-        PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
-      );
-    } catch (error) {
-      const failure = mapAdminApiError(error);
-      form.setIsSubmitting(false);
-      form.setSubmitError(failure.message);
+      void navigate(PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId));
+      return;
     }
-  }, [form, navigate, organizationId]);
+
+    form.setIsSubmitting(false);
+    form.setSubmitError(result.message);
+  }, [commands, form, navigate, organizationId]);
 
   return {
     cancel,

@@ -7,7 +7,7 @@ export function toCreateStoreRequest(values: StoreFormValues): CreateStoreReques
 
   return {
     profile: {
-      displayName: values.displayName as { 'zh-TW': string; en?: string },
+      displayName: values.displayName,
       ...(hasDescription ? { description: values.description } : {}),
     },
     locale: {
