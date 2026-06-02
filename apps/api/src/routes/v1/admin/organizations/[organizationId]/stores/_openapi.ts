@@ -157,6 +157,53 @@
  *           properties:
  *             store:
  *               $ref: '#/components/schemas/Store'
+ *     StoreListItem:
+ *       type: object
+ *       required:
+ *         - id
+ *         - profile
+ *         - locale
+ *         - status
+ *         - updatedAt
+ *       properties:
+ *         id:
+ *           type: string
+ *           example: store-123
+ *         profile:
+ *           type: object
+ *           required:
+ *             - displayName
+ *           properties:
+ *             displayName:
+ *               $ref: '#/components/schemas/LocalizedString'
+ *         locale:
+ *           type: object
+ *           required:
+ *             - defaultLocale
+ *             - supportedLocales
+ *           properties:
+ *             defaultLocale:
+ *               type: string
+ *               enum:
+ *                 - en
+ *                 - zh-TW
+ *               example: zh-TW
+ *             supportedLocales:
+ *               type: array
+ *               items:
+ *                 type: string
+ *                 enum:
+ *                   - en
+ *                   - zh-TW
+ *               example:
+ *                 - zh-TW
+ *                 - en
+ *         status:
+ *           $ref: '#/components/schemas/StoreStatus'
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-05-26T00:00:00.000Z"
  *     StoreListSuccessResponse:
  *       type: object
  *       required:
@@ -177,7 +224,7 @@
  *             stores:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Store'
+ *                 $ref: '#/components/schemas/StoreListItem'
  *             pagination:
  *               type: object
  *               required:

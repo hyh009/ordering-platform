@@ -1,10 +1,10 @@
-import { toStoreDto } from '@src/models/store/mapper';
+import { toStoreDto, toStoreListItemDto } from '@src/models/store/mapper';
 import { organizationRepository } from '@src/repositories/organization/repository';
 import { storeRepository } from '@src/repositories/store/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { NotFoundError } from '@src/utils/errors';
 
-import type { StoreDto } from '@repo/shared';
+import type { StoreDto, StoreListItemDto } from '@repo/shared';
 import type { SupportedLocale } from '@src/models/common/model';
 import type {
   BusinessHour,
@@ -55,7 +55,7 @@ export type UpdateStoreInput = {
 };
 
 export type ListStoresResult = {
-  stores: StoreDto[];
+  stores: StoreListItemDto[];
   pagination: { offset: number; limit: number; total: number };
 };
 
@@ -126,7 +126,7 @@ export class StoreService {
     });
 
     return {
-      stores: result.stores.map(toStoreDto),
+      stores: result.stores.map(toStoreListItemDto),
       pagination: { offset: query.offset, limit: query.limit, total: result.total },
     };
   }
