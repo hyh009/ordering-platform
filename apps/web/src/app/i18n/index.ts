@@ -13,6 +13,12 @@ type DefaultTranslationOptions = TOptions & {
   defaultValue?: never;
 };
 
+export type AppTranslator = (
+  key: string,
+  defaultValue: string,
+  options?: DefaultTranslationOptions,
+) => string;
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -36,7 +42,7 @@ export function tDefault(
   key: string,
   defaultValue: string,
   options?: DefaultTranslationOptions,
-) {
+): string {
   return i18n.t(key, {
     ...options,
     defaultValue,
@@ -59,7 +65,7 @@ export function useAppTranslation() {
       key: string,
       defaultValue: string,
       options?: DefaultTranslationOptions,
-    ) {
+    ): string {
       return t(key, {
         ...options,
         defaultValue,

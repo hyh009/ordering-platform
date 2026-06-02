@@ -139,6 +139,22 @@ const manualResources: Resource = {
       admin: {
         eyebrow: '超級管理員',
       },
+      metadata: {
+        customerLocales: {
+          en: 'English',
+          zhTw: '繁體中文',
+        },
+      },
+      store: {
+        checkoutModes: {
+          payFirst: '先付款',
+          payLater: '後付款',
+        },
+        orderTypes: {
+          dineIn: '內用',
+          takeaway: '外帶',
+        },
+      },
     },
   },
 };

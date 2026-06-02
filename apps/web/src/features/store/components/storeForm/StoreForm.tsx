@@ -1,5 +1,15 @@
-import type { FormEvent } from 'react';
-import { supportedLocales, storeOrderTypes, storeCheckoutModes } from '@repo/shared';
+import { useEffect, useState, type FormEvent } from 'react';
+import {
+  supportedLocales,
+  storeOrderTypes,
+  storeCheckoutModes,
+} from '@repo/shared';
+import { useAppTranslation } from '@/app/i18n';
+import { getSupportedCustomerLocaleLabel } from '@/models/metadata.model';
+import {
+  getStoreCheckoutModeLabel,
+  getStoreOrderTypeLabel,
+} from '@/models/store';
 import { Field } from '@/shared/components/form/Field';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { Button } from '@/shared/components/ui/button';
@@ -9,20 +19,124 @@ import type { StoreFormVM } from './useStoreForm';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const LOCALE_LABELS: Record<string, string> = {
-  'zh-TW': '繁體中文',
-  en: 'English',
+function from24h(
+  value: string,
+): { h: number; m: number; period: 'AM' | 'PM' } | null {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+  const h24 = parseInt(value.slice(0, 2), 10);
+  const m = parseInt(value.slice(3), 10);
+  if (h24 === 0) return { h: 12, m, period: 'AM' };
+  if (h24 < 12) return { h: h24, m, period: 'AM' };
+  if (h24 === 12) return { h: 12, m, period: 'PM' };
+  return { h: h24 - 12, m, period: 'PM' };
+}
+
+function to24h(h: number, m: number, period: 'AM' | 'PM'): string {
+  const h24 = period === 'AM' ? (h === 12 ? 0 : h) : h === 12 ? 12 : h + 12;
+  return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+type TimeInputProps = {
+  ariaLabel: string;
+  disabled?: boolean;
+  value: string;
+  onChange: (value: string) => void;
 };
 
-const ORDER_TYPE_LABELS: Record<string, string> = {
-  dine_in: 'Dine-in',
-  takeaway: 'Takeaway',
-};
+function BusinessHourTimeInput({
+  ariaLabel,
+  disabled,
+  value,
+  onChange,
+}: TimeInputProps) {
+  const parsed = from24h(value);
+  const [h, setH] = useState(parsed ? String(parsed.h) : '');
+  const [m, setM] = useState(parsed ? String(parsed.m).padStart(2, '0') : '00');
+  const [period, setPeriod] = useState<'AM' | 'PM'>(parsed?.period ?? 'AM');
 
-const CHECKOUT_MODE_LABELS: Record<string, string> = {
-  pay_first: 'Pay first',
-  pay_later: 'Pay later',
-};
+  useEffect(() => {
+    const p = from24h(value);
+    if (p) {
+      setH(String(p.h));
+      setM(String(p.m).padStart(2, '0'));
+      setPeriod(p.period);
+    } else if (!value) {
+      setH('');
+      setM('00');
+    }
+  }, [value]);
+
+  function emit(newH: string, newM: string, newPeriod: 'AM' | 'PM') {
+    const hNum = parseInt(newH, 10);
+    if (!newH || isNaN(hNum) || hNum < 1 || hNum > 12) {
+      onChange('');
+      return;
+    }
+    const mNum = Math.min(Math.max(parseInt(newM, 10) || 0, 0), 59);
+    onChange(to24h(hNum, mNum, newPeriod));
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        aria-label={`${ariaLabel} hour`}
+        className="h-8 w-12 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        disabled={disabled}
+        max={12}
+        min={1}
+        placeholder="12"
+        type="number"
+        value={h}
+        onChange={(e) => {
+          setH(e.target.value);
+          emit(e.target.value, m, period);
+        }}
+      />
+      <span className="text-sm font-medium text-muted-foreground">:</span>
+      <Input
+        aria-label={`${ariaLabel} minute`}
+        className="h-8 w-12 text-center"
+        disabled={disabled}
+        maxLength={2}
+        placeholder="00"
+        type="text"
+        value={m}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setM(v);
+        }}
+        onBlur={() => {
+          const padded = (m || '0').padStart(2, '0');
+          setM(padded);
+          emit(h, padded, period);
+        }}
+      />
+      <div className="flex overflow-hidden rounded-md border border-border">
+        {(['AM', 'PM'] as const).map((p) => (
+          <button
+            key={p}
+            className={cn(
+              'h-8 px-2.5 text-xs font-medium transition-colors',
+              disabled
+                ? 'cursor-not-allowed text-muted-foreground'
+                : period === p
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-foreground hover:bg-muted',
+            )}
+            disabled={disabled}
+            type="button"
+            onClick={() => {
+              setPeriod(p);
+              emit(h, m, p);
+            }}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type StoreFormProps = {
   form: StoreFormVM;
@@ -39,6 +153,7 @@ export function StoreForm({
   onCancel,
   onSubmit,
 }: StoreFormProps) {
+  const { tDefault } = useAppTranslation();
   const shouldShowSubmitError =
     form.submitError && !Object.keys(form.fieldErrors).length;
 
@@ -79,7 +194,7 @@ export function StoreForm({
                   type="button"
                   onClick={() => form.setField('defaultLocale', locale)}
                 >
-                  {LOCALE_LABELS[locale]}
+                  {getSupportedCustomerLocaleLabel(locale, tDefault)}
                 </button>
               ))}
             </div>
@@ -107,7 +222,7 @@ export function StoreForm({
                       type="button"
                       onClick={() => form.toggleSupportedLocale(locale)}
                     >
-                      {LOCALE_LABELS[locale]}
+                      {getSupportedCustomerLocaleLabel(locale, tDefault)}
                     </button>
                   );
                 })}
@@ -167,12 +282,19 @@ export function StoreForm({
           renderControl={
             <div className="grid gap-3">
               {storeOrderTypes.map((type) => {
-                const mode = form.values.orderModes.find((m) => m.type === type);
+                const mode = form.values.orderModes.find(
+                  (m) => m.type === type,
+                );
                 const enabled = mode?.isEnabled ?? false;
                 return (
-                  <div key={type} className="rounded-lg border border-border p-3">
+                  <div
+                    key={type}
+                    className="rounded-lg border border-border p-3"
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{ORDER_TYPE_LABELS[type]}</span>
+                      <span className="text-sm font-medium">
+                        {getStoreOrderTypeLabel(type, tDefault)}
+                      </span>
                       <button
                         aria-checked={enabled}
                         className={cn(
@@ -182,7 +304,9 @@ export function StoreForm({
                         disabled={form.isSubmitting}
                         role="switch"
                         type="button"
-                        onClick={() => form.setOrderMode(type, { isEnabled: !enabled })}
+                        onClick={() =>
+                          form.setOrderMode(type, { isEnabled: !enabled })
+                        }
                       >
                         <span
                           className={cn(
@@ -194,7 +318,9 @@ export function StoreForm({
                     </div>
                     {enabled && (
                       <div className="mt-2.5 flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Checkout:</span>
+                        <span className="text-xs text-muted-foreground">
+                          Checkout:
+                        </span>
                         {storeCheckoutModes.map((checkoutMode) => (
                           <button
                             key={checkoutMode}
@@ -206,9 +332,11 @@ export function StoreForm({
                             )}
                             disabled={form.isSubmitting}
                             type="button"
-                            onClick={() => form.setOrderMode(type, { checkoutMode })}
+                            onClick={() =>
+                              form.setOrderMode(type, { checkoutMode })
+                            }
                           >
-                            {CHECKOUT_MODE_LABELS[checkoutMode]}
+                            {getStoreCheckoutModeLabel(checkoutMode, tDefault)}
                           </button>
                         ))}
                       </div>
@@ -236,7 +364,10 @@ export function StoreForm({
                 type="number"
                 value={form.values.serviceFeeRate}
                 onChange={(e) =>
-                  form.setField('serviceFeeRate', parseFloat(e.target.value) || 0)
+                  form.setField(
+                    'serviceFeeRate',
+                    parseFloat(e.target.value) || 0,
+                  )
                 }
               />
               <span className="text-sm text-muted-foreground">
@@ -298,33 +429,25 @@ export function StoreForm({
                         </button>
                       </td>
                       <td className="px-4 py-2">
-                        <Input
-                          aria-label={`${DAY_LABELS[hour.dayOfWeek]} open time`}
-                          className="h-8 w-28"
+                        <BusinessHourTimeInput
+                          ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} open time`}
                           disabled={!hour.isOpen || form.isSubmitting}
-                          pattern="\d{2}:\d{2}"
-                          placeholder="09:00"
-                          type="time"
-                          value={hour.openTime}
-                          onChange={(e) =>
+                          value={hour.openTime ?? ''}
+                          onChange={(v) =>
                             form.setBusinessHour(hour.dayOfWeek, {
-                              openTime: e.target.value,
+                              openTime: v,
                             })
                           }
                         />
                       </td>
                       <td className="px-4 py-2">
-                        <Input
-                          aria-label={`${DAY_LABELS[hour.dayOfWeek]} close time`}
-                          className="h-8 w-28"
+                        <BusinessHourTimeInput
+                          ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} close time`}
                           disabled={!hour.isOpen || form.isSubmitting}
-                          pattern="\d{2}:\d{2}"
-                          placeholder="21:00"
-                          type="time"
-                          value={hour.closeTime}
-                          onChange={(e) =>
+                          value={hour.closeTime ?? ''}
+                          onChange={(v) =>
                             form.setBusinessHour(hour.dayOfWeek, {
-                              closeTime: e.target.value,
+                              closeTime: v,
                             })
                           }
                         />
