@@ -97,26 +97,7 @@ router.get<
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: Main Street Cafe
- *               slug:
- *                 type: string
- *                 example: main-street
- *               status:
- *                 $ref: '#/components/schemas/OrganizationStatus'
- *               reviewStatus:
- *                 $ref: '#/components/schemas/OrganizationReviewStatus'
- *               contactEmail:
- *                 type: string
- *                 format: email
- *                 example: ops@example.com
- *               contactPhone:
- *                 $ref: '#/components/schemas/OrganizationPhone'
- *               address:
- *                 $ref: '#/components/schemas/OrganizationAddress'
+ *             $ref: '#/components/schemas/UpdateOrganizationRequest'
  *     responses:
  *       200:
  *         description: Organization updated

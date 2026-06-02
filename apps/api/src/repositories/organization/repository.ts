@@ -15,6 +15,7 @@ export type ListOrganizationsInput = {
   limit: number;
   keyword?: string | undefined;
   status?: OrganizationEntity['status'] | undefined;
+  reviewStatus?: OrganizationEntity['reviewStatus'] | undefined;
   sortBy?: 'name' | 'createdAt' | 'updatedAt' | undefined;
   sortDirection?: 'asc' | 'desc' | undefined;
 };

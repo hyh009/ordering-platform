@@ -148,6 +148,10 @@ const organizationSchema = new Schema<OrganizationEntity>(
 organizationSchema.index({ id: 1 }, { unique: true });
 organizationSchema.index({ slug: 1 }, { unique: true });
 organizationSchema.index({ status: 1 });
+organizationSchema.index({ reviewStatus: 1 });
+organizationSchema.index({ name: 1 });
+organizationSchema.index({ createdAt: -1 });
+organizationSchema.index({ updatedAt: -1 });
 applySoftDeletePlugin(organizationSchema);
 
 export const OrganizationMongoModel =

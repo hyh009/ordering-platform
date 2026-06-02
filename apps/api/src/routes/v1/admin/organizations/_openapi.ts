@@ -194,6 +194,54 @@
  *           type: string
  *           format: date-time
  *           example: "2026-05-26T00:00:00.000Z"
+ *     CreateOrganizationRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *         - slug
+ *         - ownerUserId
+ *         - contactEmail
+ *         - contactPhone
+ *         - address
+ *       properties:
+ *         name:
+ *           type: string
+ *           example: Main Street Cafe
+ *         slug:
+ *           type: string
+ *           example: main-street
+ *         ownerUserId:
+ *           type: string
+ *           example: user-123
+ *         contactEmail:
+ *           type: string
+ *           format: email
+ *           example: ops@example.com
+ *         contactPhone:
+ *           $ref: '#/components/schemas/OrganizationPhone'
+ *         address:
+ *           $ref: '#/components/schemas/OrganizationAddress'
+ *     UpdateOrganizationRequest:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           example: Main Street Cafe
+ *         slug:
+ *           type: string
+ *           example: main-street
+ *         status:
+ *           $ref: '#/components/schemas/OrganizationStatus'
+ *         reviewStatus:
+ *           $ref: '#/components/schemas/OrganizationReviewStatus'
+ *         contactEmail:
+ *           type: string
+ *           format: email
+ *           example: ops@example.com
+ *         contactPhone:
+ *           $ref: '#/components/schemas/OrganizationPhone'
+ *         address:
+ *           $ref: '#/components/schemas/OrganizationAddress'
  *     CreateOrganizationSuccessResponse:
  *       type: object
  *       required:

@@ -82,6 +82,10 @@ export const organizationMongoRepository = {
       filter.status = input.status;
     }
 
+    if (input.reviewStatus) {
+      filter.reviewStatus = input.reviewStatus;
+    }
+
     const sort: Record<string, 1 | -1> = {};
     if (input.sortBy) {
       sort[input.sortBy] = input.sortDirection === 'asc' ? 1 : -1;

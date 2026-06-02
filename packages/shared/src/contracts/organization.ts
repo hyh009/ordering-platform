@@ -191,6 +191,7 @@ export const listOrganizationsQuerySchema = offsetPaginationQuerySchema
   .extend({
     keyword: z.string().trim().optional(),
     status: z.enum(organizationStatuses).optional(),
+    reviewStatus: z.enum(organizationReviewStatuses).optional(),
     sortBy: z
       .enum(['name', 'createdAt', 'updatedAt'])
       .optional()

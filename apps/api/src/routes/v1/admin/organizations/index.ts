@@ -53,6 +53,12 @@ const router = Router();
  *           $ref: '#/components/schemas/OrganizationStatus'
  *         description: Filter by organization status
  *       - in: query
+ *         name: reviewStatus
+ *         required: false
+ *         schema:
+ *           $ref: '#/components/schemas/OrganizationReviewStatus'
+ *         description: Filter by organization review status
+ *       - in: query
  *         name: sortBy
  *         required: false
  *         schema:
@@ -115,32 +121,7 @@ router.get<
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - slug
- *               - ownerUserId
- *               - contactEmail
- *               - contactPhone
- *               - address
- *             properties:
- *               name:
- *                 type: string
- *                 example: Main Street Cafe
- *               slug:
- *                 type: string
- *                 example: main-street
- *               ownerUserId:
- *                 type: string
- *                 example: user-123
- *               contactEmail:
- *                 type: string
- *                 format: email
- *                 example: ops@example.com
- *               contactPhone:
- *                 $ref: '#/components/schemas/OrganizationPhone'
- *               address:
- *                 $ref: '#/components/schemas/OrganizationAddress'
+ *             $ref: '#/components/schemas/CreateOrganizationRequest'
  *     responses:
  *       201:
  *         description: Organization created
