@@ -14,6 +14,8 @@ import { DietaryMarkerListPage } from '@/pages/admin/dietaryMarkerList/DietaryMa
 import { OrganizationDetailPage } from '@/pages/admin/organizationDetail/OrganizationDetailPage';
 import { OrganizationListPage } from '@/pages/admin/organizationList/OrganizationListPage';
 import { OrganizationMembershipsPage } from '@/pages/admin/organizationMemberships/OrganizationMembershipsPage';
+import { StoreCreatePage } from '@/pages/admin/storeCreate/StoreCreatePage';
+import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { MenuPage } from '@/pages/merchant/menu/MenuPage';
@@ -83,6 +85,14 @@ export function App() {
                 <Route
                   element={<OrganizationMembershipsPage />}
                   path={PATHS.SUPER_ADMIN.ORGANIZATION_MEMBERSHIPS}
+                />
+                <Route
+                  element={<StoreListPage />}
+                  path={PATHS.SUPER_ADMIN.STORE_LIST}
+                />
+                <Route
+                  element={<StoreCreatePage />}
+                  path={PATHS.SUPER_ADMIN.STORE_CREATE}
                 />
                 <Route
                   element={<AllergenListPage />}

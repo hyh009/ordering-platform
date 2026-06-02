@@ -9,4 +9,7 @@ export const organizationPaths = {
   membership(organizationId: string, membershipId: string) {
     return `/v1/admin/organizations/${encodeURIComponent(organizationId)}/memberships/${encodeURIComponent(membershipId)}`;
   },
+  stores(organizationId: string) {
+    return `/v1/admin/organizations/${encodeURIComponent(organizationId)}/stores`;
+  },
 };

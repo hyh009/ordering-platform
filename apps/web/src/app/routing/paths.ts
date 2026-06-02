@@ -11,6 +11,12 @@ export const PATHS = {
     ORGANIZATION_MEMBERSHIPS: '/admin/organizations/:organizationId/memberships',
     ORGANIZATION_MEMBERSHIPS_BUILD: (id: string) =>
       `/admin/organizations/${id}/memberships`,
+    STORE_LIST: '/admin/organizations/:organizationId/stores',
+    STORE_LIST_BUILD: (orgId: string) =>
+      `/admin/organizations/${orgId}/stores`,
+    STORE_CREATE: '/admin/organizations/:organizationId/stores/new',
+    STORE_CREATE_BUILD: (orgId: string) =>
+      `/admin/organizations/${orgId}/stores/new`,
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },
