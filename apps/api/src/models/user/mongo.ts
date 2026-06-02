@@ -51,6 +51,7 @@ const userSchema = new Schema<UserEntity>(
   },
 );
 
+userSchema.index({ id: 1 }, { unique: true });
 userSchema.index({ email: 1 }, { unique: true });
 applySoftDeletePlugin(userSchema);
 

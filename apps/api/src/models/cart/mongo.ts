@@ -4,10 +4,7 @@ import {
   localizedStringSchema,
 } from '@src/models/common/localizedString.mongo';
 import { mongoValidationMessages } from '@src/models/common/validationMessages';
-import {
-  storeCheckoutModes,
-  storeOrderTypes,
-} from '@src/models/store/model';
+import { storeCheckoutModes, storeOrderTypes } from '@src/models/store/model';
 import { model, models, Schema } from 'mongoose';
 
 import type {
@@ -226,6 +223,8 @@ const cartSchema = new Schema<CartEntity>(
     timestamps: true,
   },
 );
+
+cartSchema.index({ id: 1 }, { unique: true });
 
 export const CartMongoModel =
   (models.Cart as Model<CartEntity> | undefined) ??

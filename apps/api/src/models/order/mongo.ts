@@ -7,10 +7,7 @@ import {
   orderPaymentStatuses,
   orderStatuses,
 } from '@src/models/order/model';
-import {
-  storeCheckoutModes,
-  storeOrderTypes,
-} from '@src/models/store/model';
+import { storeCheckoutModes, storeOrderTypes } from '@src/models/store/model';
 import { model, models, Schema } from 'mongoose';
 
 import type { OrderBatchSnapshot, OrderEntity } from '@src/models/order/model';
@@ -187,6 +184,8 @@ const orderSchema = new Schema<OrderEntity>(
     timestamps: true,
   },
 );
+
+orderSchema.index({ id: 1 }, { unique: true });
 
 export const OrderMongoModel =
   (models.Order as Model<OrderEntity> | undefined) ??

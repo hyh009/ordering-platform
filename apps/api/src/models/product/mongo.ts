@@ -106,6 +106,7 @@ const productSchema = new Schema<ProductEntity>(
 );
 
 applySoftDeletePlugin(productSchema);
+productSchema.index({ id: 1 }, { unique: true });
 
 export const ProductMongoModel =
   (models.Product as Model<ProductEntity> | undefined) ??

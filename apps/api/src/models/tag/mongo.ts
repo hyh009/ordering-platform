@@ -62,6 +62,7 @@ const tagSchema = new Schema<TagEntity>(
 );
 
 applySoftDeletePlugin(tagSchema);
+tagSchema.index({ id: 1 }, { unique: true });
 
 export const TagMongoModel =
   (models.Tag as Model<TagEntity> | undefined) ??

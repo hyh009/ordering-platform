@@ -49,6 +49,7 @@ const allergenSchema = new Schema<AllergenEntity>(
   },
 );
 
+allergenSchema.index({ id: 1 }, { unique: true });
 allergenSchema.index({ key: 1 }, { unique: true });
 
 export const AllergenMongoModel =

@@ -70,6 +70,7 @@ const categorySchema = new Schema<CategoryEntity>(
 );
 
 applySoftDeletePlugin(categorySchema);
+categorySchema.index({ id: 1 }, { unique: true });
 
 export const CategoryMongoModel =
   (models.Category as Model<CategoryEntity> | undefined) ??

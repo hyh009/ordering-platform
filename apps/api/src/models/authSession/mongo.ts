@@ -40,6 +40,7 @@ const authSessionSchema = new Schema<AuthSessionEntity>(
   },
 );
 
+authSessionSchema.index({ id: 1 }, { unique: true });
 authSessionSchema.index({ refreshTokenHash: 1 }, { unique: true });
 authSessionSchema.index({ userId: 1, revokedAt: 1 });
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

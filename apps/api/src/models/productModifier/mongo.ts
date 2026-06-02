@@ -157,6 +157,7 @@ productModifierSchema
   }, 'single_choice modifiers must have maxSelect equal to 1');
 
 applySoftDeletePlugin(productModifierSchema);
+productModifierSchema.index({ id: 1 }, { unique: true });
 
 export const ProductModifierMongoModel =
   (models.ProductModifier as Model<ProductModifierEntity> | undefined) ??

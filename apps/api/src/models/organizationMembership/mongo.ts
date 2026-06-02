@@ -43,6 +43,7 @@ const organizationMembershipSchema = new Schema<OrganizationMembershipEntity>(
   },
 );
 
+organizationMembershipSchema.index({ id: 1 }, { unique: true });
 organizationMembershipSchema.index(
   { organizationId: 1, userId: 1 },
   { unique: true },

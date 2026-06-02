@@ -145,6 +145,8 @@ const organizationSchema = new Schema<OrganizationEntity>(
   },
 );
 
+organizationSchema.index({ id: 1 }, { unique: true });
+organizationSchema.index({ slug: 1 }, { unique: true });
 organizationSchema.index({ status: 1 });
 applySoftDeletePlugin(organizationSchema);
 

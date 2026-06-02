@@ -201,6 +201,7 @@ const storeSchema = new Schema<StoreEntity>(
 
 applySoftDeletePlugin(storeSchema);
 
+storeSchema.index({ id: 1 }, { unique: true });
 storeSchema.index({ organizationId: 1 });
 
 export const StoreMongoModel =

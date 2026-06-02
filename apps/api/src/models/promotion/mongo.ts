@@ -206,6 +206,7 @@ const promotionSchema = new Schema<PromotionEntity>(
 );
 
 applySoftDeletePlugin(promotionSchema);
+promotionSchema.index({ id: 1 }, { unique: true });
 
 export const PromotionMongoModel =
   (models.Promotion as Model<PromotionEntity> | undefined) ??
