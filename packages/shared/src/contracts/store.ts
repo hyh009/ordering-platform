@@ -76,7 +76,7 @@ export type UpdateStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>
 
 const storeDisplayNameSchema = z.object({
   en: z.string().trim().min(1).max(200).optional(),
-  'zh-TW': z.string().trim().min(1).max(200),
+  'zh-TW': z.string().trim().min(1).max(200).optional(),
 });
 
 const storeLocalizedTextSchema = z.object({
@@ -103,21 +103,29 @@ const storeOrderModeSchema = z.object({
   checkoutMode: z.enum(storeCheckoutModes),
 });
 
-export const createStoreSchema = z.object({
-  profile: z.object({
-    displayName: storeDisplayNameSchema,
-    description: storeLocalizedTextSchema.optional(),
-  }),
-  locale: z.object({
-    defaultLocale: z.enum(supportedLocales),
-    supportedLocales: z.array(z.enum(supportedLocales)).min(1),
-  }),
-  operation: z.object({
-    businessHours: z.array(businessHourSchema),
-    serviceFeeRate: z.number().min(0).max(1),
-    orderModes: z.array(storeOrderModeSchema),
-  }),
-});
+export const createStoreSchema = z
+  .object({
+    profile: z.object({
+      displayName: storeDisplayNameSchema,
+      description: storeLocalizedTextSchema.optional(),
+    }),
+    locale: z.object({
+      defaultLocale: z.enum(supportedLocales),
+      supportedLocales: z.array(z.enum(supportedLocales)).min(1),
+    }),
+    operation: z.object({
+      businessHours: z.array(businessHourSchema),
+      serviceFeeRate: z.number().min(0).max(1),
+      orderModes: z.array(storeOrderModeSchema),
+    }),
+  })
+  .refine(
+    (data) => !!data.profile.displayName[data.locale.defaultLocale]?.trim(),
+    {
+      message: 'Display name for the default locale is required.',
+      path: ['profile', 'displayName'],
+    },
+  );
 
 export const updateStoreSchema = z
   .object({
