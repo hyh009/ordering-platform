@@ -9,7 +9,6 @@ type FieldControlProps = {
 };
 
 type FieldProps = {
-  children: ReactElement<FieldControlProps>;
   className?: string;
   description?: ReactNode;
   error?: ReactNode;
@@ -17,11 +16,13 @@ type FieldProps = {
   label: ReactNode;
   required?: boolean;
   showErrorMessage?: boolean;
-};
+} & (
+  | { children: ReactElement<FieldControlProps>; renderControl?: never }
+  | { children?: never; renderControl: ReactNode | ((id: string) => ReactNode) }
+);
 
 function joinIds(...ids: Array<string | undefined>) {
   const value = ids.filter(Boolean).join(' ');
-
   return value.length > 0 ? value : undefined;
 }
 
@@ -37,24 +38,30 @@ export function Field({
   error,
   id,
   label,
+  renderControl,
   required = false,
   showErrorMessage = true,
 }: FieldProps) {
   const generatedId = useId();
-  const controlId = id ?? children.props.id ?? `field-${generatedId}`;
+  const controlId = id ?? children?.props.id ?? `field-${generatedId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
   const errorId = showErrorMessage ? `${controlId}-error` : undefined;
-  const describedBy = joinIds(
-    children.props['aria-describedby'],
-    descriptionId,
-    error && showErrorMessage ? errorId : undefined,
-  );
 
-  const control = cloneElement(children, {
-    'aria-describedby': describedBy,
-    'aria-invalid': error ? true : children.props['aria-invalid'],
-    id: controlId,
-  });
+  const isRenderFn = typeof renderControl === 'function';
+
+  const control = children
+    ? cloneElement(children, {
+        'aria-describedby': joinIds(
+          children.props['aria-describedby'],
+          descriptionId,
+          error && showErrorMessage ? errorId : undefined,
+        ),
+        'aria-invalid': error ? true : children.props['aria-invalid'],
+        id: controlId,
+      })
+    : isRenderFn
+      ? renderControl(controlId)
+      : renderControl;
 
   return (
     <div className={cn('grid gap-1.5', className)}>
@@ -63,7 +70,7 @@ export function Field({
           'text-sm font-medium',
           error ? 'text-destructive' : 'text-foreground',
         )}
-        htmlFor={controlId}
+        htmlFor={children || isRenderFn ? controlId : undefined}
       >
         {label}
         {required ? (
