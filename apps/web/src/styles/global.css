@@ -13,7 +13,7 @@
   --app-font-size-body: 1rem;
   --app-font-size-small: 0.875rem;
 
-  --background: oklch(0.982 0.012 190);
+  --background: oklch(0.972 0.005 245);
   --foreground: oklch(0.19 0.035 245);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.19 0.035 245);
@@ -48,6 +48,7 @@
   --z-page-modal: 50;
   --z-feedback-modal: 100;
   --z-feedback-toast: 110;
+  --admin-page-padding: 2rem;
 
   color: var(--foreground);
   background: var(--background);
@@ -138,6 +139,13 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@utility admin-page-content {
+  display: grid;
+  gap: 1.5rem;
+  padding: var(--admin-page-padding);
+  width: 100%;
 }
 
 @utility z-page-modal {

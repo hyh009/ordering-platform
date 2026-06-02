@@ -21,7 +21,7 @@ export function OrganizationListPage() {
 
   return (
     <>
-      <section className="mx-auto grid w-full max-w-6xl gap-6 px-5 py-8 md:px-8">
+      <section className="admin-page-content">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
