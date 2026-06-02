@@ -8,8 +8,8 @@ This is the entry workflow for new features.
 
 Use the more specific workflow when the feature clearly touches only one side:
 
-- Backend only: `docs/agent/workflows/new-feature/backend-feature.md`
-- Frontend only: `docs/agent/workflows/new-feature/frontend-feature.md`
+- Backend only: `docs/agent/backend/route-development.md`
+- Frontend only: `docs/agent/frontend/feature-development.md`
 
 For full-stack features, start here, then do backend work before frontend work unless the user asks for a different order.
 
@@ -60,10 +60,10 @@ When a plan is needed:
 
 Use this order when a feature needs both API and Web changes:
 
-1. Use `docs/agent/workflows/new-feature/backend-feature.md` first.
+1. Use `docs/agent/backend/route-development.md` first.
 2. Define backend behavior with the frontend use case in mind.
 3. Verify backend behavior.
-4. Use `docs/agent/workflows/new-feature/frontend-feature.md`.
+4. Use `docs/agent/frontend/feature-development.md`.
 5. Run full-stack verification.
 
 ## Dependencies
