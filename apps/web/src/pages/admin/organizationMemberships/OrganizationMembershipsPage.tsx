@@ -1,9 +1,10 @@
-import { Link, useParams } from 'react-router';
-import { ChevronLeft, Pencil } from 'lucide-react';
+import { useLocation, useParams } from 'react-router';
+import { Pencil } from 'lucide-react';
 import { organizationMembershipRoles } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { AddMemberForm } from '@/features/organization/membership/components/addMemberForm/AddMemberForm';
+import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -93,7 +94,22 @@ export function OrganizationMembershipsPage() {
   const params = useParams();
   const organizationId = params.organizationId ?? '';
   const { tDefault } = useAppTranslation();
+  const { state } = useLocation();
+  const organizationName = (state as { organizationName?: string } | null)
+    ?.organizationName;
   const vm = useOrganizationMembershipsPageVM(organizationId);
+
+  const breadcrumbItems = [
+    {
+      label: tDefault('admin.organizations.title', 'Organizations'),
+      href: PATHS.SUPER_ADMIN.ORGANIZATIONS,
+    },
+    {
+      label: organizationName ?? tDefault('admin.organizations.singular', 'Organization'),
+      href: PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
+    },
+    { label: tDefault('admin.memberships.title', 'Members') },
+  ];
 
   if (vm.isLoading && vm.memberships.length === 0) {
     return (
@@ -105,18 +121,12 @@ export function OrganizationMembershipsPage() {
 
   return (
     <>
-      <section className="mx-auto grid w-full max-w-6xl gap-6 px-5 py-8 md:px-8">
+      <section className="admin-page-content">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <Link
-              className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary"
-              to={PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              {tDefault('admin.memberships.backToDetail', 'Back to organization')}
-            </Link>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <Breadcrumb items={breadcrumbItems} />
+            <h1 className="mt-4 text-3xl font-bold tracking-tight">
               {tDefault('admin.memberships.title', 'Members')}
             </h1>
             <p className="mt-1 text-muted-foreground">

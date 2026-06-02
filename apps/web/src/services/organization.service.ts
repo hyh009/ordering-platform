@@ -2,6 +2,8 @@ import { apiJson } from '@/api';
 import { organizationPaths } from '@/api/paths/organization.paths';
 import { organizationModel } from '@/models/organization';
 import { organizationMembershipModel } from '@/models/organizationMembership';
+import { storeModel } from '@/models/store';
+import type { StoreListItem } from '@/models/store';
 import { toPaginationPage } from './utils/pagination';
 import type {
   CreateOrganizationRequest,
@@ -20,6 +22,11 @@ import type {
   UpdateOrganizationMembershipRequest,
   UpdateOrganizationMembershipSuccessResponse,
 } from '@/models/organizationMembership';
+import type {
+  CreateStoreRequest,
+  CreateStoreSuccessResponse,
+  ListStoresSuccessResponse,
+} from '@repo/shared';
 
 export const organizationService = {
   async listOrganizations(input: { limit: number; offset: number }) {
@@ -137,5 +144,35 @@ export const organizationService = {
     );
 
     return organizationMembershipModel.deserialize(response.data.membership);
+  },
+
+  async listAdminStores(
+    organizationId: string,
+    input: { limit: number; offset: number } = { limit: 20, offset: 0 },
+  ) {
+    const params = new URLSearchParams({
+      limit: String(input.limit),
+      offset: String(input.offset),
+    });
+    const response = await apiJson<ListStoresSuccessResponse>(
+      `${organizationPaths.stores(organizationId)}?${params.toString()}`,
+    );
+
+    return {
+      stores: response.data.stores as StoreListItem[],
+      total: response.data.pagination.total,
+    };
+  },
+
+  async createAdminStore(organizationId: string, input: CreateStoreRequest) {
+    const response = await apiJson<CreateStoreSuccessResponse>(
+      organizationPaths.stores(organizationId),
+      {
+        body: JSON.stringify(input),
+        method: 'POST',
+      },
+    );
+
+    return storeModel.deserialize(response.data.store);
   },
 };

@@ -18,28 +18,21 @@ import type { OrganizationDetailActions } from './actions';
 export type OrganizationDetailCommandFieldErrors = OrganizationFormFieldErrors;
 
 export type LoadOrganizationDetailResult =
-  | {
-      status: 'loaded';
-    }
+  | { status: 'loaded' }
   | AdminCommandFailure;
 
 export type SaveOrganizationDetailResult =
-  | {
-      organization: Organization;
-      status: 'saved';
-    }
-  | (AdminCommandFailure & {
-      fieldErrors?: OrganizationDetailCommandFieldErrors;
-    });
+  | { organization: Organization; status: 'saved' }
+  | (AdminCommandFailure & { fieldErrors?: OrganizationDetailCommandFieldErrors });
 
 export type OrganizationDetailCommands = {
-  loadOrganization(
-    organizationId: string,
-  ): Promise<LoadOrganizationDetailResult>;
+  loadOrganization(organizationId: string): Promise<LoadOrganizationDetailResult>;
   saveOrganizationDetail(
     organizationId: string,
     input: UpdateOrganizationRequest,
   ): Promise<SaveOrganizationDetailResult>;
+  loadStores(organizationId: string): Promise<LoadOrganizationDetailResult>;
+  loadOwner(organizationId: string): Promise<void>;
 };
 
 export function createOrganizationDetailCommands(
@@ -54,9 +47,7 @@ export function createOrganizationDetailCommands(
           await organizationService.getOrganization(organizationId);
 
         actions.loadSucceeded(organization);
-        return {
-          status: 'loaded',
-        };
+        return { status: 'loaded' };
       } catch (error) {
         const failure = mapAdminApiError(error);
 
@@ -89,13 +80,44 @@ export function createOrganizationDetailCommands(
         );
 
         actions.organizationSaved(organization);
-        return {
-          organization,
-          status: 'saved',
-        };
+        return { organization, status: 'saved' };
       } catch (error) {
         return mapAdminApiError(error);
       }
     },
+
+    async loadStores(organizationId) {
+      actions.storesLoadStarted();
+
+      try {
+        const result = await organizationService.listAdminStores(organizationId);
+
+        actions.storesLoadSucceeded(result.stores);
+        return { status: 'loaded' };
+      } catch (error) {
+        const failure = mapAdminApiError(error);
+
+        actions.storesLoadFailed(failure.message);
+        return failure;
+      }
+    },
+
+    async loadOwner(organizationId) {
+      actions.ownerLoadStarted();
+
+      try {
+        const result = await organizationService.listOrganizationMemberships(
+          organizationId,
+          { limit: 10, offset: 0 },
+        );
+        const owner =
+          result.memberships.find((m) => m.role === 'org_owner') ?? null;
+
+        actions.ownerLoadSucceeded(owner);
+      } catch {
+        actions.ownerLoadFailed();
+      }
+    },
+
   };
 }

@@ -11,7 +11,10 @@ export type { SaveOrganizationDetailResult };
 
 export type OrganizationDetailPageCommands = Pick<
   OrganizationDetailCommands,
-  'loadOrganization' | 'saveOrganizationDetail'
+  | 'loadOrganization'
+  | 'saveOrganizationDetail'
+  | 'loadStores'
+  | 'loadOwner'
 >;
 
 export function createOrganizationDetailPageCommands(
@@ -24,6 +27,8 @@ export function createOrganizationDetailPageCommands(
   return {
     loadOrganization: base.loadOrganization,
     saveOrganizationDetail: base.saveOrganizationDetail,
+    loadStores: base.loadStores,
+    loadOwner: base.loadOwner,
     ...overrides,
   };
 }

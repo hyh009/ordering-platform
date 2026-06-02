@@ -14,10 +14,7 @@ function createOrganizationDetailPageContext() {
   const { actions, store } = createOrganizationDetailRuntime();
   const commands = createOrganizationDetailPageCommands(actions);
 
-  return {
-    commands,
-    store,
-  };
+  return { commands, store };
 }
 
 export function useOrganizationDetailPageVM(organizationId: string) {
@@ -29,6 +26,11 @@ export function useOrganizationDetailPageVM(organizationId: string) {
   const organization = useStore(store, (state) => state.organization);
   const isLoading = useStore(store, (state) => state.isLoading);
   const error = useStore(store, (state) => state.error);
+  const stores = useStore(store, (state) => state.stores);
+  const storesLoading = useStore(store, (state) => state.storesLoading);
+  const owner = useStore(store, (state) => state.owner);
+  const ownerLoading = useStore(store, (state) => state.ownerLoading);
+
   const formattedAddress = organization?.address
     ? [
         organization.address.tw.postalCode,
@@ -37,7 +39,7 @@ export function useOrganizationDetailPageVM(organizationId: string) {
         organization.address.tw.streetAddress,
       ]
         .filter(Boolean)
-        .join('')
+        .join(' ')
     : '';
   const displayContactPhone = organization?.contactPhone?.nationalNumber ?? '';
 
@@ -47,12 +49,12 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
   useEffect(() => {
     void loadOrganization();
-  }, [loadOrganization]);
+    void commands.loadStores(organizationId);
+    void commands.loadOwner(organizationId);
+  }, [commands, loadOrganization, organizationId]);
 
   const openEditModal = useCallback(() => {
-    if (!organization) {
-      return;
-    }
+    if (!organization) return;
     form.reset(valuesFromOrganization(organization));
     setIsEditModalOpen(true);
   }, [form, organization]);
@@ -97,31 +99,29 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
     if (result.status === 'saved') {
       discardAndCloseEditModal();
-      await loadOrganization(); // Re-fetch to show latest data
+      await loadOrganization();
       return;
     }
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [
-    discardAndCloseEditModal,
-    commands,
-    form,
-    organizationId,
-    loadOrganization,
-  ]);
+  }, [discardAndCloseEditModal, commands, form, organizationId, loadOrganization]);
 
   return {
     closeEditModal,
-    error,
     displayContactPhone,
-    formattedAddress,
+    error,
     form,
+    formattedAddress,
     isEditModalOpen,
     isLoading,
     loadOrganization,
     openEditModal,
     organization,
+    owner,
+    ownerLoading,
+    stores,
+    storesLoading,
     submitOrganization,
   };
 }
