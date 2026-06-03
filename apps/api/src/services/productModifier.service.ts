@@ -95,9 +95,11 @@ function assertValidSelectionBounds(input: {
   maxSelect: number;
 }) {
   if (!hasValidProductModifierSelectionBounds(input)) {
-    throw new ConflictError(
+    // Invalid bounds are a bad request, not a conflict: the create path is
+    // rejected the same way (400) by the zod schema before reaching here.
+    throw new BadRequestError(
       'Product modifier selection bounds are invalid',
-      ERROR_CODES.CONFLICT,
+      ERROR_CODES.INVALID_FIELD_VALUE,
     );
   }
 }

@@ -1,5 +1,5 @@
 import { createProductModifierService } from '@src/services/productModifier.service';
-import { ConflictError } from '@src/utils/errors';
+import { BadRequestError, ConflictError } from '@src/utils/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -97,7 +97,7 @@ describe('product modifier service', () => {
       service.updateProductModifier('store-1', 'product-modifier-1', {
         selectionType: 'single_choice',
       }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    ).rejects.toBeInstanceOf(BadRequestError);
 
     expect(mocks.repository.update).not.toHaveBeenCalled();
   });

@@ -574,4 +574,40 @@ describe('merchant product modifiers API', () => {
       code: 'VALIDATION_ERROR',
     });
   });
+
+  it('rejects an update whose merged selection bounds are invalid', async () => {
+    const app = createApp();
+    seedMember('org_admin');
+    await mocks.productModifierRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '尺寸' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 2,
+      options: [
+        {
+          id: 'product-modifier-option-existing',
+          name: { 'zh-TW': '大杯' },
+          priceAdjustment: 0,
+          isDefault: false,
+          isActive: true,
+          isSoldOut: false,
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/product-modifiers/product-modifier-1',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ selectionType: 'single_choice' });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      code: 'INVALID_FIELD_VALUE',
+    });
+  });
 });
