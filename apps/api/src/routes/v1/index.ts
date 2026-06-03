@@ -6,8 +6,7 @@ import organizationsRouter from './admin/organizations/_router';
 import usersRouter from './admin/users';
 import authRouter from './auth';
 import healthRouter from './health';
-import merchantStoresRouter from './merchant/stores';
-import merchantTagsRouter from './merchant/tags';
+import merchantStoresRouter from './merchant/stores/_router';
 
 const router = Router();
 
@@ -18,6 +17,5 @@ router.use('/admin/organizations', organizationsRouter);
 router.use('/admin/users', usersRouter);
 router.use('/health', healthRouter);
 router.use('/merchant/stores', merchantStoresRouter);
-router.use('/merchant/stores/:storeId/tags', merchantTagsRouter);
 
 export default router;
