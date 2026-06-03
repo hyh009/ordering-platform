@@ -226,7 +226,7 @@ router.get<CategoryStoreParams, ListCategoriesSuccessResponse>(
  *               availabilityRules:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/AvailabilityRule'
  *     responses:
  *       201:
  *         description: Category created
@@ -300,7 +300,7 @@ router.post<
  *               availabilityRules:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/AvailabilityRule'
  *     responses:
  *       200:
  *         description: Category updated

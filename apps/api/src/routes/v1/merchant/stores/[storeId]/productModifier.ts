@@ -26,6 +26,33 @@ const router = Router({ mergeParams: true });
  * @openapi
  * components:
  *   schemas:
+ *     ProductModifierOptionInput:
+ *       type: object
+ *       required:
+ *         - name
+ *         - priceAdjustment
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Include to update an existing option; omit for new options (ignored on create).
+ *           example: product-modifier-option-abc123
+ *         sharedOptionCode:
+ *           type: string
+ *           example: oat-milk
+ *         name:
+ *           $ref: '#/components/schemas/LocalizedMetadataName'
+ *         priceAdjustment:
+ *           type: number
+ *           example: 15
+ *         isDefault:
+ *           type: boolean
+ *           example: false
+ *         isActive:
+ *           type: boolean
+ *           example: true
+ *         isSoldOut:
+ *           type: boolean
+ *           example: false
  *     ProductModifierOption:
  *       type: object
  *       required:
@@ -38,7 +65,7 @@ const router = Router({ mergeParams: true });
  *       properties:
  *         id:
  *           type: string
- *           example: product-modifier-option-1
+ *           example: product-modifier-option-abc123
  *         sharedOptionCode:
  *           type: string
  *           example: oat-milk
@@ -272,13 +299,13 @@ router.get<ProductModifierStoreParams, ListProductModifiersSuccessResponse>(
  *               options:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/ProductModifierOptionInput'
  *               inheritCategoryAvailability:
  *                 type: boolean
  *               availabilityRules:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/AvailabilityRule'
  *               isActive:
  *                 type: boolean
  *     responses:
@@ -355,13 +382,13 @@ router.post<
  *               options:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/ProductModifierOptionInput'
  *               inheritCategoryAvailability:
  *                 type: boolean
  *               availabilityRules:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/AvailabilityRule'
  *               isActive:
  *                 type: boolean
  *     responses:

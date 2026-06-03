@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import storeRouter from './[storeId]';
 import categoriesRouter from './[storeId]/categories';
-import productModifiersRouter from './[storeId]/product-modifiers';
+import productModifiersRouter from './[storeId]/productModifier';
 import tagsRouter from './[storeId]/tags';
 import collectionRouter from './index';
 
