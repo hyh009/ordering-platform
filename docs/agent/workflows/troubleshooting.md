@@ -27,3 +27,21 @@ A: Zod issue paths may be `PropertyKey[]`.
 
 - Convert path segments with `String(...)` before comparing or joining paths.
 - Do not assume path segments are only strings or numbers.
+
+## Q: What if a PATCH update fails on a cross-field Mongoose validator?
+
+A: Treat partial update validators as query-context validators, not document
+validators.
+
+- `findOneAndUpdate(..., { runValidators: true })` runs path validators with
+  `this` bound to the query, so sibling fields such as `this.minSelect` may be
+  unavailable or stale.
+- Do not rely on query validators for rules that need the complete document
+  state.
+- In the service, load the existing record, combine it with the PATCH input,
+  validate the complete next state, then issue an atomic repository update.
+- If concurrent writes matter, pass a condition such as
+  `updatedAt: existing.updatedAt` into `findOneAndUpdate`; when no document is
+  updated, return `409 Conflict`.
+- Keep schema/document validation for create/save paths, but make cross-field
+  validators skip query-update context or use document-only validation.

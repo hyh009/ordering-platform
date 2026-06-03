@@ -110,6 +110,12 @@ const productModifierSchema = new Schema<ProductModifierEntity>(
       min: 1,
       default: 1,
     },
+    displayOrder: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
     options: {
       type: [modifierOptionSchema],
       required: true,
@@ -145,14 +151,26 @@ const productModifierSchema = new Schema<ProductModifierEntity>(
 );
 
 productModifierSchema.path('maxSelect').validate(function validateMaxSelect(
+  this: { getUpdate?: unknown; minSelect?: number },
   value: number,
 ) {
-  return value >= this.minSelect;
+  if (typeof this.getUpdate === 'function') {
+    return true;
+  }
+
+  return value >= (this.minSelect ?? 0);
 }, 'maxSelect must be greater than or equal to minSelect');
 
 productModifierSchema
   .path('selectionType')
-  .validate(function validateSingleChoice(value: string) {
+  .validate(function validateSingleChoice(
+    this: { getUpdate?: unknown; maxSelect?: number },
+    value: string,
+  ) {
+    if (typeof this.getUpdate === 'function') {
+      return true;
+    }
+
     return value !== 'single_choice' || this.maxSelect === 1;
   }, 'single_choice modifiers must have maxSelect equal to 1');
 

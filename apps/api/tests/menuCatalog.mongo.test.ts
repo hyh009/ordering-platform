@@ -95,6 +95,7 @@ describe('menu catalog Mongo models', () => {
       selectionType: 'single_choice',
       minSelect: 1,
       maxSelect: 1,
+      displayOrder: 10,
       options: [
         {
           id: 'modifier-option-1',

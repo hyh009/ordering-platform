@@ -29,6 +29,7 @@ export type ProductModifierEntity = {
   selectionType: ProductModifierSelectionType;
   minSelect: number;
   maxSelect: number;
+  displayOrder: number;
   options: ProductModifierOption[];
   /**
    * true: use the product/category availability inherited by the menu item.
@@ -42,3 +43,19 @@ export type ProductModifierEntity = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export function hasValidProductModifierSelectionBounds(input: {
+  selectionType: ProductModifierSelectionType;
+  minSelect: number;
+  maxSelect: number;
+}) {
+  if (input.maxSelect < input.minSelect) {
+    return false;
+  }
+
+  if (input.selectionType === 'single_choice' && input.maxSelect !== 1) {
+    return false;
+  }
+
+  return true;
+}

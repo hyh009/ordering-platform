@@ -76,6 +76,20 @@ store-owned localized name may require a value for the store's default locale,
 but that default locale lives in `Store`; the schema can only enforce a local
 minimum such as "has at least one localized value."
 
+For cross-field invariants on the same document, be careful with partial update
+paths. Mongoose query updates such as
+`findOneAndUpdate(..., { runValidators: true })` do not run validators with the
+same `this` value as document validation, so validators that read sibling fields
+through `this` can reject valid PATCH requests. Prefer this split:
+
+- Put the pure invariant helper in `models/<domain>/model.ts`.
+- In the service, load the existing entity, merge the PATCH input into the next
+  complete state, and validate that complete state before writing.
+- Keep repository updates atomic with `findOneAndUpdate`; use an `updatedAt`
+  condition and map a miss to `409 Conflict` when stale writes matter.
+- Keep schema validation for create/save behavior, but make cross-field
+  validators skip query-update context or use document-only validation.
+
 ## Schema Options
 
 Use `timestamps: true` by default for persistent domain models.
