@@ -1,11 +1,14 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
-import { dietaryMarkerTypes, getLocalizedText } from '@/models/metadata';
-import type {
-  DietaryMarkerType,
-  MetadataActiveFilter,
+import {
+  dietaryMarkerTypes,
+  getLocalizedText,
+  getMetadataVisibilityOptions,
 } from '@/models/metadata';
+import type { DietaryMarker, DietaryMarkerType } from '@/models/metadata';
+import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
+import { FilterSelect } from '@/shared/components/form/FilterSelect';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
@@ -13,11 +16,69 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { useDietaryMarkerListPageVM } from './useDietaryMarkerListPageVM';
 
-const activeFilterOptions: MetadataActiveFilter[] = ['true', 'false', 'all'];
-
 export function DietaryMarkerListPage() {
   const { tDefault } = useAppTranslation();
   const vm = useDietaryMarkerListPageVM();
+
+  const columns: DataTableColumn<DietaryMarker>[] = [
+    {
+      key: 'name',
+      header: tDefault('admin.metadata.name', 'Name'),
+      className: 'pl-4',
+      render: (marker) => (
+        <div className="min-w-0">
+          <p className="m-0 truncate font-semibold">
+            {getLocalizedText(marker.name)}
+          </p>
+          {marker.icon ? (
+            <p className="m-0 text-sm text-muted-foreground">{marker.icon}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'key',
+      header: tDefault('admin.metadata.key', 'Key'),
+      render: (marker) => (
+        <code className="truncate text-sm text-muted-foreground">
+          {marker.key}
+        </code>
+      ),
+    },
+    {
+      key: 'type',
+      header: tDefault('admin.dietaryMarkers.type', 'Type'),
+      cellClassName: 'text-sm text-muted-foreground',
+      render: (marker) => marker.type,
+    },
+    {
+      key: 'status',
+      header: tDefault('admin.metadata.status', 'Status'),
+      cellClassName: 'text-sm text-muted-foreground',
+      render: (marker) =>
+        marker.isActive
+          ? tDefault('admin.metadata.active', 'Active')
+          : tDefault('admin.metadata.inactive', 'Inactive'),
+    },
+    {
+      key: 'actions',
+      header: tDefault('common.table.actions', 'Actions'),
+      align: 'right',
+      className: 'pr-4',
+      render: (marker) => (
+        <Button
+          onClick={() => {
+            vm.openEditModal(marker);
+          }}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          {tDefault('common.actions.edit', 'Edit')}
+        </Button>
+      ),
+    },
+  ];
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,91 +118,28 @@ export function DietaryMarkerListPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium" htmlFor="dietary-filter">
-          {tDefault('admin.metadata.activeFilter', 'Visibility')}
-        </label>
-        <select
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
-          id="dietary-filter"
-          value={vm.filter}
-          onChange={(event) => {
-            vm.setFilter(event.target.value as MetadataActiveFilter);
-          }}
-        >
-          {activeFilterOptions.map((option) => (
-            <option key={option} value={option}>
-              {option === 'true'
-                ? tDefault('admin.metadata.activeOnly', 'Active')
-                : option === 'false'
-                  ? tDefault('admin.metadata.inactiveOnly', 'Inactive')
-                  : tDefault('admin.metadata.all', 'All')}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {vm.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {vm.error}
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,12rem)_7rem_6rem_8rem] gap-3 border-b border-border px-4 py-3 text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
-          <span>{tDefault('admin.metadata.name', 'Name')}</span>
-          <span>{tDefault('admin.metadata.key', 'Key')}</span>
-          <span>{tDefault('admin.dietaryMarkers.type', 'Type')}</span>
-          <span>{tDefault('admin.metadata.status', 'Status')}</span>
-          <span className="text-right">
-            {tDefault('common.table.actions', 'Actions')}
-          </span>
-        </div>
-        {vm.dietaryMarkers.map((marker) => (
-          <article
-            className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,12rem)_7rem_6rem_8rem] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
-            key={marker.id}
-          >
-            <div className="min-w-0">
-              <p className="m-0 truncate font-semibold">
-                {getLocalizedText(marker.name)}
-              </p>
-              {marker.icon ? (
-                <p className="m-0 text-sm text-muted-foreground">
-                  {marker.icon}
-                </p>
-              ) : null}
-            </div>
-            <code className="truncate text-sm text-muted-foreground">
-              {marker.key}
-            </code>
-            <span className="text-sm text-muted-foreground">{marker.type}</span>
-            <span className="text-sm text-muted-foreground">
-              {marker.isActive
-                ? tDefault('admin.metadata.active', 'Active')
-                : tDefault('admin.metadata.inactive', 'Inactive')}
-            </span>
-            <div className="flex justify-end">
-              <Button
-                onClick={() => {
-                  vm.openEditModal(marker);
-                }}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                {tDefault('common.actions.edit', 'Edit')}
-              </Button>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {vm.dietaryMarkers.length === 0 && !vm.isLoading ? (
-        <p className="rounded-md border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          {tDefault('admin.dietaryMarkers.empty', 'No dietary markers found.')}
-        </p>
-      ) : null}
+      <DataTable
+        columns={columns}
+        data={vm.dietaryMarkers}
+        isLoading={vm.isLoading}
+        labels={{
+          empty: tDefault('admin.dietaryMarkers.empty', 'No dietary markers found.'),
+        }}
+        rowKey={(marker) => marker.id}
+        toolbar={
+          <FilterSelect
+            onChange={vm.setFilter}
+            options={getMetadataVisibilityOptions(tDefault)}
+            value={vm.filter}
+          />
+        }
+      />
 
       <Modal
         description={tDefault(
@@ -229,10 +227,7 @@ export function DietaryMarkerListPage() {
                 className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
                 value={vm.form.values.type}
                 onChange={(event) => {
-                  vm.form.setField(
-                    'type',
-                    event.target.value as DietaryMarkerType,
-                  );
+                  vm.form.setField('type', event.target.value as DietaryMarkerType);
                 }}
               >
                 {dietaryMarkerTypes.map((type) => (

@@ -13,6 +13,7 @@ export type OrganizationDetailPageCommands = Pick<
   OrganizationDetailCommands,
   | 'loadOrganization'
   | 'saveOrganizationDetail'
+  | 'reviewOrganization'
   | 'loadStores'
   | 'loadOwner'
 >;
@@ -27,6 +28,7 @@ export function createOrganizationDetailPageCommands(
   return {
     loadOrganization: base.loadOrganization,
     saveOrganizationDetail: base.saveOrganizationDetail,
+    reviewOrganization: base.reviewOrganization,
     loadStores: base.loadStores,
     loadOwner: base.loadOwner,
     ...overrides,

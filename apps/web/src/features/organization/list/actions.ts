@@ -1,8 +1,13 @@
 import type {
   OrganizationListItem,
   OrganizationListPage,
+  OrganizationListSort,
 } from '@/models/organization';
-import type { OrganizationListState, OrganizationReviewStatusFilter } from './store';
+import type {
+  OrganizationListState,
+  OrganizationReviewStatusFilter,
+  OrganizationStatusFilter,
+} from './store';
 import type { StoreApi } from 'zustand/vanilla';
 
 export function createOrganizationListActions(
@@ -37,6 +42,18 @@ export function createOrganizationListActions(
 
     filterChanged(reviewStatusFilter: OrganizationReviewStatusFilter) {
       store.setState({ reviewStatusFilter });
+    },
+
+    statusFilterChanged(statusFilter: OrganizationStatusFilter) {
+      store.setState({ statusFilter });
+    },
+
+    keywordChanged(keyword: string) {
+      store.setState({ keyword });
+    },
+
+    sortChanged(sort: OrganizationListSort) {
+      store.setState({ sort });
     },
   };
 }

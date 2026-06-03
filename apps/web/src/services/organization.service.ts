@@ -3,7 +3,7 @@ import { organizationPaths } from '@/api/paths/organization.paths';
 import { organizationModel } from '@/models/organization';
 import { organizationMembershipModel } from '@/models/organizationMembership';
 import { storeModel } from '@/models/store';
-import type { StoreListItem } from '@/models/store';
+import type { StoreListItem, StoreListPage } from '@/models/store';
 import { toPaginationPage } from './utils/pagination';
 import type {
   CreateOrganizationRequest,
@@ -11,7 +11,10 @@ import type {
   GetOrganizationSuccessResponse,
   ListOrganizationsSuccessResponse,
   OrganizationListPage,
+  OrganizationListSortBy,
+  OrganizationListSortDirection,
   OrganizationReviewStatus,
+  OrganizationStatus,
   UpdateOrganizationRequest,
   UpdateOrganizationSuccessResponse,
 } from '@/models/organization';
@@ -33,14 +36,30 @@ export const organizationService = {
   async listOrganizations(input: {
     limit: number;
     offset: number;
+    keyword?: string;
+    status?: OrganizationStatus;
     reviewStatus?: OrganizationReviewStatus;
+    sortBy?: OrganizationListSortBy;
+    sortDirection?: OrganizationListSortDirection;
   }) {
     const params = new URLSearchParams({
       limit: String(input.limit),
       offset: String(input.offset),
     });
+    if (input.keyword) {
+      params.set('keyword', input.keyword);
+    }
+    if (input.status) {
+      params.set('status', input.status);
+    }
     if (input.reviewStatus) {
       params.set('reviewStatus', input.reviewStatus);
+    }
+    if (input.sortBy) {
+      params.set('sortBy', input.sortBy);
+    }
+    if (input.sortDirection) {
+      params.set('sortDirection', input.sortDirection);
     }
     const response = await apiJson<ListOrganizationsSuccessResponse>(
       `${organizationPaths.list}?${params.toString()}`,
@@ -168,7 +187,11 @@ export const organizationService = {
 
     return {
       stores: response.data.stores as StoreListItem[],
-      total: response.data.pagination.total,
+      pagination: toPaginationPage<StoreListPage>(response.data.pagination, {
+        limit: input.limit,
+        offset: input.offset,
+        total: response.data.pagination.total,
+      }),
     };
   },
 

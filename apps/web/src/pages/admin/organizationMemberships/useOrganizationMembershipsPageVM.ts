@@ -49,12 +49,19 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     [commands, organizationId],
   );
 
-  const { hasNextPage, hasPreviousPage, nextPage, page, previousPage, totalPages } =
-    useOffsetPaginationControls({ loadPage, pagination });
+  const { changeLimit, goToPage, page, totalPages } =
+    useOffsetPaginationControls({
+      loadPage,
+      pagination,
+    });
 
+  // Initial load only. Page-size and page-number changes go through
+  // changeLimit / goToPage, so pagination.limit is intentionally not a dep
+  // (depending on it would re-fire and double-fetch after changeLimit).
   useEffect(() => {
     void loadPage({ limit: pagination.limit, offset: 0 });
-  }, [loadPage, pagination.limit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPage]);
 
   // Add member modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -192,23 +199,21 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
 
   return {
     addForm,
+    changeLimit,
     closeAddModal,
     closeEditModal,
     editForm,
     editTarget,
     error,
-    hasNextPage,
-    hasPreviousPage,
+    goToPage,
     isAddModalOpen,
     isLoading,
     loadPage,
     memberships,
-    nextPage,
     openAddModal,
     openEditModal,
     page,
     pagination,
-    previousPage,
     setEditRole,
     submitAdd,
     submitDisable,

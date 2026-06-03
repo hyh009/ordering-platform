@@ -1,8 +1,10 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
-import { getLocalizedText } from '@/models/metadata';
-import type { MetadataActiveFilter } from '@/models/metadata';
+import { getLocalizedText, getMetadataVisibilityOptions } from '@/models/metadata';
+import type { Allergen } from '@/models/metadata';
+import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
+import { FilterSelect } from '@/shared/components/form/FilterSelect';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
@@ -10,11 +12,63 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { useAllergenListPageVM } from './useAllergenListPageVM';
 
-const activeFilterOptions: MetadataActiveFilter[] = ['true', 'false', 'all'];
-
 export function AllergenListPage() {
   const { tDefault } = useAppTranslation();
   const vm = useAllergenListPageVM();
+
+  const columns: DataTableColumn<Allergen>[] = [
+    {
+      key: 'name',
+      header: tDefault('admin.metadata.name', 'Name'),
+      className: 'pl-4',
+      render: (allergen) => (
+        <div className="min-w-0">
+          <p className="m-0 truncate font-semibold">
+            {getLocalizedText(allergen.name)}
+          </p>
+          {allergen.icon ? (
+            <p className="m-0 text-sm text-muted-foreground">{allergen.icon}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'key',
+      header: tDefault('admin.metadata.key', 'Key'),
+      render: (allergen) => (
+        <code className="truncate text-sm text-muted-foreground">
+          {allergen.key}
+        </code>
+      ),
+    },
+    {
+      key: 'status',
+      header: tDefault('admin.metadata.status', 'Status'),
+      cellClassName: 'text-sm text-muted-foreground',
+      render: (allergen) =>
+        allergen.isActive
+          ? tDefault('admin.metadata.active', 'Active')
+          : tDefault('admin.metadata.inactive', 'Inactive'),
+    },
+    {
+      key: 'actions',
+      header: tDefault('common.table.actions', 'Actions'),
+      align: 'right',
+      className: 'pr-4',
+      render: (allergen) => (
+        <Button
+          onClick={() => {
+            vm.openEditModal(allergen);
+          }}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          {tDefault('common.actions.edit', 'Edit')}
+        </Button>
+      ),
+    },
+  ];
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,89 +105,26 @@ export function AllergenListPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium" htmlFor="allergen-filter">
-          {tDefault('admin.metadata.activeFilter', 'Visibility')}
-        </label>
-        <select
-          className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
-          id="allergen-filter"
-          value={vm.filter}
-          onChange={(event) => {
-            vm.setFilter(event.target.value as MetadataActiveFilter);
-          }}
-        >
-          {activeFilterOptions.map((option) => (
-            <option key={option} value={option}>
-              {option === 'true'
-                ? tDefault('admin.metadata.activeOnly', 'Active')
-                : option === 'false'
-                  ? tDefault('admin.metadata.inactiveOnly', 'Inactive')
-                  : tDefault('admin.metadata.all', 'All')}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {vm.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {vm.error}
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,12rem)_6rem_8rem] gap-3 border-b border-border px-4 py-3 text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
-          <span>{tDefault('admin.metadata.name', 'Name')}</span>
-          <span>{tDefault('admin.metadata.key', 'Key')}</span>
-          <span>{tDefault('admin.metadata.status', 'Status')}</span>
-          <span className="text-right">
-            {tDefault('common.table.actions', 'Actions')}
-          </span>
-        </div>
-        {vm.allergens.map((allergen) => (
-          <article
-            className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,12rem)_6rem_8rem] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
-            key={allergen.id}
-          >
-            <div className="min-w-0">
-              <p className="m-0 truncate font-semibold">
-                {getLocalizedText(allergen.name)}
-              </p>
-              {allergen.icon ? (
-                <p className="m-0 text-sm text-muted-foreground">
-                  {allergen.icon}
-                </p>
-              ) : null}
-            </div>
-            <code className="truncate text-sm text-muted-foreground">
-              {allergen.key}
-            </code>
-            <span className="text-sm text-muted-foreground">
-              {allergen.isActive
-                ? tDefault('admin.metadata.active', 'Active')
-                : tDefault('admin.metadata.inactive', 'Inactive')}
-            </span>
-            <div className="flex justify-end">
-              <Button
-                onClick={() => {
-                  vm.openEditModal(allergen);
-                }}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                {tDefault('common.actions.edit', 'Edit')}
-              </Button>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {vm.allergens.length === 0 && !vm.isLoading ? (
-        <p className="rounded-md border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          {tDefault('admin.allergens.empty', 'No allergens found.')}
-        </p>
-      ) : null}
+      <DataTable
+        columns={columns}
+        data={vm.allergens}
+        isLoading={vm.isLoading}
+        labels={{ empty: tDefault('admin.allergens.empty', 'No allergens found.') }}
+        rowKey={(allergen) => allergen.id}
+        toolbar={
+          <FilterSelect
+            onChange={vm.setFilter}
+            options={getMetadataVisibilityOptions(tDefault)}
+            value={vm.filter}
+          />
+        }
+      />
 
       <Modal
         description={tDefault(

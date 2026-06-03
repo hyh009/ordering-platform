@@ -5,7 +5,10 @@ import {
 } from '@/models/organization';
 import type {
   Organization,
+  OrganizationListSortBy,
+  OrganizationListSortDirection,
   OrganizationReviewStatus,
+  OrganizationStatus,
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
 } from '@/models/organization';
@@ -44,12 +47,12 @@ export type OrganizationListCommands = {
   loadOrganizations(input: {
     limit: number;
     offset: number;
+    keyword?: string;
+    status?: OrganizationStatus;
     reviewStatus?: OrganizationReviewStatus;
+    sortBy?: OrganizationListSortBy;
+    sortDirection?: OrganizationListSortDirection;
   }): Promise<LoadOrganizationsResult>;
-  reviewOrganization(
-    organizationId: string,
-    reviewStatus: OrganizationReviewStatus,
-  ): Promise<SaveOrganizationListResult>;
   updateOrganization(
     organizationId: string,
     input: UpdateOrganizationRequest,
@@ -109,7 +112,11 @@ export function createOrganizationListCommands(
         const result = await organizationService.listOrganizations({
           limit: input.limit,
           offset: input.offset,
+          keyword: input.keyword,
+          status: input.status,
           reviewStatus: input.reviewStatus,
+          sortBy: input.sortBy,
+          sortDirection: input.sortDirection,
         });
 
         actions.loadSucceeded({
@@ -145,22 +152,6 @@ export function createOrganizationListCommands(
       try {
         const organization =
           await organizationService.createOrganization(input);
-
-        return {
-          organization,
-          status: 'saved',
-        };
-      } catch (error) {
-        return mapAdminApiError(error);
-      }
-    },
-
-    async reviewOrganization(organizationId, reviewStatus) {
-      try {
-        const organization = await organizationService.updateOrganization(
-          organizationId,
-          { reviewStatus },
-        );
 
         return {
           organization,

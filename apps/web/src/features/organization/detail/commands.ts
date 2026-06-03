@@ -6,6 +6,7 @@ import {
 import { updateOrganizationSchema } from '@/models/organization';
 import type {
   Organization,
+  OrganizationReviewStatus,
   UpdateOrganizationRequest,
 } from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
@@ -34,6 +35,10 @@ export type OrganizationDetailCommands = {
   saveOrganizationDetail(
     organizationId: string,
     input: UpdateOrganizationRequest,
+  ): Promise<SaveOrganizationDetailResult>;
+  reviewOrganization(
+    organizationId: string,
+    reviewStatus: OrganizationReviewStatus,
   ): Promise<SaveOrganizationDetailResult>;
   loadStores(organizationId: string): Promise<LoadOrganizationDetailResult>;
   loadOwner(organizationId: string): Promise<void>;
@@ -81,6 +86,20 @@ export function createOrganizationDetailCommands(
         const organization = await organizationService.updateOrganization(
           organizationId,
           input,
+        );
+
+        actions.organizationSaved(organization);
+        return { organization, status: 'saved' };
+      } catch (error) {
+        return mapAdminApiError(error);
+      }
+    },
+
+    async reviewOrganization(organizationId, reviewStatus) {
+      try {
+        const organization = await organizationService.updateOrganization(
+          organizationId,
+          { reviewStatus },
         );
 
         actions.organizationSaved(organization);

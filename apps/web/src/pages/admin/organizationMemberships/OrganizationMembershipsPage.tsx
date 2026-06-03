@@ -5,18 +5,11 @@ import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { AddMemberForm } from '@/features/organization/membership/components/addMemberForm/AddMemberForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
+import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/shared/components/ui/table';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 import type { OrganizationMembership, OrganizationMembershipRole } from '@/models/organizationMembership';
@@ -32,6 +25,8 @@ const ROLE_OPTIONS = organizationMembershipRoles.map((role) => ({
   value: role,
   label: ROLE_LABELS[role],
 }));
+
+const ROWS_PER_PAGE_OPTIONS = [10, 20, 50];
 
 function MemberAvatar({ email }: { email: string }) {
   const initial = (email[0] ?? '?').toUpperCase();
@@ -111,6 +106,63 @@ export function OrganizationMembershipsPage() {
     { label: tDefault('admin.memberships.title', 'Members') },
   ];
 
+  const columns: DataTableColumn<OrganizationMembership>[] = [
+    {
+      key: 'member',
+      header: tDefault('admin.memberships.member', 'Member'),
+      className: 'pl-4',
+      render: (membership) => (
+        <div className="flex items-center gap-3">
+          <MemberAvatar email={membership.userEmail} />
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">
+              {membership.userUsername}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {membership.userEmail}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      header: tDefault('admin.memberships.role', 'Role'),
+      render: (membership) => <RoleBadge role={membership.role} />,
+    },
+    {
+      key: 'status',
+      header: tDefault('admin.memberships.status', 'Status'),
+      render: (membership) => <StatusDot status={membership.status} />,
+    },
+    {
+      key: 'createdAt',
+      header: tDefault('common.fields.createdAt', 'Created at'),
+      cellClassName: 'text-sm text-muted-foreground',
+      render: (membership) =>
+        new Date(membership.createdAt).toLocaleDateString(),
+    },
+    {
+      key: 'actions',
+      header: tDefault('common.table.actions', 'Actions'),
+      align: 'right',
+      className: 'pr-4',
+      render: (membership) => (
+        <Button
+          onClick={() => vm.openEditModal(membership)}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          <Pencil className="h-4 w-4" />
+          <span className="sr-only">
+            {tDefault('common.actions.edit', 'Edit')}
+          </span>
+        </Button>
+      ),
+    },
+  ];
+
   if (vm.isLoading && vm.memberships.length === 0) {
     return (
       <LoadingState
@@ -148,98 +200,24 @@ export function OrganizationMembershipsPage() {
         ) : null}
 
         {/* Membership table */}
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="pl-4">
-                  {tDefault('admin.memberships.member', 'Member')}
-                </TableHead>
-                <TableHead>{tDefault('admin.memberships.role', 'Role')}</TableHead>
-                <TableHead>{tDefault('admin.memberships.status', 'Status')}</TableHead>
-                <TableHead>{tDefault('common.fields.createdAt', 'Created at')}</TableHead>
-                <TableHead className="pr-4 text-right">
-                  {tDefault('common.table.actions', 'Actions')}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {vm.memberships.map((membership) => (
-                <TableRow key={membership.id}>
-                  <TableCell className="pl-4">
-                    <div className="flex items-center gap-3">
-                      <MemberAvatar email={membership.userEmail} />
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">
-                          {membership.userUsername}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {membership.userEmail}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <RoleBadge role={membership.role} />
-                  </TableCell>
-                  <TableCell>
-                    <StatusDot status={membership.status} />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(membership.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="pr-4 text-right">
-                    <Button
-                      onClick={() => vm.openEditModal(membership)}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">
-                        {tDefault('common.actions.edit', 'Edit')}
-                      </span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {vm.memberships.length === 0 && !vm.isLoading ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {tDefault('admin.memberships.empty', 'No members yet.')}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Pagination */}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-          <span>
-            {tDefault('common.pagination.summary', 'Page {{page}} of {{total}}', {
-              page: vm.page,
-              total: vm.totalPages,
-            })}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              disabled={!vm.hasPreviousPage || vm.isLoading}
-              onClick={() => void vm.previousPage()}
-              type="button"
-              variant="secondary"
-            >
-              {tDefault('common.actions.previous', 'Previous')}
-            </Button>
-            <Button
-              disabled={!vm.hasNextPage || vm.isLoading}
-              onClick={() => void vm.nextPage()}
-              type="button"
-              variant="secondary"
-            >
-              {tDefault('common.actions.next', 'Next')}
-            </Button>
-          </div>
-        </div>
+        <DataTable
+          columns={columns}
+          data={vm.memberships}
+          isLoading={vm.isLoading}
+          labels={{
+            empty: tDefault('admin.memberships.empty', 'No members yet.'),
+          }}
+          limit={vm.pagination.limit}
+          limitOptions={ROWS_PER_PAGE_OPTIONS}
+          onLimitChange={(limit) => void vm.changeLimit(limit)}
+          pagination={{
+            type: 'offset',
+            page: vm.page,
+            totalPages: vm.totalPages,
+            onPageChange: (page) => void vm.goToPage(page),
+          }}
+          rowKey={(membership) => membership.id}
+        />
       </section>
 
       {/* Add member modal */}

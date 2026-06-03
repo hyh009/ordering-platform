@@ -1,5 +1,13 @@
 import { Link, useParams } from 'react-router';
-import { PenSquare, Store, Users, ChevronRight, Ban } from 'lucide-react';
+import {
+  PenSquare,
+  Store,
+  Users,
+  ChevronRight,
+  Ban,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
@@ -249,10 +257,30 @@ export function OrganizationDetailPage() {
               </div>
             </div>
           </div>
-          <Button onClick={vm.openEditModal} variant="outline">
-            <PenSquare className="mr-2 h-4 w-4" />
-            {tDefault('common.actions.edit', 'Edit')}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {org.reviewStatus === 'pending' ? (
+              <>
+                <Button
+                  onClick={() => void vm.reviewOrganization('approved')}
+                  variant="outline"
+                >
+                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                  {tDefault('admin.organizations.approveAction', 'Approve')}
+                </Button>
+                <Button
+                  onClick={() => void vm.reviewOrganization('rejected')}
+                  variant="outline"
+                >
+                  <XCircle className="mr-2 h-4 w-4 text-rose-600" />
+                  {tDefault('admin.organizations.rejectAction', 'Reject')}
+                </Button>
+              </>
+            ) : null}
+            <Button onClick={vm.openEditModal} variant="outline">
+              <PenSquare className="mr-2 h-4 w-4" />
+              {tDefault('common.actions.edit', 'Edit')}
+            </Button>
+          </div>
         </div>
 
         {/* Cards grid */}

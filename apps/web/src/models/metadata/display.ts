@@ -1,7 +1,24 @@
 import type { AppTranslator } from '@/app/i18n';
-import type { LocalizedStringDto, SupportedLocale } from './types';
+import type {
+  LocalizedStringDto,
+  MetadataActiveFilter,
+  SupportedLocale,
+} from './types';
 
 export const supportedMetadataLocales: SupportedLocale[] = ['zh-TW', 'en'];
+
+export function getMetadataVisibilityOptions(
+  tDefault: AppTranslator,
+): { label: string; value: MetadataActiveFilter }[] {
+  return [
+    { label: tDefault('admin.metadata.activeOnly', 'Active'), value: 'true' },
+    {
+      label: tDefault('admin.metadata.inactiveOnly', 'Inactive'),
+      value: 'false',
+    },
+    { label: tDefault('admin.metadata.all', 'All'), value: 'all' },
+  ];
+}
 
 export function getSupportedCustomerLocaleLabel(
   locale: SupportedLocale,

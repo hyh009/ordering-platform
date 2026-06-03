@@ -107,6 +107,36 @@ export function useOrganizationDetailPageVM(organizationId: string) {
     form.setSubmitError(result.message);
   }, [discardAndCloseEditModal, commands, form, organizationId, loadOrganization]);
 
+  const reviewOrganization = useCallback(
+    async (reviewStatus: 'approved' | 'rejected') => {
+      const isApprove = reviewStatus === 'approved';
+      const confirmed = await feedbackVM.confirm({
+        title: tDefault(
+          isApprove
+            ? 'admin.organizations.approveConfirmTitle'
+            : 'admin.organizations.rejectConfirmTitle',
+          isApprove ? 'Approve organization?' : 'Reject organization?',
+        ),
+        message: tDefault(
+          isApprove
+            ? 'admin.organizations.approveConfirmMessage'
+            : 'admin.organizations.rejectConfirmMessage',
+          isApprove
+            ? 'This will mark "{{name}}" as approved.'
+            : 'This will mark "{{name}}" as rejected.',
+          { name: organization?.name ?? '' },
+        ),
+      });
+
+      if (!confirmed) return;
+
+      // The command updates the detail store on success, so the badge and the
+      // pending-action buttons refresh without an extra reload.
+      await commands.reviewOrganization(organizationId, reviewStatus);
+    },
+    [commands, feedbackVM, organization, organizationId],
+  );
+
   return {
     closeEditModal,
     displayContactPhone,
@@ -120,6 +150,7 @@ export function useOrganizationDetailPageVM(organizationId: string) {
     organization,
     owner,
     ownerLoading,
+    reviewOrganization,
     stores,
     storesLoading,
     submitOrganization,

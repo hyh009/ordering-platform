@@ -2,6 +2,7 @@ import type {
   CreateOrganizationRequest,
   CreateOrganizationSuccessResponse,
   GetOrganizationSuccessResponse,
+  ListOrganizationsQuery,
   ListOrganizationsSuccessResponse,
   OffsetPaginationDto,
   OrganizationAddressDto,
@@ -33,6 +34,14 @@ export type {
 export type Organization = OrganizationDto;
 export type OrganizationListItem = OrganizationListItemDto;
 export type OrganizationListPage = OffsetPaginationDto;
+
+export type OrganizationListSortBy = NonNullable<ListOrganizationsQuery>['sortBy'];
+export type OrganizationListSortDirection =
+  NonNullable<ListOrganizationsQuery>['sortDirection'];
+export type OrganizationListSort = {
+  sortBy: OrganizationListSortBy;
+  sortDirection: OrganizationListSortDirection;
+};
 
 export type OrganizationFormValues = {
   name: string;
