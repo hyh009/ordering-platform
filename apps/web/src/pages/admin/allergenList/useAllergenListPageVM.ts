@@ -51,13 +51,12 @@ export function useAllergenListPageVM() {
     void loadAllergens();
   }, [loadAllergens]);
 
-  const setFilter = useCallback(
-    function setFilter(nextFilter: MetadataActiveFilter) {
-      setFilterState(nextFilter);
-      void commands.loadAllergens(nextFilter);
-    },
-    [commands],
-  );
+  // Only update filter state; the load effect (keyed on filter via
+  // loadAllergens) issues the single resulting request. Loading here too would
+  // double-fetch the same data on every filter change.
+  const setFilter = useCallback(function setFilter(nextFilter: MetadataActiveFilter) {
+    setFilterState(nextFilter);
+  }, []);
 
   const openCreateModal = useCallback(() => {
     form.reset();

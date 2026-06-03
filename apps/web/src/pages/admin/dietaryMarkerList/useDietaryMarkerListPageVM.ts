@@ -53,13 +53,12 @@ export function useDietaryMarkerListPageVM() {
     void loadDietaryMarkers();
   }, [loadDietaryMarkers]);
 
-  const setFilter = useCallback(
-    function setFilter(nextFilter: MetadataActiveFilter) {
-      setFilterState(nextFilter);
-      void commands.loadDietaryMarkers(nextFilter);
-    },
-    [commands],
-  );
+  // Only update filter state; the load effect (keyed on filter via
+  // loadDietaryMarkers) issues the single resulting request. Loading here too
+  // would double-fetch the same data on every filter change.
+  const setFilter = useCallback(function setFilter(nextFilter: MetadataActiveFilter) {
+    setFilterState(nextFilter);
+  }, []);
 
   const openCreateModal = useCallback(() => {
     form.reset();
