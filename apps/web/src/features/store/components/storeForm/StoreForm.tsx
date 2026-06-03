@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   supportedLocales,
   storeOrderTypes,
@@ -54,7 +54,13 @@ function BusinessHourTimeInput({
   const [m, setM] = useState(parsed ? String(parsed.m).padStart(2, '0') : '00');
   const [period, setPeriod] = useState<'AM' | 'PM'>(parsed?.period ?? 'AM');
 
-  useEffect(() => {
+  // Sync the local editing buffers when the external value changes, using the
+  // render-phase "previous prop" pattern. Calling setState during render (only
+  // when the prop actually changed) is the React-recommended alternative to a
+  // value-mirroring effect.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     const p = from24h(value);
     if (p) {
       setH(String(p.h));
@@ -64,7 +70,7 @@ function BusinessHourTimeInput({
       setH('');
       setM('00');
     }
-  }, [value]);
+  }
 
   function emit(newH: string, newM: string, newPeriod: 'AM' | 'PM') {
     const hNum = parseInt(newH, 10);
