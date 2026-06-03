@@ -18,7 +18,6 @@ const productModifierEntityKeys = [
   'selectionType',
   'minSelect',
   'maxSelect',
-  'displayOrder',
   'options',
   'inheritCategoryAvailability',
   'availabilityRules',
@@ -55,9 +54,6 @@ export const productModifierMongoRepository = {
       selectionType: input.selectionType,
       minSelect: input.minSelect,
       maxSelect: input.maxSelect,
-      ...(input.displayOrder !== undefined
-        ? { displayOrder: input.displayOrder }
-        : {}),
       options: input.options,
       ...(input.inheritCategoryAvailability !== undefined
         ? {
@@ -91,7 +87,7 @@ export const productModifierMongoRepository = {
     }
 
     const docs = await ProductModifierMongoModel.find(filter)
-      .sort({ displayOrder: 1, createdAt: 1, id: 1 })
+      .sort({ createdAt: 1, id: 1 })
       .lean<ProductModifierEntity[]>()
       .exec();
 
@@ -113,7 +109,6 @@ export const productModifierMongoRepository = {
     set('selectionType', input.selectionType);
     set('minSelect', input.minSelect);
     set('maxSelect', input.maxSelect);
-    set('displayOrder', input.displayOrder);
     set('options', input.options);
     set('inheritCategoryAvailability', input.inheritCategoryAvailability);
     set('availabilityRules', input.availabilityRules);

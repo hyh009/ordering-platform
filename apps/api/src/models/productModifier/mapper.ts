@@ -35,7 +35,6 @@ export function toProductModifierDto(
     selectionType: productModifier.selectionType,
     minSelect: productModifier.minSelect,
     maxSelect: productModifier.maxSelect,
-    displayOrder: productModifier.displayOrder,
     options: productModifier.options.map(toProductModifierOptionDto),
     inheritCategoryAvailability: productModifier.inheritCategoryAvailability,
     availabilityRules: productModifier.availabilityRules.map(

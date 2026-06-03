@@ -65,7 +65,6 @@ const router = Router({ mergeParams: true });
  *         - selectionType
  *         - minSelect
  *         - maxSelect
- *         - displayOrder
  *         - options
  *         - inheritCategoryAvailability
  *         - availabilityRules
@@ -94,10 +93,6 @@ const router = Router({ mergeParams: true });
  *           type: integer
  *           minimum: 1
  *           example: 2
- *         displayOrder:
- *           type: integer
- *           minimum: 0
- *           example: 10
  *         options:
  *           type: array
  *           items:
@@ -274,9 +269,6 @@ router.get<ProductModifierStoreParams, ListProductModifiersSuccessResponse>(
  *               maxSelect:
  *                 type: integer
  *                 minimum: 1
- *               displayOrder:
- *                 type: integer
- *                 minimum: 0
  *               options:
  *                 type: array
  *                 items:
@@ -360,9 +352,6 @@ router.post<
  *               maxSelect:
  *                 type: integer
  *                 minimum: 1
- *               displayOrder:
- *                 type: integer
- *                 minimum: 0
  *               options:
  *                 type: array
  *                 items:

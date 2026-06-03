@@ -29,7 +29,6 @@ export type ProductModifierEntity = {
   selectionType: ProductModifierSelectionType;
   minSelect: number;
   maxSelect: number;
-  displayOrder: number;
   options: ProductModifierOption[];
   /**
    * true: use the product/category availability inherited by the menu item.

@@ -17,7 +17,6 @@ export type CreateProductModifierInput = {
   selectionType: ProductModifierSelectionType;
   minSelect: number;
   maxSelect: number;
-  displayOrder?: number | undefined;
   options: ProductModifierOption[];
   inheritCategoryAvailability?: boolean | undefined;
   availabilityRules?: AvailabilityRule[] | undefined;
@@ -34,7 +33,6 @@ export type UpdateProductModifierInput = {
   selectionType?: ProductModifierSelectionType | undefined;
   minSelect?: number | undefined;
   maxSelect?: number | undefined;
-  displayOrder?: number | undefined;
   options?: ProductModifierOption[] | undefined;
   inheritCategoryAvailability?: boolean | undefined;
   availabilityRules?: AvailabilityRule[] | undefined;

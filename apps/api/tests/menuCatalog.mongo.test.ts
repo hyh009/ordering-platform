@@ -122,7 +122,7 @@ describe('menu catalog Mongo models', () => {
       id: 'product-1',
       organizationId: 'org-1',
       storeId: 'store-1',
-      categoryId: 'category-1',
+      categoryIds: ['category-1'],
       name: {
         en: 'Latte',
       },
@@ -135,8 +135,6 @@ describe('menu catalog Mongo models', () => {
       allergenIds: ['allergen-1'],
       dietaryMarkerIds: ['dietary-marker-1'],
       modifierIds: ['modifier-1'],
-      inheritCategoryAvailability: true,
-      availabilityRules: [],
       isActive: true,
       isSoldOut: false,
     });
@@ -277,7 +275,7 @@ describe('menu catalog Mongo models', () => {
       id: 'product-1',
       organizationId: 'org-1',
       storeId: 'store-1',
-      categoryId: 'category-1',
+      categoryIds: ['category-1'],
       name: {
         en: 'Latte',
       },

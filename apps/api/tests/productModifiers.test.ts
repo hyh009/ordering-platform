@@ -24,7 +24,6 @@ type TestProductModifier = {
   selectionType: 'single_choice' | 'multiple_choice';
   minSelect: number;
   maxSelect: number;
-  displayOrder: number;
   options: TestProductModifierOption[];
   inheritCategoryAvailability: boolean;
   availabilityRules: Array<{
@@ -102,7 +101,6 @@ const mocks = vi.hoisted(() => {
         selectionType: TestProductModifier['selectionType'];
         minSelect: number;
         maxSelect: number;
-        displayOrder?: number;
         options: TestProductModifierOption[];
         inheritCategoryAvailability?: boolean;
         availabilityRules?: TestProductModifier['availabilityRules'];
@@ -117,7 +115,6 @@ const mocks = vi.hoisted(() => {
           selectionType: input.selectionType,
           minSelect: input.minSelect,
           maxSelect: input.maxSelect,
-          displayOrder: input.displayOrder ?? 0,
           options: input.options,
           inheritCategoryAvailability:
             input.inheritCategoryAvailability ?? true,
@@ -147,7 +144,6 @@ const mocks = vi.hoisted(() => {
           )
           .sort(
             (left, right) =>
-              left.displayOrder - right.displayOrder ||
               left.createdAt.getTime() - right.createdAt.getTime() ||
               left.id.localeCompare(right.id),
           )
@@ -159,7 +155,6 @@ const mocks = vi.hoisted(() => {
           Pick<
             TestProductModifier,
             | 'availabilityRules'
-            | 'displayOrder'
             | 'inheritCategoryAvailability'
             | 'isActive'
             | 'maxSelect'
@@ -185,9 +180,6 @@ const mocks = vi.hoisted(() => {
         }
         if (input.minSelect !== undefined) updated.minSelect = input.minSelect;
         if (input.maxSelect !== undefined) updated.maxSelect = input.maxSelect;
-        if (input.displayOrder !== undefined) {
-          updated.displayOrder = input.displayOrder;
-        }
         if (input.options !== undefined) updated.options = input.options;
         if (input.inheritCategoryAvailability !== undefined) {
           updated.inheritCategoryAvailability =
@@ -299,7 +291,6 @@ describe('merchant product modifiers API', () => {
           selectionType: 'multiple_choice',
           minSelect: 0,
           maxSelect: 2,
-          displayOrder: 0,
           options: [
             {
               id: expect.stringMatching(/^product-modifier-option-/),
@@ -320,17 +311,16 @@ describe('merchant product modifiers API', () => {
     });
   });
 
-  it('lists store product modifiers by display order', async () => {
+  it('lists store product modifiers in creation order', async () => {
     const app = createApp();
     seedMember('staff');
     await mocks.productModifierRepository.create({
       organizationId: 'org-1',
       storeId: 'store-1',
-      name: { 'zh-TW': '第二' },
+      name: { 'zh-TW': '第一' },
       selectionType: 'multiple_choice',
       minSelect: 0,
       maxSelect: 2,
-      displayOrder: 20,
       options: [
         {
           id: 'product-modifier-option-1',
@@ -345,11 +335,10 @@ describe('merchant product modifiers API', () => {
     await mocks.productModifierRepository.create({
       organizationId: 'org-1',
       storeId: 'store-1',
-      name: { 'zh-TW': '第一' },
+      name: { 'zh-TW': '第二' },
       selectionType: 'multiple_choice',
       minSelect: 0,
       maxSelect: 2,
-      displayOrder: 10,
       options: [
         {
           id: 'product-modifier-option-1',
@@ -422,14 +411,14 @@ describe('merchant product modifiers API', () => {
       )
       .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
       .send({
-        displayOrder: 30,
+        maxSelect: 3,
         isActive: false,
       });
 
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     expect(response.body.data.productModifier).toMatchObject({
       id: 'product-modifier-1',
-      displayOrder: 30,
+      maxSelect: 3,
       isActive: false,
     });
   });

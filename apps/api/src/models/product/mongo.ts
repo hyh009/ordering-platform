@@ -1,4 +1,3 @@
-import { availabilityRuleSchema } from '@src/models/common/availability.mongo';
 import {
   hasAtLeastOneLocalizedValue,
   localizedStringSchema,
@@ -33,10 +32,9 @@ const productSchema = new Schema<ProductEntity>(
       required: true,
       trim: true,
     },
-    categoryId: {
-      type: String,
-      required: true,
-      trim: true,
+    categoryIds: {
+      type: [referencedIdSchema],
+      default: [],
     },
     name: {
       type: localizedStringSchema,
@@ -76,15 +74,6 @@ const productSchema = new Schema<ProductEntity>(
     },
     modifierIds: {
       type: [referencedIdSchema],
-      default: [],
-    },
-    inheritCategoryAvailability: {
-      type: Boolean,
-      required: true,
-      default: true,
-    },
-    availabilityRules: {
-      type: [availabilityRuleSchema],
       default: [],
     },
     isActive: {
