@@ -82,6 +82,17 @@ export const categoryMongoRepository = {
     return docs.map(toCategoryEntity);
   },
 
+  async bulkSetDisplayOrder(storeId: string, orderedIds: string[]) {
+    const ops = orderedIds.map((id, index) => ({
+      updateOne: {
+        filter: { id, storeId },
+        update: { $set: { displayOrder: index } },
+      },
+    }));
+
+    await CategoryMongoModel.bulkWrite(ops);
+  },
+
   async update(categoryId: string, input: UpdateCategoryInput) {
     const setUpdate: Record<string, unknown> = {};
     const unsetUpdate: Record<string, ''> = {};

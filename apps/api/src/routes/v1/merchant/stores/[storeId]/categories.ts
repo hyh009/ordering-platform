@@ -3,6 +3,7 @@ import {
   categoryStoreParamsSchema,
   createCategorySchema,
   listCategoriesQuerySchema,
+  reorderCategoriesSchema,
   updateCategorySchema,
 } from '@repo/shared';
 import { requireAuth, requireOrgRole } from '@src/middlewares/auth';
@@ -16,6 +17,8 @@ import type {
   CreateCategoryRequest,
   CreateCategorySuccessResponse,
   ListCategoriesSuccessResponse,
+  ReorderCategoriesRequest,
+  ReorderCategoriesSuccessResponse,
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 } from '@repo/shared';
@@ -253,6 +256,56 @@ router.post<
     );
 
     res.status(201).json({ status: 'success', data: { category } });
+  },
+);
+
+/**
+ * @openapi
+ * /v1/merchant/stores/{storeId}/categories/reorder:
+ *   patch:
+ *     tags:
+ *       - Merchant / Categories
+ *     summary: Reorder store categories
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: storeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: store-123
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderedIds
+ *             properties:
+ *               orderedIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *     responses:
+ *       200:
+ *         description: Categories reordered
+ */
+router.patch<
+  CategoryStoreParams,
+  ReorderCategoriesSuccessResponse,
+  ReorderCategoriesRequest
+>(
+  '/reorder',
+  requireAuth,
+  requireOrgRole('org_owner', 'org_admin'),
+  validate(categoryStoreParamsSchema, 'params'),
+  validate(reorderCategoriesSchema),
+  async (req, res) => {
+    await categoryService.reorderCategories(req.params.storeId, req.body);
+    res.json({ status: 'success', data: {} });
   },
 );
 

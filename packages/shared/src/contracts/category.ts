@@ -80,6 +80,12 @@ export type UpdateCategoryRequest = z.infer<typeof updateCategorySchema>;
 export type CategoryStoreParams = z.infer<typeof categoryStoreParamsSchema>;
 export type CategoryParams = z.infer<typeof categoryParamsSchema>;
 
+export const reorderCategoriesSchema = z.object({
+  orderedIds: z.array(z.string().trim().min(1)).min(1).max(500),
+});
+
+export type ReorderCategoriesRequest = z.infer<typeof reorderCategoriesSchema>;
+
 export type ListCategoriesSuccessResponse = ApiSuccessResponse<{
   categories: CategoryDto[];
 }>;
@@ -89,3 +95,6 @@ export type CreateCategorySuccessResponse = ApiSuccessResponse<{
 export type UpdateCategorySuccessResponse = ApiSuccessResponse<{
   category: CategoryDto;
 }>;
+export type ReorderCategoriesSuccessResponse = ApiSuccessResponse<
+  Record<string, never>
+>;

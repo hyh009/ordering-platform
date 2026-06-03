@@ -8,6 +8,7 @@ import type {
   CategoryActiveFilter,
   CategoryDto,
   CreateCategoryRequest,
+  ReorderCategoriesRequest,
   UpdateCategoryRequest,
 } from '@repo/shared';
 
@@ -75,6 +76,12 @@ export class CategoryService {
     }
 
     return toCategoryDto(updated);
+  }
+  public async reorderCategories(
+    storeId: string,
+    input: ReorderCategoriesRequest,
+  ): Promise<void> {
+    await categoryRepository.bulkSetDisplayOrder(storeId, input.orderedIds);
   }
 }
 

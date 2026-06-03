@@ -19,7 +19,11 @@ export type MerchantCommandFailure = {
   reason: MerchantCommandFailureReason;
 };
 
-const notFoundCodes = new Set(['STORE_NOT_FOUND', 'TAG_NOT_FOUND']);
+const notFoundCodes = new Set([
+  'STORE_NOT_FOUND',
+  'CATEGORY_NOT_FOUND',
+  'TAG_NOT_FOUND',
+]);
 
 export function mapMerchantApiError(error: unknown): MerchantCommandFailure {
   if (Array.from(notFoundCodes).some((code) => hasApiErrorCode(error, code))) {

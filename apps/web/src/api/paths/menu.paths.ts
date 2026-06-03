@@ -3,6 +3,15 @@ function storeBase(storeId: string) {
 }
 
 export const menuPaths = {
+  categories(storeId: string) {
+    return `${storeBase(storeId)}/categories`;
+  },
+  categoryDetail(storeId: string, categoryId: string) {
+    return `${storeBase(storeId)}/categories/${encodeURIComponent(categoryId)}`;
+  },
+  categoryReorder(storeId: string) {
+    return `${storeBase(storeId)}/categories/reorder`;
+  },
   tags(storeId: string) {
     return `${storeBase(storeId)}/tags`;
   },
