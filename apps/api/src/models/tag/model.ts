@@ -6,7 +6,6 @@ export type TagEntity = {
   storeId: string;
   name: LocalizedString;
   color?: string;
-  displayOrder: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

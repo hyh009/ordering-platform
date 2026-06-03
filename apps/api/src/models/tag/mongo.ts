@@ -43,11 +43,6 @@ const tagSchema = new Schema<TagEntity>(
       type: String,
       trim: true,
     },
-    displayOrder: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
     isActive: {
       type: Boolean,
       required: true,

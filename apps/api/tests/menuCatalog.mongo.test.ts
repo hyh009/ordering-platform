@@ -47,7 +47,6 @@ describe('menu catalog Mongo models', () => {
         en: 'Popular',
       },
       color: '#f97316',
-      displayOrder: 1,
       isActive: true,
     });
 

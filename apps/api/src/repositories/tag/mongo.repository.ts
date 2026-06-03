@@ -15,7 +15,6 @@ const tagEntityKeys = [
   'storeId',
   'name',
   'color',
-  'displayOrder',
   'isActive',
   'createdAt',
   'updatedAt',

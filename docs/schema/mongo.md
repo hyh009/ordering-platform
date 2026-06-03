@@ -127,7 +127,6 @@ classDiagram
     string storeId
     LocalizedString name
     string? color
-    number displayOrder
     boolean isActive
     boolean deleted
     Date createdAt
