@@ -30,7 +30,6 @@ export type ProductModifierDto = {
   selectionType: ProductModifierSelectionType;
   minSelect: number;
   maxSelect: number;
-  displayOrder: number;
   options: ProductModifierOptionDto[];
   inheritCategoryAvailability: boolean;
   availabilityRules: AvailabilityRuleDto[];
@@ -49,6 +48,9 @@ export const productModifierNameSchema = z
   });
 
 export const productModifierOptionSchema = z.object({
+  // Identifies an existing option to preserve on update. Omit for new options;
+  // ignored on create (every created option is assigned a fresh id).
+  id: z.string().trim().min(1).max(120).optional(),
   sharedOptionCode: z.string().trim().min(1).max(120).optional(),
   name: productModifierNameSchema,
   priceAdjustment: z.number(),
@@ -87,7 +89,6 @@ export const createProductModifierSchema = z
     selectionType: z.enum(productModifierSelectionTypes),
     minSelect: z.number().int().min(0),
     maxSelect: z.number().int().min(1),
-    displayOrder: z.number().int().min(0).optional(),
     options: z.array(productModifierOptionSchema).min(1),
     inheritCategoryAvailability: z.boolean().optional(),
     availabilityRules: z.array(availabilityRuleSchema).optional(),
@@ -103,7 +104,6 @@ export const updateProductModifierSchema = z
     selectionType: z.enum(productModifierSelectionTypes).optional(),
     minSelect: z.number().int().min(0).optional(),
     maxSelect: z.number().int().min(1).optional(),
-    displayOrder: z.number().int().min(0).optional(),
     options: z.array(productModifierOptionSchema).min(1).optional(),
     inheritCategoryAvailability: z.boolean().optional(),
     availabilityRules: z.array(availabilityRuleSchema).optional(),

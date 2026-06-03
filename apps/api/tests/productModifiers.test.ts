@@ -302,7 +302,7 @@ describe('merchant product modifiers API', () => {
           displayOrder: 0,
           options: [
             {
-              id: 'product-modifier-option-1',
+              id: expect.stringMatching(/^product-modifier-option-/),
               name: { 'zh-TW': '珍珠' },
               priceAdjustment: 10,
               isDefault: false,
@@ -431,6 +431,100 @@ describe('merchant product modifiers API', () => {
       id: 'product-modifier-1',
       displayOrder: 30,
       isActive: false,
+    });
+  });
+
+  it('preserves existing option ids and mints ids for new options on update', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+    await mocks.productModifierRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '加料' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 2,
+      options: [
+        {
+          id: 'product-modifier-option-existing',
+          name: { 'zh-TW': '珍珠' },
+          priceAdjustment: 10,
+          isDefault: false,
+          isActive: true,
+          isSoldOut: false,
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/product-modifiers/product-modifier-1',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({
+        options: [
+          {
+            id: 'product-modifier-option-existing',
+            name: { 'zh-TW': '珍珠' },
+            priceAdjustment: 12,
+          },
+          {
+            name: { 'zh-TW': '椰果' },
+            priceAdjustment: 8,
+          },
+        ],
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    const { options } = response.body.data.productModifier;
+    expect(options).toHaveLength(2);
+    expect(options[0].id).toBe('product-modifier-option-existing');
+    expect(options[0].priceAdjustment).toBe(12);
+    expect(options[1].id).toMatch(/^product-modifier-option-/);
+    expect(options[1].id).not.toBe('product-modifier-option-existing');
+  });
+
+  it('rejects updating with an unknown option id', async () => {
+    const app = createApp();
+    seedMember('org_admin');
+    await mocks.productModifierRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '加料' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 2,
+      options: [
+        {
+          id: 'product-modifier-option-existing',
+          name: { 'zh-TW': '珍珠' },
+          priceAdjustment: 10,
+          isDefault: false,
+          isActive: true,
+          isSoldOut: false,
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/product-modifiers/product-modifier-1',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({
+        options: [
+          {
+            id: 'product-modifier-option-missing',
+            name: { 'zh-TW': '椰果' },
+            priceAdjustment: 8,
+          },
+        ],
+      });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      status: 'error',
+      code: 'INVALID_FIELD_VALUE',
     });
   });
 

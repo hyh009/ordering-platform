@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { toAvailabilityRule } from '@src/models/common/availability.mapper';
 import { toProductModifierDto } from '@src/models/productModifier/mapper';
 import {
@@ -6,7 +8,11 @@ import {
 } from '@src/models/productModifier/model';
 import { productModifierRepository } from '@src/repositories/productModifier/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
-import { ConflictError, NotFoundError } from '@src/utils/errors';
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from '@src/utils/errors';
 
 import type {
   CreateProductModifierRequest,
@@ -15,14 +21,20 @@ import type {
   UpdateProductModifierRequest,
 } from '@repo/shared';
 
+type ProductModifierOptionInput =
+  | CreateProductModifierRequest['options'][number]
+  | NonNullable<UpdateProductModifierRequest['options']>[number];
+
+function newProductModifierOptionId() {
+  return `product-modifier-option-${randomUUID()}`;
+}
+
 function toProductModifierOption(
-  option:
-    | CreateProductModifierRequest['options'][number]
-    | NonNullable<UpdateProductModifierRequest['options']>[number],
-  index: number,
+  option: ProductModifierOptionInput,
+  id: string,
 ): ProductModifierOption {
   return {
-    id: `product-modifier-option-${index + 1}`,
+    id,
     ...(option.sharedOptionCode !== undefined
       ? { sharedOptionCode: option.sharedOptionCode }
       : {}),
@@ -32,6 +44,49 @@ function toProductModifierOption(
     isActive: option.isActive ?? true,
     isSoldOut: option.isSoldOut ?? false,
   };
+}
+
+// Create always mints fresh option ids; any client-supplied id is ignored.
+function buildCreatedOptions(
+  options: CreateProductModifierRequest['options'],
+): ProductModifierOption[] {
+  return options.map((option) =>
+    toProductModifierOption(option, newProductModifierOptionId()),
+  );
+}
+
+// Update preserves the identity of existing options the client sends back by
+// id, and mints fresh ids for new options. Unknown or duplicated ids are
+// rejected so option references (carts, orders) stay stable.
+function buildUpdatedOptions(
+  options: NonNullable<UpdateProductModifierRequest['options']>,
+  existingOptions: ProductModifierOption[],
+): ProductModifierOption[] {
+  const existingIds = new Set(existingOptions.map((option) => option.id));
+  const seenIds = new Set<string>();
+
+  return options.map((option) => {
+    if (option.id === undefined) {
+      return toProductModifierOption(option, newProductModifierOptionId());
+    }
+
+    if (!existingIds.has(option.id)) {
+      throw new BadRequestError(
+        `Unknown product modifier option id: ${option.id}`,
+        ERROR_CODES.INVALID_FIELD_VALUE,
+      );
+    }
+
+    if (seenIds.has(option.id)) {
+      throw new BadRequestError(
+        `Duplicate product modifier option id: ${option.id}`,
+        ERROR_CODES.INVALID_FIELD_VALUE,
+      );
+    }
+
+    seenIds.add(option.id);
+    return toProductModifierOption(option, option.id);
+  });
 }
 
 function assertValidSelectionBounds(input: {
@@ -78,8 +133,7 @@ export class ProductModifierService {
       selectionType: input.selectionType,
       minSelect: input.minSelect,
       maxSelect: input.maxSelect,
-      displayOrder: input.displayOrder,
-      options: input.options.map(toProductModifierOption),
+      options: buildCreatedOptions(input.options),
       inheritCategoryAvailability: input.inheritCategoryAvailability,
       availabilityRules: input.availabilityRules?.map(toAvailabilityRule),
       isActive: input.isActive,
@@ -116,8 +170,9 @@ export class ProductModifierService {
         selectionType: input.selectionType,
         minSelect: input.minSelect,
         maxSelect: input.maxSelect,
-        displayOrder: input.displayOrder,
-        options: input.options?.map(toProductModifierOption),
+        options: input.options
+          ? buildUpdatedOptions(input.options, existing.options)
+          : undefined,
         inheritCategoryAvailability: input.inheritCategoryAvailability,
         availabilityRules: input.availabilityRules?.map(toAvailabilityRule),
         isActive: input.isActive,
