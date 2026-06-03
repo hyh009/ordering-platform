@@ -5,4 +5,5 @@ export * from './contracts/metadata.js';
 export * from './contracts/organization.js';
 export * from './contracts/pagination.js';
 export * from './contracts/store.js';
+export * from './contracts/tag.js';
 export * from './contracts/user.js';

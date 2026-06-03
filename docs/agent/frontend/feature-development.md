@@ -118,7 +118,23 @@ Add or update the page view and feature components.
 Follow `docs/agent/frontend/shared-components.md` and
 `docs/agent/frontend/code-placement.md`.
 
-### 10. Tests
+### 10. Permission gating (conditional)
+
+Determine whether the feature exposes mutating actions (create/edit/delete) that
+some roles must not perform. If yes, gate them in the UI so read-only users do
+not see actions that would only fail with `403`.
+
+- Derive the active role with `useCanManageStoreResources()` /
+  `useActiveOrgRole()` from `apps/web/src/app/global/activeOrg/useActiveOrgRole.ts`.
+- The page VM exposes a `canManage` flag; the view hides create buttons and
+  row action columns when it is false, leaving reads visible.
+- This is UX defense-in-depth only — the backend `requireOrgRole` stays the
+  enforcement point.
+
+See the "Frontend Permission Gating" section of `docs/features/permissions.md`
+for the canonical policy and the read-only pattern.
+
+### 11. Tests
 
 Determine whether the feature requires new or updated tests. Confirm scope
 with the user when not already clear.
@@ -129,7 +145,7 @@ with the user when not already clear.
 
 Follow `docs/agent/frontend/api-error-testing.md`.
 
-### 11. Verification
+### 12. Verification
 
 Run the narrowest useful checks before reporting the feature as complete.
 

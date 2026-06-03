@@ -77,3 +77,47 @@ Notes:
   require an org membership check.
 - Staff write access to menu resources (e.g. toggling sold-out) is deferred
   until explicitly scoped.
+
+## Frontend Permission Gating
+
+The backend is always the authority — every merchant route is protected by
+`requireOrgRole(...)`. The frontend mirrors the same boundary as a UX layer so
+read-only users do not see actions that would only fail with `403`. This is
+defense-in-depth, not the enforcement point: bypassing the UI still hits the
+server check.
+
+### Source of truth
+
+The active user's role for the active organization is derived from the auth
+session, not refetched per page:
+
+- `apps/web/src/app/global/auth/auth.store.ts` holds `user.memberships`
+  (`{ organizationId, organizationName, role }[]`) from the login/refresh
+  response.
+- `apps/web/src/app/global/activeOrg/activeOrg.store.ts` holds the active
+  `organizationId`.
+- `apps/web/src/app/global/activeOrg/useActiveOrgRole.ts` joins the two:
+  - `useActiveOrgRole()` → the current `OrganizationMembershipRole | null`.
+  - `useCanManageStoreResources()` → `true` only for `org_owner` / `org_admin`
+    (`staff` is read-only). This encodes the management boundary in one place;
+    change the allowed roles here, not per page.
+
+### Read-only mode pattern
+
+Merchant management pages that allow editing must support a read-only mode for
+`staff`:
+
+1. The page VM calls `useCanManageStoreResources()` and returns `canManage`.
+2. The view hides mutating affordances when `!canManage`:
+   - the create/primary action button is not rendered;
+   - the row "Actions" column (edit/delete) is omitted;
+   - edit dialogs are unreachable because their only triggers are hidden.
+3. List/detail reads stay visible to all members.
+
+Reference implementation: `apps/web/src/pages/merchant/tagList/` (VM exposes
+`canManage`; `TagListPage.tsx` conditionally renders the create button and the
+actions column). Apply the same pattern to category, product modifier, product,
+and store settings pages.
+
+Staff are not blocked from the management pages themselves — they view content;
+only editing is hidden. Routes are not role-gated at the router level for this.
