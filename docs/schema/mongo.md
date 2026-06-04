@@ -179,7 +179,7 @@ classDiagram
     string id
     string organizationId
     string storeId
-    string categoryId
+    string[] categoryIds
     LocalizedString name
     LocalizedString? description
     string? imageUrl
@@ -188,8 +188,6 @@ classDiagram
     string[] allergenIds
     string[] dietaryMarkerIds
     string[] modifierIds
-    boolean inheritCategoryAvailability
-    AvailabilityRule[] availabilityRules
     boolean isActive
     boolean isSoldOut
     boolean deleted
@@ -343,7 +341,7 @@ classDiagram
   Store "1" --> "*" Cart : storeId
   Store "1" --> "*" Order : storeId
   Store "1" --> "*" Promotion : storeId
-  Category "1" --> "*" Product : categoryId
+  Category "*" --> "*" Product : categoryIds
   Product "*" --> "*" Tag : tagIds
   Product "*" --> "*" Allergen : allergenIds
   Product "*" --> "*" DietaryMarker : dietaryMarkerIds
@@ -518,17 +516,22 @@ Business lifecycle stays separate from soft delete:
 `AvailabilityRule[]` stores restrictions only. An empty array means the owning
 layer has no availability restrictions and is available all day.
 
-Models with `inheritCategoryAvailability` use it as a source selector:
+**Category** is the single source of availability rules for products. A product
+has no own availability fields; its effective availability is derived from its
+categories at query time. Multi-category union/intersection logic is deferred to
+Phase 7 (guest filtering).
+
+**ProductModifier** owns its own `availabilityRules` independently of categories.
+It also has `inheritCategoryAvailability` as a source selector:
 
 - `true`: use inherited category availability rules; local `availabilityRules`
   do not affect effective availability.
-- `false`: use the model's own `availabilityRules`.
+- `false`: use the modifier's own `availabilityRules`.
 
 Because empty rules mean unrestricted availability, `inheritCategoryAvailability:
-false` with `availabilityRules: []` means the record explicitly overrides
-category availability and is available all day. Do not use empty
-`availabilityRules` to mean unavailable; use lifecycle fields such as
-`isActive: false` or `isSoldOut: true` where applicable.
+false` with `availabilityRules: []` means the modifier is explicitly available
+all day. Do not use empty `availabilityRules` to mean unavailable; use
+`isActive: false` where applicable.
 
 ## Collections And Indexes
 
@@ -638,16 +641,15 @@ category availability and is available all day. Do not use empty
 - collection: `products`
 - plugin: `mongoose-delete`
 - store-owned menu item; stores both `storeId` and `organizationId`
-- `categoryId` is required
+- `categoryIds` is a required array; a product can belong to multiple categories
+- availability is derived from categories; the product has no own availability fields
 - localized `name` requires at least one value
 - localized `description` is optional
 - `price` must be greater than or equal to `0`
 - `isActive` controls whether the product is usable in normal menu flows
 - `isSoldOut` tracks temporary sale availability separately from `isActive`
 - `tagIds`, `allergenIds`, `dietaryMarkerIds`, and `modifierIds` are optional
-  string ID references
-- `inheritCategoryAvailability` defaults to `true`; when set to `false`, the
-  product uses its own `availabilityRules`
+  string ID references; `modifierIds` order determines per-product modifier display order
 - MVP does not include stock tracking, max-per-order, calories, promotion
   fields, AI description, or product-level unique name indexes
 - custom indexes not added yet
