@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutGrid, Settings, Tag, UtensilsCrossed } from 'lucide-react';
+import { ClipboardList, LayoutGrid, Settings, SlidersHorizontal, Tag, UtensilsCrossed } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { SidebarNavItem } from '@/app/layout/SidebarNavItem';
@@ -32,6 +32,11 @@ export function MerchantSidebar() {
             icon={LayoutGrid}
             label={tDefault('app.navigation.categories', 'Categories')}
             to={PATHS.MERCHANT.CATEGORIES}
+          />
+          <SidebarNavItem
+            icon={SlidersHorizontal}
+            label={tDefault('app.navigation.modifiers', 'Modifiers')}
+            to={PATHS.MERCHANT.MODIFIERS}
           />
           <SidebarNavItem
             icon={Tag}

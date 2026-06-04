@@ -9,12 +9,7 @@ import type {
   UpdateTagRequest,
   UpdateTagSuccessResponse,
 } from '@/models/tag';
-
-function withActiveFilter(path: string, isActive: TagActiveFilter) {
-  const params = new URLSearchParams({ isActive });
-
-  return `${path}?${params.toString()}`;
-}
+import { withActiveFilter } from './utils/activeFilter';
 
 export const tagService = {
   async listTags(storeId: string, isActive: TagActiveFilter) {

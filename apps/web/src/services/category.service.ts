@@ -10,12 +10,7 @@ import type {
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 } from '@/models/category';
-
-function withActiveFilter(path: string, isActive: CategoryActiveFilter) {
-  const params = new URLSearchParams({ isActive });
-
-  return `${path}?${params.toString()}`;
-}
+import { withActiveFilter } from './utils/activeFilter';
 
 export const categoryService = {
   async listCategories(storeId: string, isActive: CategoryActiveFilter) {

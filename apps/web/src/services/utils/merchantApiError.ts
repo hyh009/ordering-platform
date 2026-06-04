@@ -22,6 +22,7 @@ export type MerchantCommandFailure = {
 const notFoundCodes = new Set([
   'STORE_NOT_FOUND',
   'CATEGORY_NOT_FOUND',
+  'PRODUCT_MODIFIER_NOT_FOUND',
   'TAG_NOT_FOUND',
 ]);
 

@@ -28,6 +28,7 @@ export const PATHS = {
     ORDERS: '/merchant/orders',
     STORE_SETTINGS: '/merchant/store-settings',
     CATEGORIES: '/merchant/categories',
+    MODIFIERS: '/merchant/modifiers',
     TAGS: '/merchant/tags',
   },
 } as const;

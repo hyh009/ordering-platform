@@ -19,6 +19,7 @@ import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { MenuPage } from '@/pages/merchant/menu/MenuPage';
+import { ProductModifierListPage } from '@/pages/merchant/productModifierList/ProductModifierListPage';
 import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
 import { OrgSelectPage } from '@/pages/merchant/orgSelect/OrgSelectPage';
 import { StoreSelectPage } from '@/pages/merchant/storeSelect/StoreSelectPage';
@@ -131,6 +132,10 @@ export function App() {
                 <Route
                   element={<CategoryListPage />}
                   path={PATHS.MERCHANT.CATEGORIES}
+                />
+                <Route
+                  element={<ProductModifierListPage />}
+                  path={PATHS.MERCHANT.MODIFIERS}
                 />
                 <Route element={<TagListPage />} path={PATHS.MERCHANT.TAGS} />
               </Route>
