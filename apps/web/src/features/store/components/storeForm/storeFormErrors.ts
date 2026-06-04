@@ -25,7 +25,8 @@ export function validateStoreForm(values: StoreFormValues): ValidateStoreFormRes
       const localeLabel = getSupportedCustomerLocaleLabel(values.defaultLocale, tDefault);
       fieldErrors.displayName ??= tDefault(
         'admin.store.errors.displayName',
-        `Display name (${localeLabel}) is required.`,
+        'Display name ({{locale}}) is required.',
+        { locale: localeLabel },
       );
     } else if (section === 'locale' && field === 'supportedLocales') {
       fieldErrors.supportedLocales ??= tDefault(
