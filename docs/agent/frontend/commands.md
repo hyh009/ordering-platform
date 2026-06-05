@@ -18,19 +18,24 @@ UI state, form state, navigation, modal state, and command-result reactions.
 
 ## Placement
 
-Use feature read commands for loading one feature state slice:
+Use feature read commands for loading one feature read slice:
 
 ```txt
-src/features/<area>/<resource>/list/commands.ts
-src/features/<area>/<resource>/detail/commands.ts
+src/features/<area>/<resource>/<readSlice>/commands.ts
 ```
 
-Use feature mutation commands for standard create, update, and delete flows for
-one resource collection:
+Use feature mutation commands for standard write operations for one resource
+collection:
 
 ```txt
 src/features/<area>/<resource>/mutations/commands.ts
 ```
+
+Standard write operations include but are not limited to create, update, delete,
+reorder, archive, and restore.
+
+If `mutations/commands.ts` becomes too large, propose a focused split inside
+`mutations/` before making the change.
 
 Use page commands to select, wrap, or override feature slice commands for one
 page:
@@ -45,9 +50,9 @@ Page commands are private to their page folder. Do not import one page command
 from another page. Extract shared command behavior into a feature slice command,
 then wrap it from each page command.
 
-Do not create broad domain commands that mix different state slices, such as
-list and detail reads. Put collection writes in `mutations/commands.ts` when
-the list and detail read models come from the same resource collection.
+Do not create broad domain commands that mix different read slices, such as list
+and detail reads. Put collection writes in `mutations/commands.ts` when read
+models come from the same resource collection.
 
 ## Responsibilities
 
@@ -73,6 +78,10 @@ that receives `CreateXRequest` or `UpdateXRequest` should run the matching
 schema before calling the service and return typed field errors when validation
 fails. The page VM writes those errors into the form state and decides whether
 to focus fields, close modals, show toast, reload data, or navigate.
+
+API-after side effects belong to the page flow. Page commands or page VMs decide
+whether a successful mutation reloads list/detail/overview state, closes a
+modal, shows toast, resets a form, or navigates.
 
 Page VMs and form hooks may still run UX validation for touched fields,
 page-only fields, or immediate input feedback. Do not rely on VM-only
@@ -157,7 +166,7 @@ Keep runtime files with their state slice:
 src/features/<area>/<resource>/<slice>/runtime.ts
 ```
 
-Mutation commands that do not mutate a feature store directly do not need a
+Mutation commands that do not update a feature store directly do not need a
 runtime or actions factory.
 
 ## Shared Base And Page Wrappers
@@ -165,16 +174,11 @@ runtime or actions factory.
 When most behavior is shared, keep a shared command base and let pages wrap only
 the functions they need.
 
-Define the slice command contract near the feature command:
+Define read-slice command contracts near the feature read command:
 
 ```ts
-export type OrganizationListCommands = {
+export type OrganizationListReadCommands = {
   listOrganizations(input: ListInput): Promise<ListResult>;
-  createOrganization(input: CreateInput): Promise<SaveResult>;
-  updateOrganizationListItem(
-    id: string,
-    input: UpdateListItemInput,
-  ): Promise<SaveResult>;
 };
 ```
 
@@ -182,7 +186,7 @@ Page commands should expose a page-specific subset plus page-specific functions:
 
 ```ts
 type OrganizationPickerPageCommands = Pick<
-  OrganizationListCommands,
+  OrganizationListReadCommands,
   'listOrganizations'
 > & {
   searchOrganizations(input: SearchInput): Promise<SearchResult>;
@@ -195,7 +199,7 @@ Use an explicit `overrides` block when a page replaces shared behavior:
 export function createOrganizationPickerPageCommands(
   actions: OrganizationListActions,
 ): OrganizationPickerPageCommands {
-  const base = createOrganizationListCommands(actions);
+  const base = createOrganizationListReadCommands(actions);
 
   const overrides = {
     async searchOrganizations(input) {
@@ -227,9 +231,9 @@ Use page command overrides when the flow includes page-specific choices:
 For pagination button behavior and page math, use
 `docs/agent/frontend/pagination.md`.
 
-Use feature slice commands for default async behavior tied to that slice/store.
-Use feature mutation commands for reusable create, update, and delete behavior
-tied to one resource collection.
+Use feature read-slice commands for default async behavior tied to that
+slice/store. Use feature mutation commands for reusable write behavior tied to
+one resource collection.
 
 Do not add option-heavy shared commands to cover many page variations. If a page
 needs different behavior, wrap the shared command or create a page command.

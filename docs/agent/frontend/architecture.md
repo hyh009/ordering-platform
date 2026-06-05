@@ -67,57 +67,55 @@ dependency arrays or memoized children.
 Feature folders own reusable business logic, resource flows, and API-loaded
 resource state.
 
-Common feature folders:
+Use this folder shape for feature resources:
 
 ```txt
 src/features/<businessArea>/
   <resource>/
-    list/
+    <readSlice>/   # optional: list/detail/overview/etc.
       actions.ts
       commands.ts
       runtime.ts
       store.ts
-    detail/
-      actions.ts
+    mutations/     # optional: create/update/delete writes
       commands.ts
-      runtime.ts
-      store.ts
-    mutations/
-      commands.ts
-    components/
+    components/    # optional: reusable domain UI
 ```
 
-Use `<businessArea>` for the frontend capability area, such as `menu`,
-`metadata`, or `organizationManagement`. Use `<resource>` for the collection
-being operated on, such as `productModifiers`, `categories`, or
-`organizations`. Use slices such as `list`, `detail`, and `mutations` for the
-read model or write flow.
+Folder names:
 
-For small domains, a feature may omit the `<resource>` level and keep the slice
-directly under `<businessArea>`:
+- `<businessArea>` is the frontend capability area, such as `menu`,
+  `metadata`, or `organizationManagement`.
+- `<resource>` is the collection being operated on, such as
+  `productModifiers`, `categories`, `tags`, or `allergens`.
+- Not every resource needs every slice. Add only the slices that resource has.
 
-```txt
-src/features/<businessArea>/
-  <slice>/
-    actions.ts
-    commands.ts
-    runtime.ts
-    store.ts
-  components/
-```
+Slices:
 
-Do not split create, update, and delete into separate feature slices by
-default. Put standard collection writes in `mutations/commands.ts`. Let page VMs
-decide whether success should reload list state, reload detail state, close a
-modal, or navigate.
+- Read slices are named by read-model type. `list/`, `detail/`, and
+  `overview/` are common examples, not the full set.
+- `list/` is for collection item read models. These usually load only the
+  fields needed by table rows, filters, ordering, or picker options.
+- `detail/` is for single-resource read models. These load the fields needed by
+  the detail page or edit UI.
+- `overview/` is for aggregate or dashboard read models, such as active counts,
+  status totals, or region breakdowns.
+- `mutations/` is for standard collection writes: create, update, delete,
+  reorder, archive, restore, and similar API writes.
+- `components/` is for reusable domain UI, form views, field groups, and
+  component-owned form contracts.
 
-Use feature stores for API-loaded resource state, including list data, detail
-data, loading state, and API load errors. The store does not have to be shared
-across pages; runtime wiring decides whether the store instance is page-local
-or shared.
+Rules:
 
-Use `list/` for list read state and list loading commands. Use `detail/` for
-full-resource read state and detail loading commands.
+- Keep API-loaded read-slice state in feature stores: data, loading flags, and
+  API load errors.
+- Keep store mutations in `actions.ts`; stores hold state only.
+- Put read flows in `<readSlice>/commands.ts` and standard write flows in
+  `mutations/commands.ts`.
+- Let page commands or page VMs handle API-after side effects, such as reloading
+  list/detail state, closing a modal, showing toast, or navigating.
+- Follow `docs/agent/frontend/commands.md` for command placement, runtime
+  wiring, and command ownership.
 
 Keep page-only UI process state in the page VM or page-local hooks, such as
 modal open state, edit mode, selected tabs, command-result reactions,
@@ -127,10 +125,10 @@ feature-owned.
 
 Feature folders should not contain page folders.
 
-Feature runtimes wire store/action/command instances and define instance scope.
-A runtime created inside one page VM is page-local even though the state lives
-in a feature store file. Follow `docs/agent/frontend/commands.md` for runtime
-wiring and command ownership.
+Feature runtimes wire store/action instances and define instance scope. A
+runtime created inside one page VM is page-local even though the state lives in
+a feature store file. Export a shared feature runtime only when multiple pages
+need the same live state.
 
 Domain reusable form hooks or pure form mappers may live beside their reusable
 domain form component under
