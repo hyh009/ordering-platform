@@ -62,8 +62,8 @@ add or update a feature store in
   data, loading flags, and API load errors. The store does not need to be shared
   across pages.
 - Keep store mutations in `actions.ts`; stores hold state only.
-- Add a feature runtime to wire store/action/command instances; runtime wiring
-  decides whether the instance is page-local or shared.
+- Add a feature runtime to wire store/action instances; runtime wiring decides
+  whether the instance is page-local or shared.
 - Use page VM state for page-only process state, route lifecycle, and
   page-owned form or control state.
 - Use form hooks or page VM state for form drafts, field errors, and submit

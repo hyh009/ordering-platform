@@ -201,8 +201,8 @@ Use camelCase for folders, such as `todoOverview`, `todoDetail`, and `appContext
 `store` / `stores` folders contain `*.store.ts` files only.
 
 Feature slice `runtime.ts` files live with the feature slice because they wire
-that slice's store, actions, and commands. Page VMs call the feature runtime;
-they should not define feature store/action wiring inline.
+that slice's store and actions. Page VMs call the feature runtime; they should
+not define feature store/action wiring inline.
 
 List and detail runtimes default to factory functions that page VMs instantiate
 for page-local state. Export a shared runtime instance only when a concrete UI
