@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createDietaryMarkerListRuntime } from '@/features/metadata/dietaryMarkerList/runtime';
+import { createDietaryMarkerListRuntime } from '@/features/metadata/dietaryMarkers/list/runtime';
 import type { DietaryMarker, MetadataActiveFilter } from '@/models/metadata';
 import { createDietaryMarkerListPageCommands } from './dietaryMarkerListPage.commands';
 import {
@@ -56,7 +56,9 @@ export function useDietaryMarkerListPageVM() {
   // Only update filter state; the load effect (keyed on filter via
   // loadDietaryMarkers) issues the single resulting request. Loading here too
   // would double-fetch the same data on every filter change.
-  const setFilter = useCallback(function setFilter(nextFilter: MetadataActiveFilter) {
+  const setFilter = useCallback(function setFilter(
+    nextFilter: MetadataActiveFilter,
+  ) {
     setFilterState(nextFilter);
   }, []);
 
@@ -94,9 +96,11 @@ export function useDietaryMarkerListPageVM() {
     const result =
       modalMode.type === 'create'
         ? await commands.createDietaryMarker(
+            filter,
             toCreateDietaryMarkerRequest(form.values),
           )
         : await commands.updateDietaryMarker(
+            filter,
             modalMode.dietaryMarker.id,
             toUpdateDietaryMarkerRequest(form.values),
           );
@@ -105,7 +109,6 @@ export function useDietaryMarkerListPageVM() {
 
     if (result.status === 'saved') {
       closeModal();
-      await commands.loadDietaryMarkers(filter);
       return;
     }
 

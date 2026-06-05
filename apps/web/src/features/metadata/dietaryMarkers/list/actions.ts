@@ -27,22 +27,6 @@ export function createDietaryMarkerListActions(
         isLoading: false,
       });
     },
-
-    dietaryMarkerSaved(dietaryMarker: DietaryMarker) {
-      store.setState((state) => {
-        const exists = state.dietaryMarkers.some(
-          (item) => item.id === dietaryMarker.id,
-        );
-
-        return {
-          dietaryMarkers: exists
-            ? state.dietaryMarkers.map((item) =>
-                item.id === dietaryMarker.id ? dietaryMarker : item,
-              )
-            : [dietaryMarker, ...state.dietaryMarkers],
-        };
-      });
-    },
   };
 }
 

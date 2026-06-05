@@ -6,7 +6,6 @@ import {
 import type {
   CreateDietaryMarkerRequest,
   DietaryMarker,
-  MetadataActiveFilter,
   UpdateDietaryMarkerRequest,
 } from '@/models/metadata';
 import { metadataService } from '@/services/metadata.service';
@@ -14,18 +13,11 @@ import {
   mapAdminApiError,
   type AdminCommandFailure,
 } from '@/services/utils/adminApiError';
-import { mapMetadataFieldErrors } from '../metadataFieldErrors';
-import type { DietaryMarkerListActions } from './actions';
+import { mapMetadataFieldErrors } from '../../metadataFieldErrors';
 
 export type DietaryMarkerCommandFieldErrors = Partial<
   Record<'key' | 'name', string>
 >;
-
-export type LoadDietaryMarkersResult =
-  | {
-      status: 'loaded';
-    }
-  | AdminCommandFailure;
 
 export type SaveDietaryMarkerResult =
   | {
@@ -36,48 +28,26 @@ export type SaveDietaryMarkerResult =
       fieldErrors?: DietaryMarkerCommandFieldErrors;
     });
 
-export type DietaryMarkerListCommands = {
+export type DietaryMarkerMutationCommands = {
   createDietaryMarker(
     input: CreateDietaryMarkerRequest,
   ): Promise<SaveDietaryMarkerResult>;
-  loadDietaryMarkers(
-    isActive: MetadataActiveFilter,
-  ): Promise<LoadDietaryMarkersResult>;
   updateDietaryMarker(
     dietaryMarkerId: string,
     input: UpdateDietaryMarkerRequest,
   ): Promise<SaveDietaryMarkerResult>;
 };
 
-export function createDietaryMarkerListCommands(
-  actions: DietaryMarkerListActions,
-): DietaryMarkerListCommands {
+export function createDietaryMarkerMutationCommands(): DietaryMarkerMutationCommands {
   return {
-    async loadDietaryMarkers(isActive) {
-      actions.loadStarted();
-
-      try {
-        const dietaryMarkers =
-          await metadataService.listDietaryMarkers(isActive);
-
-        actions.loadSucceeded(dietaryMarkers);
-        return {
-          status: 'loaded',
-        };
-      } catch (error) {
-        const failure = mapAdminApiError(error);
-
-        actions.loadFailed(failure.message);
-        return failure;
-      }
-    },
-
     async createDietaryMarker(input) {
       const validation = createDietaryMarkerSchema.safeParse(input);
 
       if (!validation.success) {
         return {
-          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(
+            validation.error.issues,
+          ),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -90,7 +60,6 @@ export function createDietaryMarkerListCommands(
       try {
         const dietaryMarker = await metadataService.createDietaryMarker(input);
 
-        actions.dietaryMarkerSaved(dietaryMarker);
         return {
           dietaryMarker,
           status: 'saved',
@@ -105,7 +74,9 @@ export function createDietaryMarkerListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<DietaryMarkerCommandFieldErrors>(
+            validation.error.issues,
+          ),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -121,7 +92,6 @@ export function createDietaryMarkerListCommands(
           input,
         );
 
-        actions.dietaryMarkerSaved(dietaryMarker);
         return {
           dietaryMarker,
           status: 'saved',
