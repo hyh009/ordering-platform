@@ -59,24 +59,25 @@ Organization resolution:
 
 ## Resource Permission Boundaries
 
-| Resource                   | org_owner | org_admin | staff |
-| -------------------------- | --------- | --------- | ----- |
-| OrganizationMembership     | CRUD      | CRUD      | read  |
-| Store                      | CRUD      | CRUD      | read  |
-| Category                   | CRUD      | CRUD      | read  |
-| Tag                        | CRUD      | CRUD      | read  |
-| ProductModifier            | CRUD      | CRUD      | read  |
-| Product                    | CRUD      | CRUD      | read  |
-| Promotion                  | CRUD      | CRUD      | —     |
-| Order (management actions) | yes       | yes       | yes   |
+| Resource                   | org_owner | org_admin | staff                 |
+| -------------------------- | --------- | --------- | --------------------- |
+| OrganizationMembership     | CRUD      | CRUD      | read                  |
+| Store                      | CRUD      | CRUD      | read                  |
+| Category                   | CRUD      | CRUD      | read                  |
+| Tag                        | CRUD      | CRUD      | read                  |
+| ProductModifier            | CRUD      | CRUD      | read                  |
+| Product                    | CRUD      | CRUD      | read, sold-out toggle |
+| Promotion                  | CRUD      | CRUD      | —                     |
+| Order (management actions) | yes       | yes       | yes                   |
 
 Notes:
 
 - Organization creation and deletion remain super-admin-only.
 - Cart and order creation is part of the customer ordering flow and does not
   require an org membership check.
-- Staff write access to menu resources (e.g. toggling sold-out) is deferred
-  until explicitly scoped.
+- Staff write access to menu resources is limited to explicitly scoped actions.
+  Product sold-out toggling is allowed through the dedicated sold-out endpoint;
+  general product create/update stays `org_owner`/`org_admin` only.
 
 ## Frontend Permission Gating
 
