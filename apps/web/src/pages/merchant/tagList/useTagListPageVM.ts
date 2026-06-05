@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { tDefault } from '@/app/i18n';
-import { createTagListRuntime } from '@/features/menu/tagList/runtime';
+import { createTagListRuntime } from '@/features/menu/tags/list/runtime';
 import type { Tag, TagActiveFilter } from '@/models/tag';
 import { createTagListPageCommands } from './tagListPage.commands';
 import { toTagRequest, useTagForm, valuesFromTag } from './useTagForm';
@@ -96,9 +96,10 @@ export function useTagListPageVM() {
 
     const result =
       modalMode.type === 'create'
-        ? await commands.createTag(storeId, toTagRequest(form.values))
+        ? await commands.createTag(storeId, filter, toTagRequest(form.values))
         : await commands.updateTag(
             storeId,
+            filter,
             modalMode.tag.id,
             toTagRequest(form.values),
           );
@@ -112,7 +113,7 @@ export function useTagListPageVM() {
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [closeModal, commands, form, modalMode, storeId]);
+  }, [closeModal, commands, filter, form, modalMode, storeId]);
 
   const modalTitle = useMemo(() => {
     if (!modalMode) {

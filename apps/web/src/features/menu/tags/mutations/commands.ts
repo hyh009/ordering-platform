@@ -1,25 +1,13 @@
 import { tDefault } from '@/app/i18n';
 import { createTagSchema, updateTagSchema } from '@/models/tag';
-import type {
-  CreateTagRequest,
-  Tag,
-  TagActiveFilter,
-  UpdateTagRequest,
-} from '@/models/tag';
+import type { CreateTagRequest, Tag, UpdateTagRequest } from '@/models/tag';
 import { tagService } from '@/services/tag.service';
 import {
   mapMerchantApiError,
   type MerchantCommandFailure,
 } from '@/services/utils/merchantApiError';
-import type { TagListActions } from './actions';
 
 export type TagCommandFieldErrors = Partial<Record<'name' | 'color', string>>;
-
-export type LoadTagsResult =
-  | {
-      status: 'loaded';
-    }
-  | MerchantCommandFailure;
 
 export type SaveTagResult =
   | {
@@ -46,9 +34,8 @@ function mapTagFieldErrors(
   ) as TagCommandFieldErrors;
 }
 
-export type TagListCommands = {
+export type TagMutationCommands = {
   createTag(storeId: string, input: CreateTagRequest): Promise<SaveTagResult>;
-  loadTags(storeId: string, isActive: TagActiveFilter): Promise<LoadTagsResult>;
   updateTag(
     storeId: string,
     tagId: string,
@@ -56,28 +43,8 @@ export type TagListCommands = {
   ): Promise<SaveTagResult>;
 };
 
-export function createTagListCommands(
-  actions: TagListActions,
-): TagListCommands {
+export function createTagMutationCommands(): TagMutationCommands {
   return {
-    async loadTags(storeId, isActive) {
-      actions.loadStarted();
-
-      try {
-        const tags = await tagService.listTags(storeId, isActive);
-
-        actions.loadSucceeded(tags);
-        return {
-          status: 'loaded',
-        };
-      } catch (error) {
-        const failure = mapMerchantApiError(error);
-
-        actions.loadFailed(failure.message);
-        return failure;
-      }
-    },
-
     async createTag(storeId, input) {
       const validation = createTagSchema.safeParse(input);
 
@@ -96,7 +63,6 @@ export function createTagListCommands(
       try {
         const tag = await tagService.createTag(storeId, input);
 
-        actions.tagSaved(tag);
         return {
           tag,
           status: 'saved',
@@ -124,7 +90,6 @@ export function createTagListCommands(
       try {
         const tag = await tagService.updateTag(storeId, tagId, input);
 
-        actions.tagSaved(tag);
         return {
           tag,
           status: 'saved',

@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { tDefault } from '@/app/i18n';
-import { createCategoryListRuntime } from '@/features/menu/categoryList/runtime';
+import { createCategoryListRuntime } from '@/features/menu/categories/list/runtime';
 import type { Category, CategoryActiveFilter } from '@/models/category';
 import { createCategoryListPageCommands } from './categoryListPage.commands';
 import {
@@ -151,9 +151,14 @@ export function useCategoryListPageVM() {
 
     const result =
       modalMode.type === 'create'
-        ? await commands.createCategory(storeId, toCategoryRequest(form.values))
+        ? await commands.createCategory(
+            storeId,
+            filter,
+            toCategoryRequest(form.values),
+          )
         : await commands.updateCategory(
             storeId,
+            filter,
             modalMode.category.id,
             toCategoryRequest(form.values),
           );
@@ -167,7 +172,7 @@ export function useCategoryListPageVM() {
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [closeModal, commands, form, modalMode, storeId]);
+  }, [closeModal, commands, filter, form, modalMode, storeId]);
 
   const modalTitle = useMemo(() => {
     if (!modalMode) {
