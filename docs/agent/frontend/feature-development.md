@@ -52,14 +52,24 @@ Follow `docs/agent/frontend/error-feedback.md` when mapping API errors.
 
 ### 4. State
 
-Determine whether the feature requires shared or persistent state. If yes, add
-or update a feature store in `apps/web/src/features/<domain>`.
+Determine whether the feature loads business resource data from an API. If yes,
+add or update a feature store in
+`apps/web/src/features/<area>/<resource>/<slice>`.
 
-- Use feature stores for app or domain state shared across handlers, flows,
-  components, or pages.
+- Use `src/app/global/<module>` for app/session/runtime state such as auth,
+  active organization, active store, and global feedback.
+- Use feature stores for API-loaded resource state such as list data, detail
+  data, loading flags, and API load errors. The store does not need to be shared
+  across pages.
 - Keep store mutations in `actions.ts`; stores hold state only.
+- Add a feature runtime to wire store/action/command instances; runtime wiring
+  decides whether the instance is page-local or shared.
 - Use page VM state for page-only process state, route lifecycle, and
   page-owned form or control state.
+- Use form hooks or page VM state for form drafts, field errors, and submit
+  state unless the draft itself is intentionally feature-owned.
+- List slices own list loading state. Detail slices own full-resource loading
+  state.
 
 Follow `docs/agent/frontend/state-ownership.md`.
 
@@ -68,9 +78,15 @@ Follow `docs/agent/frontend/state-ownership.md`.
 Determine whether the feature has async flows. If yes, add or update commands.
 
 - Page commands live with the page under `apps/web/src/pages/<page>/`.
-- Feature commands live under `apps/web/src/features/<domain>/`.
-- Commands coordinate service calls, actions, loading states, errors, and
-  save flows.
+- Feature read commands live under
+  `apps/web/src/features/<area>/<resource>/list/` or
+  `apps/web/src/features/<area>/<resource>/detail/`.
+- Standard create, update, and delete flows for one resource collection live in
+  `apps/web/src/features/<area>/<resource>/mutations/commands.ts`.
+- Commands coordinate request validation, service calls, actions, loading
+  states, API errors, and typed outcomes.
+- Page VMs decide mutation success reactions such as reload list, reload
+  detail, close modal, show toast, or navigate.
 - Do not call services or stores directly from views.
 
 Follow `docs/agent/frontend/commands.md`.
@@ -81,6 +97,8 @@ Add or update the page VM hook in `apps/web/src/pages/<page>/`.
 
 - Page VM hooks own React lifecycle, page-local state, and command-result
   reactions such as navigation, modal feedback, and form reset.
+- Page VM hooks own validation feedback, but submit or mutation commands own
+  request schema validation before service calls.
 - Views read state and trigger behavior through the page VM hook only.
 - Do not call stores, services, or commands directly from views.
 
@@ -111,7 +129,8 @@ Add or update the page view and feature components.
   component.
 - Keep page views focused on rendering VM state and calling VM handlers.
 - Keep domain-specific components under
-  `apps/web/src/features/<domain>/components`.
+  `apps/web/src/features/<area>/<resource>/components` or
+  `apps/web/src/features/<area>/components`.
 - Keep cross-domain, domain-neutral components in
   `apps/web/src/shared/components`.
 

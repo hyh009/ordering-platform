@@ -33,7 +33,10 @@ Examples:
 - page-only submit errors
 - page-only submit/loading state
 
-Use feature stores when the same form state instance must be shared across components or pages, preserved after leaving the page, reset by feature actions, or treated as feature state.
+Do not add a feature-owned form store by default. Use a feature store only when
+the same form state instance must be shared across components or pages,
+preserved after leaving the page, reset by feature actions, or treated as
+feature state.
 
 Examples:
 
@@ -41,9 +44,10 @@ Examples:
 - editor draft values shared across components or pages
 - table column visibility for one feature
 
-Put feature-owned form state in `src/features/<domain>/<slice>/store.ts`.
-
-Put feature-owned form setters and resets in `src/features/<domain>/<slice>/actions.ts`.
+When a form truly needs feature-owned state, follow
+`docs/agent/frontend/state-ownership.md`: put the state in
+`src/features/<area>/<resource>/<slice>/store.ts` and put setters or resets in
+`src/features/<area>/<resource>/<slice>/actions.ts`.
 
 The page-local form hook may use React `useState` or `useReducer`.
 
@@ -62,19 +66,27 @@ Keep form submit responsibilities split between the page VM and commands.
 The page VM owns:
 
 - read page-local form values
-- validate current form values before submit commands run
+- convert form values into request input
+- run page-only or UX validation when needed
 - set page-local field and submit errors
 - call commands
 - handle redirect, toast, modal, and form reset outcomes
 
-Before calling commands, validate the current form values. Prefer shared API contract schemas for request validation and normalization. If validation fails, set page-local field and submit errors, then return without calling commands, services, or APIs.
+Commands own request boundary validation. A submit or mutation command that
+receives `CreateXRequest`, `UpdateXRequest`, or similar request input must run
+the matching shared or domain schema before calling the service. If validation
+fails, the command returns a typed failure with field errors; the VM writes those
+errors into page-local form state.
 
-Keep page-only validation in the VM, such as `confirmPassword` matching. Do not send page-only fields to commands, services, or APIs.
+Keep page-only validation in the VM or form hook, such as `confirmPassword`
+matching, touched-field feedback, or local draft constraints that are not part
+of the API request. Do not send page-only fields to commands, services, or APIs.
 
 Field errors and submit errors are user-facing text. Build them with the app i18n helper, such as `tDefault(...)`, before storing them in page-local form state. Map schema or library validation issues to app i18n messages, and do not show raw validation-library messages such as `issue.message` in the UI.
 
 The commands file owns:
 
+- validate request input before service calls
 - call services
 - map API errors
 - call feature actions when a submit result should update feature store state
@@ -91,20 +103,8 @@ function useLoginPageVM() {
   const form = useLoginForm();
 
   async function submit() {
-    const validation = validateLoginForm(form.values);
-
-    if (!validation.success) {
-      form.setFieldErrors(validation.fieldErrors);
-      form.setSubmitError(
-        tDefault(
-          'auth.validation.submitInvalid',
-          'Check the highlighted fields and try again.',
-        ),
-      );
-      return;
-    }
-
-    const result = await loginPageCommands.submit(validation.request);
+    const request = toLoginRequest(form.values);
+    const result = await loginPageCommands.submit(request);
 
     if (result.status === 'authenticated') {
       form.reset();
@@ -155,7 +155,7 @@ On save:
 
 - pass the page-local draft values to the command
 - call the service
-- update the feature store with the saved result
+- reload or update confirmed feature state after success
 - reset or realign the page-local draft state after success
 
 ## Form Labels And Options
@@ -208,8 +208,8 @@ For reusable domain form components, colocate a `{formName}Errors.ts` file in th
 This file owns:
 
 - Field error type definitions
-- Validation logic: schema.safeParse + Zod issue → i18n field error messages
-- A `validate{FormName}` function the page VM calls before running commands
+- Zod issue → i18n field error message mapping for the form fields
+- Optional UX validation helpers for page-only fields or immediate form feedback
 
 Example:
 
@@ -225,19 +225,21 @@ src/features/organization/membership/components/addMemberForm/
   addMemberFormErrors.ts
 ```
 
-The page VM calls the validate function and handles the result:
+The command calls the schema and returns typed validation failures. The page VM
+handles the result:
 
 ```ts
-const validation = validateAddMemberForm(form.values);
+const result = await commands.addMember(organizationId, request);
 
-if (!validation.success) {
-  form.setFieldErrors(validation.fieldErrors);
-  form.setSubmitError(validation.submitError);
-  return;
+if (result.status === 'failed') {
+  form.setFieldErrors(result.fieldErrors ?? {});
+  form.setSubmitError(result.message);
 }
-
-await commands.addMember(organizationId, validation.data);
 ```
+
+The VM may call form-level validation before commands only for UX-only or
+page-only fields. Request schemas that protect service/API calls belong in the
+command.
 
 ## Boundaries
 
@@ -248,6 +250,6 @@ Shared form components should not:
 - call feature stores directly
 - run submit commands
 - know page VM shape
-- encode business validation rules
+- encode submit request boundary validation
 
 For general view, store, and model boundaries, follow `docs/agent/frontend/architecture.md`.

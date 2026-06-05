@@ -7,10 +7,11 @@ Use this checklist before finishing frontend code changes.
 Confirm the implementation follows:
 
 ```txt
-View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
+View -> Page VM Hook -> Commands -> Service -> API
                          |
                          v
-                       Service -> API
+                   Feature Actions -> Feature Store
+                   when the flow updates resource state
 ```
 
 ## View Checks
@@ -26,11 +27,18 @@ View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
 
 - Page VM hooks own route lifecycle effects, such as detail-page initial loads.
 - Page VM hooks own command-result reactions, such as navigation after delete succeeds.
+- Page VM hooks own validation feedback and form error state, not request
+  schema guards before service calls.
+- Page VM hooks do not run request Zod validation such as
+  `createXSchema.safeParse(request)`; submit and mutation commands own that
+  schema check.
 - Page VM hooks expose top-level handlers, not nested `actions` objects.
 - Returned handlers used in effects or memoized children are stable.
 - Page-local form and UI state stays in the VM or page-local form hook.
 - VM hooks do not pass raw API DTOs to views.
 - VM hooks do not create feature stores and actions directly; use feature runtime factories for store/action wiring, then create page-owned commands from the returned actions.
+- VM hooks do not store API-loaded resource state when the feature has a
+  list/detail store for that resource.
 
 ## Page Boundary Checks
 
@@ -46,6 +54,7 @@ View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
 - Commands do not call toast, modal, or navigation APIs.
 - Commands call services and feature actions.
 - Commands return typed results.
+- Submit and mutation commands validate request inputs before calling services.
 - Commands map API errors with named helpers when behavior depends on error meaning.
 - Feature commands do not import from `src/pages`.
 
@@ -55,6 +64,10 @@ View -> Page VM Hook -> Commands -> Feature Actions -> Feature Store
 - Feature actions do not call services.
 - Stores contain state only.
 - Store state uses frontend models, not raw API DTOs.
+- Feature stores hold API-loaded resource state such as list data, detail data,
+  loading flags, and API load errors.
+- Standard collection create, update, and delete flows live in
+  `mutations/commands.ts` unless the operation is truly page-only or list-only.
 
 ## Model Checks
 

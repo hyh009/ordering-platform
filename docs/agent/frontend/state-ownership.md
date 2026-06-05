@@ -7,21 +7,27 @@ Do not move state into global, feature, or shared stores based on speculation.
 
 ## Decision Tree
 
-1. Is this state about the app shell/session rather than one business area?
+1. Is this state about the app shell/session rather than one business resource?
    - Put it in `src/app/global/<module>`.
-   - Examples: auth user/session, access token, app context, global feedback,
-     app-wide settings.
+   - Examples: auth user/session, access token, active organization, active
+     store, app context, global feedback, app-wide settings.
 
-2. Is this state about one business area?
-   - Put it in `src/features/<domain>/<slice>/store.ts`.
-   - Put state mutations in `src/features/<domain>/<slice>/actions.ts`.
-   - Add a feature runtime when pages need page-local feature store/action
-     instances.
-   - Feature state can be used by one page or by multiple pages.
+2. Is this API-loaded resource state for one business area?
+   - Put it in `src/features/<area>/<resource>/<slice>/store.ts`.
+   - Put state mutations in
+     `src/features/<area>/<resource>/<slice>/actions.ts`.
+   - Add a feature runtime to wire store/action/command instances.
+   - Runtime wiring decides whether the store instance is page-local or shared.
+   - Default list and detail runtimes to page-local factory instances. Share a
+     runtime instance only when a concrete UI flow needs cross-page state.
+   - Feature state can be used by one page or by multiple pages; sharing is not
+     required.
    - Commands may use this feature state through actions; put commands in the
      page or feature owner based on `docs/agent/frontend/commands.md`.
    - Examples: loaded organization list, organization detail data, metadata
      list data.
+   - List state belongs in a `list` slice. Full resource state belongs in a
+     `detail` slice.
 
 3. Is this state only for one page's process or UI flow?
    - Put it in the page VM hook or a page-local form hook.
@@ -29,11 +35,12 @@ Do not move state into global, feature, or shared stores based on speculation.
      errors, submit error, route lifecycle state, command-result reactions.
    - If the same domain UI is reused by multiple pages, supporting hooks may be
      colocated with that domain component under
-     `src/features/<domain>/components/<componentName>`. Each page VM still
+     `src/features/<area>/<resource>/components/<componentName>` or
+     `src/features/<area>/components/<componentName>`. Each page VM still
      creates or controls its own instance, so draft values, field errors,
      selection state, and other page-flow state remain page-owned.
    - Do not move state into a feature store just because a reusable component
-     lives under `src/features/<domain>/components`.
+     lives under a feature `components` folder.
 
    Example:
 

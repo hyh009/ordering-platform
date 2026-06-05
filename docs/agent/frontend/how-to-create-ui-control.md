@@ -103,7 +103,8 @@ Create a wrapper outside `src/shared/components/ui` when behavior becomes
 app-specific:
 
 - Use `src/shared/components` for project-generic reusable UI.
-- Use `src/features/<domain>/components` for reusable domain UI.
+- Use `src/features/<area>/<resource>/components` or
+  `src/features/<area>/components` for reusable domain UI.
 - Use `src/pages/<pageName>` for page-only UI.
 
 Examples:

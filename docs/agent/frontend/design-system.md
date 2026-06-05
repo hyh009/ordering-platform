@@ -12,7 +12,8 @@ Use this guide when making UI decisions.
   `@base-ui/react/button`; keep app-specific styling in the local shadcn wrapper
   and variant files.
 - Shared app-level UI lives in `src/shared/components`.
-- Feature-specific UI lives in `src/features/<domain>/components`.
+- Feature-specific UI lives in `src/features/<area>/<resource>/components` or
+  `src/features/<area>/components`.
 - Page-only UI lives beside the page in `src/pages/<pageName>`.
 
 ## Tokens

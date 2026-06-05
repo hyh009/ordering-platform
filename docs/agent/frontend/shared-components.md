@@ -17,7 +17,8 @@ Before creating a component, check the existing component layers:
 - `apps/web/src/app/routing` for route guards.
 - `apps/web/src/app/error` for app and route error boundaries.
 - `apps/web/src/shared/components` for project-level reusable UI.
-- `apps/web/src/features/<domain>/components` for reusable domain UI.
+- `apps/web/src/features/<area>/<resource>/components` or
+  `apps/web/src/features/<area>/components` for reusable domain UI.
 - `apps/web/src/pages/<pageName>` for page-only UI.
 
 Prefer reusing or extending the smallest existing component that already owns
@@ -53,7 +54,8 @@ that are not already clear.
 - Put app and route error boundaries in `src/app/error`.
 - Put project-level reusable UI in `src/shared/components`.
 - Put shared feedback hosts in `src/shared/components/feedback`.
-- Put reusable domain UI in `src/features/<domain>/components`.
+- Put reusable domain UI in `src/features/<area>/<resource>/components` or
+  `src/features/<area>/components`.
 - Keep page-only UI beside the page in `src/pages/<pageName>`.
 - Keep shadcn primitive wrappers in `src/shared/components/ui`.
 - Do not put domain-specific components in `src/shared/components`.
@@ -63,7 +65,7 @@ For reusable domain form UI, colocate the form view and component-specific form
 hook under the domain component folder:
 
 ```txt
-src/features/<domain>/components/<domainForm>/
+src/features/<area>/<resource>/components/<domainForm>/
   <DomainForm>.tsx
   use<Domain>Form.ts
 ```
@@ -87,7 +89,8 @@ page folder.
 
 Choose the owner by behavior:
 
-- `src/features/<domain>` for domain-specific reusable UI, hooks, commands, or helpers.
+- `src/features/<area>` for domain-specific reusable UI, hooks, commands, or
+  helpers.
 - `src/shared` for project-generic UI, hooks, or helpers.
 - `src/models` or `src/models/<domain>` for model types, request/response
   mapping, and pure model helpers.

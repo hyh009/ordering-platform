@@ -4,7 +4,7 @@ Use this guide when adding or changing frontend command files.
 
 ## Goal
 
-Commands coordinate async frontend flows.
+Commands coordinate async frontend flows and protect the service/API boundary.
 
 They sit between page VM hooks and services/actions:
 
@@ -18,11 +18,18 @@ UI state, form state, navigation, modal state, and command-result reactions.
 
 ## Placement
 
-Use feature slice commands for the default async behavior of one feature state
-slice:
+Use feature read commands for loading one feature state slice:
 
 ```txt
-src/features/<domain>/<slice>/commands.ts
+src/features/<area>/<resource>/list/commands.ts
+src/features/<area>/<resource>/detail/commands.ts
+```
+
+Use feature mutation commands for standard create, update, and delete flows for
+one resource collection:
+
+```txt
+src/features/<area>/<resource>/mutations/commands.ts
 ```
 
 Use page commands to select, wrap, or override feature slice commands for one
@@ -39,7 +46,8 @@ from another page. Extract shared command behavior into a feature slice command,
 then wrap it from each page command.
 
 Do not create broad domain commands that mix different state slices, such as
-list and detail, unless those slices intentionally share the same store/actions.
+list and detail reads. Put collection writes in `mutations/commands.ts` when
+the list and detail read models come from the same resource collection.
 
 ## Responsibilities
 
@@ -47,6 +55,8 @@ Commands may:
 
 - call services
 - call feature actions
+- validate request objects with shared or domain Zod schemas before service
+  calls
 - map API errors with named helpers
 - return typed success or failure results
 
@@ -57,6 +67,22 @@ Commands must not:
 - navigate
 - show toast or modal feedback directly
 - handle raw API DTOs directly
+
+Commands own request boundary validation, not validation presentation. A command
+that receives `CreateXRequest` or `UpdateXRequest` should run the matching
+schema before calling the service and return typed field errors when validation
+fails. The page VM writes those errors into the form state and decides whether
+to focus fields, close modals, show toast, reload data, or navigate.
+
+Page VMs and form hooks may still run UX validation for touched fields,
+page-only fields, or immediate input feedback. Do not rely on VM-only
+validation to protect a reusable mutation command.
+
+Thin commands are acceptable when they define this boundary:
+
+```txt
+validate request -> call service -> map API error -> return typed result
+```
 
 ## Factory Shape
 
@@ -125,18 +151,21 @@ function createOrganizationListPageContext() {
 Add a separate page runtime file only when page-level wiring becomes complex or
 needs reuse.
 
-Keep runtime files with their feature slice:
+Keep runtime files with their state slice:
 
 ```txt
-src/features/<domain>/<slice>/runtime.ts
+src/features/<area>/<resource>/<slice>/runtime.ts
 ```
+
+Mutation commands that do not mutate a feature store directly do not need a
+runtime or actions factory.
 
 ## Shared Base And Page Wrappers
 
 When most behavior is shared, keep a shared command base and let pages wrap only
 the functions they need.
 
-Define the slice command contract near the feature slice command:
+Define the slice command contract near the feature command:
 
 ```ts
 export type OrganizationListCommands = {
@@ -199,6 +228,27 @@ For pagination button behavior and page math, use
 `docs/agent/frontend/pagination.md`.
 
 Use feature slice commands for default async behavior tied to that slice/store.
+Use feature mutation commands for reusable create, update, and delete behavior
+tied to one resource collection.
 
 Do not add option-heavy shared commands to cover many page variations. If a page
 needs different behavior, wrap the shared command or create a page command.
+
+Do not add page-behavior options to reusable mutation commands, such as
+`updateCategory(..., { reload: true })`. API-after side effects belong to the
+page flow, not the mutation command.
+
+After a mutation succeeds, page commands or page VMs own the reaction:
+
+- reload list or detail data
+- close a modal
+- reset or realign form state
+- navigate to list or detail
+- show toast or confirmation feedback
+
+Keep simple reactions in the page VM. Move the reaction into a page command when
+the page needs to compose multiple feature commands, apply a reload strategy, or
+share the same page-specific flow across handlers.
+
+Management pages should reload server data after create, update, or delete
+unless a local patch is deliberately required for the interaction.
