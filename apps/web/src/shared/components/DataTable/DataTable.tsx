@@ -58,6 +58,8 @@ export type DataTableProps<TRow> = {
 
   pagination?: DataTablePaginationProps;
 
+  onRowClick?: (row: TRow) => void;
+
   labels?: DataTableLabels;
 };
 
@@ -113,6 +115,7 @@ export function DataTable<TRow>({
   limitOptions = DEFAULT_LIMIT_OPTIONS,
   onLimitChange,
   pagination,
+  onRowClick,
   labels,
 }: DataTableProps<TRow>) {
   const { tDefault } = useAppTranslation();
@@ -198,7 +201,11 @@ export function DataTable<TRow>({
           </TableHeader>
           <TableBody>
             {data.map((row) => (
-              <TableRow key={rowKey(row)}>
+              <TableRow
+                key={rowKey(row)}
+                className={onRowClick ? 'cursor-pointer hover:bg-muted/40' : undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((column) => (
                   <TableCell
                     key={column.key}

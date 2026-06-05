@@ -19,6 +19,8 @@ import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { MenuPage } from '@/pages/merchant/menu/MenuPage';
+import { ProductModifierCreatePage } from '@/pages/merchant/productModifierCreate/ProductModifierCreatePage';
+import { ProductModifierDetailPage } from '@/pages/merchant/productModifierDetail/ProductModifierDetailPage';
 import { ProductModifierListPage } from '@/pages/merchant/productModifierList/ProductModifierListPage';
 import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
 import { OrgSelectPage } from '@/pages/merchant/orgSelect/OrgSelectPage';
@@ -136,6 +138,14 @@ export function App() {
                 <Route
                   element={<ProductModifierListPage />}
                   path={PATHS.MERCHANT.MODIFIERS}
+                />
+                <Route
+                  element={<ProductModifierCreatePage />}
+                  path={PATHS.MERCHANT.MODIFIER_CREATE}
+                />
+                <Route
+                  element={<ProductModifierDetailPage />}
+                  path={PATHS.MERCHANT.MODIFIER_DETAIL}
                 />
                 <Route element={<TagListPage />} path={PATHS.MERCHANT.TAGS} />
               </Route>

@@ -14,11 +14,21 @@ import {
   mapMerchantApiError,
   type MerchantCommandFailure,
 } from '@/services/utils/merchantApiError';
+import {
+  mapProductModifierFieldErrors,
+  type ProductModifierCommandFieldErrors,
+} from '../components/productModifierForm/productModifierFormErrors';
 import type { ProductModifierListActions } from './actions';
 
-export type ProductModifierCommandFieldErrors = Partial<
-  Record<'name' | 'options' | 'minSelect', string>
->;
+type Schema = {
+  safeParse(
+    input: unknown,
+  ):
+    | { success: false; error: { issues: Array<{ path: PropertyKey[] }> } }
+    | { success: true };
+};
+
+export type { ProductModifierCommandFieldErrors };
 
 export type LoadProductModifiersResult =
   | { status: 'loaded' }
@@ -26,36 +36,9 @@ export type LoadProductModifiersResult =
 
 export type SaveProductModifierResult =
   | { modifier: ProductModifier; status: 'saved' }
-  | (MerchantCommandFailure & { fieldErrors?: ProductModifierCommandFieldErrors });
-
-function mapProductModifierFieldErrors(
-  issues: Array<{ path: PropertyKey[] }>,
-): ProductModifierCommandFieldErrors {
-  const errors: ProductModifierCommandFieldErrors = {};
-
-  for (const issue of issues) {
-    const field = String(issue.path[0] ?? '');
-
-    if (field === 'name') {
-      errors.name = tDefault(
-        'merchant.productModifiers.validation.invalid',
-        'This field is invalid.',
-      );
-    } else if (field === 'options') {
-      errors.options = tDefault(
-        'merchant.productModifiers.validation.optionsInvalid',
-        'One or more options are invalid.',
-      );
-    } else if (field === 'minSelect' || field === 'maxSelect' || field === '') {
-      errors.minSelect = tDefault(
-        'merchant.productModifiers.validation.selectionBoundsInvalid',
-        'Selection bounds are invalid.',
-      );
-    }
-  }
-
-  return errors;
-}
+  | (MerchantCommandFailure & {
+      fieldErrors?: ProductModifierCommandFieldErrors;
+    });
 
 export type ProductModifierListCommands = {
   loadProductModifiers(
@@ -71,12 +54,6 @@ export type ProductModifierListCommands = {
     productModifierId: string,
     input: UpdateProductModifierRequest,
   ): Promise<SaveProductModifierResult>;
-};
-
-type Schema = {
-  safeParse(input: unknown):
-    | { success: true }
-    | { success: false; error: { issues: Array<{ path: PropertyKey[] }> } };
 };
 
 async function runSave(
@@ -117,10 +94,8 @@ export function createProductModifierListCommands(
       actions.loadStarted();
 
       try {
-        const productModifiers = await productModifierService.listProductModifiers(
-          storeId,
-          isActive,
-        );
+        const productModifiers =
+          await productModifierService.listProductModifiers(storeId, isActive);
 
         actions.loadSucceeded(productModifiers);
         return { status: 'loaded' };
@@ -140,7 +115,11 @@ export function createProductModifierListCommands(
 
     updateProductModifier(storeId, productModifierId, input) {
       return runSave(updateProductModifierSchema, input, actions, () =>
-        productModifierService.updateProductModifier(storeId, productModifierId, input),
+        productModifierService.updateProductModifier(
+          storeId,
+          productModifierId,
+          input,
+        ),
       );
     },
   };

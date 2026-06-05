@@ -29,6 +29,9 @@ export const PATHS = {
     STORE_SETTINGS: '/merchant/store-settings',
     CATEGORIES: '/merchant/categories',
     MODIFIERS: '/merchant/modifiers',
+    MODIFIER_CREATE: '/merchant/modifiers/new',
+    MODIFIER_DETAIL: '/merchant/modifiers/:modifierId',
+    MODIFIER_DETAIL_BUILD: (id: string) => `/merchant/modifiers/${id}`,
     TAGS: '/merchant/tags',
   },
 } as const;

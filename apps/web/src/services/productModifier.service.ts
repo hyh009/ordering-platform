@@ -3,6 +3,7 @@ import { menuPaths } from '@/api/paths/menu.paths';
 import { productModifierModel } from '@/models/productModifier';
 import type {
   CreateProductModifierSuccessResponse,
+  GetProductModifierSuccessResponse,
   ListProductModifiersSuccessResponse,
   UpdateProductModifierSuccessResponse,
 } from '@repo/shared';
@@ -20,6 +21,14 @@ export const productModifierService = {
     );
 
     return response.data.productModifiers.map(productModifierModel.deserialize);
+  },
+
+  async getProductModifier(storeId: string, productModifierId: string) {
+    const response = await apiJson<GetProductModifierSuccessResponse>(
+      menuPaths.productModifierDetail(storeId, productModifierId),
+    );
+
+    return productModifierModel.deserialize(response.data.productModifier);
   },
 
   async createProductModifier(storeId: string, input: CreateProductModifierRequest) {

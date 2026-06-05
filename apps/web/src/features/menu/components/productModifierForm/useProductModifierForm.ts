@@ -83,8 +83,10 @@ export function valuesFromProductModifier(
   };
 }
 
-export function useProductModifierForm() {
-  const state = useFormState<ProductModifierFormValues>(initialValues);
+export function useProductModifierForm(
+  initial: ProductModifierFormValues = initialValues,
+) {
+  const state = useFormState<ProductModifierFormValues>(initial);
 
   return {
     ...state,
