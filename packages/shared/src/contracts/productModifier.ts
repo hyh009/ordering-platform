@@ -149,6 +149,9 @@ export type ProductModifierParams = z.infer<typeof productModifierParamsSchema>;
 export type ListProductModifiersSuccessResponse = ApiSuccessResponse<{
   productModifiers: ProductModifierDto[];
 }>;
+export type GetProductModifierSuccessResponse = ApiSuccessResponse<{
+  productModifier: ProductModifierDto;
+}>;
 export type CreateProductModifierSuccessResponse = ApiSuccessResponse<{
   productModifier: ProductModifierDto;
 }>;

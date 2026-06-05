@@ -6,6 +6,7 @@ export * from './contracts/metadata.js';
 export * from './contracts/menuShared.js';
 export * from './contracts/organization.js';
 export * from './contracts/pagination.js';
+export * from './contracts/product.js';
 export * from './contracts/productModifier.js';
 export * from './contracts/store.js';
 export * from './contracts/tag.js';

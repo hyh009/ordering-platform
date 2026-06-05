@@ -117,6 +117,23 @@ export class ProductModifierService {
     return productModifiers.map(toProductModifierDto);
   }
 
+  public async getProductModifier(
+    storeId: string,
+    productModifierId: string,
+  ): Promise<ProductModifierDto> {
+    const productModifier =
+      await productModifierRepository.findById(productModifierId);
+
+    if (!productModifier || productModifier.storeId !== storeId) {
+      throw new NotFoundError(
+        'Product modifier not found',
+        ERROR_CODES.PRODUCT_MODIFIER_NOT_FOUND,
+      );
+    }
+
+    return toProductModifierDto(productModifier);
+  }
+
   public async createProductModifier(
     storeId: string,
     organizationId: string,

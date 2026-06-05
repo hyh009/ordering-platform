@@ -13,6 +13,7 @@ import { Router } from 'express';
 import type {
   CreateProductModifierRequest,
   CreateProductModifierSuccessResponse,
+  GetProductModifierSuccessResponse,
   ListProductModifiersSuccessResponse,
   ProductModifierParams,
   ProductModifierStoreParams,
@@ -334,6 +335,21 @@ router.post<
     );
 
     res.status(201).json({ status: 'success', data: { productModifier } });
+  },
+);
+
+router.get<ProductModifierParams, GetProductModifierSuccessResponse>(
+  '/:productModifierId',
+  requireAuth,
+  requireOrgRole('org_owner', 'org_admin', 'staff'),
+  validate(productModifierParamsSchema, 'params'),
+  async (req, res) => {
+    const productModifier = await productModifierService.getProductModifier(
+      req.params.storeId,
+      req.params.productModifierId,
+    );
+
+    res.json({ status: 'success', data: { productModifier } });
   },
 );
 
