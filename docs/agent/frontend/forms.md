@@ -218,12 +218,12 @@ This file owns:
 Example:
 
 ```txt
-src/features/organization/components/organizationForm/
+src/features/components/organization/organizationForm/
   OrganizationForm.tsx
   useOrganizationForm.ts
   organizationFormErrors.ts
 
-src/features/organization/membership/components/addMemberForm/
+src/features/admin/organization/membership/components/addMemberForm/
   AddMemberForm.tsx
   useAddMemberForm.ts
   addMemberFormErrors.ts

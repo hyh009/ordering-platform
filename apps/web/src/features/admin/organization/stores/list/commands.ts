@@ -5,7 +5,9 @@ import {
 } from '@/services/utils/adminApiError';
 import type { OrganizationStoreListActions } from './actions';
 
-export type LoadOrganizationStoresResult = { status: 'loaded' } | AdminCommandFailure;
+export type LoadOrganizationStoresResult =
+  | { status: 'loaded' }
+  | AdminCommandFailure;
 
 export type OrganizationStoreListCommands = {
   loadStores(

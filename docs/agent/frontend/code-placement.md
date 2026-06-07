@@ -14,7 +14,7 @@ Use this quick map when deciding where new frontend code belongs.
 | Feature mutation command    | `apps/web/src/features/<area>/<resource>/mutations/commands.ts`                    | views, stores, services                        |
 | Request boundary validation | feature or page command that owns the submit/mutation flow                         | views, services                                |
 | Feature runtime wiring      | `apps/web/src/features/<area>/<resource>/<slice>/runtime.ts`                       | page components                                |
-| Domain reusable component   | `apps/web/src/features/<area>/<resource>/components/` or `<area>/components/`      | `shared/components`                            |
+| Domain reusable component   | feature-local `components/` or `features/components/<domain>/`                     | `shared/components`                            |
 | Project-generic UI control  | `apps/web/src/shared/components/`                                                  | domain feature folders                         |
 | API path constants          | `apps/web/src/api/paths/`                                                          | services, pages                                |
 | API service                 | `apps/web/src/services/`                                                           | commands, models                               |
@@ -33,6 +33,8 @@ Use this quick map when deciding where new frontend code belongs.
   web callers use them through the domain model public export when one exists.
 - Keep raw API DTOs out of pages, commands, actions, stores, and views.
 - Keep domain-specific components out of `apps/web/src/shared/components`.
+- Use `apps/web/src/features/components/<domain>/` for feature-owned components
+  that are reusable across actor folders such as `admin/` and `merchant/`.
 - Treat `features/<area>` as a reusable business capability area. Add a
   `<resource>` level when the area owns multiple collections or when it keeps
   list, detail, mutations, and components easier to scan.

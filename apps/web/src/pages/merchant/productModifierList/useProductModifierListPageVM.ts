@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
-import { createProductModifierListRuntime } from '@/features/menu/productModifiers/list/runtime';
+import { createProductModifierListRuntime } from '@/features/merchant/menu/productModifiers/list/runtime';
 import type {
   ProductModifier,
   ProductModifierActiveFilter,

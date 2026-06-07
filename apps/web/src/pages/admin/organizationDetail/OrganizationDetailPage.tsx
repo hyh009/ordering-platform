@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
-import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
+import { OrganizationForm } from '@/features/components/organization/organizationForm/OrganizationForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
@@ -148,14 +148,26 @@ function QuickAction({
     <Link
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted',
-        destructive ? 'text-destructive hover:bg-destructive/10' : 'text-foreground',
+        destructive
+          ? 'text-destructive hover:bg-destructive/10'
+          : 'text-foreground',
       )}
       to={href}
       state={state}
     >
-      <Icon className={cn('h-4 w-4 shrink-0', destructive ? 'text-destructive' : 'text-muted-foreground')} />
+      <Icon
+        className={cn(
+          'h-4 w-4 shrink-0',
+          destructive ? 'text-destructive' : 'text-muted-foreground',
+        )}
+      />
       <span className="flex-1">{label}</span>
-      <ChevronRight className={cn('h-3.5 w-3.5 shrink-0', destructive ? 'text-destructive/60' : 'text-muted-foreground/60')} />
+      <ChevronRight
+        className={cn(
+          'h-3.5 w-3.5 shrink-0',
+          destructive ? 'text-destructive/60' : 'text-muted-foreground/60',
+        )}
+      />
     </Link>
   );
 }
@@ -171,10 +183,18 @@ function OwnerRow({
     return <p className="px-3 py-2 text-xs text-muted-foreground">Loading…</p>;
   }
   if (!owner) {
-    return <p className="px-3 py-2 text-xs text-muted-foreground">No owner found.</p>;
+    return (
+      <p className="px-3 py-2 text-xs text-muted-foreground">No owner found.</p>
+    );
   }
   const initial = (owner.userEmail[0] ?? '?').toUpperCase();
-  const colors = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
+  const colors = [
+    'bg-violet-500',
+    'bg-blue-500',
+    'bg-emerald-500',
+    'bg-amber-500',
+    'bg-rose-500',
+  ];
   const colorIndex =
     owner.userEmail.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) %
     colors.length;
@@ -190,7 +210,9 @@ function OwnerRow({
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{owner.userUsername}</p>
-        <p className="truncate text-xs text-muted-foreground">{owner.userEmail}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {owner.userEmail}
+        </p>
       </div>
       <span className="ml-auto shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
         Owner
@@ -385,7 +407,10 @@ export function OrganizationDetailPage() {
               <DescriptionList
                 rows={[
                   {
-                    label: tDefault('admin.organizations.id', 'Organization ID'),
+                    label: tDefault(
+                      'admin.organizations.id',
+                      'Organization ID',
+                    ),
                     value: (
                       <span className="break-all font-mono text-xs text-muted-foreground">
                         {org.id}
@@ -469,7 +494,10 @@ export function OrganizationDetailPage() {
             <div className="rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-5 py-3.5">
                 <h3 className="text-sm font-semibold">
-                  {tDefault('admin.organizations.quickActionsTitle', '快速操作')}
+                  {tDefault(
+                    'admin.organizations.quickActionsTitle',
+                    '快速操作',
+                  )}
                 </h3>
               </div>
               <div className="p-2">
@@ -494,10 +522,7 @@ export function OrganizationDetailPage() {
                   destructive
                   href="#"
                   icon={Ban}
-                  label={tDefault(
-                    'admin.organizations.disable',
-                    '停用組織',
-                  )}
+                  label={tDefault('admin.organizations.disable', '停用組織')}
                 />
               </div>
             </div>

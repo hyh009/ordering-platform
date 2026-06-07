@@ -1,8 +1,8 @@
-import type { ProductModifierListActions } from '@/features/menu/productModifiers/list/actions';
+import type { ProductModifierListActions } from '@/features/merchant/menu/productModifiers/list/actions';
 import {
   createProductModifierListCommands,
   type LoadProductModifiersResult,
-} from '@/features/menu/productModifiers/list/commands';
+} from '@/features/merchant/menu/productModifiers/list/commands';
 import type { ProductModifierActiveFilter } from '@/models/productModifier';
 
 export type ProductModifierListPageCommands = {

@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { tDefault } from '@/app/i18n';
-import { createTagListRuntime } from '@/features/menu/tags/list/runtime';
+import { createTagListRuntime } from '@/features/merchant/menu/tags/list/runtime';
 import type { Tag, TagActiveFilter } from '@/models/tag';
 import { createTagListPageCommands } from './tagListPage.commands';
 import { toTagRequest, useTagForm, valuesFromTag } from './useTagForm';

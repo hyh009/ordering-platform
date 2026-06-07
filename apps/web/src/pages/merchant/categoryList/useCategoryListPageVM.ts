@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { tDefault } from '@/app/i18n';
-import { createCategoryListRuntime } from '@/features/menu/categories/list/runtime';
+import { createCategoryListRuntime } from '@/features/merchant/menu/categories/list/runtime';
 import type { Category, CategoryActiveFilter } from '@/models/category';
 import { createCategoryListPageCommands } from './categoryListPage.commands';
 import {

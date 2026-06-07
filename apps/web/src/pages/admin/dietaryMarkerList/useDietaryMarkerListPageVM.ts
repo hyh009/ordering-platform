@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createDietaryMarkerListRuntime } from '@/features/metadata/dietaryMarkers/list/runtime';
+import { createDietaryMarkerListRuntime } from '@/features/admin/metadata/dietaryMarkers/list/runtime';
 import type { DietaryMarker, MetadataActiveFilter } from '@/models/metadata';
 import { createDietaryMarkerListPageCommands } from './dietaryMarkerListPage.commands';
 import {

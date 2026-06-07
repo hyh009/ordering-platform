@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { useOrganizationForm } from '@/features/organization/components/organizationForm/useOrganizationForm';
-import { createOrganizationListRuntime } from '@/features/organization/list/runtime';
+import { useOrganizationForm } from '@/features/components/organization/organizationForm/useOrganizationForm';
+import { createOrganizationListRuntime } from '@/features/admin/organization/list/runtime';
 import {
   DEFAULT_ORGANIZATION_LIST_SORT,
   type OrganizationReviewStatusFilter,
   type OrganizationStatusFilter,
-} from '@/features/organization/list/store';
+} from '@/features/admin/organization/list/store';
 import { toCreateOrganizationRequest } from '@/models/organization';
 import type { OrganizationListSortBy } from '@/models/organization';
 import type { DataTableSort } from '@/shared/components/DataTable';
@@ -154,7 +154,13 @@ export function useOrganizationListPageVM() {
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [closeCreateModal, commands, form, loadCurrentQueryPage, pagination.limit]);
+  }, [
+    closeCreateModal,
+    commands,
+    form,
+    loadCurrentQueryPage,
+    pagination.limit,
+  ]);
 
   return {
     changeLimit,

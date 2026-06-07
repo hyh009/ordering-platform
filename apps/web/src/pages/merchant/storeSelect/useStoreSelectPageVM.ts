@@ -4,13 +4,13 @@ import { useStore } from 'zustand';
 import { activeOrgStore } from '@/app/global/activeOrg/activeOrg.store';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
-import { createStoreListRuntime } from '@/features/store/storeList/runtime';
+import { createStoreListRuntime } from '@/features/merchant/store/list/runtime';
 import { createStoreSelectPageCommands } from './storeSelectPage.commands';
 
 export function useStoreSelectPageVM() {
   const runtime = useMemo(() => createStoreListRuntime(), []);
   const commands = useMemo(
-    () => createStoreSelectPageCommands(runtime),
+    () => createStoreSelectPageCommands(runtime.actions),
     [runtime],
   );
 

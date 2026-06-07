@@ -3,7 +3,7 @@ import { Pencil } from 'lucide-react';
 import { organizationMembershipRoles } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
-import { AddMemberForm } from '@/features/organization/membership/components/addMemberForm/AddMemberForm';
+import { AddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/AddMemberForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
@@ -12,7 +12,10 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
-import type { OrganizationMembership, OrganizationMembershipRole } from '@/models/organizationMembership';
+import type {
+  OrganizationMembership,
+  OrganizationMembershipRole,
+} from '@/models/organizationMembership';
 import { useOrganizationMembershipsPageVM } from './useOrganizationMembershipsPageVM';
 
 const ROLE_LABELS: Record<OrganizationMembershipRole, string> = {
@@ -100,7 +103,9 @@ export function OrganizationMembershipsPage() {
       href: PATHS.SUPER_ADMIN.ORGANIZATIONS,
     },
     {
-      label: organizationName ?? tDefault('admin.organizations.singular', 'Organization'),
+      label:
+        organizationName ??
+        tDefault('admin.organizations.singular', 'Organization'),
       href: PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
     },
     { label: tDefault('admin.memberships.title', 'Members') },
@@ -277,7 +282,11 @@ export function OrganizationMembershipsPage() {
                 <span />
               )}
               <div className="flex gap-2">
-                <Button onClick={vm.closeEditModal} type="button" variant="ghost">
+                <Button
+                  onClick={vm.closeEditModal}
+                  type="button"
+                  variant="ghost"
+                >
                   {tDefault('common.actions.cancel', 'Cancel')}
                 </Button>
                 <Button
@@ -305,7 +314,9 @@ export function OrganizationMembershipsPage() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
               <MemberAvatar email={vm.editTarget.userEmail} />
               <div className="min-w-0">
-                <p className="truncate font-semibold">{vm.editTarget.userUsername}</p>
+                <p className="truncate font-semibold">
+                  {vm.editTarget.userUsername}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {vm.editTarget.userEmail}
                 </p>

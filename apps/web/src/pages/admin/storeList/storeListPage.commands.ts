@@ -1,13 +1,16 @@
-import type { OrganizationStoreListActions } from '@/features/organization/storeList/actions';
+import type { OrganizationStoreListActions } from '@/features/admin/organization/stores/list/actions';
 import {
   createOrganizationStoreListCommands,
   type OrganizationStoreListCommands,
   type LoadOrganizationStoresResult,
-} from '@/features/organization/storeList/commands';
+} from '@/features/admin/organization/stores/list/commands';
 
 export type { LoadOrganizationStoresResult };
 
-export type StoreListPageCommands = Pick<OrganizationStoreListCommands, 'loadStores'>;
+export type StoreListPageCommands = Pick<
+  OrganizationStoreListCommands,
+  'loadStores'
+>;
 
 export function createStoreListPageCommands(
   actions: OrganizationStoreListActions,

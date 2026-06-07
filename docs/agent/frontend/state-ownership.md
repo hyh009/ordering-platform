@@ -45,7 +45,7 @@ Do not move state into global, feature, or shared stores based on speculation.
    Example:
 
    ```txt
-   src/features/organization/components/organizationForm/
+   src/features/components/organization/organizationForm/
      OrganizationForm.tsx
      useOrganizationForm.ts
    ```

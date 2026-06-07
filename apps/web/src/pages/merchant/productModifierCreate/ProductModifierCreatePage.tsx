@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
-import { ModifierOptionsEditTable } from '@/features/menu/productModifiers/components/productModifierForm/ModifierOptionsEditTable';
-import { ModifierSelectionTypeFields } from '@/features/menu/productModifiers/components/productModifierForm/ModifierSelectionTypeFields';
+import { ModifierOptionsEditTable } from '@/features/merchant/menu/productModifiers/components/productModifierForm/ModifierOptionsEditTable';
+import { ModifierSelectionTypeFields } from '@/features/merchant/menu/productModifiers/components/productModifierForm/ModifierSelectionTypeFields';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { Field } from '@/shared/components/form/Field';
 import { Button } from '@/shared/components/ui/button';

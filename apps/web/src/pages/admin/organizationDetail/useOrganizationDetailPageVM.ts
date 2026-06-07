@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
-import { createOrganizationDetailRuntime } from '@/features/organization/detail/runtime';
-import { useOrganizationForm } from '@/features/organization/components/organizationForm/useOrganizationForm';
+import { createOrganizationDetailRuntime } from '@/features/admin/organization/detail/runtime';
+import { useOrganizationForm } from '@/features/components/organization/organizationForm/useOrganizationForm';
 import {
   toUpdateOrganizationRequest,
   valuesFromOrganization,
@@ -105,7 +105,13 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [discardAndCloseEditModal, commands, form, organizationId, loadOrganization]);
+  }, [
+    discardAndCloseEditModal,
+    commands,
+    form,
+    organizationId,
+    loadOrganization,
+  ]);
 
   const reviewOrganization = useCallback(
     async (reviewStatus: 'approved' | 'rejected') => {

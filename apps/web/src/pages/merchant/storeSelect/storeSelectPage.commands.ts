@@ -1,11 +1,14 @@
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
-import { createStoreListRuntime } from '@/features/store/storeList/runtime';
+import type { StoreListActions } from '@/features/merchant/store/list/runtime';
+import { createStoreListCommands } from '@/features/merchant/store/list/commands';
 
 export function createStoreSelectPageCommands(
-  storeListRuntime: ReturnType<typeof createStoreListRuntime>,
+  storeListActions: StoreListActions,
 ) {
+  const storeListCommands = createStoreListCommands(storeListActions);
+
   return {
-    loadStores: storeListRuntime.commands.loadStores,
+    loadStores: storeListCommands.loadStores,
 
     selectStore(storeId: string, organizationId: string) {
       activeStoreCommands.setStore(storeId, organizationId);

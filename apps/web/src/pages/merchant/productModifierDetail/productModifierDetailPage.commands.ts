@@ -1,15 +1,15 @@
-import type { ProductModifierDetailActions } from '@/features/menu/productModifiers/detail/actions';
+import type { ProductModifierDetailActions } from '@/features/merchant/menu/productModifiers/detail/actions';
 import {
   createProductModifierDetailCommands,
   type LoadModifierResult,
-} from '@/features/menu/productModifiers/detail/commands';
-import { createProductModifierMutationCommands } from '@/features/menu/productModifiers/mutations/commands';
+} from '@/features/merchant/menu/productModifiers/detail/commands';
+import { createProductModifierMutationCommands } from '@/features/merchant/menu/productModifiers/mutations/commands';
 import type {
   ProductModifier,
   UpdateProductModifierRequest,
 } from '@/models/productModifier';
 import type { MerchantCommandFailure } from '@/services/utils/merchantApiError';
-import type { ProductModifierCommandFieldErrors } from '@/features/menu/productModifiers/components/productModifierForm/productModifierFormErrors';
+import type { ProductModifierCommandFieldErrors } from '@/features/merchant/menu/productModifiers/components/productModifierForm/productModifierFormErrors';
 
 export type { LoadModifierResult };
 

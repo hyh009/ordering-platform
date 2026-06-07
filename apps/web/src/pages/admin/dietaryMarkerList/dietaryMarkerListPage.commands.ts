@@ -1,13 +1,13 @@
-import type { DietaryMarkerListActions } from '@/features/metadata/dietaryMarkers/list/actions';
+import type { DietaryMarkerListActions } from '@/features/admin/metadata/dietaryMarkers/list/actions';
 import {
   createDietaryMarkerListCommands,
   type DietaryMarkerListCommands,
   type LoadDietaryMarkersResult,
-} from '@/features/metadata/dietaryMarkers/list/commands';
+} from '@/features/admin/metadata/dietaryMarkers/list/commands';
 import {
   createDietaryMarkerMutationCommands,
   type SaveDietaryMarkerResult,
-} from '@/features/metadata/dietaryMarkers/mutations/commands';
+} from '@/features/admin/metadata/dietaryMarkers/mutations/commands';
 import type {
   CreateDietaryMarkerRequest,
   MetadataActiveFilter,

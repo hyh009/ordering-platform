@@ -20,7 +20,7 @@ import {
 import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
-} from '@/features/organization/components/organizationForm/organizationFormErrors';
+} from '@/features/components/organization/organizationForm/organizationFormErrors';
 import type { OrganizationListActions } from './actions';
 
 export type OrganizationListCommandFieldErrors = OrganizationFormFieldErrors;

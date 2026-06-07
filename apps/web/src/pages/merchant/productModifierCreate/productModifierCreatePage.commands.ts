@@ -1,10 +1,10 @@
-import { createProductModifierMutationCommands } from '@/features/menu/productModifiers/mutations/commands';
+import { createProductModifierMutationCommands } from '@/features/merchant/menu/productModifiers/mutations/commands';
 import type {
   CreateProductModifierRequest,
   ProductModifier,
 } from '@/models/productModifier';
 import type { MerchantCommandFailure } from '@/services/utils/merchantApiError';
-import type { ProductModifierCommandFieldErrors } from '@/features/menu/productModifiers/components/productModifierForm/productModifierFormErrors';
+import type { ProductModifierCommandFieldErrors } from '@/features/merchant/menu/productModifiers/components/productModifierForm/productModifierFormErrors';
 
 export type CreateModifierResult =
   | { modifier: ProductModifier; status: 'created' }

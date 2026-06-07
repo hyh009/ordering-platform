@@ -6,7 +6,7 @@ import { PATHS } from '@/app/routing/paths';
 import {
   useProductModifierForm,
   toProductModifierRequest,
-} from '@/features/menu/productModifiers/components/productModifierForm/useProductModifierForm';
+} from '@/features/merchant/menu/productModifiers/components/productModifierForm/useProductModifierForm';
 import { createProductModifierCreatePageCommands } from './productModifierCreatePage.commands';
 
 const productModifierCreatePageCommands =

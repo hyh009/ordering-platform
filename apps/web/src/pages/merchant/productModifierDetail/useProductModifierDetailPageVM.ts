@@ -4,12 +4,12 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
-import { createProductModifierDetailRuntime } from '@/features/menu/productModifiers/detail/runtime';
+import { createProductModifierDetailRuntime } from '@/features/merchant/menu/productModifiers/detail/runtime';
 import {
   useProductModifierForm,
   valuesFromProductModifier,
   toProductModifierRequest,
-} from '@/features/menu/productModifiers/components/productModifierForm/useProductModifierForm';
+} from '@/features/merchant/menu/productModifiers/components/productModifierForm/useProductModifierForm';
 import { getLocalizedText } from '@/models/metadata';
 import { createProductModifierDetailPageCommands } from './productModifierDetailPage.commands';
 

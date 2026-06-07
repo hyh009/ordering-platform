@@ -2,7 +2,7 @@ import { tDefault } from '@/app/i18n';
 import {
   mapOrganizationValidationIssuesToFieldErrors,
   type OrganizationFormFieldErrors,
-} from '@/features/organization/components/organizationForm/organizationFormErrors';
+} from '@/features/components/organization/organizationForm/organizationFormErrors';
 import { updateOrganizationSchema } from '@/models/organization';
 import type {
   Organization,

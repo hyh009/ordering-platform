@@ -4,9 +4,9 @@ import { updateOrganizationMembershipSchema } from '@repo/shared';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
-import { useAddMemberForm } from '@/features/organization/membership/components/addMemberForm/useAddMemberForm';
-import { validateAddMemberForm } from '@/features/organization/membership/components/addMemberForm/addMemberFormErrors';
-import { createOrganizationMembershipListRuntime } from '@/features/organization/membership/runtime';
+import { useAddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/useAddMemberForm';
+import { validateAddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/addMemberFormErrors';
+import { createOrganizationMembershipListRuntime } from '@/features/admin/organization/membership/runtime';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 import {
   toDisableOrganizationMembershipRequest,
@@ -33,7 +33,9 @@ const initialEditForm = {
 };
 
 export function useOrganizationMembershipsPageVM(organizationId: string) {
-  const [{ commands, store }] = useState(createOrganizationMembershipsPageContext);
+  const [{ commands, store }] = useState(
+    createOrganizationMembershipsPageContext,
+  );
   const feedbackVM = useFeedbackVM();
   const addForm = useAddMemberForm();
 
@@ -104,12 +106,18 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
   }, [commands, organizationId, addForm, loadPage, pagination]);
 
   // Edit membership modal
-  const [editTarget, setEditTarget] = useState<OrganizationMembership | null>(null);
+  const [editTarget, setEditTarget] = useState<OrganizationMembership | null>(
+    null,
+  );
   const [editForm, setEditForm] = useState(initialEditForm);
 
   const openEditModal = useCallback((membership: OrganizationMembership) => {
     setEditTarget(membership);
-    setEditForm({ isSubmitting: false, submitError: null, role: membership.role });
+    setEditForm({
+      isSubmitting: false,
+      submitError: null,
+      role: membership.role,
+    });
   }, []);
 
   const closeEditModal = useCallback(() => {
@@ -123,13 +131,18 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
   const submitEdit = useCallback(async () => {
     if (!editTarget) return;
 
-    const request = toUpdateOrganizationMembershipRoleRequest({ role: editForm.role });
+    const request = toUpdateOrganizationMembershipRoleRequest({
+      role: editForm.role,
+    });
     const validation = updateOrganizationMembershipSchema.safeParse(request);
 
     if (!validation.success) {
       setEditForm((prev) => ({
         ...prev,
-        submitError: tDefault('admin.errors.validation', 'Check the highlighted fields and try again.'),
+        submitError: tDefault(
+          'admin.errors.validation',
+          'Check the highlighted fields and try again.',
+        ),
       }));
       return;
     }
@@ -145,7 +158,10 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     if (result.status === 'saved') {
       setEditTarget(null);
       feedbackCommands.toast({
-        message: tDefault('admin.memberships.updateSuccess', 'Membership updated.'),
+        message: tDefault(
+          'admin.memberships.updateSuccess',
+          'Membership updated.',
+        ),
         tone: 'success',
       });
       return;
@@ -184,7 +200,10 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     if (result.status === 'saved') {
       setEditTarget(null);
       feedbackCommands.toast({
-        message: tDefault('admin.memberships.disableSuccess', 'Membership disabled.'),
+        message: tDefault(
+          'admin.memberships.disableSuccess',
+          'Membership disabled.',
+        ),
         tone: 'success',
       });
       return;

@@ -87,6 +87,13 @@ Folder names:
 
 - `<businessArea>` is the frontend capability area, such as `menu`,
   `metadata`, or `organizationManagement`.
+- Use actor folders such as `admin/` or `merchant/` when the capability is
+  actor-specific. Merchant features are scoped to the active organization by
+  default; do not add another `organization/` level only to express that scope.
+- Put actor-neutral domains directly under `src/features/`, without an
+  `admin/` or `merchant/` prefix.
+- Use `components/` directly under `src/features/` only for feature-owned
+  components that are reusable across actor folders, such as admin and merchant.
 - `<resource>` is the collection being operated on, such as
   `productModifiers`, `categories`, `tags`, or `allergens`.
 - Not every resource needs every slice. Add only the slices that resource has.
@@ -198,14 +205,5 @@ src/features/<area>/<resource>/components/<componentName>/
   use<ComponentName>Form.ts
 ```
 
-## Related Docs
-
-- `docs/agent/frontend/architecture-diagram.md` for the quick folder and flow map.
-- `docs/agent/frontend/architecture-validation.md` for boundary checks before finishing.
-- `docs/agent/frontend/code-placement.md` for the quick code placement map.
-- `docs/agent/frontend/state-ownership.md` for app/global vs feature vs page vs component state.
-- `docs/agent/frontend/commands.md` for page commands, feature commands, wrappers, overrides, and runtime wiring.
-- `docs/agent/frontend/forms.md` for page-local form state and submit flow.
-- `docs/agent/frontend/shared-components.md` for component ownership and shared import rules.
-- `docs/agent/frontend/reusable-primitives.md` for shared hooks, helpers, utilities, and app-wide runtime modules.
-- `docs/agent/frontend/error-feedback.md` for API error mapping and inline error state.
+Use `docs/agent/index.yaml` to choose the smallest focused guide for detailed
+frontend rules.

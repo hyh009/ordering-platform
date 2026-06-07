@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
 import { PATHS } from '@/app/routing/paths';
-import { createOrganizationStoreListRuntime } from '@/features/organization/storeList/runtime';
+import { createOrganizationStoreListRuntime } from '@/features/admin/organization/stores/list/runtime';
 import {
   useOffsetPaginationControls,
   type OffsetPaginationLoadPageInput,

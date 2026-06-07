@@ -3,8 +3,8 @@ import {
   type LoadOrganizationDetailResult,
   type OrganizationDetailCommands,
   type SaveOrganizationDetailResult,
-} from '@/features/organization/detail/commands';
-import type { OrganizationDetailActions } from '@/features/organization/detail/actions';
+} from '@/features/admin/organization/detail/commands';
+import type { OrganizationDetailActions } from '@/features/admin/organization/detail/actions';
 
 export type LoadOrganizationResult = LoadOrganizationDetailResult;
 export type { SaveOrganizationDetailResult };

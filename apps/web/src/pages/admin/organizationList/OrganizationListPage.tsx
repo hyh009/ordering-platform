@@ -1,12 +1,12 @@
 import { Link } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
-import { OrganizationForm } from '@/features/organization/components/organizationForm/OrganizationForm';
-import { ReviewStatusBadge } from '@/features/organization/components/ReviewStatusBadge';
+import { OrganizationForm } from '@/features/components/organization/organizationForm/OrganizationForm';
+import { ReviewStatusBadge } from '@/features/admin/organization/components/ReviewStatusBadge';
 import type {
   OrganizationReviewStatusFilter,
   OrganizationStatusFilter,
-} from '@/features/organization/list/store';
+} from '@/features/admin/organization/list/store';
 import type { OrganizationListItem } from '@/models/organization';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
@@ -34,7 +34,10 @@ export function OrganizationListPage() {
     },
   ];
 
-  const reviewStatusOptions: { label: string; value: OrganizationReviewStatusFilter }[] = [
+  const reviewStatusOptions: {
+    label: string;
+    value: OrganizationReviewStatusFilter;
+  }[] = [
     {
       label: tDefault('admin.organizations.reviewFilter.all', 'All reviews'),
       value: 'all',

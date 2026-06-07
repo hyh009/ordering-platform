@@ -1,13 +1,13 @@
-import type { AllergenListActions } from '@/features/metadata/allergens/list/actions';
+import type { AllergenListActions } from '@/features/admin/metadata/allergens/list/actions';
 import {
   createAllergenListCommands,
   type AllergenListCommands,
   type LoadAllergensResult,
-} from '@/features/metadata/allergens/list/commands';
+} from '@/features/admin/metadata/allergens/list/commands';
 import {
   createAllergenMutationCommands,
   type SaveAllergenResult,
-} from '@/features/metadata/allergens/mutations/commands';
+} from '@/features/admin/metadata/allergens/mutations/commands';
 import type {
   CreateAllergenRequest,
   MetadataActiveFilter,

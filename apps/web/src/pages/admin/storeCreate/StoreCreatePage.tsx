@@ -1,6 +1,6 @@
 import { useLocation, useParams } from 'react-router';
 import { PATHS } from '@/app/routing/paths';
-import { StoreForm } from '@/features/store/components/storeForm/StoreForm';
+import { StoreForm } from '@/features/components/store/storeForm/StoreForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { Button } from '@/shared/components/ui/button';
 import { useStoreCreatePageVM } from './useStoreCreatePageVM';

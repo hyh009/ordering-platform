@@ -1,14 +1,14 @@
-import type { CategoryListActions } from '@/features/menu/categories/list/actions';
+import type { CategoryListActions } from '@/features/merchant/menu/categories/list/actions';
 import {
   createCategoryListCommands,
   type CategoryListCommands,
   type LoadCategoriesResult,
   type ReorderCategoriesResult,
-} from '@/features/menu/categories/list/commands';
+} from '@/features/merchant/menu/categories/list/commands';
 import {
   createCategoryMutationCommands,
   type SaveCategoryResult,
-} from '@/features/menu/categories/mutations/commands';
+} from '@/features/merchant/menu/categories/mutations/commands';
 import type {
   CategoryActiveFilter,
   CreateCategoryRequest,

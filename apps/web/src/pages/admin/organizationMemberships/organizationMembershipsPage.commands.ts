@@ -1,10 +1,10 @@
-import type { OrganizationMembershipListActions } from '@/features/organization/membership/actions';
+import type { OrganizationMembershipListActions } from '@/features/admin/organization/membership/actions';
 import {
   createOrganizationMembershipListCommands,
   type LoadMembershipsResult,
   type OrganizationMembershipListCommands,
   type SaveMembershipResult,
-} from '@/features/organization/membership/commands';
+} from '@/features/admin/organization/membership/commands';
 
 export type { LoadMembershipsResult, SaveMembershipResult };
 

@@ -1,13 +1,13 @@
-import type { TagListActions } from '@/features/menu/tags/list/actions';
+import type { TagListActions } from '@/features/merchant/menu/tags/list/actions';
 import {
   createTagListCommands,
   type LoadTagsResult,
   type TagListCommands,
-} from '@/features/menu/tags/list/commands';
+} from '@/features/merchant/menu/tags/list/commands';
 import {
   createTagMutationCommands,
   type SaveTagResult,
-} from '@/features/menu/tags/mutations/commands';
+} from '@/features/merchant/menu/tags/mutations/commands';
 import type {
   CreateTagRequest,
   TagActiveFilter,

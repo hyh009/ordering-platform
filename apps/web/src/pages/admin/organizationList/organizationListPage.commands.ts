@@ -1,10 +1,10 @@
-import type { OrganizationListActions } from '@/features/organization/list/actions';
+import type { OrganizationListActions } from '@/features/admin/organization/list/actions';
 import {
   createOrganizationListCommands,
   type LoadOrganizationsResult,
   type OrganizationListCommands,
   type SaveOrganizationListResult,
-} from '@/features/organization/list/commands';
+} from '@/features/admin/organization/list/commands';
 
 export type { LoadOrganizationsResult };
 export type SaveOrganizationResult = SaveOrganizationListResult;
