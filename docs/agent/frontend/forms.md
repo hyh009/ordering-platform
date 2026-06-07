@@ -84,13 +84,17 @@ of the API request. Do not send page-only fields to commands, services, or APIs.
 
 Field errors and submit errors are user-facing text. Build them with the app i18n helper, such as `tDefault(...)`, before storing them in page-local form state. Map schema or library validation issues to app i18n messages, and do not show raw validation-library messages such as `issue.message` in the UI.
 
-The commands file owns:
+Submit or mutation commands own:
 
 - validate request input before service calls
 - call services
 - map API errors
-- call feature actions when a submit result should update feature store state
 - return typed page outcomes to the VM
+
+Page commands or page VMs own API-after side effects, such as reloading
+confirmed feature state, closing modals, showing toast, resetting forms, or
+navigating. Follow `docs/agent/frontend/commands.md` for read-slice commands,
+mutation commands, and page command wrappers.
 
 The page VM connects the local form hook to commands.
 
@@ -155,7 +159,7 @@ On save:
 
 - pass the page-local draft values to the command
 - call the service
-- reload or update confirmed feature state after success
+- reload or update confirmed feature state through the page flow after success
 - reset or realign the page-local draft state after success
 
 ## Form Labels And Options

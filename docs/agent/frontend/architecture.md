@@ -51,7 +51,8 @@ Put page-specific files together:
 
 - page component
 - page VM hook
-- page commands, when the page selects, wraps, or overrides feature commands
+- page commands for page-owned async flows, including thin wrappers around
+  feature read or mutation commands
 - page-local form hooks
 
 Page folders are private to their route. Do not import VM hooks, form hooks,

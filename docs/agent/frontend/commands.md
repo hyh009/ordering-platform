@@ -37,8 +37,8 @@ reorder, archive, and restore.
 If `mutations/commands.ts` becomes too large, propose a focused split inside
 `mutations/` before making the change.
 
-Use page commands to select, wrap, or override feature slice commands for one
-page:
+Use page commands for page-owned async flows. Keep a page command wrapper even
+when it only forwards to a feature read or mutation command:
 
 ```txt
 src/pages/<pageName>/<pageName>Page.commands.ts
@@ -49,6 +49,11 @@ Feature commands must not import from `src/pages`.
 Page commands are private to their page folder. Do not import one page command
 from another page. Extract shared command behavior into a feature slice command,
 then wrap it from each page command.
+
+Page VMs call their page command for submit and mutation flows. The page command
+selects the feature command, passes page context such as route params or active
+store IDs, and owns any page-specific composition. Keep the wrapper thin when no
+extra composition is needed.
 
 Do not create broad domain commands that mix different read slices, such as list
 and detail reads. Put collection writes in `mutations/commands.ts` when read
@@ -235,8 +240,8 @@ Use feature read-slice commands for default async behavior tied to that
 slice/store. Use feature mutation commands for reusable write behavior tied to
 one resource collection.
 
-Do not add option-heavy shared commands to cover many page variations. If a page
-needs different behavior, wrap the shared command or create a page command.
+Do not add option-heavy shared commands to cover many page variations. Wrap the
+shared command in the page command for that page.
 
 Do not add page-behavior options to reusable mutation commands, such as
 `updateCategory(..., { reload: true })`. API-after side effects belong to the
@@ -250,9 +255,9 @@ After a mutation succeeds, page commands or page VMs own the reaction:
 - navigate to list or detail
 - show toast or confirmation feedback
 
-Keep simple reactions in the page VM. Move the reaction into a page command when
-the page needs to compose multiple feature commands, apply a reload strategy, or
-share the same page-specific flow across handlers.
+Keep simple UI reactions in the page VM. Keep feature command selection and
+submit/mutation calls in the page command, even when the page VM owns the final
+reaction such as navigation or modal state.
 
 Management pages should reload server data after create, update, or delete
 unless a local patch is deliberately required for the interaction.

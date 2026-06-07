@@ -78,6 +78,8 @@ Follow `docs/agent/frontend/state-ownership.md`.
 Determine whether the feature has async flows. If yes, add or update commands.
 
 - Page commands live with the page under `apps/web/src/pages/<page>/`.
+- Page VMs call page commands for page-owned async flows; keep the wrapper even
+  when it only forwards to a feature command.
 - Feature read commands live under
   `apps/web/src/features/<area>/<resource>/list/` or
   `apps/web/src/features/<area>/<resource>/detail/`.
