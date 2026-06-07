@@ -16,10 +16,6 @@ export function createProductModifierDetailActions(
     loadFailed(error: string) {
       store.setState({ isLoading: false, error });
     },
-
-    modifierUpdated(modifier: ProductModifier) {
-      store.setState({ modifier });
-    },
   };
 }
 

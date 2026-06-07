@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
-import { ModifierOptionsEditTable } from '@/features/menu/components/productModifierForm/ModifierOptionsEditTable';
-import { ModifierSelectionTypeFields } from '@/features/menu/components/productModifierForm/ModifierSelectionTypeFields';
+import { ModifierOptionsEditTable } from '@/features/menu/productModifiers/components/productModifierForm/ModifierOptionsEditTable';
+import { ModifierSelectionTypeFields } from '@/features/menu/productModifiers/components/productModifierForm/ModifierSelectionTypeFields';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { Field } from '@/shared/components/form/Field';
 import { Button } from '@/shared/components/ui/button';
@@ -82,7 +82,10 @@ export function ProductModifierCreatePage() {
 
           {form.values.options.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {tDefault('merchant.productModifiers.noOptions', 'Add at least one option.')}
+              {tDefault(
+                'merchant.productModifiers.noOptions',
+                'Add at least one option.',
+              )}
             </p>
           ) : (
             <ModifierOptionsEditTable form={form} />

@@ -1,6 +1,10 @@
 import { tDefault } from '@/app/i18n';
-import { updateProductModifierSchema } from '@/models/productModifier';
+import {
+  createProductModifierSchema,
+  updateProductModifierSchema,
+} from '@/models/productModifier';
 import type {
+  CreateProductModifierRequest,
   ProductModifier,
   UpdateProductModifierRequest,
 } from '@/models/productModifier';
@@ -13,52 +17,57 @@ import {
   mapProductModifierFieldErrors,
   type ProductModifierCommandFieldErrors,
 } from '../components/productModifierForm/productModifierFormErrors';
-import type { ProductModifierDetailActions } from './actions';
 
 export type { ProductModifierCommandFieldErrors };
 
-export type LoadModifierResult = { status: 'loaded' } | MerchantCommandFailure;
-
-export type SaveModifierResult =
+export type SaveProductModifierResult =
   | { modifier: ProductModifier; status: 'saved' }
-  | (MerchantCommandFailure & { fieldErrors?: ProductModifierCommandFieldErrors });
+  | (MerchantCommandFailure & {
+      fieldErrors?: ProductModifierCommandFieldErrors;
+    });
 
-export type ProductModifierDetailCommands = {
-  loadModifier(
+export type ProductModifierMutationCommands = {
+  createProductModifier(
     storeId: string,
-    productModifierId: string,
-  ): Promise<LoadModifierResult>;
-  updateModifier(
+    input: CreateProductModifierRequest,
+  ): Promise<SaveProductModifierResult>;
+  updateProductModifier(
     storeId: string,
     productModifierId: string,
     input: UpdateProductModifierRequest,
-  ): Promise<SaveModifierResult>;
+  ): Promise<SaveProductModifierResult>;
 };
 
-export function createProductModifierDetailCommands(
-  actions: ProductModifierDetailActions,
-): ProductModifierDetailCommands {
+export function createProductModifierMutationCommands(): ProductModifierMutationCommands {
   return {
-    async loadModifier(storeId, productModifierId) {
-      actions.loadStarted();
+    async createProductModifier(storeId, input) {
+      const validation = createProductModifierSchema.safeParse(input);
+
+      if (!validation.success) {
+        return {
+          fieldErrors: mapProductModifierFieldErrors(validation.error.issues),
+          message: tDefault(
+            'merchant.errors.validation',
+            'Check the highlighted fields and try again.',
+          ),
+          reason: 'invalid',
+          status: 'failed',
+        };
+      }
 
       try {
-        const modifier = await productModifierService.getProductModifier(
+        const modifier = await productModifierService.createProductModifier(
           storeId,
-          productModifierId,
+          input,
         );
 
-        actions.loadSucceeded(modifier);
-        return { status: 'loaded' };
+        return { modifier, status: 'saved' };
       } catch (error) {
-        const failure = mapMerchantApiError(error);
-
-        actions.loadFailed(failure.message);
-        return failure;
+        return mapMerchantApiError(error);
       }
     },
 
-    async updateModifier(storeId, productModifierId, input) {
+    async updateProductModifier(storeId, productModifierId, input) {
       const validation = updateProductModifierSchema.safeParse(input);
 
       if (!validation.success) {
@@ -80,7 +89,6 @@ export function createProductModifierDetailCommands(
           input,
         );
 
-        actions.modifierUpdated(modifier);
         return { modifier, status: 'saved' };
       } catch (error) {
         return mapMerchantApiError(error);

@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
-import { ModifierOptionsEditTable } from '@/features/menu/components/productModifierForm/ModifierOptionsEditTable';
-import { ModifierSelectionTypeFields } from '@/features/menu/components/productModifierForm/ModifierSelectionTypeFields';
+import { ModifierOptionsEditTable } from '@/features/menu/productModifiers/components/productModifierForm/ModifierOptionsEditTable';
+import { ModifierSelectionTypeFields } from '@/features/menu/productModifiers/components/productModifierForm/ModifierSelectionTypeFields';
 import { getLocalizedText } from '@/models/metadata';
 import type { ProductModifier } from '@/models/productModifier';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
@@ -49,8 +49,14 @@ function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
             </p>
             <p className="font-medium">
               {isSingleChoice
-                ? tDefault('merchant.productModifiers.singleChoice', 'Single choice')
-                : tDefault('merchant.productModifiers.multipleChoice', 'Multiple choice')}
+                ? tDefault(
+                    'merchant.productModifiers.singleChoice',
+                    'Single choice',
+                  )
+                : tDefault(
+                    'merchant.productModifiers.multipleChoice',
+                    'Multiple choice',
+                  )}
             </p>
           </div>
 
@@ -58,7 +64,10 @@ function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
             <p className="text-muted-foreground mb-0.5">
               {isSingleChoice
                 ? tDefault('merchant.productModifiers.required', 'Required')
-                : tDefault('merchant.productModifiers.selectRange', 'Select range')}
+                : tDefault(
+                    'merchant.productModifiers.selectRange',
+                    'Select range',
+                  )}
             </p>
             <p className="font-medium">
               {isSingleChoice
@@ -104,7 +113,10 @@ function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
                   {tDefault('merchant.productModifiers.optionName', 'Name')}
                 </th>
                 <th className="px-4 py-2 text-right font-medium text-muted-foreground">
-                  {tDefault('merchant.productModifiers.priceAdjustment', 'Price adj.')}
+                  {tDefault(
+                    'merchant.productModifiers.priceAdjustment',
+                    'Price adj.',
+                  )}
                 </th>
                 <th className="px-4 py-2 text-center font-medium text-muted-foreground">
                   {tDefault('merchant.productModifiers.isDefault', 'Default')}
@@ -169,7 +181,10 @@ export function ProductModifierDetailPage() {
   if (vm.isLoading && !vm.modifier) {
     return (
       <LoadingState
-        label={tDefault('merchant.productModifiers.loading', 'Loading modifier')}
+        label={tDefault(
+          'merchant.productModifiers.loading',
+          'Loading modifier',
+        )}
       />
     );
   }
@@ -188,7 +203,8 @@ export function ProductModifierDetailPage() {
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold leading-tight md:text-4xl">
-            {vm.pageTitle || tDefault('merchant.productModifiers.untitled', 'Modifier')}
+            {vm.pageTitle ||
+              tDefault('merchant.productModifiers.untitled', 'Modifier')}
           </h1>
         </div>
 
@@ -210,7 +226,11 @@ export function ProductModifierDetailPage() {
       ) : null}
 
       {vm.isEditMode ? (
-        <form className="grid gap-5 max-w-2xl" id="modifier-edit-form" onSubmit={handleSubmit}>
+        <form
+          className="grid gap-5 max-w-2xl"
+          id="modifier-edit-form"
+          onSubmit={handleSubmit}
+        >
           {form.submitError ? (
             <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
               {form.submitError}
@@ -247,7 +267,10 @@ export function ProductModifierDetailPage() {
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">
-                {tDefault('merchant.productModifiers.optionsSection', 'Options')}
+                {tDefault(
+                  'merchant.productModifiers.optionsSection',
+                  'Options',
+                )}
               </h3>
               <Button
                 disabled={form.isSubmitting}
@@ -256,7 +279,10 @@ export function ProductModifierDetailPage() {
                 type="button"
                 variant="secondary"
               >
-                {tDefault('merchant.productModifiers.addOption', '+ Add option')}
+                {tDefault(
+                  'merchant.productModifiers.addOption',
+                  '+ Add option',
+                )}
               </Button>
             </div>
 
@@ -268,7 +294,10 @@ export function ProductModifierDetailPage() {
 
             {form.values.options.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {tDefault('merchant.productModifiers.noOptions', 'Add at least one option.')}
+                {tDefault(
+                  'merchant.productModifiers.noOptions',
+                  'Add at least one option.',
+                )}
               </p>
             ) : (
               <ModifierOptionsEditTable form={form} />

@@ -4,8 +4,11 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
-import { createProductModifierListRuntime } from '@/features/menu/productModifierList/runtime';
-import type { ProductModifier, ProductModifierActiveFilter } from '@/models/productModifier';
+import { createProductModifierListRuntime } from '@/features/menu/productModifiers/list/runtime';
+import type {
+  ProductModifier,
+  ProductModifierActiveFilter,
+} from '@/models/productModifier';
 import { createProductModifierListPageCommands } from './productModifierListPage.commands';
 
 function createProductModifierListPageContext() {

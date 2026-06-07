@@ -17,11 +17,17 @@ export function ModifierSelectionTypeFields({ form }: Props) {
 
   const selectionTypeOptions = [
     {
-      label: tDefault('merchant.productModifiers.singleChoice', 'Single choice'),
+      label: tDefault(
+        'merchant.productModifiers.singleChoice',
+        'Single choice',
+      ),
       value: 'single_choice',
     },
     {
-      label: tDefault('merchant.productModifiers.multipleChoice', 'Multiple choice'),
+      label: tDefault(
+        'merchant.productModifiers.multipleChoice',
+        'Multiple choice',
+      ),
       value: 'multiple_choice',
     },
   ];

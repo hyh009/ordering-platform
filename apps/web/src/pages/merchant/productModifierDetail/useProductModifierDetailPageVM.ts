@@ -4,18 +4,18 @@ import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
-import { createProductModifierDetailCommands } from '@/features/menu/productModifierDetail/commands';
-import { createProductModifierDetailRuntime } from '@/features/menu/productModifierDetail/runtime';
+import { createProductModifierDetailRuntime } from '@/features/menu/productModifiers/detail/runtime';
 import {
   useProductModifierForm,
   valuesFromProductModifier,
   toProductModifierRequest,
-} from '@/features/menu/components/productModifierForm/useProductModifierForm';
+} from '@/features/menu/productModifiers/components/productModifierForm/useProductModifierForm';
 import { getLocalizedText } from '@/models/metadata';
+import { createProductModifierDetailPageCommands } from './productModifierDetailPage.commands';
 
 function createDetailPageContext() {
   const { actions, store } = createProductModifierDetailRuntime();
-  const commands = createProductModifierDetailCommands(actions);
+  const commands = createProductModifierDetailPageCommands(actions);
 
   return { commands, store };
 }

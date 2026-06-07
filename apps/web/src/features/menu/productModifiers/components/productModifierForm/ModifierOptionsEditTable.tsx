@@ -23,7 +23,10 @@ export function ModifierOptionsEditTable({ form }: Props) {
               {tDefault('merchant.productModifiers.optionName', 'Name')}
             </th>
             <th className="px-3 py-2 text-right font-medium text-muted-foreground w-24">
-              {tDefault('merchant.productModifiers.priceAdjustment', 'Price adj.')}
+              {tDefault(
+                'merchant.productModifiers.priceAdjustment',
+                'Price adj.',
+              )}
             </th>
             <th className="px-3 py-2 text-center font-medium text-muted-foreground w-20">
               {tDefault('merchant.productModifiers.isDefault', 'Default')}
@@ -47,7 +50,9 @@ export function ModifierOptionsEditTable({ form }: Props) {
                 <LocalizedStringInput
                   defaultLocale="zh-TW"
                   disabled={form.isSubmitting}
-                  onChange={(value) => form.setOptionField(index, 'name', value)}
+                  onChange={(value) =>
+                    form.setOptionField(index, 'name', value)
+                  }
                   value={option.name}
                 />
               </td>
@@ -56,7 +61,11 @@ export function ModifierOptionsEditTable({ form }: Props) {
                   className="w-24 text-right"
                   disabled={form.isSubmitting}
                   onChange={(e) =>
-                    form.setOptionField(index, 'priceAdjustment', Number(e.target.value))
+                    form.setOptionField(
+                      index,
+                      'priceAdjustment',
+                      Number(e.target.value),
+                    )
                   }
                   step="1"
                   type="number"
@@ -68,7 +77,9 @@ export function ModifierOptionsEditTable({ form }: Props) {
                   checked={option.isDefault}
                   className="h-4 w-4"
                   disabled={form.isSubmitting}
-                  onChange={(e) => form.setOptionField(index, 'isDefault', e.target.checked)}
+                  onChange={(e) =>
+                    form.setOptionField(index, 'isDefault', e.target.checked)
+                  }
                   type="checkbox"
                 />
               </td>
@@ -77,7 +88,9 @@ export function ModifierOptionsEditTable({ form }: Props) {
                   checked={option.isActive}
                   className="h-4 w-4"
                   disabled={form.isSubmitting}
-                  onChange={(e) => form.setOptionField(index, 'isActive', e.target.checked)}
+                  onChange={(e) =>
+                    form.setOptionField(index, 'isActive', e.target.checked)
+                  }
                   type="checkbox"
                 />
               </td>
@@ -86,13 +99,17 @@ export function ModifierOptionsEditTable({ form }: Props) {
                   checked={option.isSoldOut}
                   className="h-4 w-4"
                   disabled={form.isSubmitting}
-                  onChange={(e) => form.setOptionField(index, 'isSoldOut', e.target.checked)}
+                  onChange={(e) =>
+                    form.setOptionField(index, 'isSoldOut', e.target.checked)
+                  }
                   type="checkbox"
                 />
               </td>
               <td className="px-3 py-2 text-center">
                 <Button
-                  disabled={form.isSubmitting || form.values.options.length <= 1}
+                  disabled={
+                    form.isSubmitting || form.values.options.length <= 1
+                  }
                   onClick={() => form.removeOption(index)}
                   size="icon-xs"
                   type="button"
