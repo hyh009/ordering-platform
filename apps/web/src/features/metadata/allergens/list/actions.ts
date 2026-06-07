@@ -25,20 +25,6 @@ export function createAllergenListActions(store: StoreApi<AllergenListState>) {
         isLoading: false,
       });
     },
-
-    allergenSaved(allergen: Allergen) {
-      store.setState((state) => {
-        const exists = state.allergens.some((item) => item.id === allergen.id);
-
-        return {
-          allergens: exists
-            ? state.allergens.map((item) =>
-                item.id === allergen.id ? allergen : item,
-              )
-            : [allergen, ...state.allergens],
-        };
-      });
-    },
   };
 }
 

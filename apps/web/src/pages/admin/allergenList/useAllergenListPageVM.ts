@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
-import { createAllergenListRuntime } from '@/features/metadata/allergenList/runtime';
+import { createAllergenListRuntime } from '@/features/metadata/allergens/list/runtime';
 import type { Allergen, MetadataActiveFilter } from '@/models/metadata';
 import { createAllergenListPageCommands } from './allergenListPage.commands';
 import {
@@ -54,7 +54,9 @@ export function useAllergenListPageVM() {
   // Only update filter state; the load effect (keyed on filter via
   // loadAllergens) issues the single resulting request. Loading here too would
   // double-fetch the same data on every filter change.
-  const setFilter = useCallback(function setFilter(nextFilter: MetadataActiveFilter) {
+  const setFilter = useCallback(function setFilter(
+    nextFilter: MetadataActiveFilter,
+  ) {
     setFilterState(nextFilter);
   }, []);
 
@@ -91,8 +93,12 @@ export function useAllergenListPageVM() {
 
     const result =
       modalMode.type === 'create'
-        ? await commands.createAllergen(toCreateAllergenRequest(form.values))
+        ? await commands.createAllergen(
+            filter,
+            toCreateAllergenRequest(form.values),
+          )
         : await commands.updateAllergen(
+            filter,
             modalMode.allergen.id,
             toUpdateAllergenRequest(form.values),
           );
@@ -101,7 +107,6 @@ export function useAllergenListPageVM() {
 
     if (result.status === 'saved') {
       closeModal();
-      await commands.loadAllergens(filter);
       return;
     }
 

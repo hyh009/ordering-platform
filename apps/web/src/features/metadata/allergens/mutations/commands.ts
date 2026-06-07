@@ -3,7 +3,6 @@ import { createAllergenSchema, updateAllergenSchema } from '@/models/metadata';
 import type {
   Allergen,
   CreateAllergenRequest,
-  MetadataActiveFilter,
   UpdateAllergenRequest,
 } from '@/models/metadata';
 import { metadataService } from '@/services/metadata.service';
@@ -11,18 +10,11 @@ import {
   mapAdminApiError,
   type AdminCommandFailure,
 } from '@/services/utils/adminApiError';
-import { mapMetadataFieldErrors } from '../metadataFieldErrors';
-import type { AllergenListActions } from './actions';
+import { mapMetadataFieldErrors } from '../../metadataFieldErrors';
 
 export type AllergenCommandFieldErrors = Partial<
   Record<'key' | 'name', string>
 >;
-
-export type LoadAllergensResult =
-  | {
-      status: 'loaded';
-    }
-  | AdminCommandFailure;
 
 export type SaveAllergenResult =
   | {
@@ -33,43 +25,24 @@ export type SaveAllergenResult =
       fieldErrors?: AllergenCommandFieldErrors;
     });
 
-export type AllergenListCommands = {
+export type AllergenMutationCommands = {
   createAllergen(input: CreateAllergenRequest): Promise<SaveAllergenResult>;
-  loadAllergens(isActive: MetadataActiveFilter): Promise<LoadAllergensResult>;
   updateAllergen(
     allergenId: string,
     input: UpdateAllergenRequest,
   ): Promise<SaveAllergenResult>;
 };
 
-export function createAllergenListCommands(
-  actions: AllergenListActions,
-): AllergenListCommands {
+export function createAllergenMutationCommands(): AllergenMutationCommands {
   return {
-    async loadAllergens(isActive) {
-      actions.loadStarted();
-
-      try {
-        const allergens = await metadataService.listAllergens(isActive);
-
-        actions.loadSucceeded(allergens);
-        return {
-          status: 'loaded',
-        };
-      } catch (error) {
-        const failure = mapAdminApiError(error);
-
-        actions.loadFailed(failure.message);
-        return failure;
-      }
-    },
-
     async createAllergen(input) {
       const validation = createAllergenSchema.safeParse(input);
 
       if (!validation.success) {
         return {
-          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(
+            validation.error.issues,
+          ),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -82,7 +55,6 @@ export function createAllergenListCommands(
       try {
         const allergen = await metadataService.createAllergen(input);
 
-        actions.allergenSaved(allergen);
         return {
           allergen,
           status: 'saved',
@@ -97,7 +69,9 @@ export function createAllergenListCommands(
 
       if (!validation.success) {
         return {
-          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(validation.error.issues),
+          fieldErrors: mapMetadataFieldErrors<AllergenCommandFieldErrors>(
+            validation.error.issues,
+          ),
           message: tDefault(
             'admin.errors.validation',
             'Check the highlighted fields and try again.',
@@ -113,7 +87,6 @@ export function createAllergenListCommands(
           input,
         );
 
-        actions.allergenSaved(allergen);
         return {
           allergen,
           status: 'saved',
