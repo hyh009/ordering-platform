@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react';
-import {
-  supportedLocales,
-  storeOrderTypes,
-  storeCheckoutModes,
-} from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
-import { getSupportedCustomerLocaleLabel } from '@/models/metadata';
+import {
+  getSupportedCustomerLocaleLabel,
+  supportedLocales,
+} from '@/models/metadata';
 import {
   getStoreCheckoutModeLabel,
   getStoreOrderTypeLabel,
+  storeCheckoutModes,
+  storeOrderTypes,
 } from '@/models/store';
 import { Field } from '@/shared/components/form/Field';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';

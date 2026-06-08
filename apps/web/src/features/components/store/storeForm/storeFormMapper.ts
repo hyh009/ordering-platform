@@ -1,4 +1,4 @@
-import type { CreateStoreRequest } from '@repo/shared';
+import type { CreateStoreRequest } from '@/models/store';
 import type { StoreFormValues } from './useStoreForm';
 
 export function toCreateStoreRequest(

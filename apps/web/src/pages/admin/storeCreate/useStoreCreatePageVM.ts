@@ -1,9 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { PATHS } from '@/app/routing/paths';
-import { validateStoreForm } from '@/features/components/store/storeForm/storeFormErrors';
+import { toCreateStoreRequest } from '@/features/components/store/storeForm/storeFormMapper';
 import { useStoreForm } from '@/features/components/store/storeForm/useStoreForm';
 import { createStoreCreatePageCommands } from './storeCreatePage.commands';
+
+const storeCreatePageCommands = createStoreCreatePageCommands();
 
 export function useStoreCreatePageVM(
   organizationId: string,
@@ -11,25 +13,21 @@ export function useStoreCreatePageVM(
 ) {
   const navigate = useNavigate();
   const form = useStoreForm();
-  const [commands] = useState(createStoreCreatePageCommands);
 
   const cancel = useCallback(() => {
     void navigate(PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId));
   }, [navigate, organizationId]);
 
   const submit = useCallback(async () => {
-    const validation = validateStoreForm(form.values);
-
-    if (!validation.success) {
-      form.setFieldErrors(validation.fieldErrors);
-      form.setSubmitError(validation.submitError);
-      return;
-    }
-
     form.setIsSubmitting(true);
     form.setSubmitError(null);
 
-    const result = await commands.createStore(organizationId, validation.data);
+    const result = await storeCreatePageCommands.createStore(
+      organizationId,
+      toCreateStoreRequest(form.values),
+    );
+
+    form.setIsSubmitting(false);
 
     if (result.status === 'created') {
       form.reset();
@@ -39,9 +37,9 @@ export function useStoreCreatePageVM(
       return;
     }
 
-    form.setIsSubmitting(false);
+    form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [commands, form, navigate, organizationId]);
+  }, [form, navigate, organizationId]);
 
   return {
     cancel,

@@ -1,10 +1,6 @@
 import { useState, useCallback } from 'react';
-import type {
-  LocalizedStringDto,
-  SupportedLocale,
-  StoreOrderType,
-  StoreCheckoutMode,
-} from '@repo/shared';
+import type { LocalizedStringDto, SupportedLocale } from '@/models/metadata';
+import type { StoreCheckoutMode, StoreOrderType } from '@/models/store';
 
 export type BusinessHourFormValue = {
   dayOfWeek: number;

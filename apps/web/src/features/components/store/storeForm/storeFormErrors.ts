@@ -1,31 +1,19 @@
-import { createStoreSchema } from '@repo/shared';
-import type { CreateStoreRequest } from '@repo/shared';
 import { tDefault } from '@/app/i18n';
 import { getSupportedCustomerLocaleLabel } from '@/models/metadata';
-import { toCreateStoreRequest } from './storeFormMapper';
-import type { StoreFormFieldErrors, StoreFormValues } from './useStoreForm';
+import type { SupportedLocale } from '@/models/metadata';
+import type { StoreFormFieldErrors } from './useStoreForm';
 
-type ValidateStoreFormResult =
-  | { success: true; data: CreateStoreRequest }
-  | { success: false; fieldErrors: StoreFormFieldErrors; submitError: string };
-
-export function validateStoreForm(
-  values: StoreFormValues,
-): ValidateStoreFormResult {
-  const request = toCreateStoreRequest(values);
-  const result = createStoreSchema.safeParse(request);
-
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-
+export function mapStoreValidationIssuesToFieldErrors(
+  issues: Array<{ path: PropertyKey[] }>,
+  defaultLocale: SupportedLocale,
+): StoreFormFieldErrors {
   const fieldErrors: StoreFormFieldErrors = {};
 
-  for (const issue of result.error.issues) {
+  for (const issue of issues) {
     const [section, field] = issue.path;
     if (section === 'profile' && field === 'displayName') {
       const localeLabel = getSupportedCustomerLocaleLabel(
-        values.defaultLocale,
+        defaultLocale,
         tDefault,
       );
       fieldErrors.displayName ??= tDefault(
@@ -56,12 +44,5 @@ export function validateStoreForm(
     }
   }
 
-  return {
-    success: false,
-    fieldErrors,
-    submitError: tDefault(
-      'admin.errors.validation',
-      'Check the highlighted fields and try again.',
-    ),
-  };
+  return fieldErrors;
 }

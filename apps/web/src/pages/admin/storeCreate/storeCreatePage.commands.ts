@@ -1,14 +1,15 @@
-import type { CreateStoreRequest } from '@repo/shared';
-import type { Store } from '@/models/store';
-import { organizationService } from '@/services/organization.service';
 import {
-  mapAdminApiError,
-  type AdminCommandFailure,
-} from '@/services/utils/adminApiError';
+  createOrganizationStoreMutationCommands,
+  type StoreMutationFieldErrors,
+} from '@/features/admin/organization/stores/mutations/commands';
+import type { CreateStoreRequest, Store } from '@/models/store';
+import type { AdminCommandFailure } from '@/services/utils/adminApiError';
 
 export type CreateStoreResult =
   | { status: 'created'; store: Store }
-  | AdminCommandFailure;
+  | (AdminCommandFailure & {
+      fieldErrors?: StoreMutationFieldErrors;
+    });
 
 export type StoreCreatePageCommands = {
   createStore(
@@ -18,17 +19,17 @@ export type StoreCreatePageCommands = {
 };
 
 export function createStoreCreatePageCommands(): StoreCreatePageCommands {
+  const mutationCommands = createOrganizationStoreMutationCommands();
+
   return {
     async createStore(organizationId, input) {
-      try {
-        const store = await organizationService.createAdminStore(
-          organizationId,
-          input,
-        );
-        return { status: 'created', store };
-      } catch (error) {
-        return mapAdminApiError(error);
+      const result = await mutationCommands.createStore(organizationId, input);
+
+      if (result.status !== 'saved') {
+        return result;
       }
+
+      return { status: 'created', store: result.store };
     },
   };
 }

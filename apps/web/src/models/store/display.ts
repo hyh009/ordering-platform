@@ -1,5 +1,5 @@
-import type { StoreCheckoutMode, StoreOrderType } from '@repo/shared';
 import type { AppTranslator } from '@/app/i18n';
+import type { StoreCheckoutMode, StoreOrderType } from './types';
 
 export function getStoreOrderTypeLabel(
   type: StoreOrderType,

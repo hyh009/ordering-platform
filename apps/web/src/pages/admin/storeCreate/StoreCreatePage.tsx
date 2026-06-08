@@ -1,4 +1,5 @@
 import { useLocation, useParams } from 'react-router';
+import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { StoreForm } from '@/features/components/store/storeForm/StoreForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
@@ -6,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { useStoreCreatePageVM } from './useStoreCreatePageVM';
 
 export function StoreCreatePage() {
+  const { tDefault } = useAppTranslation();
   const params = useParams();
   const organizationId = params.organizationId ?? '';
   const { state } = useLocation();
@@ -16,23 +18,30 @@ export function StoreCreatePage() {
 
   const breadcrumbItems = [
     {
-      label: 'Organizations',
+      label: tDefault('admin.organizations.title', 'Organizations'),
       href: PATHS.SUPER_ADMIN.ORGANIZATIONS,
     },
     {
-      label: organizationName ?? 'Organization',
+      label:
+        organizationName ??
+        tDefault('admin.organizations.detailTitle', 'Organization'),
       href: PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
     },
-    { label: 'Create store' },
+    { label: tDefault('admin.stores.create.title', 'Create store') },
   ];
 
   return (
     <section className="admin-page-content">
       <div>
         <Breadcrumb items={breadcrumbItems} />
-        <h1 className="mt-4 text-3xl font-bold tracking-tight">Create store</h1>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight">
+          {tDefault('admin.stores.create.title', 'Create store')}
+        </h1>
         <p className="mt-1 text-muted-foreground">
-          Add a new store under this organization.
+          {tDefault(
+            'admin.stores.create.description',
+            'Add a new store under this organization.',
+          )}
         </p>
       </div>
 
@@ -53,14 +62,16 @@ export function StoreCreatePage() {
           type="button"
           variant="ghost"
         >
-          Cancel
+          {tDefault('common.actions.cancel', 'Cancel')}
         </Button>
         <Button
           disabled={vm.form.isSubmitting}
           form="create-store-form"
           type="submit"
         >
-          {vm.form.isSubmitting ? 'Creating...' : 'Create store'}
+          {vm.form.isSubmitting
+            ? tDefault('admin.stores.create.creating', 'Creating...')
+            : tDefault('admin.stores.create.submit', 'Create store')}
         </Button>
       </div>
     </section>

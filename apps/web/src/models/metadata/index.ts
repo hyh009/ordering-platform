@@ -2,6 +2,7 @@ export {
   createAllergenSchema,
   createDietaryMarkerSchema,
   dietaryMarkerTypes,
+  supportedLocales,
   updateAllergenSchema,
   updateDietaryMarkerSchema,
 } from '@repo/shared';
