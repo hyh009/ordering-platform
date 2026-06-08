@@ -17,6 +17,12 @@ import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 import { useOrganizationDetailPageVM } from './useOrganizationDetailPageVM';
+import {
+  getOrganizationReviewStatusLabel,
+  getOrganizationStatusLabel,
+  type OrganizationReviewStatus,
+  type OrganizationStatus,
+} from '@/models/organization';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 
 function OrgAvatar({ name }: { name: string }) {
@@ -28,7 +34,8 @@ function OrgAvatar({ name }: { name: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: OrganizationStatus }) {
+  const { tDefault } = useAppTranslation();
   const isActive = status === 'active';
   return (
     <span
@@ -45,12 +52,17 @@ function StatusBadge({ status }: { status: string }) {
           isActive ? 'bg-emerald-500' : 'bg-rose-500',
         )}
       />
-      {status}
+      {getOrganizationStatusLabel(status, tDefault)}
     </span>
   );
 }
 
-function ReviewBadge({ reviewStatus }: { reviewStatus: string }) {
+function ReviewBadge({
+  reviewStatus,
+}: {
+  reviewStatus: OrganizationReviewStatus;
+}) {
+  const { tDefault } = useAppTranslation();
   const isApproved = reviewStatus === 'approved';
   return (
     <span
@@ -61,7 +73,8 @@ function ReviewBadge({ reviewStatus }: { reviewStatus: string }) {
           : 'bg-amber-100 text-amber-700',
       )}
     >
-      Review: {reviewStatus}
+      {tDefault('admin.organizations.reviewStatus', 'Review')}:{' '}
+      {getOrganizationReviewStatusLabel(reviewStatus, tDefault)}
     </span>
   );
 }

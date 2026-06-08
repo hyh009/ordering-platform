@@ -1,14 +1,3 @@
-import { tDefault } from '@/app/i18n';
-import {
-  mapOrganizationValidationIssuesToFieldErrors,
-  type OrganizationFormFieldErrors,
-} from '@/features/components/organization/organizationForm/organizationFormErrors';
-import { updateOrganizationSchema } from '@/models/organization';
-import type {
-  Organization,
-  OrganizationReviewStatus,
-  UpdateOrganizationRequest,
-} from '@/models/organization';
 import { organizationService } from '@/services/organization.service';
 import {
   mapAdminApiError,
@@ -16,30 +5,14 @@ import {
 } from '@/services/utils/adminApiError';
 import type { OrganizationDetailActions } from './actions';
 
-export type OrganizationDetailCommandFieldErrors = OrganizationFormFieldErrors;
-
 export type LoadOrganizationDetailResult =
   | { status: 'loaded' }
   | AdminCommandFailure;
-
-export type SaveOrganizationDetailResult =
-  | { organization: Organization; status: 'saved' }
-  | (AdminCommandFailure & {
-      fieldErrors?: OrganizationDetailCommandFieldErrors;
-    });
 
 export type OrganizationDetailCommands = {
   loadOrganization(
     organizationId: string,
   ): Promise<LoadOrganizationDetailResult>;
-  saveOrganizationDetail(
-    organizationId: string,
-    input: UpdateOrganizationRequest,
-  ): Promise<SaveOrganizationDetailResult>;
-  reviewOrganization(
-    organizationId: string,
-    reviewStatus: OrganizationReviewStatus,
-  ): Promise<SaveOrganizationDetailResult>;
   loadStores(organizationId: string): Promise<LoadOrganizationDetailResult>;
   loadOwner(organizationId: string): Promise<void>;
 };
@@ -62,50 +35,6 @@ export function createOrganizationDetailCommands(
 
         actions.loadFailed(failure.message);
         return failure;
-      }
-    },
-
-    async saveOrganizationDetail(organizationId, input) {
-      const validation = updateOrganizationSchema.safeParse(input);
-
-      if (!validation.success) {
-        return {
-          fieldErrors: mapOrganizationValidationIssuesToFieldErrors(
-            validation.error.issues,
-          ),
-          message: tDefault(
-            'admin.errors.validation',
-            'Check the highlighted fields and try again.',
-          ),
-          reason: 'invalid',
-          status: 'failed',
-        };
-      }
-
-      try {
-        const organization = await organizationService.updateOrganization(
-          organizationId,
-          input,
-        );
-
-        actions.organizationSaved(organization);
-        return { organization, status: 'saved' };
-      } catch (error) {
-        return mapAdminApiError(error);
-      }
-    },
-
-    async reviewOrganization(organizationId, reviewStatus) {
-      try {
-        const organization = await organizationService.updateOrganization(
-          organizationId,
-          { reviewStatus },
-        );
-
-        actions.organizationSaved(organization);
-        return { organization, status: 'saved' };
-      } catch (error) {
-        return mapAdminApiError(error);
       }
     },
 

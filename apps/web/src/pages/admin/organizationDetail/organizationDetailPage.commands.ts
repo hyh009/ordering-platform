@@ -2,33 +2,58 @@ import {
   createOrganizationDetailCommands,
   type LoadOrganizationDetailResult,
   type OrganizationDetailCommands,
-  type SaveOrganizationDetailResult,
 } from '@/features/admin/organization/detail/commands';
 import type { OrganizationDetailActions } from '@/features/admin/organization/detail/actions';
+import {
+  organizationMutationCommands,
+  type SaveOrganizationResult,
+} from '@/features/admin/organization/mutations/commands';
 
 export type LoadOrganizationResult = LoadOrganizationDetailResult;
-export type { SaveOrganizationDetailResult };
+export type SaveOrganizationDetailResult = SaveOrganizationResult;
 
 export type OrganizationDetailPageCommands = Pick<
   OrganizationDetailCommands,
-  | 'loadOrganization'
-  | 'saveOrganizationDetail'
-  | 'reviewOrganization'
-  | 'loadStores'
-  | 'loadOwner'
->;
+  'loadOrganization' | 'loadStores' | 'loadOwner'
+> & {
+  reviewOrganization: typeof organizationMutationCommands.reviewOrganization;
+  saveOrganizationDetail: typeof organizationMutationCommands.updateOrganization;
+};
 
 export function createOrganizationDetailPageCommands(
   actions: OrganizationDetailActions,
 ): OrganizationDetailPageCommands {
   const base = createOrganizationDetailCommands(actions);
 
-  const overrides = {} satisfies Partial<OrganizationDetailPageCommands>;
+  const overrides = {
+    async reviewOrganization(organizationId, reviewStatus) {
+      const result = await organizationMutationCommands.reviewOrganization(
+        organizationId,
+        reviewStatus,
+      );
+
+      if (result.status === 'saved') {
+        await base.loadOrganization(organizationId);
+      }
+
+      return result;
+    },
+    async saveOrganizationDetail(organizationId, input) {
+      const result = await organizationMutationCommands.updateOrganization(
+        organizationId,
+        input,
+      );
+
+      if (result.status === 'saved') {
+        await base.loadOrganization(organizationId);
+      }
+
+      return result;
+    },
+  } satisfies Partial<OrganizationDetailPageCommands>;
 
   return {
     loadOrganization: base.loadOrganization,
-    saveOrganizationDetail: base.saveOrganizationDetail,
-    reviewOrganization: base.reviewOrganization,
     loadStores: base.loadStores,
     loadOwner: base.loadOwner,
     ...overrides,

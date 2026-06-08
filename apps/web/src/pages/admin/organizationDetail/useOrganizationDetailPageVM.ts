@@ -99,19 +99,12 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
     if (result.status === 'saved') {
       discardAndCloseEditModal();
-      await loadOrganization();
       return;
     }
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [
-    discardAndCloseEditModal,
-    commands,
-    form,
-    organizationId,
-    loadOrganization,
-  ]);
+  }, [discardAndCloseEditModal, commands, form, organizationId]);
 
   const reviewOrganization = useCallback(
     async (reviewStatus: 'approved' | 'rejected') => {
@@ -136,8 +129,6 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
       if (!confirmed) return;
 
-      // The command updates the detail store on success, so the badge and the
-      // pending-action buttons refresh without an extra reload.
       await commands.reviewOrganization(organizationId, reviewStatus);
     },
     [commands, feedbackVM, organization, organizationId],

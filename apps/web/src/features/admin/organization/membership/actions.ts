@@ -29,13 +29,6 @@ export function createOrganizationMembershipListActions(
       store.setState({ error, isLoading: false });
     },
 
-    membershipSaved(membership: OrganizationMembership) {
-      store.setState((state) => ({
-        memberships: state.memberships.map((m) =>
-          m.id === membership.id ? membership : m,
-        ),
-      }));
-    },
   };
 }
 

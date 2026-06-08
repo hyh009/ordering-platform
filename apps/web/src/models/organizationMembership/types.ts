@@ -23,6 +23,11 @@ export type {
   UpdateOrganizationMembershipRequest,
   UpdateOrganizationMembershipSuccessResponse,
 };
+export {
+  createOrganizationMembershipSchema,
+  organizationMembershipRoles,
+  updateOrganizationMembershipSchema,
+} from '@repo/shared';
 
 export type OrganizationMembership = OrganizationMembershipWithUserDto;
 export type OrganizationMembershipListPage = OffsetPaginationDto;

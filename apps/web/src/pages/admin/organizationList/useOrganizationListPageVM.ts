@@ -51,11 +51,11 @@ export function useOrganizationListPageVM() {
 
   const debouncedKeyword = useDebouncedValue(keyword, SEARCH_DEBOUNCE_MS);
 
-  const loadCurrentQueryPage = useCallback(
-    async ({ limit, offset }: OffsetPaginationLoadPageInput) => {
+  const createLoadInput = useCallback(
+    ({ limit, offset }: OffsetPaginationLoadPageInput) => {
       const trimmedKeyword = keyword.trim();
 
-      await commands.loadOrganizations({
+      return {
         limit,
         offset,
         keyword: trimmedKeyword || undefined,
@@ -64,9 +64,16 @@ export function useOrganizationListPageVM() {
           reviewStatusFilter === 'all' ? undefined : reviewStatusFilter,
         sortBy: sort.sortBy,
         sortDirection: sort.sortDirection,
-      });
+      };
     },
-    [commands, keyword, statusFilter, reviewStatusFilter, sort],
+    [keyword, statusFilter, reviewStatusFilter, sort],
+  );
+
+  const loadCurrentQueryPage = useCallback(
+    async ({ limit, offset }: OffsetPaginationLoadPageInput) => {
+      await commands.loadOrganizations(createLoadInput({ limit, offset }));
+    },
+    [commands, createLoadInput],
   );
 
   const { changeLimit, goToPage, page, totalPages } =
@@ -139,16 +146,16 @@ export function useOrganizationListPageVM() {
 
     const result = await commands.createOrganization(
       toCreateOrganizationRequest(form.values),
+      createLoadInput({
+        limit: pagination.limit,
+        offset: 0,
+      }),
     );
 
     form.setIsSubmitting(false);
 
     if (result.status === 'saved') {
       closeCreateModal();
-      await loadCurrentQueryPage({
-        limit: pagination.limit,
-        offset: 0,
-      });
       return;
     }
 
@@ -157,8 +164,8 @@ export function useOrganizationListPageVM() {
   }, [
     closeCreateModal,
     commands,
+    createLoadInput,
     form,
-    loadCurrentQueryPage,
     pagination.limit,
   ]);
 

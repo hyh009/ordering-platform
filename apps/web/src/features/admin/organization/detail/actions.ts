@@ -20,10 +20,6 @@ export function createOrganizationDetailActions(
       store.setState({ error, isLoading: false });
     },
 
-    organizationSaved(organization: Organization) {
-      store.setState({ organization });
-    },
-
     storesLoadStarted() {
       store.setState({ storesLoading: true, storesError: null });
     },

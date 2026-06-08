@@ -7,7 +7,11 @@ import type {
   OrganizationReviewStatusFilter,
   OrganizationStatusFilter,
 } from '@/features/admin/organization/list/store';
-import type { OrganizationListItem } from '@/models/organization';
+import {
+  getOrganizationReviewStatusLabel,
+  getOrganizationStatusLabel,
+  type OrganizationListItem,
+} from '@/models/organization';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -25,11 +29,11 @@ export function OrganizationListPage() {
       value: 'all',
     },
     {
-      label: tDefault('admin.organizations.statusFilter.active', 'Active'),
+      label: getOrganizationStatusLabel('active', tDefault),
       value: 'active',
     },
     {
-      label: tDefault('admin.organizations.statusFilter.disabled', 'Disabled'),
+      label: getOrganizationStatusLabel('disabled', tDefault),
       value: 'disabled',
     },
   ];
@@ -43,15 +47,15 @@ export function OrganizationListPage() {
       value: 'all',
     },
     {
-      label: tDefault('admin.organizations.reviewStatus.pending', 'Pending'),
+      label: getOrganizationReviewStatusLabel('pending', tDefault),
       value: 'pending',
     },
     {
-      label: tDefault('admin.organizations.reviewStatus.approved', 'Approved'),
+      label: getOrganizationReviewStatusLabel('approved', tDefault),
       value: 'approved',
     },
     {
-      label: tDefault('admin.organizations.reviewStatus.rejected', 'Rejected'),
+      label: getOrganizationReviewStatusLabel('rejected', tDefault),
       value: 'rejected',
     },
   ];
@@ -74,8 +78,9 @@ export function OrganizationListPage() {
     {
       key: 'status',
       header: tDefault('admin.organizations.status', 'Status'),
-      cellClassName: 'capitalize text-muted-foreground',
-      render: (organization) => organization.status,
+      cellClassName: 'text-muted-foreground',
+      render: (organization) =>
+        getOrganizationStatusLabel(organization.status, tDefault),
     },
     {
       key: 'reviewStatus',

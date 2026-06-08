@@ -1,23 +1,12 @@
 import type { FormEvent } from 'react';
-import { organizationMembershipRoles } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
+import { getOrganizationMembershipRoleOptions } from '@/models/organizationMembership';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import type { OrganizationMembershipRole } from '@/models/organizationMembership';
 import type { AddMemberFormVM } from './useAddMemberForm';
-
-const ROLE_LABELS: Record<OrganizationMembershipRole, string> = {
-  org_owner: 'Org Owner',
-  org_admin: 'Org Admin',
-  staff: 'Staff',
-};
-
-const ROLE_OPTIONS = organizationMembershipRoles.map((role) => ({
-  value: role,
-  label: ROLE_LABELS[role],
-}));
 
 type AddMemberFormProps = {
   form: AddMemberFormVM;
@@ -35,6 +24,7 @@ export function AddMemberForm({
   onSubmit,
 }: AddMemberFormProps) {
   const { tDefault } = useAppTranslation();
+  const roleOptions = getOrganizationMembershipRoleOptions(tDefault);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,7 +85,7 @@ export function AddMemberForm({
         required
       >
         <OptionsSelect
-          options={ROLE_OPTIONS}
+          options={roleOptions}
           value={form.values.role}
           onValueChange={(v) =>
             form.setField('role', v as OrganizationMembershipRole)

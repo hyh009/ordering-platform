@@ -1,6 +1,5 @@
 import { useLocation, useParams } from 'react-router';
 import { Pencil } from 'lucide-react';
-import { organizationMembershipRoles } from '@repo/shared';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { AddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/AddMemberForm';
@@ -12,22 +11,16 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
+import {
+  getOrganizationMembershipRoleLabel,
+  getOrganizationMembershipRoleOptions,
+  getOrganizationMembershipStatusLabel,
+} from '@/models/organizationMembership';
 import type {
   OrganizationMembership,
   OrganizationMembershipRole,
 } from '@/models/organizationMembership';
 import { useOrganizationMembershipsPageVM } from './useOrganizationMembershipsPageVM';
-
-const ROLE_LABELS: Record<OrganizationMembershipRole, string> = {
-  org_owner: 'Org Owner',
-  org_admin: 'Org Admin',
-  staff: 'Staff',
-};
-
-const ROLE_OPTIONS = organizationMembershipRoles.map((role) => ({
-  value: role,
-  label: ROLE_LABELS[role],
-}));
 
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50];
 
@@ -55,6 +48,7 @@ function MemberAvatar({ email }: { email: string }) {
 }
 
 function RoleBadge({ role }: { role: OrganizationMembership['role'] }) {
+  const { tDefault } = useAppTranslation();
   const badgeClass =
     role === 'org_owner'
       ? 'bg-violet-100 text-violet-700'
@@ -69,12 +63,14 @@ function RoleBadge({ role }: { role: OrganizationMembership['role'] }) {
         badgeClass,
       )}
     >
-      {role}
+      {getOrganizationMembershipRoleLabel(role, tDefault)}
     </span>
   );
 }
 
 function StatusDot({ status }: { status: OrganizationMembership['status'] }) {
+  const { tDefault } = useAppTranslation();
+
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
       <span
@@ -83,7 +79,9 @@ function StatusDot({ status }: { status: OrganizationMembership['status'] }) {
           status === 'active' ? 'bg-emerald-500' : 'bg-rose-500',
         )}
       />
-      <span className="capitalize text-foreground">{status}</span>
+      <span className="text-foreground">
+        {getOrganizationMembershipStatusLabel(status, tDefault)}
+      </span>
     </span>
   );
 }
@@ -96,6 +94,7 @@ export function OrganizationMembershipsPage() {
   const organizationName = (state as { organizationName?: string } | null)
     ?.organizationName;
   const vm = useOrganizationMembershipsPageVM(organizationId);
+  const roleOptions = getOrganizationMembershipRoleOptions(tDefault);
 
   const breadcrumbItems = [
     {
@@ -327,7 +326,7 @@ export function OrganizationMembershipsPage() {
                 onValueChange={(v) =>
                   vm.setEditRole(v as OrganizationMembershipRole)
                 }
-                options={ROLE_OPTIONS}
+                options={roleOptions}
                 value={vm.editForm.role}
               />
             </Field>

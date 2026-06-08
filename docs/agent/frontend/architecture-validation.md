@@ -32,6 +32,9 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Page VM hooks do not run request Zod validation such as
   `createXSchema.safeParse(request)`; submit and mutation commands own that
   schema check.
+- Page VM hooks do not change server-backed feature data inside mutation success
+  branches. Data state changes after create, update, delete, reorder, archive,
+  or restore belong in page commands.
 - Page VM hooks expose top-level handlers, not nested `actions` objects.
 - Returned handlers used in effects or memoized children are stable.
 - Page-local form and UI state stays in the VM or page-local form hook.
@@ -55,6 +58,7 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Commands call services and feature actions.
 - Commands return typed results.
 - Submit and mutation commands validate request inputs before calling services.
+- Page commands compose required data state changes after successful mutations.
 - Commands map API errors with named helpers when behavior depends on error meaning.
 - Feature commands do not import from `src/pages`.
 

@@ -1,4 +1,5 @@
 import { useAppTranslation } from '@/app/i18n';
+import { getOrganizationReviewStatusLabel } from '@/models/organization';
 import { cn } from '@/shared/utils/cn';
 import type { OrganizationReviewStatus } from '@/models/organization';
 
@@ -14,11 +15,7 @@ export function ReviewStatusBadge({
   status: OrganizationReviewStatus;
 }) {
   const { tDefault } = useAppTranslation();
-  const label = {
-    pending: tDefault('admin.organizations.reviewStatus.pending', 'Pending'),
-    approved: tDefault('admin.organizations.reviewStatus.approved', 'Approved'),
-    rejected: tDefault('admin.organizations.reviewStatus.rejected', 'Rejected'),
-  }[status];
+  const label = getOrganizationReviewStatusLabel(status, tDefault);
 
   return (
     <span
