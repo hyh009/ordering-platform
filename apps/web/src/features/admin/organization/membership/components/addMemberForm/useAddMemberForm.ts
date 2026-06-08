@@ -9,9 +9,12 @@ const initialValues: OrganizationMembershipAddFormValues = {
 };
 
 export function useAddMemberForm() {
-  const [values, setValues] = useState<OrganizationMembershipAddFormValues>(initialValues);
+  const [values, setValues] =
+    useState<OrganizationMembershipAddFormValues>(initialValues);
   const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<keyof OrganizationMembershipAddFormValues, string | undefined>>
+    Partial<
+      Record<keyof OrganizationMembershipAddFormValues, string | undefined>
+    >
   >({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

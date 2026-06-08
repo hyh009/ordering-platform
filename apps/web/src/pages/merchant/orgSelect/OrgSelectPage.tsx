@@ -22,7 +22,9 @@ export function OrgSelectPage() {
                     : 'border-border bg-background')
                 }
                 type="button"
-                onClick={() => vm.selectOrg(m.organizationId, m.organizationName)}
+                onClick={() =>
+                  vm.selectOrg(m.organizationId, m.organizationName)
+                }
               >
                 <div className="font-medium">{m.organizationName}</div>
                 <div className="mt-1 text-xs text-muted-foreground capitalize">

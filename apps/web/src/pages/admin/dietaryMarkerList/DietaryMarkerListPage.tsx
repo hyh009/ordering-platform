@@ -129,7 +129,10 @@ export function DietaryMarkerListPage() {
         data={vm.dietaryMarkers}
         isLoading={vm.isLoading}
         labels={{
-          empty: tDefault('admin.dietaryMarkers.empty', 'No dietary markers found.'),
+          empty: tDefault(
+            'admin.dietaryMarkers.empty',
+            'No dietary markers found.',
+          ),
         }}
         rowKey={(marker) => marker.id}
         toolbar={
@@ -227,7 +230,10 @@ export function DietaryMarkerListPage() {
                 className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground"
                 value={vm.form.values.type}
                 onChange={(event) => {
-                  vm.form.setField('type', event.target.value as DietaryMarkerType);
+                  vm.form.setField(
+                    'type',
+                    event.target.value as DietaryMarkerType,
+                  );
                 }}
               >
                 {dietaryMarkerTypes.map((type) => (

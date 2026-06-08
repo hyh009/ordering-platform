@@ -1,5 +1,8 @@
 import { useAppTranslation } from '@/app/i18n';
-import type { ProductModifier, ProductModifierActiveFilter } from '@/models/productModifier';
+import type {
+  ProductModifier,
+  ProductModifierActiveFilter,
+} from '@/models/productModifier';
 import { getLocalizedText } from '@/models/metadata';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
@@ -11,7 +14,10 @@ export function ProductModifierListPage() {
   const { tDefault } = useAppTranslation();
   const vm = useProductModifierListPageVM();
 
-  const visibilityOptions: { label: string; value: ProductModifierActiveFilter }[] = [
+  const visibilityOptions: {
+    label: string;
+    value: ProductModifierActiveFilter;
+  }[] = [
     {
       label: tDefault('merchant.productModifiers.activeOnly', 'Active'),
       value: 'true',
@@ -40,7 +46,10 @@ export function ProductModifierListPage() {
       render: (modifier) =>
         modifier.selectionType === 'single_choice'
           ? tDefault('merchant.productModifiers.singleChoice', 'Single choice')
-          : tDefault('merchant.productModifiers.multipleChoice', 'Multiple choice'),
+          : tDefault(
+              'merchant.productModifiers.multipleChoice',
+              'Multiple choice',
+            ),
     },
     {
       key: 'select',
@@ -73,7 +82,10 @@ export function ProductModifierListPage() {
   if (vm.isLoading && vm.productModifiers.length === 0) {
     return (
       <LoadingState
-        label={tDefault('merchant.productModifiers.loading', 'Loading modifiers')}
+        label={tDefault(
+          'merchant.productModifiers.loading',
+          'Loading modifiers',
+        )}
       />
     );
   }
@@ -110,7 +122,10 @@ export function ProductModifierListPage() {
         data={vm.productModifiers}
         isLoading={vm.isLoading}
         labels={{
-          empty: tDefault('merchant.productModifiers.empty', 'No modifiers found.'),
+          empty: tDefault(
+            'merchant.productModifiers.empty',
+            'No modifiers found.',
+          ),
         }}
         onRowClick={vm.openModifier}
         rowKey={(modifier) => modifier.id}

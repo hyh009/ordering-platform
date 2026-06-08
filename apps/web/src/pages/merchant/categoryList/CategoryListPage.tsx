@@ -152,11 +152,7 @@ export function CategoryListPage() {
         value={vm.filter}
       />
       {vm.canManage ? (
-        <Button
-          onClick={vm.enterReorderMode}
-          type="button"
-          variant="secondary"
-        >
+        <Button onClick={vm.enterReorderMode} type="button" variant="secondary">
           {tDefault('merchant.categories.reorder', 'Reorder')}
         </Button>
       ) : null}
@@ -249,7 +245,10 @@ export function CategoryListPage() {
           />
           <Field
             error={vm.form.fieldErrors.description}
-            label={tDefault('merchant.categories.descriptionLabel', 'Description')}
+            label={tDefault(
+              'merchant.categories.descriptionLabel',
+              'Description',
+            )}
             renderControl={
               <LocalizedStringInput
                 defaultLocale="zh-TW"

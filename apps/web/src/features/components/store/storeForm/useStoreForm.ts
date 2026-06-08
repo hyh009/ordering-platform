@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
-import type { LocalizedStringDto, SupportedLocale, StoreOrderType, StoreCheckoutMode } from '@repo/shared';
+import type {
+  LocalizedStringDto,
+  SupportedLocale,
+  StoreOrderType,
+  StoreCheckoutMode,
+} from '@repo/shared';
 
 export type BusinessHourFormValue = {
   dayOfWeek: number;
@@ -24,16 +29,18 @@ export type StoreFormValues = {
   orderModes: OrderModeFormValue[];
 };
 
-export type StoreFormFieldErrors = Partial<Record<keyof StoreFormValues, string>>;
+export type StoreFormFieldErrors = Partial<
+  Record<keyof StoreFormValues, string>
+>;
 
-const DEFAULT_BUSINESS_HOURS: BusinessHourFormValue[] = [0, 1, 2, 3, 4, 5, 6].map(
-  (day) => ({
-    dayOfWeek: day,
-    isOpen: day >= 1 && day <= 5,
-    openTime: '09:00',
-    closeTime: '21:00',
-  }),
-);
+const DEFAULT_BUSINESS_HOURS: BusinessHourFormValue[] = [
+  0, 1, 2, 3, 4, 5, 6,
+].map((day) => ({
+  dayOfWeek: day,
+  isOpen: day >= 1 && day <= 5,
+  openTime: '09:00',
+  closeTime: '21:00',
+}));
 
 export const defaultStoreFormValues: StoreFormValues = {
   displayName: {},
@@ -53,9 +60,18 @@ export type StoreFormVM = {
   fieldErrors: StoreFormFieldErrors;
   submitError: string | null;
   isSubmitting: boolean;
-  setField<K extends keyof StoreFormValues>(key: K, value: StoreFormValues[K]): void;
-  setBusinessHour(dayOfWeek: number, update: Partial<BusinessHourFormValue>): void;
-  setOrderMode(type: StoreOrderType, update: Partial<Pick<OrderModeFormValue, 'isEnabled' | 'checkoutMode'>>): void;
+  setField<K extends keyof StoreFormValues>(
+    key: K,
+    value: StoreFormValues[K],
+  ): void;
+  setBusinessHour(
+    dayOfWeek: number,
+    update: Partial<BusinessHourFormValue>,
+  ): void;
+  setOrderMode(
+    type: StoreOrderType,
+    update: Partial<Pick<OrderModeFormValue, 'isEnabled' | 'checkoutMode'>>,
+  ): void;
   toggleSupportedLocale(locale: SupportedLocale): void;
   setFieldErrors(errors: StoreFormFieldErrors): void;
   setSubmitError(error: string | null): void;
@@ -96,10 +112,15 @@ export function useStoreForm(initial?: StoreFormValues): StoreFormVM {
   );
 
   const setOrderMode = useCallback(
-    (type: StoreOrderType, update: Partial<Pick<OrderModeFormValue, 'isEnabled' | 'checkoutMode'>>) => {
+    (
+      type: StoreOrderType,
+      update: Partial<Pick<OrderModeFormValue, 'isEnabled' | 'checkoutMode'>>,
+    ) => {
       setValues((prev) => ({
         ...prev,
-        orderModes: prev.orderModes.map((m) => (m.type === type ? { ...m, ...update } : m)),
+        orderModes: prev.orderModes.map((m) =>
+          m.type === type ? { ...m, ...update } : m,
+        ),
       }));
     },
     [],

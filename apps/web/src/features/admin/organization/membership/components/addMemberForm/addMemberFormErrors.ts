@@ -10,7 +10,11 @@ type AddMemberFormFieldErrors = Partial<
 
 type ValidateAddMemberFormResult =
   | { success: true; data: CreateOrganizationMembershipRequest }
-  | { success: false; fieldErrors: AddMemberFormFieldErrors; submitError: string };
+  | {
+      success: false;
+      fieldErrors: AddMemberFormFieldErrors;
+      submitError: string;
+    };
 
 export function validateAddMemberForm(
   values: OrganizationMembershipAddFormValues,
@@ -27,7 +31,10 @@ export function validateAddMemberForm(
     success: false,
     fieldErrors: {
       email: raw.email?.length
-        ? tDefault('admin.memberships.errors.email', 'Enter a valid email address.')
+        ? tDefault(
+            'admin.memberships.errors.email',
+            'Enter a valid email address.',
+          )
         : undefined,
       username: raw.username?.length
         ? tDefault('admin.memberships.errors.username', 'Username is required.')

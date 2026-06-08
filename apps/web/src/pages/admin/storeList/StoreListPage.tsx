@@ -16,7 +16,9 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize',
-        isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700',
+        isActive
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-rose-100 text-rose-700',
       )}
     >
       <span
@@ -46,7 +48,9 @@ export function StoreListPage() {
       href: PATHS.SUPER_ADMIN.ORGANIZATIONS,
     },
     {
-      label: organizationName ?? tDefault('admin.organizations.singular', 'Organization'),
+      label:
+        organizationName ??
+        tDefault('admin.organizations.singular', 'Organization'),
       href: PATHS.SUPER_ADMIN.ORGANIZATION_DETAIL_BUILD(organizationId),
     },
     { label: tDefault('admin.stores.title', 'Stores') },
@@ -123,7 +127,9 @@ export function StoreListPage() {
 
   if (vm.isLoading && vm.stores.length === 0) {
     return (
-      <LoadingState label={tDefault('admin.stores.loading', 'Loading stores')} />
+      <LoadingState
+        label={tDefault('admin.stores.loading', 'Loading stores')}
+      />
     );
   }
 

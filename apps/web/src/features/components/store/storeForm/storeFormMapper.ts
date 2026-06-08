@@ -1,8 +1,12 @@
 import type { CreateStoreRequest } from '@repo/shared';
 import type { StoreFormValues } from './useStoreForm';
 
-export function toCreateStoreRequest(values: StoreFormValues): CreateStoreRequest {
-  const descriptionKeys = Object.keys(values.description) as (keyof typeof values.description)[];
+export function toCreateStoreRequest(
+  values: StoreFormValues,
+): CreateStoreRequest {
+  const descriptionKeys = Object.keys(
+    values.description,
+  ) as (keyof typeof values.description)[];
   const hasDescription = descriptionKeys.some((k) => values.description[k]);
 
   return {

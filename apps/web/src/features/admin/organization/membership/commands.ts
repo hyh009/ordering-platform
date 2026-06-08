@@ -70,11 +70,12 @@ export function createOrganizationMembershipListCommands(
 
     async updateMembership(organizationId, membershipId, input) {
       try {
-        const membership = await organizationService.updateOrganizationMembership(
-          organizationId,
-          membershipId,
-          input,
-        );
+        const membership =
+          await organizationService.updateOrganizationMembership(
+            organizationId,
+            membershipId,
+            input,
+          );
 
         actions.membershipSaved(membership);
         return { status: 'saved', membership };

@@ -8,7 +8,11 @@ const colorMap: Record<OrganizationReviewStatus, string> = {
   rejected: 'bg-rose-100 text-rose-700',
 };
 
-export function ReviewStatusBadge({ status }: { status: OrganizationReviewStatus }) {
+export function ReviewStatusBadge({
+  status,
+}: {
+  status: OrganizationReviewStatus;
+}) {
   const { tDefault } = useAppTranslation();
   const label = {
     pending: tDefault('admin.organizations.reviewStatus.pending', 'Pending'),

@@ -1,6 +1,9 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
-import { getLocalizedText, getMetadataVisibilityOptions } from '@/models/metadata';
+import {
+  getLocalizedText,
+  getMetadataVisibilityOptions,
+} from '@/models/metadata';
 import type { Allergen } from '@/models/metadata';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
@@ -115,7 +118,9 @@ export function AllergenListPage() {
         columns={columns}
         data={vm.allergens}
         isLoading={vm.isLoading}
-        labels={{ empty: tDefault('admin.allergens.empty', 'No allergens found.') }}
+        labels={{
+          empty: tDefault('admin.allergens.empty', 'No allergens found.'),
+        }}
         rowKey={(allergen) => allergen.id}
         toolbar={
           <FilterSelect

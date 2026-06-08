@@ -7,16 +7,14 @@ export function StoreSelectPage() {
     <section className="mx-auto w-full max-w-lg px-5 py-12">
       <h1 className="mb-1 text-2xl font-bold">Select Store</h1>
       {vm.organizationName && (
-        <p className="mb-6 text-sm text-muted-foreground">{vm.organizationName}</p>
+        <p className="mb-6 text-sm text-muted-foreground">
+          {vm.organizationName}
+        </p>
       )}
 
-      {vm.isLoading && (
-        <p className="text-muted-foreground">Loading stores…</p>
-      )}
+      {vm.isLoading && <p className="text-muted-foreground">Loading stores…</p>}
 
-      {vm.error && (
-        <p className="text-destructive">{vm.error}</p>
-      )}
+      {vm.error && <p className="text-destructive">{vm.error}</p>}
 
       {!vm.isLoading && !vm.error && vm.stores.length === 0 && (
         <p className="text-muted-foreground">

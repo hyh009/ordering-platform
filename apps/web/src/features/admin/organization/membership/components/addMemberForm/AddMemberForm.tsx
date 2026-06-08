@@ -74,13 +74,18 @@ export function AddMemberForm({
 
       <Field
         error={form.fieldErrors.temporaryPassword}
-        label={tDefault('admin.memberships.temporaryPassword', 'Temporary password')}
+        label={tDefault(
+          'admin.memberships.temporaryPassword',
+          'Temporary password',
+        )}
         required
       >
         <Input
           type="password"
           value={form.values.temporaryPassword}
-          onChange={(event) => form.setField('temporaryPassword', event.target.value)}
+          onChange={(event) =>
+            form.setField('temporaryPassword', event.target.value)
+          }
         />
       </Field>
 
@@ -92,7 +97,9 @@ export function AddMemberForm({
         <OptionsSelect
           options={ROLE_OPTIONS}
           value={form.values.role}
-          onValueChange={(v) => form.setField('role', v as OrganizationMembershipRole)}
+          onValueChange={(v) =>
+            form.setField('role', v as OrganizationMembershipRole)
+          }
         />
       </Field>
 

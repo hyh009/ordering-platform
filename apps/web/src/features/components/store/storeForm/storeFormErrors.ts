@@ -9,7 +9,9 @@ type ValidateStoreFormResult =
   | { success: true; data: CreateStoreRequest }
   | { success: false; fieldErrors: StoreFormFieldErrors; submitError: string };
 
-export function validateStoreForm(values: StoreFormValues): ValidateStoreFormResult {
+export function validateStoreForm(
+  values: StoreFormValues,
+): ValidateStoreFormResult {
   const request = toCreateStoreRequest(values);
   const result = createStoreSchema.safeParse(request);
 
@@ -22,7 +24,10 @@ export function validateStoreForm(values: StoreFormValues): ValidateStoreFormRes
   for (const issue of result.error.issues) {
     const [section, field] = issue.path;
     if (section === 'profile' && field === 'displayName') {
-      const localeLabel = getSupportedCustomerLocaleLabel(values.defaultLocale, tDefault);
+      const localeLabel = getSupportedCustomerLocaleLabel(
+        values.defaultLocale,
+        tDefault,
+      );
       fieldErrors.displayName ??= tDefault(
         'admin.store.errors.displayName',
         'Display name ({{locale}}) is required.',
