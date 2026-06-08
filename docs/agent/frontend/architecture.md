@@ -120,8 +120,11 @@ Rules:
 - Keep store mutations in `actions.ts`; stores hold state only.
 - Put read flows in `<readSlice>/commands.ts` and standard write flows in
   `mutations/commands.ts`.
-- Let page commands or page VMs handle API-after side effects, such as reloading
-  list/detail state, closing a modal, showing toast, or navigating.
+- Let commands handle API-after data side effects, such as reloading
+  list/detail/overview state after create, update, delete, reorder, archive, or
+  restore.
+- Let page VMs handle UI reactions to command results, such as closing a modal,
+  resetting form state, showing toast, confirming, or calling navigation.
 - Follow `docs/agent/frontend/commands.md` for command placement, runtime
   wiring, and command ownership.
 

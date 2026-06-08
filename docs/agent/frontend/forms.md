@@ -91,9 +91,10 @@ Submit or mutation commands own:
 - map API errors
 - return typed page outcomes to the VM
 
-Page commands or page VMs own API-after side effects, such as reloading
-confirmed feature state, closing modals, showing toast, resetting forms, or
-navigating. Follow `docs/agent/frontend/commands.md` for read-slice commands,
+Commands own API-after data side effects, such as reloading confirmed feature
+state after a successful mutation. Page VMs own UI reactions to command results,
+such as closing modals, showing toast, resetting forms, or calling navigation.
+Follow `docs/agent/frontend/commands.md` for read-slice commands,
 mutation commands, and page command wrappers.
 
 The page VM connects the local form hook to commands.

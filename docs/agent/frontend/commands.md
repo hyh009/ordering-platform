@@ -14,7 +14,8 @@ Page VM Hook -> Commands -> Service -> API
 ```
 
 Commands return typed outcomes to the VM. The VM owns React lifecycle, page-local
-UI state, form state, navigation, modal state, and command-result reactions.
+UI state, form state, navigation calls, modal state, and UI reactions to command
+results.
 
 ## Placement
 
@@ -82,11 +83,13 @@ Commands own request boundary validation, not validation presentation. A command
 that receives `CreateXRequest` or `UpdateXRequest` should run the matching
 schema before calling the service and return typed field errors when validation
 fails. The page VM writes those errors into the form state and decides whether
-to focus fields, close modals, show toast, reload data, or navigate.
+to focus fields, close modals, show toast, or navigate.
 
-API-after side effects belong to the page flow. Page commands or page VMs decide
-whether a successful mutation reloads list/detail/overview state, closes a
-modal, shows toast, resets a form, or navigates.
+API-after data side effects belong to the command flow. When a successful
+mutation needs to refresh list/detail/overview state, compose the mutation
+command and the read-slice reload in commands, usually in the page command for
+that page. The page VM handles UI reactions to the returned result, such as
+closing a modal, resetting a form, showing toast, or calling navigation.
 
 Page VMs and form hooks may still run UX validation for touched fields,
 page-only fields, or immediate input feedback. Do not rely on VM-only
@@ -244,20 +247,24 @@ Do not add option-heavy shared commands to cover many page variations. Wrap the
 shared command in the page command for that page.
 
 Do not add page-behavior options to reusable mutation commands, such as
-`updateCategory(..., { reload: true })`. API-after side effects belong to the
-page flow, not the mutation command.
+`updateCategory(..., { reload: true })`. API-after data refresh belongs to the
+command flow, not the reusable mutation command.
 
-After a mutation succeeds, page commands or page VMs own the reaction:
+After a mutation succeeds, commands own data refresh reactions:
 
-- reload list or detail data
+- reload list, detail, or overview data
+- reload the current pagination/filter query
+- reload related read slices shown by the same page
+
+After the command returns, page VMs own UI reactions:
+
 - close a modal
 - reset or realign form state
-- navigate to list or detail
+- call navigation
 - show toast or confirmation feedback
 
-Keep simple UI reactions in the page VM. Keep feature command selection and
-submit/mutation calls in the page command, even when the page VM owns the final
-reaction such as navigation or modal state.
+Keep feature command selection, submit/mutation calls, and post-mutation data
+reloads in commands. Keep simple UI reactions in the page VM.
 
 Management pages should reload server data after create, update, or delete
 unless a local patch is deliberately required for the interaction.

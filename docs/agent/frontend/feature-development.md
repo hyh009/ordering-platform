@@ -87,8 +87,10 @@ Determine whether the feature has async flows. If yes, add or update commands.
   `apps/web/src/features/<area>/<resource>/mutations/commands.ts`.
 - Commands coordinate request validation, service calls, actions, loading
   states, API errors, and typed outcomes.
-- Page VMs decide mutation success reactions such as reload list, reload
-  detail, close modal, show toast, or navigate.
+- Commands decide mutation success data reactions such as reloading list,
+  detail, overview, or related read-slice state.
+- Page VMs decide mutation success UI reactions such as closing a modal,
+  resetting form state, showing toast, or calling navigation.
 - Do not call services or stores directly from views.
 
 Follow `docs/agent/frontend/commands.md`.
