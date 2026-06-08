@@ -28,7 +28,6 @@ export function createOrganizationMembershipListActions(
     loadFailed(error: string) {
       store.setState({ error, isLoading: false });
     },
-
   };
 }
 

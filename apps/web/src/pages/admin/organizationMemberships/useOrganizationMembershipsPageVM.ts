@@ -4,7 +4,7 @@ import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
 import { useAddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/useAddMemberForm';
-import { createOrganizationMembershipListRuntime } from '@/features/admin/organization/membership/runtime';
+import { createOrganizationMembershipListRuntime } from '@/features/admin/organization/membership/list/runtime';
 import type { OrganizationMembership } from '@/models/organizationMembership';
 import {
   toCreateOrganizationMembershipRequest,
