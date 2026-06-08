@@ -68,6 +68,29 @@ describe('authCommands', () => {
     });
   });
 
+  it('validates login input before calling the service', async () => {
+    await expect(
+      authCommands.login({
+        email: 'invalid-email',
+        password: '',
+      }),
+    ).resolves.toEqual({
+      fieldErrors: {
+        email: 'Enter a valid email.',
+        password: 'Password is required.',
+      },
+      message: 'Check the highlighted fields and try again.',
+      status: 'failed',
+    });
+
+    expect(authService.login).not.toHaveBeenCalled();
+    expect(authStore.getState()).toMatchObject({
+      accessToken: null,
+      status: 'anonymous',
+      user: null,
+    });
+  });
+
   it('deduplicates concurrent initialization refresh requests', async () => {
     vi.mocked(authService.refresh).mockResolvedValue(session);
 

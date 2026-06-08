@@ -1,4 +1,5 @@
 export { authModel } from './model';
+export { loginSchema } from '@repo/shared';
 export type {
   AuthActionSuccessResponse,
   AuthSession,

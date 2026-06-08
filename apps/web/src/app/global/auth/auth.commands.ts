@@ -10,6 +10,7 @@ import { authStore } from '@/app/global/auth/auth.store';
 import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import { authService } from '@/services/auth.service';
+import { loginSchema } from '@/models/auth';
 import type { AuthUserDto, LoginRequest } from '@/models/auth';
 
 const authActions = createAuthActions(authStore);
@@ -65,8 +66,23 @@ export const authCommands = {
   },
 
   async login(input: LoginRequest): Promise<AuthSubmitResult> {
+    const validation = loginSchema.safeParse(input);
+
+    if (!validation.success) {
+      return {
+        fieldErrors: mapLoginValidationIssuesToFieldErrors(
+          validation.error.issues,
+        ),
+        message: tDefault(
+          'auth.validation.submitInvalid',
+          'Check the highlighted fields and try again.',
+        ),
+        status: 'failed',
+      };
+    }
+
     try {
-      const session = await authService.login(input);
+      const session = await authService.login(validation.data);
 
       authActions.authSuccess(session);
       const orgId = activeOrgCommands.initialize(session.user.memberships);
@@ -106,6 +122,47 @@ export const authCommands = {
     }
   },
 };
+
+function getLoginFieldErrorKey(
+  path: PropertyKey[],
+): keyof LoginRequest | null {
+  const [field] = path.map(String);
+
+  if (field === 'email' || field === 'password') {
+    return field;
+  }
+
+  return null;
+}
+
+function loginValidationErrors() {
+  return {
+    email: tDefault('auth.validation.emailInvalid', 'Enter a valid email.'),
+    password: tDefault(
+      'auth.validation.passwordRequired',
+      'Password is required.',
+    ),
+  };
+}
+
+function mapLoginValidationIssuesToFieldErrors(
+  issues: Array<{ path: PropertyKey[] }>,
+): Partial<Record<keyof LoginRequest, string>> {
+  const messages = loginValidationErrors();
+  const fieldErrors: Partial<Record<keyof LoginRequest, string>> = {};
+
+  for (const issue of issues) {
+    const field = getLoginFieldErrorKey(issue.path);
+
+    if (!field || fieldErrors[field]) {
+      continue;
+    }
+
+    fieldErrors[field] = messages[field];
+  }
+
+  return fieldErrors;
+}
 
 async function initializeAuth() {
   authActions.authChecking();
