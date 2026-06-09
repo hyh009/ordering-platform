@@ -16,3 +16,5 @@ export function createStoreListActions(storeInstance: StoreListStore) {
     },
   };
 }
+
+export type StoreListActions = ReturnType<typeof createStoreListActions>;

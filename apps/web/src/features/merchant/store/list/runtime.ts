@@ -2,11 +2,8 @@ import { createStoreListActions } from './actions';
 import { createStoreListStore } from './store';
 
 export function createStoreListRuntime() {
-  const storeInstance = createStoreListStore();
-  const actions = createStoreListActions(storeInstance);
+  const store = createStoreListStore();
+  const actions = createStoreListActions(store);
 
-  return { storeInstance, actions };
+  return { actions, store };
 }
-
-export type StoreListRuntime = ReturnType<typeof createStoreListRuntime>;
-export type StoreListActions = ReturnType<typeof createStoreListActions>;

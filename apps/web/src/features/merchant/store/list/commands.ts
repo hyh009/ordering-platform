@@ -1,5 +1,5 @@
 import { storeService } from '@/services/store.service';
-import type { StoreListActions } from './runtime';
+import type { StoreListActions } from './actions';
 
 export function createStoreListCommands(actions: StoreListActions) {
   return {

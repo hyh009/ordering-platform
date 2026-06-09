@@ -1,8 +1,9 @@
+import { createStoreDetailCommands } from '@/features/merchant/store/detail/commands';
+import type { StoreDetailActions } from '@/features/merchant/store/detail/actions';
 import {
-  createStoreSettingsCommands,
-  type SaveStoreSettingsResult,
-} from '@/features/merchant/store/settings/commands';
-import type { StoreSettingsActions } from '@/features/merchant/store/settings/runtime';
+  createStoreMutationCommands,
+  type UpdateStoreResult,
+} from '@/features/merchant/store/mutations/commands';
 import type { UpdateStoreRequest } from '@/models/store';
 
 export type StoreSettingsPageCommands = {
@@ -10,16 +11,26 @@ export type StoreSettingsPageCommands = {
   updateStore(
     storeId: string,
     input: UpdateStoreRequest,
-  ): Promise<SaveStoreSettingsResult>;
+  ): Promise<UpdateStoreResult>;
 };
 
 export function createStoreSettingsPageCommands(
-  actions: StoreSettingsActions,
+  actions: StoreDetailActions,
 ): StoreSettingsPageCommands {
-  const featureCommands = createStoreSettingsCommands(actions);
+  const detailCommands = createStoreDetailCommands(actions);
+  const mutationCommands = createStoreMutationCommands();
 
   return {
-    loadStore: featureCommands.loadStore,
-    updateStore: featureCommands.updateStore,
+    loadStore: detailCommands.loadStore,
+
+    async updateStore(storeId, input) {
+      const result = await mutationCommands.updateStore(storeId, input);
+
+      if (result.status === 'saved') {
+        actions.loadSucceeded(result.store);
+      }
+
+      return result;
+    },
   };
 }

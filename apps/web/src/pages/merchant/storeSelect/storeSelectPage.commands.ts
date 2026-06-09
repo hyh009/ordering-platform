@@ -1,5 +1,5 @@
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
-import type { StoreListActions } from '@/features/merchant/store/list/runtime';
+import type { StoreListActions } from '@/features/merchant/store/list/actions';
 import { createStoreListCommands } from '@/features/merchant/store/list/commands';
 
 export function createStoreSelectPageCommands(

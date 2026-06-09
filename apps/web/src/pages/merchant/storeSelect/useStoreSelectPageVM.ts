@@ -17,9 +17,9 @@ export function useStoreSelectPageVM() {
   const organizationId = useStore(activeOrgStore, (s) => s.organizationId);
   const organizationName = useStore(activeOrgStore, (s) => s.organizationName);
   const activeStoreId = useStore(activeStoreStore, (s) => s.storeId);
-  const stores = useStore(runtime.storeInstance, (s) => s.stores);
-  const isLoading = useStore(runtime.storeInstance, (s) => s.isLoading);
-  const error = useStore(runtime.storeInstance, (s) => s.error);
+  const stores = useStore(runtime.store, (s) => s.stores);
+  const isLoading = useStore(runtime.store, (s) => s.isLoading);
+  const error = useStore(runtime.store, (s) => s.error);
 
   const navigate = useNavigate();
 

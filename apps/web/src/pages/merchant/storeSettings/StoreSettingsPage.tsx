@@ -48,7 +48,7 @@ export function StoreSettingsPage() {
             </div>
             {vm.canManage && (
               <Button
-                disabled={vm.isSaving}
+                disabled={vm.isStatusUpdating}
                 size="sm"
                 type="button"
                 variant="outline"
