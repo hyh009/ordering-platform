@@ -2,11 +2,16 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { RouteErrorBoundary } from '@/app/error/AppErrorBoundary';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
-import { AppLayout, MerchantLayout, SuperAdminLayout } from '@/app/layout/AppLayout';
+import {
+  AppLayout,
+  MerchantLayout,
+  SuperAdminLayout,
+} from '@/app/layout/AppLayout';
 import { PublicLayout } from '@/app/layout/PublicLayout';
 import { PATHS } from '@/app/routing/paths';
 import { PublicOnly } from '@/app/routing/PublicOnly';
 import { RequireActiveStore } from '@/app/routing/RequireActiveStore';
+import { RequireStoreManager } from '@/app/routing/RequireStoreManager';
 import { RequireAuth } from '@/app/routing/RequireAuth';
 import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
 import { AllergenListPage } from '@/pages/admin/allergenList/AllergenListPage';
@@ -112,13 +117,17 @@ export function App() {
             {/* Merchant selection: no sidebar */}
             <Route element={<AppLayout />}>
               <Route
-                element={
-                  <Navigate replace to={PATHS.MERCHANT.SELECT_ORG} />
-                }
+                element={<Navigate replace to={PATHS.MERCHANT.SELECT_ORG} />}
                 path={PATHS.MERCHANT.ROOT}
               />
-              <Route element={<OrgSelectPage />} path={PATHS.MERCHANT.SELECT_ORG} />
-              <Route element={<StoreSelectPage />} path={PATHS.MERCHANT.SELECT_STORE} />
+              <Route
+                element={<OrgSelectPage />}
+                path={PATHS.MERCHANT.SELECT_ORG}
+              />
+              <Route
+                element={<StoreSelectPage />}
+                path={PATHS.MERCHANT.SELECT_STORE}
+              />
             </Route>
 
             {/* Merchant platform: /merchant/* with sidebar */}
@@ -126,7 +135,10 @@ export function App() {
               {/* Store-scoped pages require active org and store selection */}
               <Route element={<RequireActiveStore />}>
                 <Route element={<MenuPage />} path={PATHS.MERCHANT.MENU} />
-                <Route element={<OrderListPage />} path={PATHS.MERCHANT.ORDERS} />
+                <Route
+                  element={<OrderListPage />}
+                  path={PATHS.MERCHANT.ORDERS}
+                />
                 <Route
                   element={<StoreSettingsPage />}
                   path={PATHS.MERCHANT.STORE_SETTINGS}
@@ -140,9 +152,17 @@ export function App() {
                   path={PATHS.MERCHANT.MODIFIERS}
                 />
                 <Route
-                  element={<ProductModifierCreatePage />}
-                  path={PATHS.MERCHANT.MODIFIER_CREATE}
-                />
+                  element={
+                    <RequireStoreManager
+                      redirectTo={PATHS.MERCHANT.MODIFIERS}
+                    />
+                  }
+                >
+                  <Route
+                    element={<ProductModifierCreatePage />}
+                    path={PATHS.MERCHANT.MODIFIER_CREATE}
+                  />
+                </Route>
                 <Route
                   element={<ProductModifierDetailPage />}
                   path={PATHS.MERCHANT.MODIFIER_DETAIL}
