@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import {
+  DEFAULT_METADATA_LOCALE,
   dietaryMarkerTypes,
   getLocalizedText,
   getMetadataVisibilityOptions,
@@ -202,7 +203,7 @@ export function DietaryMarkerListPage() {
             required
             renderControl={
               <LocalizedStringInput
-                defaultLocale="zh-TW"
+                defaultLocale={DEFAULT_METADATA_LOCALE}
                 disabled={vm.form.isSubmitting}
                 onChange={(v) => vm.form.setField('name', v)}
                 value={vm.form.values.name}

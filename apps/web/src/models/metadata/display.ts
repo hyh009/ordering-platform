@@ -7,6 +7,11 @@ import type {
 
 export const supportedMetadataLocales: SupportedLocale[] = ['zh-TW', 'en'];
 
+// Default authoring language for platform metadata (allergens, dietary
+// markers). Super admins enter content in this locale first. Centralized so the
+// platform default lives in one place instead of scattered "zh-TW" literals.
+export const DEFAULT_METADATA_LOCALE: SupportedLocale = 'zh-TW';
+
 export function getMetadataVisibilityOptions(
   tDefault: AppTranslator,
 ): { label: string; value: MetadataActiveFilter }[] {
