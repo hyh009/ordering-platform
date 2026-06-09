@@ -2,8 +2,8 @@ import { apiJson } from '@/api';
 import { merchantStorePaths } from '@/api/paths/store.paths';
 import { storeModel } from '@/models/store';
 
-import type { GetStoreSuccessResponse, ListStoresSuccessResponse } from '@repo/shared';
-import type { Store, StoreListItem } from '@/models/store';
+import type { GetStoreSuccessResponse, ListStoresSuccessResponse, UpdateStoreSuccessResponse } from '@repo/shared';
+import type { Store, StoreListItem, UpdateStoreRequest } from '@/models/store';
 
 export const storeService = {
   async getStore(storeId: string): Promise<Store> {
@@ -28,5 +28,17 @@ export const storeService = {
       stores: response.data.stores,
       total: response.data.pagination.total,
     };
+  },
+
+  async updateStore(storeId: string, input: UpdateStoreRequest): Promise<Store> {
+    const response = await apiJson<UpdateStoreSuccessResponse>(
+      merchantStorePaths.detail(storeId),
+      {
+        body: JSON.stringify(input),
+        method: 'PATCH',
+      },
+    );
+
+    return storeModel.deserialize(response.data.store);
   },
 };

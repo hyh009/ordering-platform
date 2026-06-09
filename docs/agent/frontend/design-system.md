@@ -56,6 +56,63 @@ Use Tailwind's mobile-first breakpoints:
 
 Start with the mobile layout, then add breakpoint variants only where the layout needs to change.
 
+## Page Layout
+
+Every admin and merchant page uses the `admin-page-content` utility as the outermost
+wrapper. It is defined in `src/styles/global.css` and provides a full-width grid
+container with consistent padding and gap:
+
+```css
+@utility admin-page-content {
+  display: grid;
+  gap: 1.5rem;
+  padding: var(--admin-page-padding);  /* 2rem */
+  width: 100%;
+}
+```
+
+Do not replace `admin-page-content` with hand-rolled padding or `max-w-*` wrappers.
+If content needs a narrower column (e.g. a form), apply `max-w-2xl` to the inner
+element, not the page wrapper.
+
+### Page header
+
+Every page that has a title uses this header block as the first child of
+`admin-page-content`:
+
+```tsx
+<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <h1 className="mb-3 text-3xl leading-tight font-bold md:text-4xl">
+      {tDefault('namespace.page.title', 'Page Title')}
+    </h1>
+    <p className="max-w-2xl text-base text-muted-foreground">
+      {tDefault('namespace.page.description', 'One-line page description.')}
+    </p>
+  </div>
+  {canManage ? <Button>{tDefault('…', 'Create …')}</Button> : null}
+</div>
+```
+
+- The action button is conditional on `canManage` (see Permission gating in
+  `docs/features/permissions.md`).
+- Omit the description paragraph only when there is genuinely nothing useful to
+  say; do not omit the h1 header.
+
+### Inline error alert
+
+Use this pattern for page-level API load errors and mutation errors:
+
+```tsx
+{error ? (
+  <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+    {error}
+  </p>
+) : null}
+```
+
+Do not use bare `text-destructive` without the border and background.
+
 ## Component Rules
 
 - When creating a reusable control primitive such as Input, Select, or Popover,

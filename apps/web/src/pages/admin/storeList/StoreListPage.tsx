@@ -7,30 +7,9 @@ import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
+import { StoreStatusBadge } from '@/features/components/store/StoreStatusBadge';
 import { cn } from '@/shared/utils/cn';
 import { useStoreListPageVM } from './useStoreListPageVM';
-
-function StatusBadge({ status }: { status: string }) {
-  const isActive = status === 'active';
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize',
-        isActive
-          ? 'bg-emerald-100 text-emerald-700'
-          : 'bg-rose-100 text-rose-700',
-      )}
-    >
-      <span
-        className={cn(
-          'h-1.5 w-1.5 rounded-full',
-          isActive ? 'bg-emerald-500' : 'bg-rose-500',
-        )}
-      />
-      {status}
-    </span>
-  );
-}
 
 export function StoreListPage() {
   const params = useParams();
@@ -91,7 +70,7 @@ export function StoreListPage() {
     {
       key: 'status',
       header: tDefault('admin.stores.status', 'Status'),
-      render: (store) => <StatusBadge status={store.status} />,
+      render: (store) => <StoreStatusBadge status={store.status} />,
     },
     {
       key: 'languages',
