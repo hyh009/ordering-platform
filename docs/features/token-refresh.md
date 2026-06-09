@@ -29,6 +29,11 @@ and retry once it resolves.
 **No retry loop.** A retried request that receives a second 401 throws
 immediately without attempting another refresh (`isRetry` flag).
 
+**Memberships reconcile.** A successful refresh re-applies the session and
+reconciles the active org/store (`refreshSession` → `applySession`), so a
+permission change picked up on refresh redirects a removed member. See
+[`permission-checks.md`](./permission-checks.md).
+
 **Opt-out via `skipRefresh`.** Auth-related endpoints pass
 `{ skipRefresh: true }` to `apiJson` to bypass the API client's automatic
 401 refresh handling:
@@ -42,7 +47,7 @@ immediately without attempting another refresh (`isRetry` flag).
 | Layer | File | Responsibility |
 |-------|------|----------------|
 | API client | `src/api/index.ts` | 401 interception, `deduplicatedRefresh`, `setApiRefreshHandler` |
-| Auth commands | `src/app/global/auth/auth.commands.ts` | Registers refresh handler; calls `authActions.authSuccess` or `authActions.authAnonymous` |
+| Auth commands | `src/app/global/auth/auth.commands.ts` | Registers `refreshSession` as the handler; on success applies the session and reconciles the active org/store, on failure clears auth |
 | Auth service | `src/services/auth.service.ts` | Calls refresh endpoint with `skipRefresh: true` |
 | Auth guard | `src/app/routing/RequireAuth.tsx` | Redirects to login when `authStore.status` becomes `anonymous` |
 
