@@ -19,6 +19,10 @@ type CategoryModalMode =
   | {
       category: Category;
       type: 'edit';
+    }
+  | {
+      category: Category;
+      type: 'view';
     };
 
 function createCategoryListPageContext() {
@@ -136,6 +140,13 @@ export function useCategoryListPageVM() {
     [form],
   );
 
+  const openViewModal = useCallback((category: Category) => {
+    setModalMode({
+      category,
+      type: 'view',
+    });
+  }, []);
+
   const closeModal = useCallback(() => {
     form.reset();
     setModalMode(null);
@@ -179,8 +190,12 @@ export function useCategoryListPageVM() {
       return '';
     }
 
-    return modalMode.type === 'create'
-      ? tDefault('merchant.categories.createTitle', 'Create category')
+    if (modalMode.type === 'create') {
+      return tDefault('merchant.categories.createTitle', 'Create category');
+    }
+
+    return modalMode.type === 'view'
+      ? tDefault('merchant.categories.viewTitle', 'Category')
       : tDefault('merchant.categories.editTitle', 'Edit category');
   }, [modalMode]);
 
@@ -198,11 +213,14 @@ export function useCategoryListPageVM() {
     isModalOpen: modalMode !== null,
     isReorderMode,
     isReorderSubmitting,
+    isViewMode: modalMode?.type === 'view',
     modalTitle,
     moveCategory,
     openCreateModal,
     openEditModal,
+    openViewModal,
     reorderError,
+    viewedCategory: modalMode?.type === 'view' ? modalMode.category : null,
     saveReorder,
     setFilter,
     submitCategory,

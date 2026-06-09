@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
+import { CategoryDetailsView } from '@/features/components/category/CategoryDetailsView';
 import type { Category, CategoryActiveFilter } from '@/models/category';
 import { getLocalizedText } from '@/models/metadata';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
@@ -49,27 +50,31 @@ export function CategoryListPage() {
     },
   ];
 
-  const normalColumns: DataTableColumn<Category>[] = vm.canManage
-    ? [
-        ...baseColumns,
-        {
-          key: 'actions',
-          header: tDefault('common.table.actions', 'Actions'),
-          align: 'right',
-          className: 'pr-4',
-          render: (category) => (
-            <Button
-              onClick={() => vm.openEditModal(category)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              {tDefault('common.actions.edit', 'Edit')}
-            </Button>
-          ),
-        },
-      ]
-    : baseColumns;
+  const normalColumns: DataTableColumn<Category>[] = [
+    ...baseColumns,
+    {
+      key: 'actions',
+      header: tDefault('common.table.actions', 'Actions'),
+      align: 'right',
+      className: 'pr-4',
+      render: (category) => (
+        <Button
+          onClick={() =>
+            vm.canManage
+              ? vm.openEditModal(category)
+              : vm.openViewModal(category)
+          }
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          {vm.canManage
+            ? tDefault('common.actions.edit', 'Edit')
+            : tDefault('common.actions.view', 'View')}
+        </Button>
+      ),
+    },
+  ];
 
   const reorderColumns: DataTableColumn<Category>[] = [
     ...baseColumns,
@@ -205,71 +210,85 @@ export function CategoryListPage() {
 
       <Modal
         footer={
-          <>
+          vm.isViewMode ? (
             <Button onClick={vm.closeModal} type="button" variant="ghost">
-              {tDefault('common.actions.cancel', 'Cancel')}
+              {tDefault('common.actions.close', 'Close')}
             </Button>
-            <Button
-              disabled={vm.form.isSubmitting}
-              form="category-form"
-              type="submit"
-            >
-              {vm.form.isSubmitting
-                ? tDefault('common.actions.saving', 'Saving...')
-                : tDefault('common.actions.save', 'Save')}
-            </Button>
-          </>
+          ) : (
+            <>
+              <Button onClick={vm.closeModal} type="button" variant="ghost">
+                {tDefault('common.actions.cancel', 'Cancel')}
+              </Button>
+              <Button
+                disabled={vm.form.isSubmitting}
+                form="category-form"
+                type="submit"
+              >
+                {vm.form.isSubmitting
+                  ? tDefault('common.actions.saving', 'Saving...')
+                  : tDefault('common.actions.save', 'Save')}
+              </Button>
+            </>
+          )
         }
         isOpen={vm.isModalOpen}
         onClose={vm.closeModal}
         title={vm.modalTitle}
       >
-        <form className="grid gap-4" id="category-form" onSubmit={handleSubmit}>
-          {vm.form.submitError ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-              {vm.form.submitError}
-            </p>
-          ) : null}
-          <Field
-            error={vm.form.fieldErrors.name}
-            label={tDefault('merchant.categories.name', 'Name')}
-            required
-            renderControl={
-              <LocalizedStringInput
-                defaultLocale="zh-TW"
-                disabled={vm.form.isSubmitting}
-                onChange={(value) => vm.form.setField('name', value)}
-                value={vm.form.values.name}
-              />
-            }
-          />
-          <Field
-            error={vm.form.fieldErrors.description}
-            label={tDefault(
-              'merchant.categories.descriptionLabel',
-              'Description',
-            )}
-            renderControl={
-              <LocalizedStringInput
-                defaultLocale="zh-TW"
-                disabled={vm.form.isSubmitting}
-                onChange={(value) => vm.form.setField('description', value)}
-                value={vm.form.values.description}
-              />
-            }
-          />
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              checked={vm.form.values.isActive}
-              className="h-4 w-4"
-              onChange={(event) => {
-                vm.form.setField('isActive', event.target.checked);
-              }}
-              type="checkbox"
+        {vm.isViewMode && vm.viewedCategory ? (
+          <CategoryDetailsView category={vm.viewedCategory} />
+        ) : (
+          <form
+            className="grid gap-4"
+            id="category-form"
+            onSubmit={handleSubmit}
+          >
+            {vm.form.submitError ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                {vm.form.submitError}
+              </p>
+            ) : null}
+            <Field
+              error={vm.form.fieldErrors.name}
+              label={tDefault('merchant.categories.name', 'Name')}
+              required
+              renderControl={
+                <LocalizedStringInput
+                  defaultLocale="zh-TW"
+                  disabled={vm.form.isSubmitting}
+                  onChange={(value) => vm.form.setField('name', value)}
+                  value={vm.form.values.name}
+                />
+              }
             />
-            {tDefault('merchant.categories.isActive', 'Active')}
-          </label>
-        </form>
+            <Field
+              error={vm.form.fieldErrors.description}
+              label={tDefault(
+                'merchant.categories.descriptionLabel',
+                'Description',
+              )}
+              renderControl={
+                <LocalizedStringInput
+                  defaultLocale="zh-TW"
+                  disabled={vm.form.isSubmitting}
+                  onChange={(value) => vm.form.setField('description', value)}
+                  value={vm.form.values.description}
+                />
+              }
+            />
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                checked={vm.form.values.isActive}
+                className="h-4 w-4"
+                onChange={(event) => {
+                  vm.form.setField('isActive', event.target.checked);
+                }}
+                type="checkbox"
+              />
+              {tDefault('merchant.categories.isActive', 'Active')}
+            </label>
+          </form>
+        )}
       </Modal>
     </section>
   );

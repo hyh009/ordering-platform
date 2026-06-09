@@ -1,4 +1,5 @@
 import { useAppTranslation } from '@/app/i18n';
+import { StoreDetailsView } from '@/features/components/store/StoreDetailsView';
 import { StoreForm } from '@/features/components/store/storeForm/StoreForm';
 import { StoreStatusBadge } from '@/features/components/store/StoreStatusBadge';
 import { Button } from '@/shared/components/ui/button';
@@ -67,15 +68,19 @@ export function StoreSettingsPage() {
             )}
           </div>
 
-          {/* Settings form */}
+          {/* Settings */}
           <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-            <StoreForm
-              form={vm.form}
-              hideFooter
-              id="store-settings-form"
-              onCancel={() => undefined}
-              onSubmit={vm.submit}
-            />
+            {vm.canManage ? (
+              <StoreForm
+                form={vm.form}
+                hideFooter
+                id="store-settings-form"
+                onCancel={() => undefined}
+                onSubmit={vm.submit}
+              />
+            ) : (
+              <StoreDetailsView store={vm.store} />
+            )}
           </div>
 
           {vm.canManage && (

@@ -77,6 +77,24 @@ export function ProductModifierListPage() {
           ? tDefault('merchant.productModifiers.active', 'Active')
           : tDefault('merchant.productModifiers.inactive', 'Inactive'),
     },
+    {
+      key: 'actions',
+      header: tDefault('common.table.actions', 'Actions'),
+      align: 'right',
+      className: 'pr-4',
+      render: (modifier) => (
+        <Button
+          onClick={() => vm.openModifier(modifier)}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          {vm.canManage
+            ? tDefault('common.actions.edit', 'Edit')
+            : tDefault('common.actions.view', 'View')}
+        </Button>
+      ),
+    },
   ];
 
   if (vm.isLoading && vm.productModifiers.length === 0) {
@@ -127,7 +145,6 @@ export function ProductModifierListPage() {
             'No modifiers found.',
           ),
         }}
-        onRowClick={vm.openModifier}
         rowKey={(modifier) => modifier.id}
         toolbar={
           <FilterSelect

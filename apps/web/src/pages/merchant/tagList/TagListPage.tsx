@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
+import { TagDetailsView } from '@/features/components/tag/TagDetailsView';
 import { getTagName } from '@/models/tag';
 import type { Tag, TagActiveFilter } from '@/models/tag';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
@@ -54,27 +55,27 @@ export function TagListPage() {
     },
   ];
 
-  // Edit action is only available to managers; staff get a read-only table.
-  if (vm.canManage) {
-    columns.push({
-      key: 'actions',
-      header: tDefault('common.table.actions', 'Actions'),
-      align: 'right',
-      className: 'pr-4',
-      render: (tag) => (
-        <Button
-          onClick={() => {
-            vm.openEditModal(tag);
-          }}
-          size="sm"
-          type="button"
-          variant="secondary"
-        >
-          {tDefault('common.actions.edit', 'Edit')}
-        </Button>
-      ),
-    });
-  }
+  // Managers edit; staff open a read-only view of the same record.
+  columns.push({
+    key: 'actions',
+    header: tDefault('common.table.actions', 'Actions'),
+    align: 'right',
+    className: 'pr-4',
+    render: (tag) => (
+      <Button
+        onClick={() =>
+          vm.canManage ? vm.openEditModal(tag) : vm.openViewModal(tag)
+        }
+        size="sm"
+        type="button"
+        variant="secondary"
+      >
+        {vm.canManage
+          ? tDefault('common.actions.edit', 'Edit')
+          : tDefault('common.actions.view', 'View')}
+      </Button>
+    ),
+  });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,68 +132,78 @@ export function TagListPage() {
 
       <Modal
         footer={
-          <>
+          vm.isViewMode ? (
             <Button onClick={vm.closeModal} type="button" variant="ghost">
-              {tDefault('common.actions.cancel', 'Cancel')}
+              {tDefault('common.actions.close', 'Close')}
             </Button>
-            <Button
-              disabled={vm.form.isSubmitting}
-              form="tag-form"
-              type="submit"
-            >
-              {vm.form.isSubmitting
-                ? tDefault('common.actions.saving', 'Saving...')
-                : tDefault('common.actions.save', 'Save')}
-            </Button>
-          </>
+          ) : (
+            <>
+              <Button onClick={vm.closeModal} type="button" variant="ghost">
+                {tDefault('common.actions.cancel', 'Cancel')}
+              </Button>
+              <Button
+                disabled={vm.form.isSubmitting}
+                form="tag-form"
+                type="submit"
+              >
+                {vm.form.isSubmitting
+                  ? tDefault('common.actions.saving', 'Saving...')
+                  : tDefault('common.actions.save', 'Save')}
+              </Button>
+            </>
+          )
         }
         isOpen={vm.isModalOpen}
         onClose={vm.closeModal}
         title={vm.modalTitle}
       >
-        <form className="grid gap-4" id="tag-form" onSubmit={handleSubmit}>
-          {vm.form.submitError ? (
-            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-              {vm.form.submitError}
-            </p>
-          ) : null}
-          <Field
-            error={vm.form.fieldErrors.name}
-            label={tDefault('merchant.tags.name', 'Name')}
-            required
-            renderControl={
-              <LocalizedStringInput
-                defaultLocale="zh-TW"
-                disabled={vm.form.isSubmitting}
-                onChange={(value) => vm.form.setField('name', value)}
-                value={vm.form.values.name}
+        {vm.isViewMode && vm.viewedTag ? (
+          <TagDetailsView tag={vm.viewedTag} />
+        ) : (
+          <form className="grid gap-4" id="tag-form" onSubmit={handleSubmit}>
+            {vm.form.submitError ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                {vm.form.submitError}
+              </p>
+            ) : null}
+            <Field
+              error={vm.form.fieldErrors.name}
+              label={tDefault('merchant.tags.name', 'Name')}
+              required
+              renderControl={
+                <LocalizedStringInput
+                  defaultLocale="zh-TW"
+                  disabled={vm.form.isSubmitting}
+                  onChange={(value) => vm.form.setField('name', value)}
+                  value={vm.form.values.name}
+                />
+              }
+            />
+            <Field
+              error={vm.form.fieldErrors.color}
+              label={tDefault('merchant.tags.color', 'Color')}
+            >
+              <Input
+                onChange={(event) => {
+                  vm.form.setField('color', event.target.value);
+                }}
+                placeholder="#1A2B3C"
+                value={vm.form.values.color}
               />
-            }
-          />
-          <Field
-            error={vm.form.fieldErrors.color}
-            label={tDefault('merchant.tags.color', 'Color')}
-          >
-            <Input
-              onChange={(event) => {
-                vm.form.setField('color', event.target.value);
-              }}
-              placeholder="#1A2B3C"
-              value={vm.form.values.color}
-            />
-          </Field>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              checked={vm.form.values.isActive}
-              className="h-4 w-4"
-              onChange={(event) => {
-                vm.form.setField('isActive', event.target.checked);
-              }}
-              type="checkbox"
-            />
-            {tDefault('merchant.tags.isActive', 'Active')}
-          </label>
-        </form>
+            </Field>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                checked={vm.form.values.isActive}
+                className="h-4 w-4"
+                onChange={(event) => {
+                  vm.form.setField('isActive', event.target.checked);
+                }}
+                type="checkbox"
+              />
+              {tDefault('merchant.tags.isActive', 'Active')}
+            </label>
+          </form>
+        )}
       </Modal>
     </section>
   );

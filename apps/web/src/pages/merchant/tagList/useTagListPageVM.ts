@@ -15,6 +15,10 @@ type TagModalMode =
   | {
       tag: Tag;
       type: 'edit';
+    }
+  | {
+      tag: Tag;
+      type: 'view';
     };
 
 function createTagListPageContext() {
@@ -81,6 +85,13 @@ export function useTagListPageVM() {
     [form],
   );
 
+  const openViewModal = useCallback((tag: Tag) => {
+    setModalMode({
+      tag,
+      type: 'view',
+    });
+  }, []);
+
   const closeModal = useCallback(() => {
     form.reset();
     setModalMode(null);
@@ -120,8 +131,12 @@ export function useTagListPageVM() {
       return '';
     }
 
-    return modalMode.type === 'create'
-      ? tDefault('merchant.tags.createTitle', 'Create tag')
+    if (modalMode.type === 'create') {
+      return tDefault('merchant.tags.createTitle', 'Create tag');
+    }
+
+    return modalMode.type === 'view'
+      ? tDefault('merchant.tags.viewTitle', 'Tag')
       : tDefault('merchant.tags.editTitle', 'Edit tag');
   }, [modalMode]);
 
@@ -134,11 +149,14 @@ export function useTagListPageVM() {
     isCreateMode: modalMode?.type === 'create',
     isLoading,
     isModalOpen: modalMode !== null,
+    isViewMode: modalMode?.type === 'view',
     modalTitle,
     openCreateModal,
     openEditModal,
+    openViewModal,
     setFilter,
     submitTag,
     tags,
+    viewedTag: modalMode?.type === 'view' ? modalMode.tag : null,
   };
 }
