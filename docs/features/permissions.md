@@ -109,16 +109,61 @@ Merchant management pages that allow editing must support a read-only mode for
 `staff`:
 
 1. The page VM calls `useCanManageStoreResources()` and returns `canManage`.
-2. The view hides mutating affordances when `!canManage`:
-   - the create/primary action button is not rendered;
-   - the row "Actions" column (edit/delete) is omitted;
-   - edit dialogs are unreachable because their only triggers are hidden.
+2. When `!canManage`, mutating affordances are replaced by a read-only view,
+   not merely hidden:
+   - the create/primary action and reorder buttons are not rendered;
+   - the row "Actions" column shows **View** instead of **Edit**, opening a
+     read-only detail (`CategoryDetailsView` / `TagDetailsView`) instead of an
+     editable dialog;
+   - the store settings page renders `StoreDetailsView` instead of the form;
+   - localized fields render through `LocalizedStringView` (read-only; lists
+     every filled locale and highlights the store's default locale from
+     `useActiveStoreLocale()`).
 3. List/detail reads stay visible to all members.
 
 Reference implementation: `apps/web/src/pages/merchant/tagList/` (VM exposes
-`canManage`; `TagListPage.tsx` conditionally renders the create button and the
-actions column). Apply the same pattern to category, product modifier, product,
-and store settings pages.
+`canManage`; `TagListPage.tsx` swaps the create button and the Edit/View action)
+and `apps/web/src/pages/merchant/storeSettings/`. The same pattern applies to
+category, product modifier, product, and store settings pages.
 
 Staff are not blocked from the management pages themselves — they view content;
-only editing is hidden. Routes are not role-gated at the router level for this.
+only editing is read-only. Routes are not role-gated at the router level for
+this.
+
+### Permission check timing and staleness
+
+The frontend gate is a UX convenience computed from a **cached** session, while
+the backend re-checks every request. They can disagree until the client
+re-validates.
+
+- **Where the gate comes from.** `canManage` derives from
+  `authStore.user.memberships`, captured at login/refresh and *not* refetched
+  per page (`useCanManageStoreResources`). A role change on another device
+  leaves it stale.
+- **The real check is server-side, per request.** `requireOrgRole` /
+  `requireSuperAdmin` reject with `403 FORBIDDEN` on every read and mutation.
+- **Self-correction on 403.** Any 403 triggers one deduplicated re-validation:
+  `apps/web/src/api/index.ts` (`setApi403Handler`) →
+  `authCommands.revalidateMemberships` (`apps/web/src/app/global/auth/auth.commands.ts`)
+  re-fetches `/auth/me`, updates `authStore.user`, reconciles the active
+  org/store, and toasts "Your permissions have changed" when something actually
+  changed. The failed request is **not** retried.
+- **Outcomes** (`/auth/me` returns only `status: 'active'` memberships):
+  - *Removed or disabled membership* → the org is absent from `/auth/me` → the
+    active org is cleared → `RequireActiveStore` redirects to the org-select
+    page.
+  - *Role downgraded (→ `staff`)* → membership role updates → `canManage`
+    recomputes to `false` → the current page re-renders read-only (no
+    navigation).
+  - *Super-admin revoked* → `isSuperAdmin` becomes `false` →
+    `RequireSuperAdmin` redirects.
+- **Timing nuance.** Correction is driven by the *next* 403:
+  - a removed/disabled member also 403s on **reads**, so it corrects on the next
+    page load or navigation;
+  - a downgraded-but-active member can still read, so their 403 only fires on a
+    **write attempt** — the edit UI stays until they try to save, then flips to
+    read-only.
+- **What the user sees on denial** (graceful, never a hang): the submitting
+  state resets; the forbidden message appears inline for mutations or as a toast
+  for the store status toggle and the permissions-changed notice; list loads
+  show the mapped "no permission" message.
