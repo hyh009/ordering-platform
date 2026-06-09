@@ -113,6 +113,47 @@ describe('authCommands', () => {
     });
   });
 
+  it('reconciles the active org when refreshSession succeeds', async () => {
+    const refreshed: AuthSession = {
+      accessToken: 'access-token',
+      user: {
+        ...session.user,
+        memberships: [
+          {
+            organizationId: 'org-1',
+            organizationName: 'Org',
+            role: 'org_admin',
+          },
+        ],
+      },
+    };
+    vi.mocked(authService.refresh).mockResolvedValue(refreshed);
+
+    await expect(authCommands.refreshSession()).resolves.toBe(true);
+
+    expect(activeOrgCommands.initialize).toHaveBeenCalledWith(
+      refreshed.user.memberships,
+    );
+    expect(authStore.getState().user).toEqual(refreshed.user);
+  });
+
+  it('logs out when refreshSession fails', async () => {
+    authStore.setState({
+      accessToken: 'access-token',
+      status: 'authenticated',
+      user: session.user,
+    });
+    vi.mocked(authService.refresh).mockRejectedValue(new Error('bad refresh'));
+
+    await expect(authCommands.refreshSession()).resolves.toBe(false);
+
+    expect(authStore.getState()).toMatchObject({
+      accessToken: null,
+      status: 'anonymous',
+      user: null,
+    });
+  });
+
   it('clears the session after logout succeeds', async () => {
     authStore.setState({
       accessToken: 'access-token',

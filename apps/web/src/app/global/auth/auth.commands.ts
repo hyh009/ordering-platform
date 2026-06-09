@@ -16,26 +16,25 @@ import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import { authService } from '@/services/auth.service';
 import { loginSchema } from '@/models/auth';
-import type { AuthUserDto, LoginRequest } from '@/models/auth';
+import type { AuthSession, AuthUserDto, LoginRequest } from '@/models/auth';
 
 const authActions = createAuthActions(authStore);
 let initializePromise: Promise<void> | null = null;
 
 setApiTokenProvider(() => authStore.getState().accessToken);
 
-setApiRefreshHandler(async () => {
-  try {
-    const session = await authService.refresh();
-
-    authActions.authSuccess(session);
-    return true;
-  } catch {
-    authActions.authAnonymous();
-    return false;
-  }
-});
+setApiRefreshHandler(() => authCommands.refreshSession());
 
 setApi403Handler(() => authCommands.revalidateMemberships());
+
+// Apply a fresh session: update the user and reconcile the active org/store
+// against the session's memberships (clears a now-invalid org). Shared by
+// login, app init, and the 401 token-refresh path so they behave identically.
+function applySession(session: AuthSession) {
+  authActions.authSuccess(session);
+  const orgId = activeOrgCommands.initialize(session.user.memberships);
+  activeStoreCommands.initialize(orgId);
+}
 
 function membershipsChanged(prev: AuthUserDto | null, next: AuthUserDto) {
   if (!prev) return false;
@@ -104,9 +103,7 @@ export const authCommands = {
     try {
       const session = await authService.login(validation.data);
 
-      authActions.authSuccess(session);
-      const orgId = activeOrgCommands.initialize(session.user.memberships);
-      activeStoreCommands.initialize(orgId);
+      applySession(session);
       return {
         status: 'authenticated',
         user: session.user,
@@ -121,6 +118,19 @@ export const authCommands = {
       );
 
       return result;
+    }
+  },
+
+  // Registered as the 401 refresh handler. On success, reconciles the active
+  // org/store (so a removed/disabled member is redirected after a token
+  // refresh, not only on a 403). On failure, the session is dead → logout.
+  async refreshSession(): Promise<boolean> {
+    try {
+      applySession(await authService.refresh());
+      return true;
+    } catch {
+      authActions.authAnonymous();
+      return false;
     }
   },
 
@@ -226,9 +236,7 @@ async function initializeAuth() {
     return;
   }
 
-  authActions.authSuccess(session);
-  const orgId = activeOrgCommands.initialize(session.user.memberships);
-  activeStoreCommands.initialize(orgId);
+  applySession(session);
 }
 
 function mapAuthSubmitError(
