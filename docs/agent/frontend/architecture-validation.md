@@ -59,6 +59,8 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Commands return typed results.
 - Submit and mutation commands validate request inputs before calling services.
 - Page commands compose required data state changes after successful mutations.
+- Read-slice commands only load and maintain their read-slice state.
+- Resource mutation commands own standard write operations.
 - Commands map API errors with named helpers when behavior depends on error meaning.
 - Feature commands do not import from `src/pages`.
 
@@ -70,8 +72,7 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Store state uses frontend models, not raw API DTOs.
 - Feature stores hold API-loaded resource state such as list data, detail data,
   loading flags, and API load errors.
-- Standard collection create, update, and delete flows live in
-  `mutations/commands.ts` unless the operation is truly page-only or list-only.
+- Standard resource write flows live in `mutations/commands.ts`.
 
 ## Model Checks
 

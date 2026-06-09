@@ -85,10 +85,9 @@ Feature resource state
   -> src/features/<area>/<resource>/<slice>/store.ts
 
 Feature read async flows
-  -> src/features/<area>/<resource>/list/commands.ts
-  -> src/features/<area>/<resource>/detail/commands.ts
+  -> src/features/<area>/<resource>/<readSlice>/commands.ts
 
-Feature mutation async flows
+Feature standard write flows
   -> src/features/<area>/<resource>/mutations/commands.ts
 
 Feature store/action runtime
@@ -211,6 +210,9 @@ flow needs cross-page state.
 Use `src/app/global/<module>` only for app-wide runtime modules such as auth, feedback, and app context.
 
 `*.commands.ts` files do not use React hooks, toast/modal APIs, or navigation APIs.
+
+Read-slice commands only maintain their read-slice state. Standard resource
+writes belong in `mutations/commands.ts`.
 
 Follow `docs/agent/frontend/commands.md` for page-owned vs feature-owned commands,
 shared command contracts, overrides, and runtime wiring.

@@ -81,9 +81,9 @@ Determine whether the feature has async flows. If yes, add or update commands.
 - Page VMs call page commands for page-owned async flows; keep the wrapper even
   when it only forwards to a feature command.
 - Feature read commands live under
-  `apps/web/src/features/<area>/<resource>/list/` or
-  `apps/web/src/features/<area>/<resource>/detail/`.
-- Standard create, update, and delete flows for one resource collection live in
+  `apps/web/src/features/<area>/<resource>/<readSlice>/` and only maintain that
+  read-slice state.
+- Standard resource write flows live in
   `apps/web/src/features/<area>/<resource>/mutations/commands.ts`.
 - Commands coordinate request validation, service calls, actions, loading
   states, API errors, and typed outcomes.
