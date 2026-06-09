@@ -9,12 +9,15 @@ const apiPathPrefix = '/api';
 
 type ApiTokenProvider = () => string | null | undefined;
 type ApiRefreshHandler = () => Promise<boolean>;
+type Api403Handler = () => Promise<void>;
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? defaultBaseUrl;
 
 let apiTokenProvider: ApiTokenProvider = () => null;
 let apiRefreshHandler: ApiRefreshHandler = () => Promise.resolve(false);
+let api403Handler: Api403Handler = () => Promise.resolve();
 let pendingRefresh: Promise<boolean> | null = null;
+let pendingRevalidate: Promise<void> | null = null;
 
 export function setApiTokenProvider(provider: ApiTokenProvider) {
   apiTokenProvider = provider;
@@ -24,6 +27,12 @@ export function setApiRefreshHandler(handler: ApiRefreshHandler) {
   apiRefreshHandler = handler;
 }
 
+// Invoked once per burst of 403s to re-validate the user's memberships so the
+// UI can self-correct after a permission change. Does not retry the request.
+export function setApi403Handler(handler: Api403Handler) {
+  api403Handler = handler;
+}
+
 function deduplicatedRefresh(): Promise<boolean> {
   if (!pendingRefresh) {
     pendingRefresh = apiRefreshHandler().finally(() => {
@@ -31,6 +40,17 @@ function deduplicatedRefresh(): Promise<boolean> {
     });
   }
   return pendingRefresh;
+}
+
+function deduplicatedRevalidate(): Promise<void> {
+  if (!pendingRevalidate) {
+    pendingRevalidate = api403Handler()
+      .catch(() => undefined)
+      .finally(() => {
+        pendingRevalidate = null;
+      });
+  }
+  return pendingRevalidate;
 }
 
 function joinApiPath(path: string) {
@@ -82,6 +102,7 @@ function createApiHeaders(init?: RequestInit) {
 
 type ApiJsonOptions = {
   skipRefresh?: boolean;
+  skipRevalidate?: boolean;
 };
 
 export async function apiJson<TData>(
@@ -89,13 +110,21 @@ export async function apiJson<TData>(
   init?: RequestInit,
   options?: ApiJsonOptions,
 ): Promise<TData> {
-  return apiJsonInternal<TData>(path, init, { isRetry: false, skipRefresh: options?.skipRefresh ?? false });
+  return apiJsonInternal<TData>(path, init, {
+    isRetry: false,
+    skipRefresh: options?.skipRefresh ?? false,
+    skipRevalidate: options?.skipRevalidate ?? false,
+  });
 }
 
 async function apiJsonInternal<TData>(
   path: string,
   init: RequestInit | undefined,
-  { isRetry, skipRefresh }: { isRetry: boolean; skipRefresh: boolean },
+  {
+    isRetry,
+    skipRefresh,
+    skipRevalidate,
+  }: { isRetry: boolean; skipRefresh: boolean; skipRevalidate: boolean },
 ): Promise<TData> {
   try {
     const response = await fetch(apiUrl(path), {
@@ -119,8 +148,19 @@ async function apiJsonInternal<TData>(
         const refreshed = await deduplicatedRefresh();
 
         if (refreshed) {
-          return apiJsonInternal<TData>(path, init, { isRetry: true, skipRefresh: false });
+          return apiJsonInternal<TData>(path, init, {
+            isRetry: true,
+            skipRefresh: false,
+            skipRevalidate,
+          });
         }
+      }
+
+      // Permission changed server-side: re-validate memberships so the UI can
+      // self-correct. Fire-and-forget — the original action stays forbidden, so
+      // we do not retry it.
+      if (response.status === 403 && !skipRevalidate) {
+        void deduplicatedRevalidate();
       }
 
       throw normalizeApiError({

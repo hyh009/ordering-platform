@@ -3,8 +3,13 @@ import {
   hasApiErrorCode,
   isApiError,
 } from '@/api/apiError';
-import { setApiRefreshHandler, setApiTokenProvider } from '@/api';
+import {
+  setApi403Handler,
+  setApiRefreshHandler,
+  setApiTokenProvider,
+} from '@/api';
 import { tDefault } from '@/app/i18n';
+import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { createAuthActions } from '@/app/global/auth/auth.actions';
 import { authStore } from '@/app/global/auth/auth.store';
 import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
@@ -29,6 +34,21 @@ setApiRefreshHandler(async () => {
     return false;
   }
 });
+
+setApi403Handler(() => authCommands.revalidateMemberships());
+
+function membershipsChanged(prev: AuthUserDto | null, next: AuthUserDto) {
+  if (!prev) return false;
+  if (prev.isSuperAdmin !== next.isSuperAdmin) return true;
+
+  const key = (user: AuthUserDto) =>
+    user.memberships
+      .map((m) => `${m.organizationId}:${m.role}`)
+      .sort()
+      .join('|');
+
+  return key(prev) !== key(next);
+}
 
 export type AuthSubmitResult =
   | {
@@ -121,11 +141,39 @@ export const authCommands = {
       };
     }
   },
+
+  // Re-fetch the current user's memberships after a 403 and reconcile, so the UI
+  // self-corrects: a demotion updates the role (hiding edit affordances) and a
+  // revoked membership clears the active org/store (guards redirect to select).
+  async revalidateMemberships(): Promise<void> {
+    const prev = authStore.getState().user;
+
+    let user: AuthUserDto;
+    try {
+      user = await authService.me();
+    } catch {
+      // A failure here means the session itself is invalid; the 401/refresh
+      // path owns logout. Nothing to reconcile.
+      return;
+    }
+
+    authActions.setUser(user);
+    const orgId = activeOrgCommands.initialize(user.memberships);
+    activeStoreCommands.initialize(orgId);
+
+    if (membershipsChanged(prev, user)) {
+      feedbackCommands.toast({
+        tone: 'info',
+        message: tDefault(
+          'auth.permissionsChanged',
+          'Your permissions have changed.',
+        ),
+      });
+    }
+  },
 };
 
-function getLoginFieldErrorKey(
-  path: PropertyKey[],
-): keyof LoginRequest | null {
+function getLoginFieldErrorKey(path: PropertyKey[]): keyof LoginRequest | null {
   const [field] = path.map(String);
 
   if (field === 'email' || field === 'password') {

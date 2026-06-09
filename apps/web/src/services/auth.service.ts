@@ -31,7 +31,11 @@ export const authService = {
   },
 
   async me() {
-    const response = await apiJson<AuthUserSuccessResponse>(authPaths.me);
+    const response = await apiJson<AuthUserSuccessResponse>(
+      authPaths.me,
+      undefined,
+      { skipRevalidate: true },
+    );
 
     return response.data.user;
   },

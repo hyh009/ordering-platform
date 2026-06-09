@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/apiError';
+import { activeOrgCommands } from '@/app/global/activeOrg/activeOrg.commands';
+import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { authStore } from '@/app/global/auth/auth.store';
-import type { AuthSession } from '@/models/auth';
+import type { AuthSession, AuthUserDto } from '@/models/auth';
 import { authService } from '@/services/auth.service';
 import { authCommands } from './auth.commands';
 
@@ -24,6 +26,13 @@ vi.mock('@/services/auth.service', () => ({
     login: vi.fn(),
     logout: vi.fn(),
     refresh: vi.fn(),
+    me: vi.fn(),
+  },
+}));
+
+vi.mock('@/app/global/feedback/feedback.commands', () => ({
+  feedbackCommands: {
+    toast: vi.fn(),
   },
 }));
 
@@ -123,6 +132,74 @@ describe('authCommands', () => {
       status: 'anonymous',
       user: null,
     });
+  });
+
+  it('updates the user and toasts when revalidation finds a role change', async () => {
+    const adminUser: AuthUserDto = {
+      ...session.user,
+      memberships: [
+        { organizationId: 'org-1', organizationName: 'Org', role: 'org_admin' },
+      ],
+    };
+    const staffUser: AuthUserDto = {
+      ...adminUser,
+      memberships: [
+        { organizationId: 'org-1', organizationName: 'Org', role: 'staff' },
+      ],
+    };
+    authStore.setState({
+      accessToken: 'access-token',
+      status: 'authenticated',
+      user: adminUser,
+    });
+    vi.mocked(authService.me).mockResolvedValue(staffUser);
+
+    await authCommands.revalidateMemberships();
+
+    expect(authStore.getState().user).toEqual(staffUser);
+    expect(activeOrgCommands.initialize).toHaveBeenCalledWith(
+      staffUser.memberships,
+    );
+    expect(feedbackCommands.toast).toHaveBeenCalledOnce();
+  });
+
+  it('does not toast when revalidation finds no change', async () => {
+    const user: AuthUserDto = {
+      ...session.user,
+      memberships: [
+        { organizationId: 'org-1', organizationName: 'Org', role: 'staff' },
+      ],
+    };
+    authStore.setState({
+      accessToken: 'access-token',
+      status: 'authenticated',
+      user,
+    });
+    vi.mocked(authService.me).mockResolvedValue({ ...user });
+
+    await authCommands.revalidateMemberships();
+
+    expect(feedbackCommands.toast).not.toHaveBeenCalled();
+  });
+
+  it('leaves the user untouched when revalidation fails', async () => {
+    authStore.setState({
+      accessToken: 'access-token',
+      status: 'authenticated',
+      user: session.user,
+    });
+    vi.mocked(authService.me).mockRejectedValue(
+      new ApiError({
+        code: 'UNAUTHORIZED',
+        message: 'Session expired.',
+        statusCode: 401,
+      }),
+    );
+
+    await authCommands.revalidateMemberships();
+
+    expect(authStore.getState().user).toEqual(session.user);
+    expect(feedbackCommands.toast).not.toHaveBeenCalled();
   });
 
   it('keeps the session when logout fails', async () => {

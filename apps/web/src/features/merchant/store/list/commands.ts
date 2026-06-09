@@ -1,4 +1,5 @@
 import { storeService } from '@/services/store.service';
+import { mapMerchantApiError } from '@/services/utils/merchantApiError';
 import type { StoreListActions } from './actions';
 
 export function createStoreListCommands(actions: StoreListActions) {
@@ -10,8 +11,8 @@ export function createStoreListCommands(actions: StoreListActions) {
         const result = await storeService.listStores(organizationId);
 
         actions.setStores(result.stores);
-      } catch {
-        actions.setError('Failed to load stores.');
+      } catch (error) {
+        actions.setError(mapMerchantApiError(error).message);
       }
     },
   };

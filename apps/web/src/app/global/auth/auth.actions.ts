@@ -1,4 +1,4 @@
-import type { AuthSession } from '@/models/auth';
+import type { AuthSession, AuthUserDto } from '@/models/auth';
 import type { AuthState } from '@/app/global/auth/auth.store';
 import type { StoreApi } from 'zustand/vanilla';
 
@@ -16,6 +16,12 @@ export function createAuthActions(authStore: StoreApi<AuthState>) {
         status: 'authenticated',
         user: session.user,
       });
+    },
+
+    // Refresh only the user (memberships/role) without touching the token or
+    // status — used when re-validating after a permission change.
+    setUser(user: AuthUserDto) {
+      authStore.setState({ user });
     },
 
     authAnonymous() {
