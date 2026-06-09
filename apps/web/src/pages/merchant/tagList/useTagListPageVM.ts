@@ -148,7 +148,6 @@ export function useTagListPageVM() {
     error,
     filter,
     form,
-    isCreateMode: modalMode?.type === 'create',
     isLoading,
     isModalOpen: modalMode !== null,
     isViewMode: modalMode?.type === 'view',
