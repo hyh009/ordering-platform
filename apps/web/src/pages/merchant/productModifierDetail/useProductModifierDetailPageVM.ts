@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
+import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { PATHS } from '@/app/routing/paths';
 import { createProductModifierDetailRuntime } from '@/features/merchant/menu/productModifiers/detail/runtime';
 import {
@@ -27,6 +28,7 @@ export function useProductModifierDetailPageVM() {
 
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
   const canManage = useCanManageStoreResources();
+  const locale = useActiveStoreLocale();
 
   const modifier = useStore(store, (state) => state.modifier);
   const isLoading = useStore(store, (state) => state.isLoading);
@@ -93,6 +95,7 @@ export function useProductModifierDetailPageVM() {
     goBack,
     isEditMode,
     isLoading,
+    locale,
     modifier,
     pageTitle,
     saveModifier,

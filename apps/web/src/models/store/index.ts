@@ -12,6 +12,7 @@ export type {
   StoreCheckoutMode,
   StoreListItem,
   StoreListPage,
+  StoreLocaleDto,
   StoreOrderType,
   StoreStatus,
   UpdateStoreRequest,

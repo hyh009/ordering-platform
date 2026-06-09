@@ -1,19 +1,21 @@
 import { useAppTranslation } from '@/app/i18n';
+import type { SupportedLocale } from '@/models/metadata';
 import type { Tag } from '@/models/tag';
 import { ReadOnlyField } from '@/shared/components/form/ReadOnlyField';
 import { LocalizedStringView } from '@/shared/components/LocalizedStringView';
 
 type TagDetailsViewProps = {
   tag: Tag;
+  defaultLocale: SupportedLocale;
 };
 
-export function TagDetailsView({ tag }: TagDetailsViewProps) {
+export function TagDetailsView({ tag, defaultLocale }: TagDetailsViewProps) {
   const { tDefault } = useAppTranslation();
 
   return (
     <div className="grid gap-4">
       <ReadOnlyField label={tDefault('merchant.tags.name', 'Name')}>
-        <LocalizedStringView value={tag.name} />
+        <LocalizedStringView highlightLocale={defaultLocale} value={tag.name} />
       </ReadOnlyField>
       <ReadOnlyField label={tDefault('merchant.tags.color', 'Color')}>
         {tag.color ? (

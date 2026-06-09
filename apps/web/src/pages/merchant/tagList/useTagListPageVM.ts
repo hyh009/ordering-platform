@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
+import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { tDefault } from '@/app/i18n';
 import { createTagListRuntime } from '@/features/merchant/menu/tags/list/runtime';
 import type { Tag, TagActiveFilter } from '@/models/tag';
@@ -39,6 +40,7 @@ export function useTagListPageVM() {
 
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
   const canManage = useCanManageStoreResources();
+  const locale = useActiveStoreLocale();
 
   const tags = useStore(store, (state) => state.tags);
   const isLoading = useStore(store, (state) => state.isLoading);
@@ -150,6 +152,7 @@ export function useTagListPageVM() {
     isLoading,
     isModalOpen: modalMode !== null,
     isViewMode: modalMode?.type === 'view',
+    locale,
     modalTitle,
     openCreateModal,
     openEditModal,

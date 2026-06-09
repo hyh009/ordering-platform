@@ -1,3 +1,4 @@
+import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import { createStoreDetailCommands } from '@/features/merchant/store/detail/commands';
 import type { StoreDetailActions } from '@/features/merchant/store/detail/actions';
 import {
@@ -28,6 +29,7 @@ export function createStoreSettingsPageCommands(
 
       if (result.status === 'saved') {
         actions.loadSucceeded(result.store);
+        activeStoreCommands.setLocale(storeId, result.store.locale);
       }
 
       return result;

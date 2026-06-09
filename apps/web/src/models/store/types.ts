@@ -4,6 +4,7 @@ import type {
   StoreCheckoutMode,
   StoreDto,
   StoreListItemDto,
+  StoreLocaleDto,
   StoreOrderType,
   StoreStatus,
   UpdateStoreRequest,
@@ -12,6 +13,7 @@ import type {
 export type {
   CreateStoreRequest,
   StoreCheckoutMode,
+  StoreLocaleDto,
   StoreOrderType,
   StoreStatus,
   UpdateStoreRequest,

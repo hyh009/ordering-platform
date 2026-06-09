@@ -3,9 +3,10 @@ import { ChevronLeft } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ModifierOptionsEditTable } from '@/features/merchant/menu/productModifiers/components/productModifierForm/ModifierOptionsEditTable';
 import { ModifierSelectionTypeFields } from '@/features/merchant/menu/productModifiers/components/productModifierForm/ModifierSelectionTypeFields';
-import { getLocalizedText } from '@/models/metadata';
+import type { SupportedLocale } from '@/models/metadata';
 import type { ProductModifier } from '@/models/productModifier';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
+import { LocalizedStringView } from '@/shared/components/LocalizedStringView';
 import { Field } from '@/shared/components/form/Field';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
@@ -19,7 +20,13 @@ function OptionValueDisplay({ value }: { value: boolean }) {
   );
 }
 
-function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
+function ModifierViewMode({
+  modifier,
+  defaultLocale,
+}: {
+  modifier: ProductModifier;
+  defaultLocale: SupportedLocale;
+}) {
   const { tDefault } = useAppTranslation();
   const isSingleChoice = modifier.selectionType === 'single_choice';
 
@@ -35,12 +42,10 @@ function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
             <p className="text-muted-foreground mb-0.5">
               {tDefault('merchant.productModifiers.name', 'Name')}
             </p>
-            <p className="font-medium">{getLocalizedText(modifier.name)}</p>
-            {modifier.name.en && modifier.name['zh-TW'] && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {modifier.name.en}
-              </p>
-            )}
+            <LocalizedStringView
+              highlightLocale={defaultLocale}
+              value={modifier.name}
+            />
           </div>
 
           <div>
@@ -135,13 +140,11 @@ function ModifierViewMode({ modifier }: { modifier: ProductModifier }) {
                   key={option.id}
                   className={index % 2 === 0 ? '' : 'bg-muted/10'}
                 >
-                  <td className="px-4 py-2.5 font-medium">
-                    {getLocalizedText(option.name)}
-                    {option.name.en && option.name['zh-TW'] && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {option.name.en}
-                      </span>
-                    )}
+                  <td className="px-4 py-2.5">
+                    <LocalizedStringView
+                      highlightLocale={defaultLocale}
+                      value={option.name}
+                    />
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {option.priceAdjustment > 0
@@ -222,7 +225,10 @@ export function ProductModifierDetailPage() {
       ) : null}
 
       {vm.modifier && !vm.isEditMode ? (
-        <ModifierViewMode modifier={vm.modifier} />
+        <ModifierViewMode
+          defaultLocale={vm.locale.defaultLocale}
+          modifier={vm.modifier}
+        />
       ) : null}
 
       {vm.isEditMode ? (
@@ -243,7 +249,8 @@ export function ProductModifierDetailPage() {
             required
             renderControl={
               <LocalizedStringInput
-                defaultLocale="zh-TW"
+                allowedLocales={vm.locale.supportedLocales}
+                defaultLocale={vm.locale.defaultLocale}
                 disabled={form.isSubmitting}
                 onChange={(value) => form.setField('name', value)}
                 value={form.values.name}
@@ -300,7 +307,11 @@ export function ProductModifierDetailPage() {
                 )}
               </p>
             ) : (
-              <ModifierOptionsEditTable form={form} />
+              <ModifierOptionsEditTable
+                allowedLocales={vm.locale.supportedLocales}
+                defaultLocale={vm.locale.defaultLocale}
+                form={form}
+              />
             )}
           </div>
 

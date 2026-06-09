@@ -36,10 +36,13 @@ export function useStoreSelectPageVM() {
     (storeId: string) => {
       if (!organizationId) return;
 
-      commands.selectStore(storeId, organizationId);
+      const selected = stores.find((store) => store.id === storeId);
+      if (!selected) return;
+
+      commands.selectStore(storeId, organizationId, selected.locale);
       void navigate(PATHS.MERCHANT.MENU);
     },
-    [organizationId, commands, navigate],
+    [organizationId, stores, commands, navigate],
   );
 
   return {

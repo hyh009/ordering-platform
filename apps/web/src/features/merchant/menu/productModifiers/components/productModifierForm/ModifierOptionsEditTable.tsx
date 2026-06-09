@@ -1,4 +1,5 @@
 import { useAppTranslation } from '@/app/i18n';
+import type { SupportedLocale } from '@/models/metadata';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -9,9 +10,15 @@ type Props = {
     ProductModifierForm,
     'values' | 'setOptionField' | 'removeOption' | 'isSubmitting'
   >;
+  defaultLocale: SupportedLocale;
+  allowedLocales: readonly SupportedLocale[];
 };
 
-export function ModifierOptionsEditTable({ form }: Props) {
+export function ModifierOptionsEditTable({
+  form,
+  defaultLocale,
+  allowedLocales,
+}: Props) {
   const { tDefault } = useAppTranslation();
 
   return (
@@ -48,7 +55,8 @@ export function ModifierOptionsEditTable({ form }: Props) {
             >
               <td className="px-3 py-2">
                 <LocalizedStringInput
-                  defaultLocale="zh-TW"
+                  allowedLocales={allowedLocales}
+                  defaultLocale={defaultLocale}
                   disabled={form.isSubmitting}
                   onChange={(value) =>
                     form.setOptionField(index, 'name', value)

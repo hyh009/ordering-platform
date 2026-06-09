@@ -236,7 +236,10 @@ export function CategoryListPage() {
         title={vm.modalTitle}
       >
         {vm.isViewMode && vm.viewedCategory ? (
-          <CategoryDetailsView category={vm.viewedCategory} />
+          <CategoryDetailsView
+            category={vm.viewedCategory}
+            defaultLocale={vm.locale.defaultLocale}
+          />
         ) : (
           <form
             className="grid gap-4"
@@ -254,7 +257,8 @@ export function CategoryListPage() {
               required
               renderControl={
                 <LocalizedStringInput
-                  defaultLocale="zh-TW"
+                  allowedLocales={vm.locale.supportedLocales}
+                  defaultLocale={vm.locale.defaultLocale}
                   disabled={vm.form.isSubmitting}
                   onChange={(value) => vm.form.setField('name', value)}
                   value={vm.form.values.name}
@@ -269,7 +273,8 @@ export function CategoryListPage() {
               )}
               renderControl={
                 <LocalizedStringInput
-                  defaultLocale="zh-TW"
+                  allowedLocales={vm.locale.supportedLocales}
+                  defaultLocale={vm.locale.defaultLocale}
                   disabled={vm.form.isSubmitting}
                   onChange={(value) => vm.form.setField('description', value)}
                   value={vm.form.values.description}

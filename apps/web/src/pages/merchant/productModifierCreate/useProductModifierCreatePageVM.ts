@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
+import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { PATHS } from '@/app/routing/paths';
 import {
   useProductModifierForm,
@@ -15,6 +16,7 @@ const productModifierCreatePageCommands =
 export function useProductModifierCreatePageVM() {
   const navigate = useNavigate();
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
+  const locale = useActiveStoreLocale();
   const form = useProductModifierForm();
 
   const goBack = useCallback(() => {
@@ -47,6 +49,7 @@ export function useProductModifierCreatePageVM() {
   return {
     form,
     goBack,
+    locale,
     submitModifier,
   };
 }

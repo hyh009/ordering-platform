@@ -4,6 +4,7 @@ import {
   supportedLocales,
 } from '@/models/metadata';
 import type { LocalizedStringDto, SupportedLocale } from '@/models/metadata';
+import { cn } from '@/shared/utils/cn';
 
 type LocalizedStringViewProps = {
   value: LocalizedStringDto;
@@ -44,7 +45,14 @@ export function LocalizedStringView({
         const isHighlight = highlightLocale === locale;
         return (
           <span key={locale} className="flex items-baseline gap-2">
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            <span
+              className={cn(
+                'shrink-0 rounded px-1.5 py-0.5 text-xs font-medium',
+                isHighlight
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground',
+              )}
+            >
               {getSupportedCustomerLocaleLabel(locale, tDefault)}
             </span>
             <span

@@ -1,6 +1,7 @@
 import { activeStoreCommands } from '@/app/global/activeStore/activeStore.commands';
 import type { StoreListActions } from '@/features/merchant/store/list/actions';
 import { createStoreListCommands } from '@/features/merchant/store/list/commands';
+import type { StoreLocaleDto } from '@/models/store';
 
 export function createStoreSelectPageCommands(
   storeListActions: StoreListActions,
@@ -10,8 +11,12 @@ export function createStoreSelectPageCommands(
   return {
     loadStores: storeListCommands.loadStores,
 
-    selectStore(storeId: string, organizationId: string) {
-      activeStoreCommands.setStore(storeId, organizationId);
+    selectStore(
+      storeId: string,
+      organizationId: string,
+      locale: StoreLocaleDto,
+    ) {
+      activeStoreCommands.setStore(storeId, organizationId, locale);
     },
   };
 }

@@ -158,7 +158,10 @@ export function TagListPage() {
         title={vm.modalTitle}
       >
         {vm.isViewMode && vm.viewedTag ? (
-          <TagDetailsView tag={vm.viewedTag} />
+          <TagDetailsView
+            defaultLocale={vm.locale.defaultLocale}
+            tag={vm.viewedTag}
+          />
         ) : (
           <form className="grid gap-4" id="tag-form" onSubmit={handleSubmit}>
             {vm.form.submitError ? (
@@ -172,7 +175,8 @@ export function TagListPage() {
               required
               renderControl={
                 <LocalizedStringInput
-                  defaultLocale="zh-TW"
+                  allowedLocales={vm.locale.supportedLocales}
+                  defaultLocale={vm.locale.defaultLocale}
                   disabled={vm.form.isSubmitting}
                   onChange={(value) => vm.form.setField('name', value)}
                   value={vm.form.values.name}

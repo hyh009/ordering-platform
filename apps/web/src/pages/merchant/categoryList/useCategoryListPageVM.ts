@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
+import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { tDefault } from '@/app/i18n';
 import { createCategoryListRuntime } from '@/features/merchant/menu/categories/list/runtime';
 import type { Category, CategoryActiveFilter } from '@/models/category';
@@ -47,6 +48,7 @@ export function useCategoryListPageVM() {
 
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
   const canManage = useCanManageStoreResources();
+  const locale = useActiveStoreLocale();
 
   const categories = useStore(store, (state) => state.categories);
   const isLoading = useStore(store, (state) => state.isLoading);
@@ -214,6 +216,7 @@ export function useCategoryListPageVM() {
     isReorderMode,
     isReorderSubmitting,
     isViewMode: modalMode?.type === 'view',
+    locale,
     modalTitle,
     moveCategory,
     openCreateModal,

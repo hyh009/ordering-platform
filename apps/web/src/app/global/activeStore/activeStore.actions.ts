@@ -1,11 +1,24 @@
+import type { StoreLocaleDto } from '@/models/store';
 import { activeStoreStore } from './activeStore.store';
 
 export const activeStoreActions = {
-  setStore(storeId: string, organizationId: string) {
-    activeStoreStore.setState({ storeId, organizationId });
+  setStore(
+    storeId: string,
+    organizationId: string,
+    locale: StoreLocaleDto | null,
+  ) {
+    activeStoreStore.setState({ storeId, organizationId, locale });
+  },
+
+  setLocale(locale: StoreLocaleDto) {
+    activeStoreStore.setState({ locale });
   },
 
   clearStore() {
-    activeStoreStore.setState({ storeId: null, organizationId: null });
+    activeStoreStore.setState({
+      storeId: null,
+      organizationId: null,
+      locale: null,
+    });
   },
 };

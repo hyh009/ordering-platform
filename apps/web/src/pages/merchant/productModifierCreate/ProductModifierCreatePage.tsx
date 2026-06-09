@@ -48,7 +48,8 @@ export function ProductModifierCreatePage() {
           required
           renderControl={
             <LocalizedStringInput
-              defaultLocale="zh-TW"
+              allowedLocales={vm.locale.supportedLocales}
+              defaultLocale={vm.locale.defaultLocale}
               disabled={form.isSubmitting}
               onChange={(value) => form.setField('name', value)}
               value={form.values.name}
@@ -88,7 +89,11 @@ export function ProductModifierCreatePage() {
               )}
             </p>
           ) : (
-            <ModifierOptionsEditTable form={form} />
+            <ModifierOptionsEditTable
+              allowedLocales={vm.locale.supportedLocales}
+              defaultLocale={vm.locale.defaultLocale}
+              form={form}
+            />
           )}
         </div>
 
