@@ -108,6 +108,12 @@ Slices:
   the detail page or edit UI.
 - `overview/` is for aggregate or dashboard read models, such as active counts,
   status totals, or region breakdowns.
+- A read slice may also expose a cross-resource aggregate read model, such as
+  the picker option lists a form needs from several sibling resources and
+  platform metadata (for example `products/formOptions/`), owned by the
+  consuming feature rather than any one source. Single-resource pickers still
+  use that resource's own `list/` slice. For how its command loads and maps the
+  sources, see `docs/agent/frontend/commands.md`.
 - `mutations/` is for standard collection writes: create, update, delete,
   reorder, archive, restore, and similar API writes.
 - `components/` is for reusable domain UI, form views, field groups, and

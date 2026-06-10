@@ -184,6 +184,12 @@ private `display.ts` file.
 Keep component-local labels in the component only when they are page-specific
 and not reusable across the domain.
 
+When a form's pickers need option lists from other features, load them through a
+cross-resource aggregate read slice under the consuming feature
+(`<resource>/formOptions/`), consumed by a colocated options hook beside the
+form. Map option labels with the source domains' `display.ts` helpers, such as
+`getLocalizedText`.
+
 ## Shared Components
 
 Use shared `Field` wrappers with shadcn UI primitives.

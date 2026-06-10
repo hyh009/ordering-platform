@@ -60,6 +60,12 @@ Do not create broad domain commands that mix different read slices, such as list
 and detail reads. Put collection writes in `mutations/commands.ts` when read
 models come from the same resource collection.
 
+An aggregate read command may build one read model from several source reads,
+such as a form's picker option lists loaded from several resources' services and
+mapped to the option shape in the slice mapper. This is not "mixing read
+slices": it exposes a single read model behind one load command, unlike
+conflating distinct read models (list vs detail) behind one reusable command.
+
 ## Responsibilities
 
 Commands may:

@@ -90,6 +90,9 @@ Feature read async flows
 Feature standard write flows
   -> src/features/<area>/<resource>/mutations/commands.ts
 
+Cross-feature form picker options
+  -> src/features/<area>/<resource>/formOptions/  (aggregate read slice; command reads each source service)
+
 Feature store/action runtime
   -> src/features/<area>/<resource>/<slice>/runtime.ts
 
