@@ -7,13 +7,16 @@ Use this quick map when deciding where new frontend code belongs.
 | Route page view             | `apps/web/src/pages/<route>/`                                                      | `features/`, `shared/`                         |
 | Page VM hook                | `apps/web/src/pages/<route>/use<Page>VM.ts`                                        | `features/`, reusable components               |
 | Page-owned command          | `apps/web/src/pages/<route>/*.commands.ts`                                         | feature commands called directly from page VMs |
+| Canonical feature state     | `apps/web/src/features/<area>/<resource>/store.ts`                                 | page folders, app-global session modules       |
 | Feature list state          | `apps/web/src/features/<area>/<resource>/list/store.ts`                            | page folders                                   |
 | Feature detail state        | `apps/web/src/features/<area>/<resource>/detail/store.ts`                          | page folders                                   |
-| Feature action              | `apps/web/src/features/<area>/<resource>/<slice>/actions.ts`                       | stores, services                               |
+| Feature action              | `<resource>/actions.ts` or `<resource>/<slice>/actions.ts`                         | stores, services                               |
+| Canonical feature command   | `apps/web/src/features/<area>/<resource>/commands.ts`                              | distinct list/detail read models               |
 | Feature read command        | `apps/web/src/features/<area>/<resource>/list/commands.ts` or `detail/commands.ts` | views, stores                                  |
 | Feature mutation command    | `apps/web/src/features/<area>/<resource>/mutations/commands.ts`                    | views, stores, services                        |
+| Reusable feature workflow   | `apps/web/src/features/<area>/<workflow>/commands.ts`                              | app-global session modules                     |
 | Request boundary validation | feature or page command that owns the submit/mutation flow                         | views, services                                |
-| Feature runtime wiring      | `apps/web/src/features/<area>/<resource>/<slice>/runtime.ts`                       | page components                                |
+| Feature runtime wiring      | `<resource>/runtime.ts` or `<resource>/<slice>/runtime.ts`                         | page components                                |
 | Domain reusable component   | feature-local `components/` or `features/components/<domain>/`                     | `shared/components`                            |
 | Project-generic UI control  | `apps/web/src/shared/components/`                                                  | domain feature folders                         |
 | API path constants          | `apps/web/src/api/paths/`                                                          | services, pages                                |
@@ -40,10 +43,8 @@ Use this quick map when deciding where new frontend code belongs.
   list, detail, mutations, and components easier to scan.
 - Use feature stores for API-loaded resource state. Use page VMs or form hooks
   for UI process state, command-result reactions, and form drafts.
-- Use `mutations/commands.ts` for standard create, update, and delete flows for
-  one resource collection. Compose list or detail reloads in the command flow
-  after success when the management UI favors server-confirmed data over local
-  cache patching. Page VMs handle only the resulting UI reactions.
+- Follow `docs/agent/frontend/commands.md` for command placement, workflow
+  ownership, and post-mutation data reloads.
 - Keep a page command wrapper for page-owned async flows, even when the wrapper
   only forwards to a feature read or mutation command.
 - If the code type is not listed here, or if it could reasonably belong in more

@@ -38,7 +38,7 @@ React View re-renders
 ```txt
 Backend API business resources
   -> organizations, stores, menu resources, metadata resources
-  -> feature list/detail stores
+  -> feature canonical-state or list/detail stores
 
 App runtime context
   -> auth/current session, active organization, active store, global feedback
@@ -82,22 +82,21 @@ App and route error boundaries
   -> src/app/error
 
 Feature resource state
+  -> src/features/<area>/<resource>/store.ts  (single canonical state)
   -> src/features/<area>/<resource>/<slice>/store.ts
 
-Feature read async flows
+Feature commands
+  -> src/features/<area>/<resource>/commands.ts
   -> src/features/<area>/<resource>/<readSlice>/commands.ts
-
-Feature standard write flows
   -> src/features/<area>/<resource>/mutations/commands.ts
+  -> src/features/<area>/<workflow>/commands.ts
 
 Cross-feature form picker options
   -> src/features/<area>/<resource>/formOptions/  (aggregate read slice; command reads each source service)
 
 Feature store/action runtime
+  -> src/features/<area>/<resource>/runtime.ts
   -> src/features/<area>/<resource>/<slice>/runtime.ts
-
-Command/runtime ownership details
-  -> docs/agent/frontend/commands.md
 
 Page-only form hook and process/UI state
   -> src/pages/<platform>/<pageName>/use<PageName>PageVM.ts
@@ -110,6 +109,7 @@ Page async flow
   -> src/pages/<platform>/<pageName>/<pageName>Page.commands.ts
 
 Feature state mutations
+  -> src/features/<area>/<resource>/actions.ts
   -> src/features/<area>/<resource>/<slice>/actions.ts
 
 Domain shared components
@@ -174,6 +174,11 @@ src/
 
   features/
     <area>/
+      <canonicalResource>/
+        actions.ts
+        commands.ts
+        runtime.ts
+        store.ts
       <resource>/
         list/
           actions.ts
@@ -214,10 +219,8 @@ Use `src/app/global/<module>` only for app-wide runtime modules such as auth, fe
 
 `*.commands.ts` files do not use React hooks, toast/modal APIs, or navigation APIs.
 
-Read-slice commands only maintain their read-slice state. Standard resource
-writes belong in `mutations/commands.ts`.
-
 Follow `docs/agent/frontend/commands.md` for page-owned vs feature-owned commands,
-shared command contracts, overrides, and runtime wiring.
+command placement, workflows, shared command contracts, overrides, and runtime
+wiring.
 
 Page VM hooks return stable top-level handlers. Avoid `vm.actions` objects unless they are memoized.

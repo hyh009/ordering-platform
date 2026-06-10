@@ -68,7 +68,23 @@ dependency arrays or memoized children.
 Feature folders own reusable business logic, resource flows, and API-loaded
 resource state.
 
-Use this folder shape for feature resources:
+Choose one resource shape based on state ownership.
+
+Use a single canonical-state module when queries and mutations operate on the
+same resource model and maintain the same actions/store:
+
+```txt
+src/features/<businessArea>/
+  <resource>/
+    actions.ts
+    commands.ts
+    runtime.ts
+    store.ts
+    components/    # optional: reusable domain UI
+```
+
+Use read-model slices when the resource has distinct list, detail, overview, or
+other read-model state:
 
 ```txt
 src/features/<businessArea>/
@@ -121,11 +137,9 @@ Slices:
 
 Rules:
 
-- Keep API-loaded read-slice state in feature stores: data, loading flags, and
-  API load errors.
+- Keep API-loaded canonical or read-slice state in feature stores: data,
+  loading flags, and API load errors.
 - Keep store mutations in `actions.ts`; stores hold state only.
-- Put read flows in `<readSlice>/commands.ts` and standard write flows in
-  `mutations/commands.ts`.
 - Let commands handle API-after data side effects, such as reloading
   list/detail/overview state after create, update, delete, reorder, archive, or
   restore.

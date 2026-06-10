@@ -19,6 +19,17 @@ results.
 
 ## Placement
 
+Choose command placement from the resource's state model.
+
+Use one feature command module for a single canonical-state resource:
+
+```txt
+src/features/<area>/<resource>/commands.ts
+```
+
+This module may contain both queries and mutations only when every operation
+maintains the same canonical resource state through the same actions/store.
+
 Use feature read commands for loading one feature read slice:
 
 ```txt
@@ -34,6 +45,10 @@ src/features/<area>/<resource>/mutations/commands.ts
 
 Standard write operations include but are not limited to create, update, delete,
 reorder, archive, and restore.
+
+Use read slices plus `mutations/commands.ts` when a resource has distinct read
+models, lifecycles, stores, or actions. Do not use a broad resource
+`commands.ts` to mix list/detail reads or avoid this separation.
 
 If `mutations/commands.ts` becomes too large, propose a focused split inside
 `mutations/` before making the change.
@@ -57,14 +72,23 @@ store IDs, and owns any page-specific composition. Keep the wrapper thin when no
 extra composition is needed.
 
 Do not create broad domain commands that mix different read slices, such as list
-and detail reads. Put collection writes in `mutations/commands.ts` when read
-models come from the same resource collection.
+and detail reads. Put collection writes in `mutations/commands.ts` when the
+resource has distinct read models.
 
 An aggregate read command may build one read model from several source reads,
 such as a form's picker option lists loaded from several resources' services and
 mapped to the option shape in the slice mapper. This is not "mixing read
 slices": it exposes a single read model behind one load command, unlike
 conflating distinct read models (list vs detail) behind one reusable command.
+
+App-global session commands own app-wide session identity, tokens, persistence,
+and session state. They must not restore or mutate domain feature state such as
+cart or order. Put page-specific cross-feature orchestration in page commands.
+Put reusable cross-feature orchestration in a named workflow feature:
+
+```txt
+src/features/<area>/<workflow>/commands.ts
+```
 
 ## Responsibilities
 
@@ -177,11 +201,15 @@ needs reuse.
 Keep runtime files with their state slice:
 
 ```txt
+src/features/<area>/<resource>/runtime.ts
 src/features/<area>/<resource>/<slice>/runtime.ts
 ```
 
 Mutation commands that do not update a feature store directly do not need a
 runtime or actions factory.
+
+A single canonical-state runtime may wire one actions/store pair to a mixed
+query/mutation command module.
 
 ## Shared Base And Page Wrappers
 
@@ -245,9 +273,10 @@ Use page command overrides when the flow includes page-specific choices:
 For pagination button behavior and page math, use
 `docs/agent/frontend/pagination.md`.
 
-Use feature read-slice commands for default async behavior tied to that
-slice/store. Use feature mutation commands for reusable write behavior tied to
-one resource collection.
+Use a single canonical-state feature command when reads and writes maintain one
+resource state. Otherwise, use feature read-slice commands for default async
+behavior tied to that slice/store and feature mutation commands for reusable
+write behavior tied to one resource collection.
 
 Do not add option-heavy shared commands to cover many page variations. Wrap the
 shared command in the page command for that page.

@@ -60,7 +60,8 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Submit and mutation commands validate request inputs before calling services.
 - Page commands compose required data state changes after successful mutations.
 - Read-slice commands only load and maintain their read-slice state.
-- Resource mutation commands own standard write operations.
+- Feature command placement and workflow ownership follow
+  `docs/agent/frontend/commands.md`.
 - Commands map API errors with named helpers when behavior depends on error meaning.
 - Feature commands do not import from `src/pages`.
 
@@ -72,7 +73,6 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Store state uses frontend models, not raw API DTOs.
 - Feature stores hold API-loaded resource state such as list data, detail data,
   loading flags, and API load errors.
-- Standard resource write flows live in `mutations/commands.ts`.
 
 ## Model Checks
 
@@ -88,5 +88,7 @@ View -> Page VM Hook -> Commands -> Service -> API
 - `useEffect(..., [vm.actions])`
 - View code doing `await commandOrVMAction(); navigate(...)` without checking a typed result in the VM.
 - `*.commands.ts` importing React, router APIs, feedback UI APIs, or page modules from feature code.
+- Command placement or workflow ownership that violates
+  `docs/agent/frontend/commands.md`.
 - Page code importing anything from another page folder, including VM hooks, form hooks, types, commands, components, or helpers.
 - Feature actions importing services.

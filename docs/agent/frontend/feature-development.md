@@ -53,14 +53,17 @@ Follow `docs/agent/frontend/error-feedback.md` when mapping API errors.
 ### 4. State
 
 Determine whether the feature loads business resource data from an API. If yes,
-add or update a feature store in
-`apps/web/src/features/<area>/<resource>/<slice>`.
+add or update a feature store.
 
 - Use `src/app/global/<module>` for app/session/runtime state such as auth,
   active organization, active store, and global feedback.
 - Use feature stores for API-loaded resource state such as list data, detail
   data, loading flags, and API load errors. The store does not need to be shared
   across pages.
+- Use `apps/web/src/features/<area>/<resource>/` for one canonical resource
+  state shared by its queries and mutations.
+- Use `apps/web/src/features/<area>/<resource>/<readSlice>/` when the resource
+  has distinct list, detail, overview, or other read-model state.
 - Keep store mutations in `actions.ts`; stores hold state only.
 - Add a feature runtime to wire store/action instances; runtime wiring decides
   whether the instance is page-local or shared.
@@ -80,11 +83,6 @@ Determine whether the feature has async flows. If yes, add or update commands.
 - Page commands live with the page under `apps/web/src/pages/<page>/`.
 - Page VMs call page commands for page-owned async flows; keep the wrapper even
   when it only forwards to a feature command.
-- Feature read commands live under
-  `apps/web/src/features/<area>/<resource>/<readSlice>/` and only maintain that
-  read-slice state.
-- Standard resource write flows live in
-  `apps/web/src/features/<area>/<resource>/mutations/commands.ts`.
 - Commands coordinate request validation, service calls, actions, loading
   states, API errors, and typed outcomes.
 - Commands decide mutation success data reactions such as reloading list,
