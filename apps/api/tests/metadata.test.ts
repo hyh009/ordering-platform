@@ -587,6 +587,77 @@ describe('metadata API', () => {
     });
   });
 
+  it('lets any authenticated merchant read active allergens', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({ id: 'user-merchant' });
+    repositoryMocks.addAllergen({
+      id: 'allergen-1',
+      key: 'peanut',
+      name: { 'zh-TW': '花生' },
+    });
+    repositoryMocks.addAllergen({
+      id: 'allergen-2',
+      key: 'milk',
+      name: { 'zh-TW': '牛奶' },
+      isActive: false,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/merchant/metadata/allergens')
+      .set('Authorization', `Bearer ${createAccessToken('user-merchant')}`);
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.data.allergens).toEqual([
+      {
+        id: 'allergen-1',
+        key: 'peanut',
+        name: { 'zh-TW': '花生' },
+        isActive: true,
+      },
+    ]);
+  });
+
+  it('lets any authenticated merchant read active dietary markers', async () => {
+    const app = createApp();
+    repositoryMocks.addUser({ id: 'user-merchant' });
+    repositoryMocks.addDietaryMarker({
+      id: 'dietary-marker-1',
+      key: 'vegetarian',
+      name: { 'zh-TW': '素食' },
+    });
+    repositoryMocks.addDietaryMarker({
+      id: 'dietary-marker-2',
+      key: 'old-label',
+      name: { 'zh-TW': '舊標籤' },
+      isActive: false,
+    });
+
+    const response = await request(app)
+      .get('/api/v1/merchant/metadata/dietary-markers')
+      .set('Authorization', `Bearer ${createAccessToken('user-merchant')}`);
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.data.dietaryMarkers).toEqual([
+      {
+        id: 'dietary-marker-1',
+        key: 'vegetarian',
+        name: { 'zh-TW': '素食' },
+        type: 'dietary',
+        isActive: true,
+      },
+    ]);
+  });
+
+  it('rejects merchant metadata reads without authentication', async () => {
+    const app = createApp();
+
+    const response = await request(app).get(
+      '/api/v1/merchant/metadata/allergens',
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it('returns not found when updating a missing dietary marker', async () => {
     const app = createApp();
     repositoryMocks.addUser({
