@@ -41,9 +41,9 @@ Use this quick map when deciding where new frontend code belongs.
 - Use feature stores for API-loaded resource state. Use page VMs or form hooks
   for UI process state, command-result reactions, and form drafts.
 - Use `mutations/commands.ts` for standard create, update, and delete flows for
-  one resource collection. Reload list or detail state from the page VM after
-  success when the management UI favors server-confirmed data over local cache
-  patching.
+  one resource collection. Compose list or detail reloads in the command flow
+  after success when the management UI favors server-confirmed data over local
+  cache patching. Page VMs handle only the resulting UI reactions.
 - Keep a page command wrapper for page-owned async flows, even when the wrapper
   only forwards to a feature read or mutation command.
 - If the code type is not listed here, or if it could reasonably belong in more
