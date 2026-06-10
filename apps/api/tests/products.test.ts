@@ -13,12 +13,13 @@ type TestProduct = {
   categoryIds: string[];
   name: { en?: string; 'zh-TW'?: string };
   description?: { en?: string; 'zh-TW'?: string };
-  imageUrl?: string;
+  imageUrls: string[];
   price: number;
   tagIds: string[];
   allergenIds: string[];
   dietaryMarkerIds: string[];
   modifierIds: string[];
+  status: 'draft' | 'published';
   isActive: boolean;
   isSoldOut: boolean;
   createdAt: Date;
@@ -55,6 +56,7 @@ const mocks = vi.hoisted(() => {
         product.description !== undefined
           ? { ...product.description }
           : undefined,
+      imageUrls: [...product.imageUrls],
       tagIds: [...product.tagIds],
       allergenIds: [...product.allergenIds],
       dietaryMarkerIds: [...product.dietaryMarkerIds],
@@ -162,12 +164,13 @@ const mocks = vi.hoisted(() => {
         categoryIds: string[];
         name: TestProduct['name'];
         description?: TestProduct['description'];
-        imageUrl?: string;
+        imageUrls?: string[];
         price: number;
         tagIds?: string[];
         allergenIds?: string[];
         dietaryMarkerIds?: string[];
         modifierIds?: string[];
+        status?: 'draft' | 'published';
         isActive?: boolean;
       }) {
         const now = new Date();
@@ -178,12 +181,13 @@ const mocks = vi.hoisted(() => {
           categoryIds: input.categoryIds,
           name: input.name,
           description: input.description,
-          imageUrl: input.imageUrl,
+          imageUrls: input.imageUrls ?? [],
           price: input.price,
           tagIds: input.tagIds ?? [],
           allergenIds: input.allergenIds ?? [],
           dietaryMarkerIds: input.dietaryMarkerIds ?? [],
           modifierIds: input.modifierIds ?? [],
+          status: input.status ?? 'draft',
           isActive: input.isActive ?? true,
           isSoldOut: false,
           createdAt: now,
@@ -217,15 +221,16 @@ const mocks = vi.hoisted(() => {
             | 'categoryIds'
             | 'description'
             | 'dietaryMarkerIds'
-            | 'imageUrl'
+            | 'imageUrls'
             | 'isActive'
             | 'isSoldOut'
             | 'modifierIds'
             | 'name'
             | 'price'
+            | 'status'
             | 'tagIds'
           >
-        > & { imageUrl?: string | null },
+        >,
       ) {
         const product = products.find((item) => item.id === productId);
         if (!product) return null;
@@ -239,11 +244,7 @@ const mocks = vi.hoisted(() => {
         if (input.name !== undefined) updated.name = input.name;
         if (input.description !== undefined)
           updated.description = input.description;
-        if (input.imageUrl === null) {
-          delete updated.imageUrl;
-        } else if (input.imageUrl !== undefined) {
-          updated.imageUrl = input.imageUrl;
-        }
+        if (input.imageUrls !== undefined) updated.imageUrls = input.imageUrls;
         if (input.price !== undefined) updated.price = input.price;
         if (input.tagIds !== undefined) updated.tagIds = input.tagIds;
         if (input.allergenIds !== undefined)
@@ -253,6 +254,7 @@ const mocks = vi.hoisted(() => {
         }
         if (input.modifierIds !== undefined)
           updated.modifierIds = input.modifierIds;
+        if (input.status !== undefined) updated.status = input.status;
         if (input.isActive !== undefined) updated.isActive = input.isActive;
         if (input.isSoldOut !== undefined) updated.isSoldOut = input.isSoldOut;
 
@@ -374,7 +376,7 @@ describe('merchant products API', () => {
       .send({
         name: { 'zh-TW': '拿鐵' },
         description: { en: 'Latte' },
-        imageUrl: 'https://example.com/latte.png',
+        imageUrls: ['https://example.com/latte.png'],
         price: 120,
         tagIds: ['tag-1'],
         allergenIds: ['allergen-1'],
@@ -387,7 +389,9 @@ describe('merchant products API', () => {
       id: 'product-1',
       storeId: 'store-1',
       categoryIds: [],
+      imageUrls: ['https://example.com/latte.png'],
       price: 120,
+      status: 'draft',
       isSoldOut: false,
     });
 
@@ -397,6 +401,59 @@ describe('merchant products API', () => {
       .expect(200);
 
     expect(listResponse.body.data.products).toHaveLength(1);
+  });
+
+  it('lets managers publish a product on create', async () => {
+    seedMember('org_owner');
+    const app = createApp();
+
+    const response = await request(app)
+      .post('/api/v1/merchant/stores/store-1/products')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({
+        name: { 'zh-TW': '拿鐵' },
+        price: 120,
+        status: 'published',
+      })
+      .expect(201);
+
+    expect(response.body.data.product).toMatchObject({
+      id: 'product-1',
+      status: 'published',
+    });
+  });
+
+  it('lets staff view a single product', async () => {
+    seedMember('org_owner');
+    const app = createApp();
+
+    await request(app)
+      .post('/api/v1/merchant/stores/store-1/products')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ name: { 'zh-TW': '拿鐵' }, price: 120 })
+      .expect(201);
+
+    mocks.setMembership('user-1', 'org-1', 'staff');
+
+    const response = await request(app)
+      .get('/api/v1/merchant/stores/store-1/products/product-1')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .expect(200);
+
+    expect(response.body.data.product).toMatchObject({
+      id: 'product-1',
+      status: 'draft',
+    });
+  });
+
+  it('returns 404 for a missing product', async () => {
+    seedMember('staff');
+    const app = createApp();
+
+    await request(app)
+      .get('/api/v1/merchant/stores/store-1/products/product-missing')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .expect(404);
   });
 
   it('rejects unknown references', async () => {

@@ -7,11 +7,13 @@ export function toProductDto(product: ProductEntity): ProductDto {
     storeId: product.storeId,
     categoryIds: product.categoryIds,
     name: product.name,
+    imageUrls: product.imageUrls,
     price: product.price,
     tagIds: product.tagIds,
     allergenIds: product.allergenIds,
     dietaryMarkerIds: product.dietaryMarkerIds,
     modifierIds: product.modifierIds,
+    status: product.status,
     isActive: product.isActive,
     isSoldOut: product.isSoldOut,
     createdAt: product.createdAt.toISOString(),
@@ -20,10 +22,6 @@ export function toProductDto(product: ProductEntity): ProductDto {
 
   if (product.description !== undefined) {
     dto.description = product.description;
-  }
-
-  if (product.imageUrl !== undefined) {
-    dto.imageUrl = product.imageUrl;
   }
 
   return dto;

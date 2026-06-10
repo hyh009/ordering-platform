@@ -1,3 +1,4 @@
+import type { ProductStatus } from '@repo/shared';
 import type { LocalizedString } from '@src/models/common/model';
 
 export type ProductEntity = {
@@ -10,12 +11,16 @@ export type ProductEntity = {
   categoryIds: string[];
   name: LocalizedString;
   description?: LocalizedString;
-  imageUrl?: string;
+  imageUrls: string[];
   price: number;
   tagIds: string[];
   allergenIds: string[];
   dietaryMarkerIds: string[];
   modifierIds: string[];
+  // Publish lifecycle, separate from isActive (merchant visibility toggle) and
+  // isSoldOut. A draft is never shown to guests; the guest menu shows only
+  // published + active products.
+  status: ProductStatus;
   isActive: boolean;
   isSoldOut: boolean;
   createdAt: Date;

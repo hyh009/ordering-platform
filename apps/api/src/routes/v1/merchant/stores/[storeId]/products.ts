@@ -14,6 +14,7 @@ import { Router } from 'express';
 import type {
   CreateProductRequest,
   CreateProductSuccessResponse,
+  GetProductSuccessResponse,
   ListProductsSuccessResponse,
   ProductParams,
   ProductStoreParams,
@@ -36,11 +37,13 @@ const router = Router({ mergeParams: true });
  *         - storeId
  *         - categoryIds
  *         - name
+ *         - imageUrls
  *         - price
  *         - tagIds
  *         - allergenIds
  *         - dietaryMarkerIds
  *         - modifierIds
+ *         - status
  *         - isActive
  *         - isSoldOut
  *         - createdAt
@@ -62,10 +65,13 @@ const router = Router({ mergeParams: true });
  *           $ref: '#/components/schemas/LocalizedMetadataName'
  *         description:
  *           $ref: '#/components/schemas/LocalizedMetadataName'
- *         imageUrl:
- *           type: string
- *           format: uri
- *           example: https://example.com/latte.png
+ *         imageUrls:
+ *           type: array
+ *           items:
+ *             type: string
+ *             format: uri
+ *           example:
+ *             - https://example.com/latte.png
  *         price:
  *           type: number
  *           minimum: 0
@@ -86,6 +92,12 @@ const router = Router({ mergeParams: true });
  *           type: array
  *           items:
  *             type: string
+ *         status:
+ *           type: string
+ *           enum:
+ *             - draft
+ *             - published
+ *           example: draft
  *         isActive:
  *           type: boolean
  *           example: true
@@ -188,6 +200,57 @@ router.get<ProductStoreParams, ListProductsSuccessResponse>(
 
 /**
  * @openapi
+ * /v1/merchant/stores/{storeId}/products/{productId}:
+ *   get:
+ *     tags:
+ *       - Merchant / Products
+ *     summary: Get a single store product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: storeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: store-123
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: product-123
+ *     responses:
+ *       200:
+ *         description: Product returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductResourceSuccessResponse'
+ *       404:
+ *         description: Product not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get<ProductParams, GetProductSuccessResponse>(
+  '/:productId',
+  requireAuth,
+  requireOrgRole('org_owner', 'org_admin', 'staff'),
+  validate(productParamsSchema, 'params'),
+  async (req, res) => {
+    const product = await productService.getProduct(
+      req.params.storeId,
+      req.params.productId,
+    );
+
+    res.json({ status: 'success', data: { product } });
+  },
+);
+
+/**
+ * @openapi
  * /v1/merchant/stores/{storeId}/products:
  *   post:
  *     tags:
@@ -221,9 +284,11 @@ router.get<ProductStoreParams, ListProductsSuccessResponse>(
  *                 $ref: '#/components/schemas/LocalizedMetadataName'
  *               description:
  *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               imageUrl:
- *                 type: string
- *                 format: uri
+ *               imageUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uri
  *               price:
  *                 type: number
  *                 minimum: 0
@@ -243,6 +308,12 @@ router.get<ProductStoreParams, ListProductsSuccessResponse>(
  *                 type: array
  *                 items:
  *                   type: string
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - draft
+ *                   - published
+ *                 description: Defaults to draft when omitted.
  *               isActive:
  *                 type: boolean
  *     responses:
@@ -318,10 +389,12 @@ router.post<
  *                 $ref: '#/components/schemas/LocalizedMetadataName'
  *               description:
  *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               imageUrl:
- *                 type: string
- *                 nullable: true
- *                 format: uri
+ *               imageUrls:
+ *                 type: array
+ *                 description: Send an empty array to clear all images.
+ *                 items:
+ *                   type: string
+ *                   format: uri
  *               price:
  *                 type: number
  *                 minimum: 0
@@ -341,6 +414,11 @@ router.post<
  *                 type: array
  *                 items:
  *                   type: string
+ *               status:
+ *                 type: string
+ *                 enum:
+ *                   - draft
+ *                   - published
  *               isActive:
  *                 type: boolean
  *     responses:

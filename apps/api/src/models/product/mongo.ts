@@ -51,9 +51,9 @@ const productSchema = new Schema<ProductEntity>(
     description: {
       type: localizedStringSchema,
     },
-    imageUrl: {
-      type: String,
-      trim: true,
+    imageUrls: {
+      type: [String],
+      default: [],
     },
     price: {
       type: Number,
@@ -75,6 +75,12 @@ const productSchema = new Schema<ProductEntity>(
     modifierIds: {
       type: [referencedIdSchema],
       default: [],
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'published'],
+      required: true,
+      default: 'draft',
     },
     isActive: {
       type: Boolean,

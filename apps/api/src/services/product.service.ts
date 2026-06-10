@@ -150,6 +150,22 @@ export class ProductService {
     return products.map(toProductDto);
   }
 
+  public async getProduct(
+    storeId: string,
+    productId: string,
+  ): Promise<ProductDto> {
+    const product = await productRepository.findById(productId);
+
+    if (!product || product.storeId !== storeId) {
+      throw new NotFoundError(
+        'Product not found',
+        ERROR_CODES.PRODUCT_NOT_FOUND,
+      );
+    }
+
+    return toProductDto(product);
+  }
+
   public async createProduct(
     storeId: string,
     organizationId: string,
@@ -174,12 +190,13 @@ export class ProductService {
       categoryIds: input.categoryIds ?? [],
       name: input.name,
       description: input.description,
-      imageUrl: input.imageUrl,
+      imageUrls: input.imageUrls,
       price: input.price,
       tagIds: input.tagIds,
       allergenIds: input.allergenIds,
       dietaryMarkerIds: input.dietaryMarkerIds,
       modifierIds: input.modifierIds,
+      status: input.status ?? 'draft',
       isActive: input.isActive,
     });
 
@@ -219,12 +236,13 @@ export class ProductService {
         categoryIds: input.categoryIds,
         name: input.name,
         description: input.description,
-        imageUrl: input.imageUrl,
+        imageUrls: input.imageUrls,
         price: input.price,
         tagIds: input.tagIds,
         allergenIds: input.allergenIds,
         dietaryMarkerIds: input.dietaryMarkerIds,
         modifierIds: input.modifierIds,
+        status: input.status,
         isActive: input.isActive,
       },
       { expectedUpdatedAt: existing.updatedAt },

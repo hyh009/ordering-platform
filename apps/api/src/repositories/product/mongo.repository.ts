@@ -17,12 +17,13 @@ const productEntityKeys = [
   'categoryIds',
   'name',
   'description',
-  'imageUrl',
+  'imageUrls',
   'price',
   'tagIds',
   'allergenIds',
   'dietaryMarkerIds',
   'modifierIds',
+  'status',
   'isActive',
   'isSoldOut',
   'createdAt',
@@ -53,7 +54,7 @@ export const productMongoRepository = {
       ...(input.description !== undefined
         ? { description: input.description }
         : {}),
-      ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+      ...(input.imageUrls !== undefined ? { imageUrls: input.imageUrls } : {}),
       price: input.price,
       ...(input.tagIds !== undefined ? { tagIds: input.tagIds } : {}),
       ...(input.allergenIds !== undefined
@@ -65,6 +66,7 @@ export const productMongoRepository = {
       ...(input.modifierIds !== undefined
         ? { modifierIds: input.modifierIds }
         : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     });
 
@@ -100,7 +102,6 @@ export const productMongoRepository = {
     options?: UpdateProductOptions,
   ) {
     const setUpdate: Record<string, unknown> = {};
-    const unsetUpdate: Record<string, ''> = {};
 
     const set = (path: string, value: unknown) => {
       if (value !== undefined) setUpdate[path] = value;
@@ -109,23 +110,17 @@ export const productMongoRepository = {
     set('categoryIds', input.categoryIds);
     set('name', input.name);
     set('description', input.description);
+    set('imageUrls', input.imageUrls);
     set('price', input.price);
     set('tagIds', input.tagIds);
     set('allergenIds', input.allergenIds);
     set('dietaryMarkerIds', input.dietaryMarkerIds);
     set('modifierIds', input.modifierIds);
+    set('status', input.status);
     set('isActive', input.isActive);
     set('isSoldOut', input.isSoldOut);
-    if (input.imageUrl === null) {
-      unsetUpdate.imageUrl = '';
-    } else if (input.imageUrl !== undefined) {
-      setUpdate.imageUrl = input.imageUrl;
-    }
 
-    if (
-      Object.keys(setUpdate).length === 0 &&
-      Object.keys(unsetUpdate).length === 0
-    ) {
+    if (Object.keys(setUpdate).length === 0) {
       const existing = await ProductMongoModel.findOne({ id: productId })
         .lean<ProductEntity>()
         .exec();
@@ -138,13 +133,7 @@ export const productMongoRepository = {
       filter.updatedAt = options.expectedUpdatedAt;
     }
 
-    const update: Record<string, unknown> = {};
-    if (Object.keys(setUpdate).length > 0) {
-      update.$set = setUpdate;
-    }
-    if (Object.keys(unsetUpdate).length > 0) {
-      update.$unset = unsetUpdate;
-    }
+    const update = { $set: setUpdate };
 
     const doc = await ProductMongoModel.findOneAndUpdate(filter, update, {
       new: true,

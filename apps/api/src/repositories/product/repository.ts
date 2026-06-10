@@ -1,5 +1,6 @@
 import { productMongoRepository } from '@src/repositories/product/mongo.repository';
 
+import type { ProductStatus } from '@repo/shared';
 import type { LocalizedString } from '@src/models/common/model';
 import type { ProductEntity } from '@src/models/product/model';
 
@@ -9,12 +10,13 @@ export type CreateProductInput = {
   categoryIds: string[];
   name: LocalizedString;
   description?: LocalizedString | undefined;
-  imageUrl?: string | undefined;
+  imageUrls?: string[] | undefined;
   price: number;
   tagIds?: string[] | undefined;
   allergenIds?: string[] | undefined;
   dietaryMarkerIds?: string[] | undefined;
   modifierIds?: string[] | undefined;
+  status?: ProductStatus | undefined;
   isActive?: boolean | undefined;
 };
 
@@ -27,12 +29,13 @@ export type UpdateProductInput = {
   categoryIds?: string[] | undefined;
   name?: LocalizedString | undefined;
   description?: LocalizedString | undefined;
-  imageUrl?: string | null | undefined;
+  imageUrls?: string[] | undefined;
   price?: number | undefined;
   tagIds?: string[] | undefined;
   allergenIds?: string[] | undefined;
   dietaryMarkerIds?: string[] | undefined;
   modifierIds?: string[] | undefined;
+  status?: ProductStatus | undefined;
   isActive?: boolean | undefined;
   isSoldOut?: boolean | undefined;
 };
