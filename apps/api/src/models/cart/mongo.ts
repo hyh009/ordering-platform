@@ -225,6 +225,13 @@ const cartSchema = new Schema<CartEntity>(
 );
 
 cartSchema.index({ id: 1 }, { unique: true });
+cartSchema.index(
+  { joinCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { joinCode: { $exists: true } },
+  },
+);
 
 export const CartMongoModel =
   (models.Cart as Model<CartEntity> | undefined) ??

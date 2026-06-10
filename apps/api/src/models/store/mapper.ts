@@ -1,5 +1,10 @@
 import type { BusinessHour, StoreEntity } from './model';
-import type { BusinessHourDto, StoreDto, StoreListItemDto } from '@repo/shared';
+import type {
+  BusinessHourDto,
+  PublicStoreDto,
+  StoreDto,
+  StoreListItemDto,
+} from '@repo/shared';
 
 function toBusinessHourDto(bh: BusinessHour): BusinessHourDto {
   const dto: BusinessHourDto = { dayOfWeek: bh.dayOfWeek, isOpen: bh.isOpen };
@@ -50,4 +55,26 @@ export function toStoreDto(store: StoreEntity): StoreDto {
     createdAt: store.createdAt.toISOString(),
     updatedAt: store.updatedAt.toISOString(),
   };
+}
+
+export function toPublicStoreDto(store: StoreEntity): PublicStoreDto {
+  const dto: PublicStoreDto = {
+    id: store.id,
+    displayName: store.profile.displayName,
+    locale: {
+      defaultLocale: store.locale.defaultLocale,
+      supportedLocales: store.locale.supportedLocales,
+    },
+    businessHours: store.operation.businessHours.map(toBusinessHourDto),
+    serviceFeeRate: store.operation.serviceFeeRate,
+    orderModes: store.operation.orderModes
+      .filter((mode) => mode.isEnabled)
+      .map((mode) => ({ type: mode.type, checkoutMode: mode.checkoutMode })),
+  };
+
+  if (store.profile.description !== undefined) {
+    dto.description = store.profile.description;
+  }
+
+  return dto;
 }

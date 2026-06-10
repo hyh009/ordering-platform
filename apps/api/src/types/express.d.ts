@@ -1,4 +1,5 @@
 import type { AuthUserDto } from '@repo/shared';
+import type { GuestTokenClaims } from '@src/services/guestToken.service';
 
 declare global {
   namespace Express {
@@ -13,6 +14,8 @@ declare global {
       requestId: string;
       /** Set by requireOrgRole when organizationId is resolved via a storeId lookup */
       resolvedOrganizationId?: string;
+      /** Set by requireGuest from a verified guest ordering token */
+      guest?: GuestTokenClaims;
     }
   }
 }

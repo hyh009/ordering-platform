@@ -4,6 +4,7 @@ import type { ProductModifierEntity, ProductModifierOption } from './model';
 import type {
   ProductModifierDto,
   ProductModifierOptionDto,
+  PublicModifierDto,
 } from '@repo/shared';
 
 function toProductModifierOptionDto(
@@ -43,5 +44,26 @@ export function toProductModifierDto(
     isActive: productModifier.isActive,
     createdAt: productModifier.createdAt.toISOString(),
     updatedAt: productModifier.updatedAt.toISOString(),
+  };
+}
+
+export function toPublicModifierDto(
+  productModifier: ProductModifierEntity,
+): PublicModifierDto {
+  return {
+    id: productModifier.id,
+    name: productModifier.name,
+    selectionType: productModifier.selectionType,
+    minSelect: productModifier.minSelect,
+    maxSelect: productModifier.maxSelect,
+    options: productModifier.options
+      .filter((option) => option.isActive)
+      .map((option) => ({
+        id: option.id,
+        name: option.name,
+        priceAdjustment: option.priceAdjustment,
+        isDefault: option.isDefault,
+        isSoldOut: option.isSoldOut,
+      })),
   };
 }

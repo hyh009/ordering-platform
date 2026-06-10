@@ -1,5 +1,5 @@
 import type { AllergenEntity } from './model';
-import type { AllergenDto } from '@repo/shared';
+import type { AllergenDto, PublicMetadataItemDto } from '@repo/shared';
 
 export function toAllergenDto(allergen: AllergenEntity): AllergenDto {
   return {
@@ -9,4 +9,10 @@ export function toAllergenDto(allergen: AllergenEntity): AllergenDto {
     ...(allergen.icon ? { icon: allergen.icon } : {}),
     isActive: allergen.isActive,
   };
+}
+
+export function toPublicAllergenDto(
+  allergen: AllergenEntity,
+): PublicMetadataItemDto {
+  return { id: allergen.id, name: allergen.name };
 }

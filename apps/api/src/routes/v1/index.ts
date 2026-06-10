@@ -8,6 +8,7 @@ import authRouter from './auth';
 import healthRouter from './health';
 import merchantMetadataRouter from './merchant/metadata/_router';
 import merchantStoresRouter from './merchant/stores/_router';
+import publicRouter from './public/_router';
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use('/admin/users', usersRouter);
 router.use('/health', healthRouter);
 router.use('/merchant/metadata', merchantMetadataRouter);
 router.use('/merchant/stores', merchantStoresRouter);
+router.use('/public', publicRouter);
 
 export default router;

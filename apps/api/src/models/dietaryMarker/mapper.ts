@@ -1,5 +1,5 @@
 import type { DietaryMarkerEntity } from './model';
-import type { DietaryMarkerDto } from '@repo/shared';
+import type { DietaryMarkerDto, PublicMetadataItemDto } from '@repo/shared';
 
 export function toDietaryMarkerDto(
   dietaryMarker: DietaryMarkerEntity,
@@ -12,4 +12,10 @@ export function toDietaryMarkerDto(
     type: dietaryMarker.type,
     isActive: dietaryMarker.isActive,
   };
+}
+
+export function toPublicDietaryMarkerDto(
+  dietaryMarker: DietaryMarkerEntity,
+): PublicMetadataItemDto {
+  return { id: dietaryMarker.id, name: dietaryMarker.name };
 }
