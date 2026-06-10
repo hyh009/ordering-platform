@@ -3,18 +3,21 @@ import { z } from 'zod';
 import type { ApiSuccessResponse } from './api.js';
 import type { LocalizedStringDto } from './metadata.js';
 
+export type ProductStatus = 'draft' | 'published';
+
 export type ProductDto = {
   id: string;
   storeId: string;
   categoryIds: string[];
   name: LocalizedStringDto;
   description?: LocalizedStringDto;
-  imageUrl?: string;
+  imageUrls: string[];
   price: number;
   tagIds: string[];
   allergenIds: string[];
   dietaryMarkerIds: string[];
   modifierIds: string[];
+  status: ProductStatus;
   isActive: boolean;
   isSoldOut: boolean;
   createdAt: string;
@@ -36,6 +39,8 @@ export const productDescriptionSchema = z.object({
 });
 
 const productImageUrlSchema = z.string().trim().url().max(2048);
+const productImageUrlsSchema = z.array(productImageUrlSchema).max(10);
+export const productStatusSchema = z.enum(['draft', 'published']);
 const productReferenceIdsSchema = z
   .array(z.string().trim().min(1).max(120))
   .max(500)
@@ -47,12 +52,13 @@ export const createProductSchema = z.object({
   categoryIds: productReferenceIdsSchema.optional(),
   name: productNameSchema,
   description: productDescriptionSchema.optional(),
-  imageUrl: productImageUrlSchema.optional(),
+  imageUrls: productImageUrlsSchema.optional(),
   price: z.number().min(0),
   tagIds: productReferenceIdsSchema.optional(),
   allergenIds: productReferenceIdsSchema.optional(),
   dietaryMarkerIds: productReferenceIdsSchema.optional(),
   modifierIds: productReferenceIdsSchema.optional(),
+  status: productStatusSchema.optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -61,12 +67,13 @@ export const updateProductSchema = z
     categoryIds: productReferenceIdsSchema.optional(),
     name: productNameSchema.optional(),
     description: productDescriptionSchema.optional(),
-    imageUrl: productImageUrlSchema.nullable().optional(),
+    imageUrls: productImageUrlsSchema.optional(),
     price: z.number().min(0).optional(),
     tagIds: productReferenceIdsSchema.optional(),
     allergenIds: productReferenceIdsSchema.optional(),
     dietaryMarkerIds: productReferenceIdsSchema.optional(),
     modifierIds: productReferenceIdsSchema.optional(),
+    status: productStatusSchema.optional(),
     isActive: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -106,6 +113,9 @@ export type ProductParams = z.infer<typeof productParamsSchema>;
 
 export type ListProductsSuccessResponse = ApiSuccessResponse<{
   products: ProductDto[];
+}>;
+export type GetProductSuccessResponse = ApiSuccessResponse<{
+  product: ProductDto;
 }>;
 export type CreateProductSuccessResponse = ApiSuccessResponse<{
   product: ProductDto;
