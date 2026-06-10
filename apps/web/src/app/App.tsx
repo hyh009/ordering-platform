@@ -23,7 +23,9 @@ import { StoreCreatePage } from '@/pages/admin/storeCreate/StoreCreatePage';
 import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
-import { MenuPage } from '@/pages/merchant/menu/MenuPage';
+import { ProductCreatePage } from '@/pages/merchant/productCreate/ProductCreatePage';
+import { ProductDetailPage } from '@/pages/merchant/productDetail/ProductDetailPage';
+import { ProductListPage } from '@/pages/merchant/productList/ProductListPage';
 import { ProductModifierCreatePage } from '@/pages/merchant/productModifierCreate/ProductModifierCreatePage';
 import { ProductModifierDetailPage } from '@/pages/merchant/productModifierDetail/ProductModifierDetailPage';
 import { ProductModifierListPage } from '@/pages/merchant/productModifierList/ProductModifierListPage';
@@ -134,7 +136,24 @@ export function App() {
             <Route element={<MerchantLayout />}>
               {/* Store-scoped pages require active org and store selection */}
               <Route element={<RequireActiveStore />}>
-                <Route element={<MenuPage />} path={PATHS.MERCHANT.MENU} />
+                <Route
+                  element={<ProductListPage />}
+                  path={PATHS.MERCHANT.MENU}
+                />
+                <Route
+                  element={
+                    <RequireStoreManager redirectTo={PATHS.MERCHANT.MENU} />
+                  }
+                >
+                  <Route
+                    element={<ProductCreatePage />}
+                    path={PATHS.MERCHANT.MENU_CREATE}
+                  />
+                </Route>
+                <Route
+                  element={<ProductDetailPage />}
+                  path={PATHS.MERCHANT.MENU_DETAIL}
+                />
                 <Route
                   element={<OrderListPage />}
                   path={PATHS.MERCHANT.ORDERS}
