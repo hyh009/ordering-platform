@@ -18,6 +18,15 @@ export const menuPaths = {
   productModifierDetail(storeId: string, productModifierId: string) {
     return `${storeBase(storeId)}/product-modifiers/${encodeURIComponent(productModifierId)}`;
   },
+  products(storeId: string) {
+    return `${storeBase(storeId)}/products`;
+  },
+  productDetail(storeId: string, productId: string) {
+    return `${storeBase(storeId)}/products/${encodeURIComponent(productId)}`;
+  },
+  productSoldOut(storeId: string, productId: string) {
+    return `${storeBase(storeId)}/products/${encodeURIComponent(productId)}/sold-out`;
+  },
   tags(storeId: string) {
     return `${storeBase(storeId)}/tags`;
   },
