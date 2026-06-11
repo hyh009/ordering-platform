@@ -7,6 +7,7 @@ import {
   MerchantLayout,
   SuperAdminLayout,
 } from '@/app/layout/AppLayout';
+import { GuestLayout } from '@/app/layout/GuestLayout';
 import { PublicLayout } from '@/app/layout/PublicLayout';
 import { PATHS } from '@/app/routing/paths';
 import { PublicOnly } from '@/app/routing/PublicOnly';
@@ -22,6 +23,11 @@ import { OrganizationMembershipsPage } from '@/pages/admin/organizationMembershi
 import { StoreCreatePage } from '@/pages/admin/storeCreate/StoreCreatePage';
 import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
+import { CartPage } from '@/pages/guest/cart/CartPage';
+import { JoinPage } from '@/pages/guest/join/JoinPage';
+import { LandingPage } from '@/pages/guest/landing/LandingPage';
+import { MenuPage } from '@/pages/guest/menu/MenuPage';
+import { OrderTrackingPage } from '@/pages/guest/order/OrderTrackingPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { ProductCreatePage } from '@/pages/merchant/productCreate/ProductCreatePage';
 import { ProductDetailPage } from '@/pages/merchant/productDetail/ProductDetailPage';
@@ -52,6 +58,15 @@ export function App() {
             <Route element={<PublicLayout />}>
               <Route element={<LoginPage />} path={PATHS.AUTH.LOGIN} />
             </Route>
+          </Route>
+
+          {/* Public guest ordering: /s/* mobile-first, no auth */}
+          <Route element={<GuestLayout />}>
+            <Route element={<LandingPage />} path={PATHS.GUEST.LANDING} />
+            <Route element={<JoinPage />} path={PATHS.GUEST.JOIN} />
+            <Route element={<MenuPage />} path={PATHS.GUEST.MENU} />
+            <Route element={<CartPage />} path={PATHS.GUEST.CART} />
+            <Route element={<OrderTrackingPage />} path={PATHS.GUEST.ORDER} />
           </Route>
 
           <Route element={<RequireAuth />}>

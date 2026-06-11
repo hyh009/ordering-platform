@@ -20,6 +20,20 @@ export const PATHS = {
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },
+  GUEST: {
+    LANDING: '/s/:storeId',
+    LANDING_BUILD: (storeId: string) => `/s/${storeId}`,
+    JOIN: '/s/:storeId/join/:joinCode',
+    JOIN_BUILD: (storeId: string, joinCode: string) =>
+      `/s/${storeId}/join/${joinCode}`,
+    MENU: '/s/:storeId/menu',
+    MENU_BUILD: (storeId: string) => `/s/${storeId}/menu`,
+    CART: '/s/:storeId/cart',
+    CART_BUILD: (storeId: string) => `/s/${storeId}/cart`,
+    ORDER: '/s/:storeId/orders/:orderId',
+    ORDER_BUILD: (storeId: string, orderId: string) =>
+      `/s/${storeId}/orders/${orderId}`,
+  },
   MERCHANT: {
     ROOT: '/merchant',
     SELECT_ORG: '/merchant/select-org',
