@@ -4,6 +4,7 @@ import {
   type GuestCommandFailure,
 } from '@/services/utils/guestApiError';
 import type { GuestStorefrontActions } from './actions';
+import type { GuestTenantStore } from '../tenant/store';
 
 export type LoadStorefrontResult = { status: 'loaded' } | GuestCommandFailure;
 
@@ -11,12 +12,20 @@ export type GuestStorefrontCommands = {
   loadStorefront(storeId: string): Promise<LoadStorefrontResult>;
 };
 
-export function createGuestStorefrontCommands(
-  actions: GuestStorefrontActions,
-): GuestStorefrontCommands {
+export function createGuestStorefrontCommands(deps: {
+  actions: GuestStorefrontActions;
+  tenantStore: GuestTenantStore;
+}): GuestStorefrontCommands {
   return {
     async loadStorefront(storeId) {
-      actions.loadStarted();
+      if (deps.tenantStore.getState().activeStoreId !== storeId) {
+        return {
+          status: 'failed',
+          message: '',
+          reason: 'session-store-mismatch',
+        };
+      }
+      deps.actions.loadStarted();
 
       try {
         const [store, menu] = await Promise.all([
@@ -24,12 +33,21 @@ export function createGuestStorefrontCommands(
           guestMenuService.getMenu(storeId),
         ]);
 
-        actions.loadSucceeded({ store, menu });
+        if (deps.tenantStore.getState().activeStoreId !== storeId) {
+          return {
+            status: 'failed',
+            message: '',
+            reason: 'session-store-mismatch',
+          };
+        }
+        deps.actions.loadSucceeded({ store, menu });
         return { status: 'loaded' };
       } catch (error) {
         const failure = mapGuestApiError(error);
 
-        actions.loadFailed(failure.message);
+        if (deps.tenantStore.getState().activeStoreId === storeId) {
+          deps.actions.loadFailed(failure.message);
+        }
         return failure;
       }
     },

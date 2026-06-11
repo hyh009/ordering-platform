@@ -8,26 +8,39 @@ import { getGuestRuntime } from '@/features/guest/runtime';
 import { isStoreOpenNow } from '@/models/guestMenu';
 import type { StoreOrderType } from '@/models/store';
 import { useGuestStoreId } from '../useGuestStoreId';
-
-type ResumeTarget = 'cart' | 'order' | null;
+import { createLandingPageCommands } from './landingPage.commands';
 
 export function useLandingPageVM() {
   const storeId = useGuestStoreId();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const runtime = useMemo(() => getGuestRuntime(), []);
+  const commands = useMemo(() => createLandingPageCommands(runtime), [runtime]);
 
   const tableNumber = searchParams.get('table') ?? undefined;
 
-  const store = useStore(runtime.stores.storefront, (state) => state.store);
-  const isLoading = useStore(
+  const activeStoreId = useStore(
+    runtime.stores.tenant,
+    (state) => state.activeStoreId,
+  );
+  const isActiveStore = activeStoreId === storeId;
+  const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
+  const rawIsLoading = useStore(
     runtime.stores.storefront,
     (state) => state.isLoading,
   );
-  const error = useStore(runtime.stores.storefront, (state) => state.error);
-  const isMutating = useStore(runtime.stores.cart, (state) => state.isMutating);
+  const rawError = useStore(runtime.stores.storefront, (state) => state.error);
+  const rawIsMutating = useStore(
+    runtime.stores.cart,
+    (state) => state.isMutating,
+  );
+  const store = isActiveStore ? rawStore : null;
+  const isLoading = !isActiveStore || rawIsLoading;
+  const error = isActiveStore ? rawError : null;
+  const isMutating = isActiveStore && rawIsMutating;
 
-  const [resumeTarget, setResumeTarget] = useState<ResumeTarget>(null);
+  const [canResume, setCanResume] = useState(false);
+  const [resumeStoreId, setResumeStoreId] = useState<string | null>(null);
   const [manualOrderType, setManualOrderType] = useState<StoreOrderType | null>(
     null,
   );
@@ -53,23 +66,10 @@ export function useLandingPageVM() {
     let active = true;
 
     async function init() {
-      await runtime.commands.storefront.loadStorefront(storeId);
-      const result = await runtime.commands.session.restoreSession(storeId);
+      const result = await commands.initialize(storeId);
       if (!active) return;
-
-      if (result.status === 'cart') {
-        setResumeTarget('cart');
-      } else if (result.status === 'order') {
-        setResumeTarget('order');
-      } else if (result.status === 'ended') {
-        feedbackCommands.toast({
-          tone: 'info',
-          message: tDefault(
-            'guest.landing.previousOrderEnded',
-            'Your previous order has ended.',
-          ),
-        });
-      }
+      setCanResume(result.hasStoredSession);
+      setResumeStoreId(storeId);
     }
 
     void init();
@@ -79,12 +79,12 @@ export function useLandingPageVM() {
     };
     // `tDefault` is a stable module import, not a reactive dependency; keeping
     // it out of the deps prevents the init effect from re-running every render.
-  }, [runtime, storeId]);
+  }, [commands, storeId]);
 
   const startOrder = useCallback(async () => {
     if (!storeId || !selectedOrderType) return;
 
-    const result = await runtime.commands.cart.createCart(storeId, {
+    const result = await commands.startOrder(storeId, {
       orderType: selectedOrderType,
       ...(tableNumber !== undefined ? { tableNumber } : {}),
     });
@@ -94,22 +94,46 @@ export function useLandingPageVM() {
       return;
     }
 
-    feedbackCommands.toast({ tone: 'error', message: result.message });
-  }, [navigate, runtime, selectedOrderType, storeId, tableNumber]);
+    if (result.message) {
+      feedbackCommands.toast({ tone: 'error', message: result.message });
+    }
+  }, [commands, navigate, selectedOrderType, storeId, tableNumber]);
 
-  const resume = useCallback(() => {
-    if (resumeTarget === 'cart') {
+  const resume = useCallback(async () => {
+    const result = await commands.resume(storeId);
+    if (result.status === 'cart') {
       void navigate(PATHS.GUEST.MENU_BUILD(storeId));
       return;
     }
 
-    if (resumeTarget === 'order') {
-      const order = runtime.stores.order.getState().order;
-      if (order) {
-        void navigate(PATHS.GUEST.ORDER_BUILD(storeId, order.id));
-      }
+    if (result.status === 'order') {
+      void navigate(PATHS.GUEST.ORDER_BUILD(storeId, result.orderId));
+      return;
     }
-  }, [navigate, resumeTarget, runtime, storeId]);
+
+    if (result.status === 'ended') {
+      setCanResume(false);
+      await feedbackCommands.alert({
+        title: tDefault(
+          'guest.landing.previousOrderEnded',
+          'Your previous order has ended.',
+        ),
+        message: tDefault(
+          'guest.landing.startNewOrderPrompt',
+          'You can start a new order now.',
+        ),
+        confirmLabel: tDefault('guest.landing.startOrder', 'Start ordering'),
+      });
+      if (selectedOrderType) {
+        await startOrder();
+      }
+      return;
+    }
+
+    if (result.status === 'failed' && result.message) {
+      feedbackCommands.toast({ tone: 'error', message: result.message });
+    }
+  }, [commands, navigate, selectedOrderType, startOrder, storeId]);
 
   return {
     store,
@@ -121,7 +145,7 @@ export function useLandingPageVM() {
     enabledOrderTypes,
     selectedOrderType,
     setSelectedOrderType: setManualOrderType,
-    resumeTarget,
+    canResume: resumeStoreId === storeId && canResume,
     startOrder,
     resume,
   };

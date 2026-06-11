@@ -17,6 +17,13 @@ type ConfirmInput = {
   tone?: FeedbackTone;
 };
 
+type AlertInput = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  tone?: FeedbackTone;
+};
+
 class FeedbackCommands {
   private nextToastId = 1;
 
@@ -54,6 +61,23 @@ class FeedbackCommands {
           input.cancelLabel ?? tDefault('common.actions.cancel', 'Cancel'),
         tone: input.tone ?? 'info',
         onResolve: resolve,
+      };
+
+      feedbackStore.setState({
+        modal,
+      });
+    });
+  };
+
+  alert = (input: AlertInput) => {
+    return new Promise<void>((resolve) => {
+      const modal: ActiveConfirmModal = {
+        title: input.title,
+        message: input.message,
+        confirmLabel:
+          input.confirmLabel ?? tDefault('common.actions.confirm', 'Confirm'),
+        tone: input.tone ?? 'info',
+        onResolve: () => resolve(),
       };
 
       feedbackStore.setState({

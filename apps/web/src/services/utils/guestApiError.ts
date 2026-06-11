@@ -13,6 +13,7 @@ export type GuestCommandFailureReason =
   | 'not-found'
   | 'order-locked'
   | 'server'
+  | 'session-store-mismatch'
   | 'session-expired'
   | 'sold-out'
   | 'store-closed'

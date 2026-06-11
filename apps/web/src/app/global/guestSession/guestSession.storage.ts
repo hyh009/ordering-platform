@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'ordering-platform.guestSession';
+const STORAGE_KEY_PREFIX = 'ordering-platform.guestSession:';
 
 export type StoredGuestSession = {
   guestToken: string;
@@ -6,9 +6,15 @@ export type StoredGuestSession = {
   participantId: string;
 };
 
-export function loadStoredGuestSession(): StoredGuestSession | null {
+function storageKey(storeId: string): string {
+  return `${STORAGE_KEY_PREFIX}${storeId}`;
+}
+
+export function loadStoredGuestSession(
+  storeId: string,
+): StoredGuestSession | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(storeId));
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<StoredGuestSession> | null;
@@ -16,7 +22,8 @@ export function loadStoredGuestSession(): StoredGuestSession | null {
       !parsed ||
       typeof parsed.guestToken !== 'string' ||
       typeof parsed.storeId !== 'string' ||
-      typeof parsed.participantId !== 'string'
+      typeof parsed.participantId !== 'string' ||
+      parsed.storeId !== storeId
     ) {
       return null;
     }
@@ -33,15 +40,18 @@ export function loadStoredGuestSession(): StoredGuestSession | null {
 
 export function saveStoredGuestSession(session: StoredGuestSession): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    window.localStorage.setItem(
+      storageKey(session.storeId),
+      JSON.stringify(session),
+    );
   } catch {
     // Private mode or storage quota: ordering still works for this tab.
   }
 }
 
-export function clearStoredGuestSession(): void {
+export function clearStoredGuestSession(storeId: string): void {
   try {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(storageKey(storeId));
   } catch {
     // Ignore storage failures.
   }

@@ -20,17 +20,30 @@ export type GuestCartWorkflowCommands = {
     storeId: string,
     request: JoinCartRequest,
   ): Promise<
-    { status: 'joined'; target: 'cart' | 'order' } | GuestCommandFailure
+    | { status: 'joined'; target: 'cart' | 'order'; orderId?: string }
+    | GuestCommandFailure
   >;
-  loadCart(): Promise<{ status: 'loaded' } | GuestCommandFailure>;
-  addItem(request: AddCartItemRequest): Promise<CartMutationResult>;
+  loadCart(
+    expectedStoreId: string,
+  ): Promise<{ status: 'loaded' } | GuestCommandFailure>;
+  addItem(
+    expectedStoreId: string,
+    request: AddCartItemRequest,
+  ): Promise<CartMutationResult>;
   updateItem(
+    expectedStoreId: string,
     itemId: string,
     request: UpdateCartItemRequest,
   ): Promise<CartMutationResult>;
-  removeItem(itemId: string): Promise<CartMutationResult>;
-  leaveCart(): Promise<{ status: 'left' } | GuestCommandFailure>;
+  removeItem(
+    expectedStoreId: string,
+    itemId: string,
+  ): Promise<CartMutationResult>;
+  leaveCart(
+    expectedStoreId: string,
+  ): Promise<{ status: 'left' } | GuestCommandFailure>;
   submitCart(
+    expectedStoreId: string,
     request: SubmitCartRequest,
   ): Promise<{ status: 'submitted'; orderId: string } | GuestCommandFailure>;
 };
@@ -49,10 +62,11 @@ export function createGuestCartWorkflowCommands(deps: {
   } = deps;
 
   function handleSessionExpired<T extends { reason?: string; status: string }>(
+    expectedStoreId: string,
     result: T,
   ): T {
     if (result.status === 'failed' && result.reason === 'session-expired') {
-      sessionWorkflowCommands.clearSession();
+      sessionWorkflowCommands.clearSession(expectedStoreId);
     }
 
     return result;
@@ -71,7 +85,7 @@ export function createGuestCartWorkflowCommands(deps: {
         return { status: 'created' };
       }
 
-      return handleSessionExpired(result);
+      return handleSessionExpired(storeId, result);
     },
 
     async joinCart(storeId, request) {
@@ -87,47 +101,61 @@ export function createGuestCartWorkflowCommands(deps: {
           orderActions.orderUpdated(result.order);
         }
 
-        return { status: 'joined', target: result.target };
+        return {
+          status: 'joined',
+          target: result.target,
+          ...(result.order ? { orderId: result.order.id } : {}),
+        };
       }
 
-      return handleSessionExpired(result);
+      return handleSessionExpired(storeId, result);
     },
 
-    async loadCart() {
-      return handleSessionExpired(await cartCommands.loadCart());
-    },
-
-    async addItem(request) {
-      return handleSessionExpired(await cartCommands.addItem(request));
-    },
-
-    async updateItem(itemId, request) {
+    async loadCart(expectedStoreId) {
       return handleSessionExpired(
-        await cartCommands.updateItem(itemId, request),
+        expectedStoreId,
+        await cartCommands.loadCart(expectedStoreId),
       );
     },
 
-    async removeItem(itemId) {
-      return handleSessionExpired(await cartCommands.removeItem(itemId));
+    async addItem(expectedStoreId, request) {
+      return handleSessionExpired(
+        expectedStoreId,
+        await cartCommands.addItem(expectedStoreId, request),
+      );
     },
 
-    async leaveCart() {
-      const result = await cartCommands.leaveCart();
+    async updateItem(expectedStoreId, itemId, request) {
+      return handleSessionExpired(
+        expectedStoreId,
+        await cartCommands.updateItem(expectedStoreId, itemId, request),
+      );
+    },
+
+    async removeItem(expectedStoreId, itemId) {
+      return handleSessionExpired(
+        expectedStoreId,
+        await cartCommands.removeItem(expectedStoreId, itemId),
+      );
+    },
+
+    async leaveCart(expectedStoreId) {
+      const result = await cartCommands.leaveCart(expectedStoreId);
       if (result.status === 'left') {
-        sessionWorkflowCommands.clearSession();
+        sessionWorkflowCommands.clearSession(expectedStoreId);
       }
 
-      return handleSessionExpired(result);
+      return handleSessionExpired(expectedStoreId, result);
     },
 
-    async submitCart(request) {
-      const result = await cartCommands.submitCart(request);
+    async submitCart(expectedStoreId, request) {
+      const result = await cartCommands.submitCart(expectedStoreId, request);
       if (result.status === 'submitted') {
         orderActions.orderUpdated(result.order);
         return { status: 'submitted', orderId: result.order.id };
       }
 
-      return handleSessionExpired(result);
+      return handleSessionExpired(expectedStoreId, result);
     },
   };
 }

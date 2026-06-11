@@ -19,6 +19,15 @@ export function createGuestStorefrontActions(store: GuestStorefrontStore) {
     loadFailed(error: string) {
       store.setState({ error, isLoading: false });
     },
+
+    storefrontCleared() {
+      store.setState({
+        store: null,
+        menu: null,
+        error: null,
+        isLoading: false,
+      });
+    },
   };
 }
 

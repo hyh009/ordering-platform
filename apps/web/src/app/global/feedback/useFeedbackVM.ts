@@ -9,6 +9,7 @@ export function useFeedbackVM() {
   return {
     toasts,
     modal,
+    alert: feedbackCommands.alert,
     confirm: feedbackCommands.confirm,
     closeModal: feedbackCommands.closeModal,
     dismissToast: feedbackCommands.dismissToast,

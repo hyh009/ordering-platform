@@ -5,38 +5,49 @@ import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import { getGuestRuntime } from '@/features/guest/runtime';
 import { useGuestStoreId } from '../useGuestStoreId';
+import { createJoinPageCommands } from './joinPage.commands';
 
 export function useJoinPageVM() {
   const storeId = useGuestStoreId();
   const { joinCode } = useParams<{ joinCode: string }>();
   const navigate = useNavigate();
   const runtime = useMemo(() => getGuestRuntime(), []);
+  const commands = useMemo(() => createJoinPageCommands(runtime), [runtime]);
 
-  const isMutating = useStore(runtime.stores.cart, (state) => state.isMutating);
+  const activeStoreId = useStore(
+    runtime.stores.tenant,
+    (state) => state.activeStoreId,
+  );
+  const isActiveStore = activeStoreId === storeId;
+  const rawIsMutating = useStore(
+    runtime.stores.cart,
+    (state) => state.isMutating,
+  );
+  const isMutating = isActiveStore && rawIsMutating;
 
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (!storeId) return;
-    void runtime.commands.storefront.loadStorefront(storeId);
-  }, [runtime, storeId]);
+    void commands.initialize(storeId);
+  }, [commands, storeId]);
 
-  const store = useStore(runtime.stores.storefront, (state) => state.store);
+  const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
+  const store = isActiveStore ? rawStore : null;
 
   const join = useCallback(async () => {
     if (!joinCode) return;
 
     const trimmed = displayName.trim();
-    const result = await runtime.commands.cart.joinCart(storeId, {
+    const result = await commands.join(storeId, {
       joinCode,
       ...(trimmed.length > 0 ? { displayName: trimmed } : {}),
     });
 
     if (result.status === 'joined') {
       if (result.target === 'order') {
-        const order = runtime.stores.order.getState().order;
-        if (order) {
-          void navigate(PATHS.GUEST.ORDER_BUILD(storeId, order.id));
+        if (result.orderId) {
+          void navigate(PATHS.GUEST.ORDER_BUILD(storeId, result.orderId));
           return;
         }
       }
@@ -44,8 +55,10 @@ export function useJoinPageVM() {
       return;
     }
 
-    feedbackCommands.toast({ tone: 'error', message: result.message });
-  }, [displayName, joinCode, navigate, runtime, storeId]);
+    if (result.message) {
+      feedbackCommands.toast({ tone: 'error', message: result.message });
+    }
+  }, [commands, displayName, joinCode, navigate, storeId]);
 
   return {
     store,

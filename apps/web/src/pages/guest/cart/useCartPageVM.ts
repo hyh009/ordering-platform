@@ -7,32 +7,51 @@ import { PATHS } from '@/app/routing/paths';
 import { getGuestRuntime } from '@/features/guest/runtime';
 import type { CartItem } from '@/models/cart';
 import { useGuestStoreId } from '../useGuestStoreId';
+import { createCartPageCommands } from './cartPage.commands';
 
 export function useCartPageVM() {
   const storeId = useGuestStoreId();
   const navigate = useNavigate();
   const { tDefault } = useAppTranslation();
   const runtime = useMemo(() => getGuestRuntime(), []);
+  const commands = useMemo(() => createCartPageCommands(runtime), [runtime]);
 
-  const cart = useStore(runtime.stores.cart, (state) => state.cart);
-  const isLoading = useStore(runtime.stores.cart, (state) => state.isLoading);
-  const isMutating = useStore(runtime.stores.cart, (state) => state.isMutating);
-  const participantId = useStore(
+  const activeStoreId = useStore(
+    runtime.stores.tenant,
+    (state) => state.activeStoreId,
+  );
+  const isActiveStore = activeStoreId === storeId;
+  const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
+  const rawIsLoading = useStore(
+    runtime.stores.cart,
+    (state) => state.isLoading,
+  );
+  const rawIsMutating = useStore(
+    runtime.stores.cart,
+    (state) => state.isMutating,
+  );
+  const rawParticipantId = useStore(
     runtime.stores.session,
     (state) => state.participantId,
   );
-  const guestToken = useStore(
-    runtime.stores.session,
-    (state) => state.guestToken,
-  );
+  const cart = isActiveStore ? rawCart : null;
+  const isLoading = !isActiveStore || rawIsLoading;
+  const isMutating = isActiveStore && rawIsMutating;
+  const participantId = isActiveStore ? rawParticipantId : null;
 
   useEffect(() => {
-    if (!guestToken) {
-      void navigate(PATHS.GUEST.LANDING_BUILD(storeId), { replace: true });
-      return;
+    let active = true;
+    async function init() {
+      const result = await commands.initialize(storeId);
+      if (active && result.status === 'none') {
+        void navigate(PATHS.GUEST.LANDING_BUILD(storeId), { replace: true });
+      }
     }
-    void runtime.commands.cart.loadCart();
-  }, [guestToken, navigate, runtime, storeId]);
+    void init();
+    return () => {
+      active = false;
+    };
+  }, [commands, navigate, storeId]);
 
   const isOwnItem = useCallback(
     (item: CartItem) => item.addedByParticipantId === participantId,
@@ -41,25 +60,25 @@ export function useCartPageVM() {
 
   const removeItem = useCallback(
     async (item: CartItem) => {
-      const result = await runtime.commands.cart.removeItem(item.id);
-      if (result.status === 'failed') {
+      const result = await commands.removeItem(storeId, item.id);
+      if (result.status === 'failed' && result.message) {
         feedbackCommands.toast({ tone: 'error', message: result.message });
       }
     },
-    [runtime],
+    [commands, storeId],
   );
 
   const changeQuantity = useCallback(
     async (item: CartItem, quantity: number) => {
       if (quantity < 1) return;
-      const result = await runtime.commands.cart.updateItem(item.id, {
+      const result = await commands.updateItem(storeId, item.id, {
         quantity,
       });
-      if (result.status === 'failed') {
+      if (result.status === 'failed' && result.message) {
         feedbackCommands.toast({ tone: 'error', message: result.message });
       }
     },
-    [runtime],
+    [commands, storeId],
   );
 
   const goToMenu = useCallback(() => {
@@ -77,14 +96,16 @@ export function useCartPageVM() {
     });
     if (!confirmed) return;
 
-    const result = await runtime.commands.cart.submitCart({});
+    const result = await commands.submit(storeId, {});
     if (result.status === 'submitted') {
       void navigate(PATHS.GUEST.ORDER_BUILD(storeId, result.orderId));
       return;
     }
 
-    feedbackCommands.toast({ tone: 'error', message: result.message });
-  }, [navigate, runtime, storeId, tDefault]);
+    if (result.message) {
+      feedbackCommands.toast({ tone: 'error', message: result.message });
+    }
+  }, [commands, navigate, storeId, tDefault]);
 
   const joinCode = cart?.joinCode ?? null;
   const inviteLink = useMemo(() => {

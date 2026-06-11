@@ -13,7 +13,7 @@ export type ActiveConfirmModal = {
   title: string;
   message: string;
   confirmLabel: string;
-  cancelLabel: string;
+  cancelLabel?: string;
   tone: FeedbackTone;
   onResolve: (confirmed: boolean) => void;
 };

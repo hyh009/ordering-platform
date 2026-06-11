@@ -20,6 +20,7 @@ import type {
   UpdateCartItemRequest,
 } from '@/models/cart';
 import type { GuestCartActions } from './actions';
+import type { GuestTenantStore } from '../tenant/store';
 
 export type CartMutationResult = { status: 'updated' } | GuestCommandFailure;
 
@@ -44,15 +45,29 @@ export type GuestCartCommands = {
       }
     | GuestCommandFailure
   >;
-  loadCart(): Promise<{ status: 'loaded' } | GuestCommandFailure>;
-  addItem(request: AddCartItemRequest): Promise<CartMutationResult>;
+  loadCart(
+    expectedStoreId: string,
+  ): Promise<{ status: 'loaded' } | GuestCommandFailure>;
+  addItem(
+    expectedStoreId: string,
+    request: AddCartItemRequest,
+  ): Promise<CartMutationResult>;
   updateItem(
+    expectedStoreId: string,
     itemId: string,
     request: UpdateCartItemRequest,
   ): Promise<CartMutationResult>;
-  removeItem(itemId: string): Promise<CartMutationResult>;
-  leaveCart(): Promise<{ status: 'left' } | GuestCommandFailure>;
-  submitCart(request: SubmitCartRequest): Promise<
+  removeItem(
+    expectedStoreId: string,
+    itemId: string,
+  ): Promise<CartMutationResult>;
+  leaveCart(
+    expectedStoreId: string,
+  ): Promise<{ status: 'left' } | GuestCommandFailure>;
+  submitCart(
+    expectedStoreId: string,
+    request: SubmitCartRequest,
+  ): Promise<
     | {
         order: Awaited<ReturnType<typeof guestCartService.submitCart>>;
         status: 'submitted';
@@ -64,17 +79,23 @@ export type GuestCartCommands = {
 export function createGuestCartCommands(deps: {
   cartActions: GuestCartActions;
   sessionStore: GuestSessionStore;
+  tenantStore: GuestTenantStore;
 }): GuestCartCommands {
-  const { cartActions, sessionStore } = deps;
+  const { cartActions, sessionStore, tenantStore } = deps;
 
-  function requireToken(): string | null {
-    return sessionStore.getState().guestToken;
-  }
-
-  function failMutation(error: unknown): GuestCommandFailure {
+  function failMutation(
+    error: unknown,
+    expectedStoreId: string,
+    token?: string,
+  ): GuestCommandFailure {
     const failure = mapGuestApiError(error);
 
-    cartActions.mutateFailed(failure.message);
+    if (
+      isActiveStore(expectedStoreId) &&
+      (token === undefined || hasScopedToken(expectedStoreId, token))
+    ) {
+      cartActions.mutateFailed(failure.message);
+    }
 
     return failure;
   }
@@ -93,9 +114,35 @@ export function createGuestCartCommands(deps: {
     message: '',
     reason: 'session-expired',
   };
+  const mismatchedSession: GuestCommandFailure = {
+    status: 'failed',
+    message: '',
+    reason: 'session-store-mismatch',
+  };
+
+  function requireScopedToken(
+    expectedStoreId: string,
+  ): string | GuestCommandFailure {
+    if (tenantStore.getState().activeStoreId !== expectedStoreId) {
+      return mismatchedSession;
+    }
+    const session = sessionStore.getState();
+    if (!session.guestToken) return missingSession;
+    if (session.storeId !== expectedStoreId) return mismatchedSession;
+    return session.guestToken;
+  }
+
+  function isActiveStore(storeId: string): boolean {
+    return tenantStore.getState().activeStoreId === storeId;
+  }
+
+  function hasScopedToken(storeId: string, token: string): boolean {
+    return requireScopedToken(storeId) === token;
+  }
 
   return {
     async createCart(storeId, request) {
+      if (!isActiveStore(storeId)) return mismatchedSession;
       const validation = createCartSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
       const parsed = validation.data;
@@ -104,6 +151,7 @@ export function createGuestCartCommands(deps: {
 
       try {
         const result = await guestCartService.createCart(storeId, parsed);
+        if (!isActiveStore(storeId)) return mismatchedSession;
 
         cartActions.cartUpdated(result.cart);
 
@@ -113,11 +161,12 @@ export function createGuestCartCommands(deps: {
           status: 'created',
         };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, storeId);
       }
     },
 
     async joinCart(storeId, request) {
+      if (!isActiveStore(storeId)) return mismatchedSession;
       const validation = joinCartSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
       const parsed = validation.data;
@@ -126,6 +175,7 @@ export function createGuestCartCommands(deps: {
 
       try {
         const result = await guestCartService.joinCart(storeId, parsed);
+        if (!isActiveStore(storeId)) return mismatchedSession;
 
         if (result.session.order) {
           cartActions.cartCleared();
@@ -155,33 +205,40 @@ export function createGuestCartCommands(deps: {
           target: 'cart',
         };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, storeId);
       }
     },
 
-    async loadCart() {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async loadCart(expectedStoreId) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       cartActions.loadStarted();
 
       try {
         const cart = await guestCartService.getCart(token);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartUpdated(cart);
         return { status: 'loaded' };
       } catch (error) {
         const failure = mapGuestApiError(error);
 
-        cartActions.loadFailed(failure.message);
+        if (hasScopedToken(expectedStoreId, token)) {
+          cartActions.loadFailed(failure.message);
+        }
 
         return failure;
       }
     },
 
-    async addItem(request) {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async addItem(expectedStoreId, request) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       const validation = cartItemInputSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
@@ -191,17 +248,21 @@ export function createGuestCartCommands(deps: {
 
       try {
         const cart = await guestCartService.addItem(token, parsed);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartUpdated(cart);
         return { status: 'updated' };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, expectedStoreId, token);
       }
     },
 
-    async updateItem(itemId, request) {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async updateItem(expectedStoreId, itemId, request) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       const validation = updateCartItemSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
@@ -211,49 +272,61 @@ export function createGuestCartCommands(deps: {
 
       try {
         const cart = await guestCartService.updateItem(token, itemId, parsed);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartUpdated(cart);
         return { status: 'updated' };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, expectedStoreId, token);
       }
     },
 
-    async removeItem(itemId) {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async removeItem(expectedStoreId, itemId) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       cartActions.mutateStarted();
 
       try {
         const cart = await guestCartService.removeItem(token, itemId);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartUpdated(cart);
         return { status: 'updated' };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, expectedStoreId, token);
       }
     },
 
-    async leaveCart() {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async leaveCart(expectedStoreId) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       cartActions.mutateStarted();
 
       try {
         await guestCartService.leaveCart(token);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartCleared();
         return { status: 'left' };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, expectedStoreId, token);
       }
     },
 
-    async submitCart(request) {
-      const token = requireToken();
-      if (!token) return missingSession;
+    async submitCart(expectedStoreId, request) {
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
 
       const validation = submitCartSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
@@ -263,11 +336,14 @@ export function createGuestCartCommands(deps: {
 
       try {
         const order = await guestCartService.submitCart(token, parsed);
+        if (!hasScopedToken(expectedStoreId, token)) {
+          return mismatchedSession;
+        }
 
         cartActions.cartCleared();
         return { order, status: 'submitted' };
       } catch (error) {
-        return failMutation(error);
+        return failMutation(error, expectedStoreId, token);
       }
     },
   };

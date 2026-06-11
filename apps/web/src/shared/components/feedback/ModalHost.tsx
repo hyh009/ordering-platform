@@ -4,7 +4,7 @@ type ModalViewState = {
   title: string;
   message: string;
   confirmLabel: string;
-  cancelLabel: string;
+  cancelLabel?: string;
   tone: 'info' | 'success' | 'error';
 };
 
@@ -38,9 +38,11 @@ export function ModalHost({ modal, onCancel, onConfirm }: ModalHostProps) {
           <p className="m-0 text-sm text-muted-foreground">{modal.message}</p>
         </div>
         <div className="flex justify-end gap-2.5">
-          <Button onClick={onCancel} type="button" variant="outline">
-            {modal.cancelLabel}
-          </Button>
+          {modal.cancelLabel ? (
+            <Button onClick={onCancel} type="button" variant="outline">
+              {modal.cancelLabel}
+            </Button>
+          ) : null}
           <Button
             onClick={onConfirm}
             type="button"

@@ -5,9 +5,12 @@ browses the menu, builds a cart, submits an order, tracks order status live, and
 (for dine-in pay-later) co-orders with others via a join code and adds on.
 
 Backend order behavior is in [`ordering.md`](./ordering.md); flow diagrams are in
-[`ordering-flow.md`](./ordering-flow.md). This document describes the **agreed
-guest frontend behavior**. The frontend code and the guest public API are not yet
-implemented; the Code Map and API sections mark "existing vs planned".
+[`ordering-flow.md`](./ordering-flow.md). Different-store browser tab and guest
+session isolation behavior is in
+[`guest-multi-store-sessions.md`](./guest-multi-store-sessions.md). This
+document describes the **agreed guest frontend behavior**. The frontend code and
+the guest public API are not yet implemented; the Code Map and API sections mark
+"existing vs planned".
 
 MVP does not integrate online payment. Staff manually confirms payment.
 
@@ -73,12 +76,15 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
   (MVP = scan an invite QR).
 - Guest token detected: `[Resume ordering]` `[Start new order]`
   `[Join someone's order]`.
-- Tapping "Resume ordering" when the backend reports the order has ended → modal
-  "your previous order has ended" → clear the token → fall back to the
-  no-token state (lazy validation; no loading gate on the landing).
+- Landing does not validate a stored session before showing "Resume ordering".
+  Tapping "Resume ordering" performs lazy backend validation. When the backend
+  reports that the session expired or the previous order ended, show a modal,
+  clear only that store's expired session, then continue into the normal
+  "Start new order" flow. Do not block or validate the session earlier.
 - **Confirm before leaving on switch**: when an active cart exists but the guest
   picks "Start new order / Join another", confirm "abandon the current order?"
-  → leave → then proceed. A browser belongs to only one cart at a time.
+  → leave → then proceed. Within one store, a browser profile keeps at most one
+  active guest session. Different stores keep independent sessions.
 
 ### Always-available escape hatch
 
@@ -157,10 +163,10 @@ the Phase 0 backend work.
 - **Guest token**: a JWT issued by the backend at cart-create / join time; its
   payload holds only stable identity references (`storeId` + `cartId` +
   `participantId` + `aud: "guest"` + `iat/exp`), never mutable data. Stored in
-  localStorage and sent as a bearer; MVP has no refresh, with a generous fixed
-  `exp`. The token only authenticates "identity + scope"; **authorization always
-  checks live order state** (after payment, the add-item endpoint rejects based
-  on order status; no token revocation needed).
+  localStorage under a store-scoped key and sent as a bearer; MVP has no refresh,
+  with a generous fixed `exp`. The token only authenticates "identity + scope";
+  **authorization always checks live order state** (after payment, the add-item
+  endpoint rejects based on order status; no token revocation needed).
 - **Joining a group always requires the join code** (shared within your own
   party); scanning a bare table QR never auto-joins an existing cart, so
   strangers cannot pad your bill (a pay-later safety concern).

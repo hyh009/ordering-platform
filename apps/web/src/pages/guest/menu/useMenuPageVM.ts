@@ -12,41 +12,66 @@ import {
 } from '@/models/guestMenu';
 import type { PublicProduct } from '@/models/guestMenu';
 import { useGuestStoreId } from '../useGuestStoreId';
+import { createMenuPageCommands } from './menuPage.commands';
 
 export function useMenuPageVM() {
   const storeId = useGuestStoreId();
   const navigate = useNavigate();
   const runtime = useMemo(() => getGuestRuntime(), []);
+  const commands = useMemo(() => createMenuPageCommands(runtime), [runtime]);
 
-  const store = useStore(runtime.stores.storefront, (state) => state.store);
-  const menu = useStore(runtime.stores.storefront, (state) => state.menu);
-  const isLoading = useStore(
+  const activeStoreId = useStore(
+    runtime.stores.tenant,
+    (state) => state.activeStoreId,
+  );
+  const isActiveStore = activeStoreId === storeId;
+  const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
+  const rawMenu = useStore(runtime.stores.storefront, (state) => state.menu);
+  const rawIsLoading = useStore(
     runtime.stores.storefront,
     (state) => state.isLoading,
   );
-  const cart = useStore(runtime.stores.cart, (state) => state.cart);
-  const isMutating = useStore(runtime.stores.cart, (state) => state.isMutating);
-  const guestToken = useStore(
-    runtime.stores.session,
-    (state) => state.guestToken,
+  const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
+  const rawIsMutating = useStore(
+    runtime.stores.cart,
+    (state) => state.isMutating,
   );
+  const store = isActiveStore ? rawStore : null;
+  const menu = isActiveStore ? rawMenu : null;
+  const cart = isActiveStore ? rawCart : null;
+  const isLoading = !isActiveStore || rawIsLoading;
+  const isMutating = isActiveStore && rawIsMutating;
 
-  const [openProduct, setOpenProduct] = useState<PublicProduct | null>(null);
-
-  // Reaching the menu without a session means the cart was never created;
-  // send the guest back to the landing chooser.
-  useEffect(() => {
-    if (!guestToken) {
-      void navigate(PATHS.GUEST.LANDING_BUILD(storeId), { replace: true });
-    }
-  }, [guestToken, navigate, storeId]);
+  const [openProductState, setOpenProductState] = useState<{
+    product: PublicProduct;
+    storeId: string;
+  } | null>(null);
+  const openProduct =
+    isActiveStore && openProductState?.storeId === storeId
+      ? openProductState.product
+      : null;
+  const setOpenProduct = useCallback(
+    (product: PublicProduct | null) => {
+      setOpenProductState(product ? { product, storeId } : null);
+    },
+    [storeId],
+  );
 
   useEffect(() => {
     if (!storeId) return;
-    if (!menu) {
-      void runtime.commands.storefront.loadStorefront(storeId);
+
+    let active = true;
+    async function init() {
+      const result = await commands.initialize(storeId);
+      if (active && result.session.status === 'none') {
+        void navigate(PATHS.GUEST.LANDING_BUILD(storeId), { replace: true });
+      }
     }
-  }, [menu, runtime, storeId]);
+    void init();
+    return () => {
+      active = false;
+    };
+  }, [commands, navigate, storeId]);
 
   const categoryGroups = useMemo(
     () => (menu ? groupMenuByCategory(menu) : []),
@@ -69,16 +94,18 @@ export function useMenuPageVM() {
 
   const addItem = useCallback(
     async (request: AddCartItemRequest) => {
-      const result = await runtime.commands.cart.addItem(request);
+      const result = await commands.addItem(storeId, request);
 
       if (result.status === 'updated') {
         setOpenProduct(null);
         return;
       }
 
-      feedbackCommands.toast({ tone: 'error', message: result.message });
+      if (result.message) {
+        feedbackCommands.toast({ tone: 'error', message: result.message });
+      }
     },
-    [runtime],
+    [commands, setOpenProduct, storeId],
   );
 
   const goToCart = useCallback(() => {

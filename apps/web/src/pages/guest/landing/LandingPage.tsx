@@ -52,7 +52,7 @@ export function LandingPage() {
         ) : null}
       </header>
 
-      {vm.resumeTarget ? (
+      {vm.canResume ? (
         <Button onClick={vm.resume}>
           {tDefault('guest.landing.resume', 'Resume your order')}
         </Button>
