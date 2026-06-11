@@ -15,7 +15,7 @@ export function GuestLayout() {
   const { tDefault } = useAppTranslation();
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-dvh w-full max-w-(--guest-layout-max-w) flex-col bg-storefront-bg">
       <PageErrorBoundary>
         <Outlet />
       </PageErrorBoundary>

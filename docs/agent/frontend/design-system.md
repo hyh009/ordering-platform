@@ -56,6 +56,40 @@ Use Tailwind's mobile-first breakpoints:
 
 Start with the mobile layout, then add breakpoint variants only where the layout needs to change.
 
+## Guest Layout
+
+The guest ordering flow uses `GuestLayout`, which centers the page at
+`max-w-(--guest-layout-max-w)` (defined in `global.css`). Individual guest pages
+must **not** re-apply narrow `max-w-*` constraints on every inner section.
+
+**Rule:** Use a single content wrapper with the desired `max-w-*`, then let
+children fill it with `w-full`, `flex-1`, or `grid`. Never scatter `max-w-sm`
+(or any fixed-width `max-w`) across sibling sections — it defeats the responsive
+container and creates fixed-width islands inside a fluid layout.
+
+```tsx
+{/* ✅ one wrapper, children fill with grid/flex */}
+<div className="flex flex-1 flex-col items-center px-4 md:px-8">
+  <div className="w-full max-w-2xl">
+    <div className="grid grid-cols-2 gap-3">
+      <button className="...">...</button>   {/* grows with the grid */}
+      <button className="...">...</button>
+    </div>
+    <div className="mt-4 flex gap-3">
+      <Button className="flex-1">A</Button>  {/* fills half by flex */}
+      <Button className="flex-1">B</Button>
+    </div>
+  </div>
+</div>
+
+{/* ❌ wrong — fixed-width islands */}
+<div className="mt-7 w-full max-w-sm">...</div>
+<div className="mt-4 flex w-full max-w-sm gap-3">...</div>
+```
+
+Use `px-4 md:px-8` on the outer flex column for edge padding, not on each
+section individually.
+
 ## Page Layout
 
 Every admin and merchant page uses the `admin-page-content` utility as the outermost
