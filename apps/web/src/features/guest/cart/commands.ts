@@ -19,7 +19,6 @@ import type {
   SubmitCartRequest,
   UpdateCartItemRequest,
 } from '@/models/cart';
-import type { ZodType } from 'zod';
 import type { GuestCartActions } from './actions';
 
 export type CartMutationResult = { status: 'updated' } | GuestCommandFailure;
@@ -80,13 +79,6 @@ export function createGuestCartCommands(deps: {
     return failure;
   }
 
-  // Validate request inputs at the mutation boundary so both UI and the future
-  // AI ordering flow are guarded by the same schema before hitting the API.
-  function parseRequest<T>(schema: ZodType<T>, request: unknown): T | null {
-    const result = schema.safeParse(request);
-    return result.success ? result.data : null;
-  }
-
   const invalidRequest: GuestCommandFailure = {
     status: 'failed',
     message: tDefault(
@@ -104,8 +96,9 @@ export function createGuestCartCommands(deps: {
 
   return {
     async createCart(storeId, request) {
-      const parsed = parseRequest(createCartSchema, request);
-      if (!parsed) return invalidRequest;
+      const validation = createCartSchema.safeParse(request);
+      if (!validation.success) return invalidRequest;
+      const parsed = validation.data;
 
       cartActions.mutateStarted();
 
@@ -125,8 +118,9 @@ export function createGuestCartCommands(deps: {
     },
 
     async joinCart(storeId, request) {
-      const parsed = parseRequest(joinCartSchema, request);
-      if (!parsed) return invalidRequest;
+      const validation = joinCartSchema.safeParse(request);
+      if (!validation.success) return invalidRequest;
+      const parsed = validation.data;
 
       cartActions.mutateStarted();
 
@@ -189,8 +183,9 @@ export function createGuestCartCommands(deps: {
       const token = requireToken();
       if (!token) return missingSession;
 
-      const parsed = parseRequest(cartItemInputSchema, request);
-      if (!parsed) return invalidRequest;
+      const validation = cartItemInputSchema.safeParse(request);
+      if (!validation.success) return invalidRequest;
+      const parsed = validation.data;
 
       cartActions.mutateStarted();
 
@@ -208,8 +203,9 @@ export function createGuestCartCommands(deps: {
       const token = requireToken();
       if (!token) return missingSession;
 
-      const parsed = parseRequest(updateCartItemSchema, request);
-      if (!parsed) return invalidRequest;
+      const validation = updateCartItemSchema.safeParse(request);
+      if (!validation.success) return invalidRequest;
+      const parsed = validation.data;
 
       cartActions.mutateStarted();
 
@@ -259,8 +255,9 @@ export function createGuestCartCommands(deps: {
       const token = requireToken();
       if (!token) return missingSession;
 
-      const parsed = parseRequest(submitCartSchema, request);
-      if (!parsed) return invalidRequest;
+      const validation = submitCartSchema.safeParse(request);
+      if (!validation.success) return invalidRequest;
+      const parsed = validation.data;
 
       cartActions.mutateStarted();
 
