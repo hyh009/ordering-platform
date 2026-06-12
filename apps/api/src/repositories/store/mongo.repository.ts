@@ -77,39 +77,26 @@ export const storeMongoRepository = {
   },
 
   async update(storeId: string, input: UpdateStoreInput) {
-    const update: Record<string, unknown> = {};
+    // Use findOne + save so that validators run on the full document.
+    // findOneAndUpdate with runValidators: true does not bind `this` to the
+    // document in subdocument validators, causing cross-field checks like
+    // "supportedLocales must include defaultLocale" to always fail.
+    const doc = await StoreMongoModel.findOne({ id: storeId }).exec();
+    if (!doc) return null;
 
-    const set = (path: string, value: unknown) => {
-      if (value !== undefined) update[path] = value;
-    };
+    if (input.profile?.displayName !== undefined) doc.profile.displayName = input.profile.displayName;
+    if (input.profile?.description !== undefined) doc.profile.description = input.profile.description;
 
-    set('profile.displayName', input.profile?.displayName);
-    set('profile.description', input.profile?.description);
+    if (input.locale?.defaultLocale !== undefined) doc.locale.defaultLocale = input.locale.defaultLocale;
+    if (input.locale?.supportedLocales !== undefined) doc.locale.supportedLocales = input.locale.supportedLocales;
 
-    set('locale.defaultLocale', input.locale?.defaultLocale);
-    set('locale.supportedLocales', input.locale?.supportedLocales);
+    if (input.operation?.businessHours !== undefined) doc.operation.businessHours = input.operation.businessHours;
+    if (input.operation?.serviceFeeRate !== undefined) doc.operation.serviceFeeRate = input.operation.serviceFeeRate;
+    if (input.operation?.orderModes !== undefined) doc.operation.orderModes = input.operation.orderModes;
 
-    set('operation.businessHours', input.operation?.businessHours);
-    set('operation.serviceFeeRate', input.operation?.serviceFeeRate);
-    set('operation.orderModes', input.operation?.orderModes);
+    if (input.status !== undefined) doc.status = input.status;
 
-    set('status', input.status);
-
-    if (Object.keys(update).length === 0) {
-      const existing = await StoreMongoModel.findOne({ id: storeId })
-        .lean<StoreEntity>()
-        .exec();
-      return existing ? toStoreEntity(existing) : null;
-    }
-
-    const doc = await StoreMongoModel.findOneAndUpdate(
-      { id: storeId },
-      { $set: update },
-      { new: true, runValidators: true },
-    )
-      .lean<StoreEntity>()
-      .exec();
-
-    return doc ? toStoreEntity(doc) : null;
+    await doc.save();
+    return toStoreEntity(doc.toObject());
   },
 };
