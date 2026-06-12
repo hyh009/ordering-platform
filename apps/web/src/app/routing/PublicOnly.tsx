@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { useAppTranslation } from '@/app/i18n';
@@ -6,7 +7,14 @@ import { LoadingState } from '@/shared/components/LoadingState';
 
 export function PublicOnly() {
   const auth = useAuthVM();
+  const initializeAuth = auth.initialize;
   const { tDefault } = useAppTranslation();
+
+  useEffect(() => {
+    if (auth.status === 'checking') {
+      void initializeAuth();
+    }
+  }, [auth.status, initializeAuth]);
 
   if (auth.isChecking) {
     return (

@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { RouteErrorBoundary } from '@/app/error/AppErrorBoundary';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
@@ -42,47 +41,44 @@ import { StoreSettingsPage } from '@/pages/merchant/storeSettings/StoreSettingsP
 import { TagListPage } from '@/pages/merchant/tagList/TagListPage';
 import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
 
-export function App() {
+function AuthenticatedHomeRedirect() {
   const auth = useAuthVM();
-  const initializeAuth = auth.initialize;
 
-  useEffect(() => {
-    void initializeAuth();
-  }, [initializeAuth]);
+  return (
+    <Navigate
+      replace
+      to={
+        auth.user?.isSuperAdmin
+          ? PATHS.SUPER_ADMIN.ORGANIZATIONS
+          : PATHS.MERCHANT.SELECT_ORG
+      }
+    />
+  );
+}
 
+export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<RouteErrorBoundary />}>
-          <Route element={<PublicOnly />}>
-            <Route element={<PublicLayout />}>
-              <Route element={<LoginPage />} path={PATHS.AUTH.LOGIN} />
-            </Route>
-          </Route>
-
-          {/* Public guest ordering: /s/* mobile-first, no auth */}
+          {/* Public guest ordering never initializes management auth. */}
           <Route element={<GuestLayout />}>
             <Route element={<LandingPage />} path={PATHS.GUEST.LANDING} />
             <Route element={<JoinPage />} path={PATHS.GUEST.JOIN} />
             <Route element={<MenuPage />} path={PATHS.GUEST.MENU} />
             <Route element={<CartPage />} path={PATHS.GUEST.CART} />
             <Route element={<OrderTrackingPage />} path={PATHS.GUEST.ORDER} />
+            <Route element={<NotFoundPage embedded />} path="/s/*" />
+          </Route>
+
+          <Route element={<PublicOnly />}>
+            <Route element={<PublicLayout />}>
+              <Route element={<LoginPage />} path={PATHS.AUTH.LOGIN} />
+            </Route>
           </Route>
 
           <Route element={<RequireAuth />}>
-            <Route
-              element={
-                <Navigate
-                  replace
-                  to={
-                    auth.user?.isSuperAdmin
-                      ? PATHS.SUPER_ADMIN.ORGANIZATIONS
-                      : PATHS.MERCHANT.SELECT_ORG
-                  }
-                />
-              }
-              index
-            />
+            <Route element={<AuthenticatedHomeRedirect />} index />
 
             {/* Super admin platform: /admin/* with sidebar */}
             <Route element={<SuperAdminLayout />}>

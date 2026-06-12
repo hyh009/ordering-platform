@@ -97,7 +97,7 @@ Protected API succeeds
 Browser reload clears memory state, so the access token is gone. The refresh token may still exist in the HttpOnly cookie, but frontend JavaScript cannot read it.
 
 ```txt
-App starts
+Login or management route mounts
   |
   v
 authCommands.initialize()
@@ -148,7 +148,11 @@ Navigate to /login
 
 ## Route Behavior
 
-`App` starts session restoration through `useAuthVM().initialize()`.
+`PublicOnly` and `RequireAuth` start session restoration through
+`useAuthVM().initialize()` only while auth state is still `checking`.
+
+Guest ordering routes under `/s/*` do not mount either auth guard and must not
+call the management-platform refresh API.
 
 `RequireAuth` reads auth state through `useAuthVM()`:
 
