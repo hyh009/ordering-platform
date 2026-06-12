@@ -8,9 +8,11 @@ Backend order behavior is in [`ordering.md`](./ordering.md); flow diagrams are i
 [`ordering-flow.md`](./ordering-flow.md). Different-store browser tab and guest
 session isolation behavior is in
 [`guest-multi-store-sessions.md`](./guest-multi-store-sessions.md). This
-document describes the **agreed guest frontend behavior**. The frontend code and
-the guest public API are not yet implemented; the Code Map and API sections mark
-"existing vs planned".
+document describes the **agreed guest frontend behavior**. Landing, Resume,
+Join, and Recent orders behavior is in
+[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md). The frontend
+code and the guest public API are not yet implemented; the Code Map and API
+sections mark "existing vs planned".
 
 MVP does not integrate online payment. Staff manually confirms payment.
 
@@ -44,14 +46,13 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
 ### Pages
 
 1. **Landing** — `/s/:storeId?table=T1`
-   Store name/description/open status; order type (dine-in/takeaway) chosen from
-   `Store.operation.orderModes` (auto-skipped when only one is enabled); the
-   `table` URL query is carried through when present, otherwise omitted (the
-   guest side never prompts for a table number). Shows the chooser state based on
-   whether a guest token exists in localStorage (see below).
-2. **Join** — `/s/:storeId/join/:joinCode`
-   Validate the join code → enter a nickname (skippable) → join the same cart →
-   go to the menu.
+   Store name/description/open status and entry actions. Choosing "New order"
+   reveals the enabled dine-in/takeaway choices. The `table` URL query is carried
+   through when present, otherwise omitted; the guest side never prompts for a
+   table number.
+2. **Join** — `/s/:storeId/join` or `/s/:storeId/join/:joinCode`
+   Enter or validate the join code → enter a nickname (skippable) → join the
+   same cart → go to the menu.
 3. **Menu** — `/s/:storeId/menu`
    Horizontal category nav, product cards (image/name/price/sold-out badge), and
    a sticky cart bar at the bottom; in add-on mode the top shows "adding to order
@@ -68,23 +69,16 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
    Large display number, order- and batch-level status (live via SSE), line
    items, total, payment status; pay-later while unpaid shows "add on" → menu
    add-on mode; pay-first shows "start another order"; `completed`/`cancelled`
-   shows an end screen and clears the guest token.
+   shows an end screen and clears the active guest session.
+7. **Recent orders** — `/s/:storeId/orders`
+   Read-only entry to orders this browser participated in during the last 24
+   hours.
 
-### Landing chooser state machine
+### Landing entry flow
 
-- No guest token detected: `[Start new order]` `[Join someone's order]`
-  (MVP = scan an invite QR).
-- Guest token detected: `[Resume ordering]` `[Start new order]`
-  `[Join someone's order]`.
-- Landing does not validate a stored session before showing "Resume ordering".
-  Tapping "Resume ordering" performs lazy backend validation. When the backend
-  reports that the session expired or the previous order ended, show a modal,
-  clear only that store's expired session, then continue into the normal
-  "Start new order" flow. Do not block or validate the session earlier.
-- **Confirm before leaving on switch**: when an active cart exists but the guest
-  picks "Start new order / Join another", confirm "abandon the current order?"
-  → leave → then proceed. Within one store, a browser profile keeps at most one
-  active guest session. Different stores keep independent sessions.
+Landing chooser states, Resume behavior, dedicated Join Code entry, and
+browser-local Recent orders are defined in
+[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md).
 
 ### Always-available escape hatch
 

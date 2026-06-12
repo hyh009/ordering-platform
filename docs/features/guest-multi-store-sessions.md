@@ -9,6 +9,9 @@ cart, or order.
 Each guest route uses `/s/:storeId`. The route `storeId` is the source of truth
 for the store that the tab is allowed to display and operate on.
 
+Landing, Resume, Join, and Recent orders UI behavior is defined in
+[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md).
+
 ## Code Map
 
 Frontend:
