@@ -18,7 +18,58 @@ export function fromStore(store: Store): StoreFormValues {
   };
 }
 
-function buildStoreBody(values: StoreFormValues) {
+function eq(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function buildBusinessHours(hours: StoreFormValues['businessHours']) {
+  return hours.map((h) => ({
+    dayOfWeek: h.dayOfWeek,
+    isOpen: h.isOpen,
+    ...(h.isOpen ? { openTime: h.openTime, closeTime: h.closeTime } : {}),
+  }));
+}
+
+export function toUpdateStoreRequest(
+  original: StoreFormValues,
+  current: StoreFormValues,
+): UpdateStoreRequest {
+  const patch: UpdateStoreRequest = {};
+
+  const displayNameChanged = !eq(original.displayName, current.displayName);
+  const descriptionChanged = !eq(original.description, current.description);
+  if (displayNameChanged || descriptionChanged) {
+    const hasDescription = Object.values(current.description).some(Boolean);
+    patch.profile = {
+      ...(displayNameChanged ? { displayName: current.displayName } : {}),
+      ...(descriptionChanged ? { description: hasDescription ? current.description : undefined } : {}),
+    };
+  }
+
+  const defaultLocaleChanged = original.defaultLocale !== current.defaultLocale;
+  const supportedLocalesChanged = !eq(original.supportedLocales, current.supportedLocales);
+  if (defaultLocaleChanged || supportedLocalesChanged) {
+    patch.locale = {
+      ...(defaultLocaleChanged ? { defaultLocale: current.defaultLocale } : {}),
+      ...(supportedLocalesChanged ? { supportedLocales: current.supportedLocales } : {}),
+    };
+  }
+
+  const serviceFeeRateChanged = original.serviceFeeRate !== current.serviceFeeRate;
+  const businessHoursChanged = !eq(original.businessHours, current.businessHours);
+  const orderModesChanged = !eq(original.orderModes, current.orderModes);
+  if (serviceFeeRateChanged || businessHoursChanged || orderModesChanged) {
+    patch.operation = {
+      ...(serviceFeeRateChanged ? { serviceFeeRate: current.serviceFeeRate } : {}),
+      ...(businessHoursChanged ? { businessHours: buildBusinessHours(current.businessHours) } : {}),
+      ...(orderModesChanged ? { orderModes: current.orderModes } : {}),
+    };
+  }
+
+  return patch;
+}
+
+export function toCreateStoreRequest(values: StoreFormValues): CreateStoreRequest {
   const hasDescription = Object.values(values.description).some(Boolean);
 
   return {
@@ -32,24 +83,8 @@ function buildStoreBody(values: StoreFormValues) {
     },
     operation: {
       serviceFeeRate: values.serviceFeeRate,
-      businessHours: values.businessHours.map((h) => ({
-        dayOfWeek: h.dayOfWeek,
-        isOpen: h.isOpen,
-        ...(h.isOpen ? { openTime: h.openTime, closeTime: h.closeTime } : {}),
-      })),
+      businessHours: buildBusinessHours(values.businessHours),
       orderModes: values.orderModes,
     },
   };
-}
-
-export function toUpdateStoreRequest(
-  values: StoreFormValues,
-): UpdateStoreRequest {
-  return buildStoreBody(values);
-}
-
-export function toCreateStoreRequest(
-  values: StoreFormValues,
-): CreateStoreRequest {
-  return buildStoreBody(values);
 }

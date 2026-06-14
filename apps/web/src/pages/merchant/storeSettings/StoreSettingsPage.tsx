@@ -86,7 +86,7 @@ export function StoreSettingsPage() {
           {vm.canManage && (
             <div className="flex justify-end border-t border-border pt-4">
               <Button
-                disabled={vm.form.isSubmitting}
+                disabled={vm.form.isSubmitting || !vm.isDirty}
                 form="store-settings-form"
                 type="submit"
               >

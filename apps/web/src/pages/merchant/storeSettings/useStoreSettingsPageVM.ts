@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react'; // useState kept for isStatusUpdating
 import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
@@ -30,27 +30,41 @@ export function useStoreSettingsPageVM() {
   const form = useStoreForm();
   const { reset: resetForm } = form;
 
+  // savedValues: snapshot of form values at last successful load or save.
+  // Derived from store so it stays in sync without a separate setState call.
+  // Used as the diff baseline in submit and will drive isDirty below.
+  const savedValues = useMemo(
+    () => (store ? fromStore(store) : null),
+    [store],
+  );
+
+  // isDirty: true when form.values diverges from savedValues.
+  // Also intended for blocking navigation via useBlocker (in-app) +
+  // beforeunload (tab close) — not wired up yet.
+  const isDirty = useMemo(() => {
+    if (!savedValues) return false;
+    return JSON.stringify(savedValues) !== JSON.stringify(form.values);
+  }, [savedValues, form.values]);
+
   useEffect(() => {
     if (!storeId) return;
     void commands.loadStore(storeId);
   }, [storeId, commands]);
 
   useEffect(() => {
-    if (store) {
-      resetForm(fromStore(store));
-    }
+    if (store) resetForm(fromStore(store));
   }, [store, resetForm]);
 
   const submit = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId || !savedValues) return;
+
+    const patch = toUpdateStoreRequest(savedValues, form.values);
+    if (Object.keys(patch).length === 0) return;
 
     form.setIsSubmitting(true);
     form.setSubmitError(null);
 
-    const result = await commands.updateStore(
-      storeId,
-      toUpdateStoreRequest(form.values),
-    );
+    const result = await commands.updateStore(storeId, patch);
 
     form.setIsSubmitting(false);
 
@@ -67,7 +81,7 @@ export function useStoreSettingsPageVM() {
 
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
-  }, [storeId, form, commands]);
+  }, [storeId, savedValues, form, commands]);
 
   const toggleStatus = useCallback(async () => {
     if (!storeId || !store) return;
@@ -99,6 +113,7 @@ export function useStoreSettingsPageVM() {
   return {
     canManage,
     form,
+    isDirty,
     isLoading,
     isStatusUpdating,
     loadError,
