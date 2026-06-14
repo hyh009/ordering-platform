@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { type FormEvent } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import {
   getSupportedCustomerLocaleLabel,
@@ -19,128 +19,46 @@ import type { StoreFormVM } from './useStoreForm';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function from24h(
-  value: string,
-): { h: number; m: number; period: 'AM' | 'PM' } | null {
-  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
-  const h24 = parseInt(value.slice(0, 2), 10);
-  const m = parseInt(value.slice(3), 10);
-  if (h24 === 0) return { h: 12, m, period: 'AM' };
-  if (h24 < 12) return { h: h24, m, period: 'AM' };
-  if (h24 === 12) return { h: 12, m, period: 'PM' };
-  return { h: h24 - 12, m, period: 'PM' };
-}
+const ALL_DAY = '00:00';
 
-function to24h(h: number, m: number, period: 'AM' | 'PM'): string {
-  const h24 = period === 'AM' ? (h === 12 ? 0 : h) : h === 12 ? 12 : h + 12;
-  return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+// A close time strictly before the open time means the window crosses midnight
+// (e.g. 18:00 → 02:00). 00:00 → 00:00 is the all-day marker, not overnight.
+function isOvernight(openTime: string, closeTime: string): boolean {
+  return (
+    !!openTime &&
+    !!closeTime &&
+    closeTime < openTime &&
+    !(openTime === ALL_DAY && closeTime === ALL_DAY)
+  );
 }
 
 type TimeInputProps = {
   ariaLabel: string;
   disabled?: boolean;
+  invalid?: boolean;
   value: string;
   onChange: (value: string) => void;
 };
 
+// Native time input: minute-level granularity, locale-aware AM/PM or 24-hour
+// display, and a value already in the "HH:mm" form we persist.
 function BusinessHourTimeInput({
   ariaLabel,
   disabled,
+  invalid,
   value,
   onChange,
 }: TimeInputProps) {
-  const parsed = from24h(value);
-  const [h, setH] = useState(parsed ? String(parsed.h) : '');
-  const [m, setM] = useState(parsed ? String(parsed.m).padStart(2, '0') : '00');
-  const [period, setPeriod] = useState<'AM' | 'PM'>(parsed?.period ?? 'AM');
-
-  // Sync the local editing buffers when the external value changes, using the
-  // render-phase "previous prop" pattern. Calling setState during render (only
-  // when the prop actually changed) is the React-recommended alternative to a
-  // value-mirroring effect.
-  const [prevValue, setPrevValue] = useState(value);
-  if (value !== prevValue) {
-    setPrevValue(value);
-    const p = from24h(value);
-    if (p) {
-      setH(String(p.h));
-      setM(String(p.m).padStart(2, '0'));
-      setPeriod(p.period);
-    } else if (!value) {
-      setH('');
-      setM('00');
-    }
-  }
-
-  function emit(newH: string, newM: string, newPeriod: 'AM' | 'PM') {
-    const hNum = parseInt(newH, 10);
-    if (!newH || isNaN(hNum) || hNum < 1 || hNum > 12) {
-      onChange('');
-      return;
-    }
-    const mNum = Math.min(Math.max(parseInt(newM, 10) || 0, 0), 59);
-    onChange(to24h(hNum, mNum, newPeriod));
-  }
-
   return (
-    <div className="flex items-center gap-1">
-      <Input
-        aria-label={`${ariaLabel} hour`}
-        className="h-8 w-12 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        disabled={disabled}
-        max={12}
-        min={1}
-        placeholder="12"
-        type="number"
-        value={h}
-        onChange={(e) => {
-          setH(e.target.value);
-          emit(e.target.value, m, period);
-        }}
-      />
-      <span className="text-sm font-medium text-muted-foreground">:</span>
-      <Input
-        aria-label={`${ariaLabel} minute`}
-        className="h-8 w-12 text-center"
-        disabled={disabled}
-        maxLength={2}
-        placeholder="00"
-        type="text"
-        value={m}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-          setM(v);
-        }}
-        onBlur={() => {
-          const padded = (m || '0').padStart(2, '0');
-          setM(padded);
-          emit(h, padded, period);
-        }}
-      />
-      <div className="flex overflow-hidden rounded-md border border-border">
-        {(['AM', 'PM'] as const).map((p) => (
-          <button
-            key={p}
-            className={cn(
-              'h-8 px-2.5 text-xs font-medium transition-colors',
-              disabled
-                ? 'cursor-not-allowed text-muted-foreground'
-                : period === p
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-foreground hover:bg-muted',
-            )}
-            disabled={disabled}
-            type="button"
-            onClick={() => {
-              setPeriod(p);
-              emit(h, m, p);
-            }}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-    </div>
+    <Input
+      aria-invalid={invalid || undefined}
+      aria-label={ariaLabel}
+      className="h-8 w-32"
+      disabled={disabled}
+      type="time"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -162,6 +80,19 @@ export function StoreForm({
   const { tDefault } = useAppTranslation();
   const shouldShowSubmitError =
     form.submitError && !Object.keys(form.fieldErrors).length;
+
+  // Collapse per-row business-hour issues into one message under the table that
+  // names the days to check, so highlighting a row never shifts the layout.
+  const businessHourErrorDays = form.fieldErrors.businessHourRows
+    ? Object.keys(form.fieldErrors.businessHourRows)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((i) => DAY_LABELS[form.values.businessHours[i].dayOfWeek])
+    : [];
+  const businessHoursError =
+    businessHourErrorDays.length > 0
+      ? `Check the open and close times for: ${businessHourErrorDays.join(', ')}`
+      : form.fieldErrors.businessHours;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -384,6 +315,7 @@ export function StoreForm({
         />
 
         <Field
+          error={businessHoursError}
           label="Business hours"
           renderControl={
             <div className="overflow-hidden rounded-lg border border-border">
@@ -397,6 +329,9 @@ export function StoreForm({
                       Open
                     </th>
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                      24h
+                    </th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                       Open time
                     </th>
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -405,61 +340,100 @@ export function StoreForm({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {form.values.businessHours.map((hour) => (
-                    <tr key={hour.dayOfWeek}>
-                      <td className="px-4 py-2.5 font-medium">
-                        {DAY_LABELS[hour.dayOfWeek]}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <button
-                          aria-checked={hour.isOpen}
-                          className={cn(
-                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none',
-                            hour.isOpen ? 'bg-primary' : 'bg-muted',
-                          )}
-                          disabled={form.isSubmitting}
-                          role="switch"
-                          type="button"
-                          onClick={() =>
-                            form.setBusinessHour(hour.dayOfWeek, {
-                              isOpen: !hour.isOpen,
-                            })
-                          }
-                        >
-                          <span
+                  {form.values.businessHours.map((hour, index) => {
+                    const is24h =
+                      hour.isOpen &&
+                      hour.openTime === ALL_DAY &&
+                      hour.closeTime === ALL_DAY;
+                    const overnight = isOvernight(
+                      hour.openTime ?? '',
+                      hour.closeTime ?? '',
+                    );
+                    const rowError = form.fieldErrors.businessHourRows?.[index];
+                    return (
+                      <tr key={hour.dayOfWeek}>
+                        <td className="px-4 py-2.5 font-medium">
+                          {DAY_LABELS[hour.dayOfWeek]}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <button
+                            aria-checked={hour.isOpen}
                             className={cn(
-                              'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform',
-                              hour.isOpen ? 'translate-x-4' : 'translate-x-0',
+                              'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none',
+                              hour.isOpen ? 'bg-primary' : 'bg-muted',
                             )}
+                            disabled={form.isSubmitting}
+                            role="switch"
+                            type="button"
+                            onClick={() =>
+                              form.setBusinessHour(hour.dayOfWeek, {
+                                isOpen: !hour.isOpen,
+                              })
+                            }
+                          >
+                            <span
+                              className={cn(
+                                'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform',
+                                hour.isOpen ? 'translate-x-4' : 'translate-x-0',
+                              )}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            aria-label={`${DAY_LABELS[hour.dayOfWeek]} open 24 hours`}
+                            checked={is24h}
+                            className="h-4 w-4"
+                            disabled={!hour.isOpen || form.isSubmitting}
+                            type="checkbox"
+                            onChange={(e) =>
+                              form.setBusinessHour(hour.dayOfWeek, {
+                                openTime: e.target.checked ? ALL_DAY : '',
+                                closeTime: e.target.checked ? ALL_DAY : '',
+                              })
+                            }
                           />
-                        </button>
-                      </td>
-                      <td className="px-4 py-2">
-                        <BusinessHourTimeInput
-                          ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} open time`}
-                          disabled={!hour.isOpen || form.isSubmitting}
-                          value={hour.openTime ?? ''}
-                          onChange={(v) =>
-                            form.setBusinessHour(hour.dayOfWeek, {
-                              openTime: v,
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <BusinessHourTimeInput
-                          ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} close time`}
-                          disabled={!hour.isOpen || form.isSubmitting}
-                          value={hour.closeTime ?? ''}
-                          onChange={(v) =>
-                            form.setBusinessHour(hour.dayOfWeek, {
-                              closeTime: v,
-                            })
-                          }
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-2">
+                          <BusinessHourTimeInput
+                            ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} open time`}
+                            disabled={
+                              !hour.isOpen || is24h || form.isSubmitting
+                            }
+                            invalid={!!rowError}
+                            value={hour.openTime ?? ''}
+                            onChange={(v) =>
+                              form.setBusinessHour(hour.dayOfWeek, {
+                                openTime: v,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2">
+                            <BusinessHourTimeInput
+                              ariaLabel={`${DAY_LABELS[hour.dayOfWeek]} close time`}
+                              disabled={
+                                !hour.isOpen || is24h || form.isSubmitting
+                              }
+                              invalid={!!rowError}
+                              value={hour.closeTime ?? ''}
+                              onChange={(v) =>
+                                form.setBusinessHour(hour.dayOfWeek, {
+                                  closeTime: v,
+                                })
+                              }
+                            />
+                            {overnight && (
+                              <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+                                (隔天)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

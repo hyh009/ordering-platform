@@ -13,11 +13,15 @@ import {
 import { model, models, Schema } from 'mongoose';
 
 import type {
+  BusinessHour,
   StoreEntity,
   StoreLocale,
   StoreOrderMode,
 } from '@src/models/store/model';
 import type { Model } from 'mongoose';
+
+// 00:00–23:59 only; mirrors the shared zod request schema's time regex.
+const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const businessHourSchema = new Schema(
   {
@@ -35,10 +39,20 @@ const businessHourSchema = new Schema(
     openTime: {
       type: String,
       trim: true,
+      match: [timeOfDayRegex, mongoValidationMessages.businessHoursTimeFormat],
     },
     closeTime: {
       type: String,
       trim: true,
+      match: [timeOfDayRegex, mongoValidationMessages.businessHoursTimeFormat],
+      validate: {
+        // Equal open/close is only valid as the 00:00 all-day (24-hour) marker.
+        validator(this: BusinessHour, value: string | undefined) {
+          if (!this.isOpen || !this.openTime || !value) return true;
+          return this.openTime !== value || value === '00:00';
+        },
+        message: mongoValidationMessages.businessHoursOpenCloseEqual,
+      },
     },
   },
   { _id: false },
@@ -122,6 +136,14 @@ const storeOperationSchema = new Schema(
     businessHours: {
       type: [businessHourSchema],
       default: [],
+      validate: {
+        validator(value: BusinessHour[] | null | undefined) {
+          if (!Array.isArray(value)) return false;
+          const days = value.map((hour) => hour.dayOfWeek);
+          return new Set(days).size === days.length;
+        },
+        message: mongoValidationMessages.businessHoursUniqueDays,
+      },
     },
     serviceFeeRate: {
       type: Number,

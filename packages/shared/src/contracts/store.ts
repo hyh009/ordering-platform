@@ -68,9 +68,13 @@ export type ListStoresSuccessResponse = ApiSuccessResponse<{
   pagination: OffsetPaginationDto;
 }>;
 
-export type CreateStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>;
+export type CreateStoreSuccessResponse = ApiSuccessResponse<{
+  store: StoreDto;
+}>;
 
-export type UpdateStoreSuccessResponse = ApiSuccessResponse<{ store: StoreDto }>;
+export type UpdateStoreSuccessResponse = ApiSuccessResponse<{
+  store: StoreDto;
+}>;
 
 // ── Request schemas ────────────────────────────────────────────────────────────
 
@@ -84,18 +88,53 @@ const storeLocalizedTextSchema = z.object({
   'zh-TW': z.string().trim().min(1).max(500).optional(),
 });
 
-const businessHourSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  isOpen: z.boolean(),
-  openTime: z
-    .string()
-    .regex(/^\d{2}:\d{2}$/, 'Invalid time format, expected HH:MM')
-    .optional(),
-  closeTime: z
-    .string()
-    .regex(/^\d{2}:\d{2}$/, 'Invalid time format, expected HH:MM')
-    .optional(),
-});
+// 00:00–23:59 only. The loose \d{2}:\d{2} form would accept 29:70.
+const timeOfDayRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const businessHourSchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    isOpen: z.boolean(),
+    openTime: z
+      .string()
+      .regex(timeOfDayRegex, 'Invalid time, expected 00:00–23:59')
+      .optional(),
+    closeTime: z
+      .string()
+      .regex(timeOfDayRegex, 'Invalid time, expected 00:00–23:59')
+      .optional(),
+  })
+  // Open days must carry both ends of the window.
+  .refine((h) => !h.isOpen || (!!h.openTime && !!h.closeTime), {
+    message: 'Open and close time are required on open days.',
+    path: ['openTime'],
+  })
+  // closeTime < openTime is a valid overnight window. Equal times are
+  // ambiguous and rejected, except 00:00–00:00 which denotes 24-hour open.
+  .refine(
+    (h) =>
+      !h.isOpen ||
+      !h.openTime ||
+      !h.closeTime ||
+      h.openTime !== h.closeTime ||
+      h.openTime === '00:00',
+    {
+      message:
+        'Open and close cannot be the same time (use 24-hour for 00:00).',
+      path: ['closeTime'],
+    },
+  );
+
+// The weekly schedule must cover each day 0–6 exactly once.
+const businessHoursSchema = z
+  .array(businessHourSchema)
+  .refine(
+    (hours) => new Set(hours.map((h) => h.dayOfWeek)).size === hours.length,
+    { message: 'businessHours cannot contain duplicate days.' },
+  )
+  .refine((hours) => hours.length === 7, {
+    message: 'businessHours must cover all seven days (0–6).',
+  });
 
 const storeOrderModeSchema = z.object({
   type: z.enum(storeOrderTypes),
@@ -114,7 +153,7 @@ export const createStoreSchema = z
       supportedLocales: z.array(z.enum(supportedLocales)).min(1),
     }),
     operation: z.object({
-      businessHours: z.array(businessHourSchema),
+      businessHours: businessHoursSchema,
       serviceFeeRate: z.number().min(0).max(1),
       orderModes: z.array(storeOrderModeSchema),
     }),
@@ -143,7 +182,7 @@ export const updateStoreSchema = z
       .optional(),
     operation: z
       .object({
-        businessHours: z.array(businessHourSchema).optional(),
+        businessHours: businessHoursSchema.optional(),
         serviceFeeRate: z.number().min(0).max(1).optional(),
         orderModes: z.array(storeOrderModeSchema).optional(),
       })
@@ -163,15 +202,21 @@ export const storeWithOrgParamsSchema = z.object({
   storeId: z.string().trim().min(1),
 });
 
-export const listStoresQuerySchema = offsetPaginationQuerySchema.optional().default({ offset: 0, limit: 20 });
+export const listStoresQuerySchema = offsetPaginationQuerySchema
+  .optional()
+  .default({ offset: 0, limit: 20 });
 
-export const listMerchantStoresQuerySchema = offsetPaginationQuerySchema.extend({
-  organizationId: z.string().trim().min(1),
-});
+export const listMerchantStoresQuerySchema = offsetPaginationQuerySchema.extend(
+  {
+    organizationId: z.string().trim().min(1),
+  },
+);
 
 export type CreateStoreRequest = z.infer<typeof createStoreSchema>;
 export type UpdateStoreRequest = z.infer<typeof updateStoreSchema>;
 export type StoreParams = z.infer<typeof storeParamsSchema>;
 export type StoreWithOrgParams = z.infer<typeof storeWithOrgParamsSchema>;
 export type ListStoresQuery = z.infer<typeof listStoresQuerySchema>;
-export type ListMerchantStoresQuery = z.infer<typeof listMerchantStoresQuerySchema>;
+export type ListMerchantStoresQuery = z.infer<
+  typeof listMerchantStoresQuerySchema
+>;

@@ -12,4 +12,9 @@ export const mongoValidationMessages = {
   orderModesUniqueTypes: 'orderModes cannot contain duplicate types',
   orderModesEnabledRequired:
     'orderModes must include at least one enabled order mode',
+  businessHoursOpenCloseEqual:
+    'openTime and closeTime cannot be equal unless both are 00:00 (24-hour)',
+  businessHoursTimeFormat:
+    'time must be in HH:MM format between 00:00 and 23:59',
+  businessHoursUniqueDays: 'businessHours cannot contain duplicate days',
 } as const;

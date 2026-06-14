@@ -180,4 +180,80 @@ describe('StoreMongoModel', () => {
       'orderModes must include at least one enabled order mode',
     );
   });
+
+  it('rejects equal open and close times that are not 00:00', () => {
+    const store = new StoreMongoModel({
+      ...base,
+      operation: {
+        businessHours: [
+          { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '09:00' },
+        ],
+      },
+    });
+
+    expect(
+      store.validateSync()?.errors['operation.businessHours.0.closeTime']
+        ?.message,
+    ).toBe(
+      'openTime and closeTime cannot be equal unless both are 00:00 (24-hour)',
+    );
+  });
+
+  it('allows 00:00 open and close as the 24-hour marker', () => {
+    const store = new StoreMongoModel({
+      ...base,
+      operation: {
+        businessHours: [
+          { dayOfWeek: 1, isOpen: true, openTime: '00:00', closeTime: '00:00' },
+        ],
+      },
+    });
+
+    expect(store.validateSync()).toBeUndefined();
+  });
+
+  it('allows overnight windows where close is before open', () => {
+    const store = new StoreMongoModel({
+      ...base,
+      operation: {
+        businessHours: [
+          { dayOfWeek: 1, isOpen: true, openTime: '18:00', closeTime: '02:00' },
+        ],
+      },
+    });
+
+    expect(store.validateSync()).toBeUndefined();
+  });
+
+  it('rejects out-of-range time values', () => {
+    const store = new StoreMongoModel({
+      ...base,
+      operation: {
+        businessHours: [
+          { dayOfWeek: 1, isOpen: true, openTime: '29:70', closeTime: '18:00' },
+        ],
+      },
+    });
+
+    expect(
+      store.validateSync()?.errors['operation.businessHours.0.openTime']
+        ?.message,
+    ).toBe('time must be in HH:MM format between 00:00 and 23:59');
+  });
+
+  it('rejects duplicate days in business hours', () => {
+    const store = new StoreMongoModel({
+      ...base,
+      operation: {
+        businessHours: [
+          { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '18:00' },
+          { dayOfWeek: 1, isOpen: false },
+        ],
+      },
+    });
+
+    expect(
+      store.validateSync()?.errors['operation.businessHours']?.message,
+    ).toBe('businessHours cannot contain duplicate days');
+  });
 });

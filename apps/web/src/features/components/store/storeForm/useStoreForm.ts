@@ -27,7 +27,11 @@ export type StoreFormValues = {
 
 export type StoreFormFieldErrors = Partial<
   Record<keyof StoreFormValues, string>
->;
+> & {
+  // Per-row business-hours messages keyed by row index (the day order rendered
+  // in the form), so the form can flag the exact offending day.
+  businessHourRows?: Record<number, string>;
+};
 
 const DEFAULT_BUSINESS_HOURS: BusinessHourFormValue[] = [
   0, 1, 2, 3, 4, 5, 6,
@@ -103,6 +107,14 @@ export function useStoreForm(initial?: StoreFormValues): StoreFormVM {
           h.dayOfWeek === dayOfWeek ? { ...h, ...update } : h,
         ),
       }));
+      // Editing any hour invalidates the stale business-hours feedback.
+      setFieldErrors((prev) => {
+        if (!prev.businessHours && !prev.businessHourRows) return prev;
+        const next = { ...prev };
+        delete next.businessHours;
+        delete next.businessHourRows;
+        return next;
+      });
     },
     [],
   );
