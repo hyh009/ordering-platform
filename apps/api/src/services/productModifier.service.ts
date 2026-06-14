@@ -8,11 +8,7 @@ import {
 } from '@src/models/productModifier/model';
 import { productModifierRepository } from '@src/repositories/productModifier/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from '@src/utils/errors';
+import { BadRequestError, NotFoundError } from '@src/utils/errors';
 
 import type {
   CreateProductModifierRequest,
@@ -182,27 +178,25 @@ export class ProductModifierService {
       maxSelect: input.maxSelect ?? existing.maxSelect,
     });
 
-    const updated = await productModifierRepository.update(
-      productModifierId,
-      {
-        name: input.name,
-        selectionType: input.selectionType,
-        minSelect: input.minSelect,
-        maxSelect: input.maxSelect,
-        options: input.options
-          ? buildUpdatedOptions(input.options, existing.options)
-          : undefined,
-        inheritCategoryAvailability: input.inheritCategoryAvailability,
-        availabilityRules: input.availabilityRules?.map(toAvailabilityRule),
-        isActive: input.isActive,
-      },
-      { expectedUpdatedAt: existing.updatedAt },
-    );
+    const updated = await productModifierRepository.update(productModifierId, {
+      name: input.name,
+      selectionType: input.selectionType,
+      minSelect: input.minSelect,
+      maxSelect: input.maxSelect,
+      options: input.options
+        ? buildUpdatedOptions(input.options, existing.options)
+        : undefined,
+      inheritCategoryAvailability: input.inheritCategoryAvailability,
+      availabilityRules: input.availabilityRules?.map(toAvailabilityRule),
+      isActive: input.isActive,
+    });
 
+    // The repository throws ConflictError on a concurrent-write conflict; a null
+    // result means the modifier was deleted between the read above and the save.
     if (!updated) {
-      throw new ConflictError(
-        'Product modifier was updated by another request',
-        ERROR_CODES.CONFLICT,
+      throw new NotFoundError(
+        'Product modifier not found',
+        ERROR_CODES.PRODUCT_MODIFIER_NOT_FOUND,
       );
     }
 

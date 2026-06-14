@@ -1,5 +1,9 @@
 import { createProductModifierService } from '@src/services/productModifier.service';
-import { BadRequestError, ConflictError } from '@src/utils/errors';
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from '@src/utils/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -69,7 +73,6 @@ describe('product modifier service', () => {
     expect(mocks.repository.update).toHaveBeenCalledWith(
       'product-modifier-1',
       expect.objectContaining({ selectionType: 'single_choice' }),
-      { expectedUpdatedAt: now },
     );
   });
 
@@ -102,7 +105,37 @@ describe('product modifier service', () => {
     expect(mocks.repository.update).not.toHaveBeenCalled();
   });
 
-  it('returns conflict when the record changes between validation and update', async () => {
+  it('propagates a ConflictError raised by the optimistic-lock retry', async () => {
+    const service = createProductModifierService();
+    const now = new Date('2026-06-03T08:00:00.000Z');
+
+    mocks.repository.findById.mockResolvedValue({
+      id: 'product-modifier-1',
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '加料' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 2,
+      options: [],
+      inheritCategoryAvailability: true,
+      availabilityRules: [],
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    mocks.repository.update.mockRejectedValue(
+      new ConflictError('Product modifier was modified concurrently'),
+    );
+
+    await expect(
+      service.updateProductModifier('store-1', 'product-modifier-1', {
+        maxSelect: 3,
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('throws NotFound when the modifier is deleted before the write lands', async () => {
     const service = createProductModifierService();
     const now = new Date('2026-06-03T08:00:00.000Z');
 
@@ -127,6 +160,6 @@ describe('product modifier service', () => {
       service.updateProductModifier('store-1', 'product-modifier-1', {
         maxSelect: 3,
       }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

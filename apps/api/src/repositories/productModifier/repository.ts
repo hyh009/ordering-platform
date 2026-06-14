@@ -39,10 +39,6 @@ export type UpdateProductModifierInput = {
   isActive?: boolean | undefined;
 };
 
-export type UpdateProductModifierOptions = {
-  expectedUpdatedAt?: Date | undefined;
-};
-
 export type ProductModifierRepository = {
   create(input: CreateProductModifierInput): Promise<ProductModifierEntity>;
   findById(productModifierId: string): Promise<ProductModifierEntity | null>;
@@ -52,7 +48,6 @@ export type ProductModifierRepository = {
   update(
     productModifierId: string,
     input: UpdateProductModifierInput,
-    options?: UpdateProductModifierOptions,
   ): Promise<ProductModifierEntity | null>;
 };
 

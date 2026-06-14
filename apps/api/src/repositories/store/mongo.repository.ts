@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { StoreMongoModel } from '@src/models/store/mongo';
+import { ConflictError } from '@src/utils/errors';
+import { Error as MongooseError } from 'mongoose';
 
 import type { StoreEntity } from '@src/models/store/model';
 import type {
@@ -8,6 +10,8 @@ import type {
   ListStoresByOrganizationInput,
   UpdateStoreInput,
 } from '@src/repositories/store/repository';
+
+const OPTIMISTIC_WRITE_ATTEMPTS = 3;
 
 const storeEntityKeys = [
   'id',
@@ -81,22 +85,48 @@ export const storeMongoRepository = {
     // findOneAndUpdate with runValidators: true does not bind `this` to the
     // document in subdocument validators, causing cross-field checks like
     // "supportedLocales must include defaultLocale" to always fail.
-    const doc = await StoreMongoModel.findOne({ id: storeId }).exec();
-    if (!doc) return null;
+    //
+    // Because this is read-modify-write, an optimistic lock guards it: the
+    // schema's optimisticConcurrency makes a stale save throw VersionError. The
+    // input patch is derived purely from `input` (not from the loaded doc), so
+    // re-reading and re-applying on conflict is safe. See
+    // docs/features/concurrency-control.md.
+    for (let attempt = 1; ; attempt += 1) {
+      const doc = await StoreMongoModel.findOne({ id: storeId }).exec();
+      if (!doc) return null;
 
-    if (input.profile?.displayName !== undefined) doc.profile.displayName = input.profile.displayName;
-    if (input.profile?.description !== undefined) doc.profile.description = input.profile.description;
+      if (input.profile?.displayName !== undefined)
+        doc.profile.displayName = input.profile.displayName;
+      if (input.profile?.description !== undefined)
+        doc.profile.description = input.profile.description;
 
-    if (input.locale?.defaultLocale !== undefined) doc.locale.defaultLocale = input.locale.defaultLocale;
-    if (input.locale?.supportedLocales !== undefined) doc.locale.supportedLocales = input.locale.supportedLocales;
+      if (input.locale?.defaultLocale !== undefined)
+        doc.locale.defaultLocale = input.locale.defaultLocale;
+      if (input.locale?.supportedLocales !== undefined)
+        doc.locale.supportedLocales = input.locale.supportedLocales;
 
-    if (input.operation?.businessHours !== undefined) doc.operation.businessHours = input.operation.businessHours;
-    if (input.operation?.serviceFeeRate !== undefined) doc.operation.serviceFeeRate = input.operation.serviceFeeRate;
-    if (input.operation?.orderModes !== undefined) doc.operation.orderModes = input.operation.orderModes;
+      if (input.operation?.businessHours !== undefined)
+        doc.operation.businessHours = input.operation.businessHours;
+      if (input.operation?.serviceFeeRate !== undefined)
+        doc.operation.serviceFeeRate = input.operation.serviceFeeRate;
+      if (input.operation?.orderModes !== undefined)
+        doc.operation.orderModes = input.operation.orderModes;
 
-    if (input.status !== undefined) doc.status = input.status;
+      if (input.status !== undefined) doc.status = input.status;
 
-    await doc.save();
-    return toStoreEntity(doc.toObject());
+      try {
+        await doc.save();
+        return toStoreEntity(doc.toObject());
+      } catch (error) {
+        const isVersionConflict = error instanceof MongooseError.VersionError;
+        if (isVersionConflict && attempt < OPTIMISTIC_WRITE_ATTEMPTS) continue;
+        if (isVersionConflict) {
+          throw new ConflictError(
+            'Store was modified concurrently, please retry',
+          );
+        }
+        throw error;
+      }
+    }
   },
 };

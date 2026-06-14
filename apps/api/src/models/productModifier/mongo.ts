@@ -141,30 +141,29 @@ const productModifierSchema = new Schema<ProductModifierEntity>(
     collection: 'productModifiers',
     id: false,
     timestamps: true,
+    // update() is read-modify-write (findOne + save) so these cross-field
+    // validators run on the merged document; version the doc so a stale save
+    // throws VersionError. See docs/features/concurrency-control.md.
+    optimisticConcurrency: true,
   },
 );
 
+// Cross-field validators. They read sibling fields via `this`, so they only work
+// in document context (.save()); productModifier.update is RMW precisely so they
+// run here instead of being skipped on a findOneAndUpdate update path.
 productModifierSchema.path('maxSelect').validate(function validateMaxSelect(
-  this: { getUpdate?: unknown; minSelect?: number },
+  this: { minSelect?: number },
   value: number,
 ) {
-  if (typeof this.getUpdate === 'function') {
-    return true;
-  }
-
   return value >= (this.minSelect ?? 0);
 }, 'maxSelect must be greater than or equal to minSelect');
 
 productModifierSchema
   .path('selectionType')
   .validate(function validateSingleChoice(
-    this: { getUpdate?: unknown; maxSelect?: number },
+    this: { maxSelect?: number },
     value: string,
   ) {
-    if (typeof this.getUpdate === 'function') {
-      return true;
-    }
-
     return value !== 'single_choice' || this.maxSelect === 1;
   }, 'single_choice modifiers must have maxSelect equal to 1');
 

@@ -218,6 +218,11 @@ const storeSchema = new Schema<StoreEntity>(
     collection: 'stores',
     id: false,
     timestamps: true,
+    // store.update is read-modify-write (findOne + save) because subdocument
+    // cross-field validators only run on the full document. Version the doc so a
+    // stale concurrent save throws VersionError instead of clobbering. See
+    // docs/features/concurrency-control.md.
+    optimisticConcurrency: true,
   },
 );
 

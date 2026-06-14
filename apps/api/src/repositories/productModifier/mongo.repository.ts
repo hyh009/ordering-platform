@@ -1,14 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { ProductModifierMongoModel } from '@src/models/productModifier/mongo';
+import { ConflictError } from '@src/utils/errors';
+import { Error as MongooseError } from 'mongoose';
 
 import type { ProductModifierEntity } from '@src/models/productModifier/model';
 import type {
   CreateProductModifierInput,
   ListProductModifiersByStoreInput,
   UpdateProductModifierInput,
-  UpdateProductModifierOptions,
 } from '@src/repositories/productModifier/repository';
+
+const OPTIMISTIC_WRITE_ATTEMPTS = 3;
 
 const productModifierEntityKeys = [
   'id',
@@ -94,49 +97,43 @@ export const productModifierMongoRepository = {
     return docs.map(toProductModifierEntity);
   },
 
-  async update(
-    productModifierId: string,
-    input: UpdateProductModifierInput,
-    options?: UpdateProductModifierOptions,
-  ) {
-    const update: Record<string, unknown> = {};
-
-    const set = (path: string, value: unknown) => {
-      if (value !== undefined) update[path] = value;
-    };
-
-    set('name', input.name);
-    set('selectionType', input.selectionType);
-    set('minSelect', input.minSelect);
-    set('maxSelect', input.maxSelect);
-    set('options', input.options);
-    set('inheritCategoryAvailability', input.inheritCategoryAvailability);
-    set('availabilityRules', input.availabilityRules);
-    set('isActive', input.isActive);
-
-    if (Object.keys(update).length === 0) {
-      const existing = await ProductModifierMongoModel.findOne({
+  async update(productModifierId: string, input: UpdateProductModifierInput) {
+    // Read-modify-write via findOne + save so the cross-field validators
+    // (maxSelect >= minSelect; single_choice ⇒ maxSelect === 1) run on the
+    // merged document. optimisticConcurrency guards the stale-save race; the
+    // input is a pure patch, so re-reading and re-applying on conflict is safe.
+    // See docs/features/concurrency-control.md.
+    for (let attempt = 1; ; attempt += 1) {
+      const doc = await ProductModifierMongoModel.findOne({
         id: productModifierId,
-      })
-        .lean<ProductModifierEntity>()
-        .exec();
+      }).exec();
+      if (!doc) return null;
 
-      return existing ? toProductModifierEntity(existing) : null;
+      if (input.name !== undefined) doc.name = input.name;
+      if (input.selectionType !== undefined)
+        doc.selectionType = input.selectionType;
+      if (input.minSelect !== undefined) doc.minSelect = input.minSelect;
+      if (input.maxSelect !== undefined) doc.maxSelect = input.maxSelect;
+      if (input.options !== undefined) doc.options = input.options;
+      if (input.inheritCategoryAvailability !== undefined)
+        doc.inheritCategoryAvailability = input.inheritCategoryAvailability;
+      if (input.availabilityRules !== undefined)
+        doc.availabilityRules = input.availabilityRules;
+      if (input.isActive !== undefined) doc.isActive = input.isActive;
+
+      try {
+        await doc.save();
+        return toProductModifierEntity(doc.toObject());
+      } catch (error) {
+        const isVersionConflict = error instanceof MongooseError.VersionError;
+        if (isVersionConflict && attempt < OPTIMISTIC_WRITE_ATTEMPTS) continue;
+        if (isVersionConflict) {
+          throw new ConflictError(
+            'Product modifier was modified concurrently, please retry',
+          );
+        }
+        throw error;
+      }
     }
-
-    const filter: Record<string, unknown> = { id: productModifierId };
-    if (options?.expectedUpdatedAt !== undefined) {
-      filter.updatedAt = options.expectedUpdatedAt;
-    }
-
-    const doc = await ProductModifierMongoModel.findOneAndUpdate(
-      filter,
-      { $set: update },
-      { new: true, runValidators: true },
-    )
-      .lean<ProductModifierEntity>()
-      .exec();
-
-    return doc ? toProductModifierEntity(doc) : null;
   },
 };
