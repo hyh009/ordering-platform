@@ -5,7 +5,7 @@ export function createJoinPageCommands(runtime: GuestRuntime) {
   return {
     async initialize(storeId: string) {
       await runtime.commands.tenant.activateStore(storeId);
-      return runtime.commands.storefront.loadStorefront(storeId);
+      return runtime.commands.storefront.loadStore(storeId);
     },
 
     async join(storeId: string, request: JoinCartRequest) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
@@ -17,6 +17,7 @@ export function useOrderTrackingPageVM() {
     () => createOrderTrackingPageCommands(runtime),
     [runtime],
   );
+  const [access, setAccess] = useState<'active' | 'history'>('active');
 
   const activeStoreId = useStore(
     runtime.stores.tenant,
@@ -29,7 +30,7 @@ export function useOrderTrackingPageVM() {
     (state) => state.isLoading,
   );
   const rawError = useStore(runtime.stores.order, (state) => state.error);
-  const order = isActiveStore ? rawOrder : null;
+  const order = isActiveStore && rawOrder?.id === orderId ? rawOrder : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const error = isActiveStore ? rawError : null;
 
@@ -38,8 +39,18 @@ export function useOrderTrackingPageVM() {
     let active = true;
     async function init() {
       const result = await commands.initialize(storeId, orderId);
+      if (active && 'access' in result) {
+        setAccess(result.access);
+      }
       if (active && result.status === 'none') {
-        void navigate(PATHS.GUEST.LANDING_BUILD(storeId), { replace: true });
+        void navigate(
+          result.target === 'history'
+            ? PATHS.GUEST.ORDER_HISTORY_BUILD(storeId)
+            : PATHS.GUEST.LANDING_BUILD(storeId),
+          {
+            replace: true,
+          },
+        );
       }
     }
     void init();
@@ -49,16 +60,29 @@ export function useOrderTrackingPageVM() {
   }, [commands, navigate, orderId, storeId]);
 
   const refresh = useCallback(async () => {
-    const result = await commands.refresh(storeId, orderId);
+    const result = await commands.refresh(storeId, orderId, access);
+    if (result.status === 'none') {
+      void navigate(
+        access === 'history'
+          ? PATHS.GUEST.ORDER_HISTORY_BUILD(storeId)
+          : PATHS.GUEST.LANDING_BUILD(storeId),
+        { replace: true },
+      );
+      return;
+    }
     if (result.status === 'failed' && result.message) {
       feedbackCommands.toast({ tone: 'error', message: result.message });
     }
-  }, [commands, orderId, storeId]);
+  }, [access, commands, navigate, orderId, storeId]);
 
   const goHome = useCallback(() => {
-    commands.leave(storeId);
-    void navigate(PATHS.GUEST.LANDING_BUILD(storeId));
-  }, [commands, navigate, storeId]);
+    if (access === 'active') {
+      commands.leave(storeId);
+      void navigate(PATHS.GUEST.LANDING_BUILD(storeId));
+      return;
+    }
+    void navigate(PATHS.GUEST.ORDER_HISTORY_BUILD(storeId));
+  }, [access, commands, navigate, storeId]);
 
   return {
     order,
@@ -68,5 +92,6 @@ export function useOrderTrackingPageVM() {
     goHome,
     finished: order ? isOrderFinished(order) : false,
     canAddOn: order ? canGuestAddOn(order) : false,
+    isHistoryOrder: access === 'history',
   };
 }

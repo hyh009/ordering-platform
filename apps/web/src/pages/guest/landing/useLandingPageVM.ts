@@ -40,7 +40,11 @@ export function useLandingPageVM() {
   const isMutating = isActiveStore && rawIsMutating;
 
   const [canResume, setCanResume] = useState(false);
+  const [hasOrderHistory, setHasOrderHistory] = useState(false);
   const [resumeStoreId, setResumeStoreId] = useState<string | null>(null);
+  const [entryMode, setEntryMode] = useState<'chooser' | 'new-order'>(
+    'chooser',
+  );
   const [manualOrderType, setManualOrderType] = useState<StoreOrderType | null>(
     null,
   );
@@ -50,10 +54,7 @@ export function useLandingPageVM() {
     [store],
   );
 
-  // Auto-select the only enabled order type so the view can skip the picker.
-  const selectedOrderType =
-    manualOrderType ??
-    (enabledOrderTypes.length === 1 ? (enabledOrderTypes[0] ?? null) : null);
+  const selectedOrderType = manualOrderType;
 
   const isOpen = useMemo(
     () => (store ? isStoreOpenNow(store.businessHours) : false),
@@ -69,6 +70,7 @@ export function useLandingPageVM() {
       const result = await commands.initialize(storeId);
       if (!active) return;
       setCanResume(result.hasStoredSession);
+      setHasOrderHistory(result.hasOrderHistory);
       setResumeStoreId(storeId);
     }
 
@@ -81,23 +83,78 @@ export function useLandingPageVM() {
     // it out of the deps prevents the init effect from re-running every render.
   }, [commands, storeId]);
 
-  const startOrder = useCallback(async () => {
-    if (!storeId || !selectedOrderType) return;
+  const startOrder = useCallback(
+    async (orderType: StoreOrderType) => {
+      if (!storeId) return;
+      setManualOrderType(orderType);
+      const result = await commands.startOrder(storeId, {
+        orderType,
+        ...(tableNumber !== undefined ? { tableNumber } : {}),
+      });
 
-    const result = await commands.startOrder(storeId, {
-      orderType: selectedOrderType,
-      ...(tableNumber !== undefined ? { tableNumber } : {}),
+      if (result.status === 'created') {
+        void navigate(PATHS.GUEST.MENU_BUILD(storeId));
+        return;
+      }
+
+      if (result.message) {
+        feedbackCommands.toast({ tone: 'error', message: result.message });
+      }
+    },
+    [commands, navigate, storeId, tableNumber],
+  );
+
+  const confirmAbandonCurrentSession = useCallback(async () => {
+    if (!(resumeStoreId === storeId && canResume)) return true;
+
+    const confirmed = await feedbackCommands.confirm({
+      title: tDefault(
+        'guest.landing.abandonCurrentOrderTitle',
+        'Leave your current order?',
+      ),
+      message: tDefault(
+        'guest.landing.abandonCurrentOrderMessage',
+        'You will no longer be able to resume this order.',
+      ),
+      confirmLabel: tDefault(
+        'guest.landing.abandonCurrentOrderConfirm',
+        'Leave order',
+      ),
+      tone: 'error',
     });
+    if (!confirmed) return false;
 
-    if (result.status === 'created') {
-      void navigate(PATHS.GUEST.MENU_BUILD(storeId));
-      return;
+    const result = await commands.abandonCurrentSession(storeId);
+    if (result.status === 'left') {
+      setCanResume(false);
+      return true;
     }
 
     if (result.message) {
       feedbackCommands.toast({ tone: 'error', message: result.message });
     }
-  }, [commands, navigate, selectedOrderType, storeId, tableNumber]);
+    return false;
+  }, [canResume, commands, resumeStoreId, storeId]);
+
+  const goToJoin = useCallback(async () => {
+    if (!(await confirmAbandonCurrentSession())) return;
+    void navigate(PATHS.GUEST.JOIN_ENTRY_BUILD(storeId));
+  }, [confirmAbandonCurrentSession, navigate, storeId]);
+
+  const showNewOrder = useCallback(async () => {
+    if (!(await confirmAbandonCurrentSession())) return;
+    setManualOrderType(null);
+    setEntryMode('new-order');
+  }, [confirmAbandonCurrentSession]);
+
+  const cancelNewOrder = useCallback(() => {
+    setManualOrderType(null);
+    setEntryMode('chooser');
+  }, []);
+
+  const goToOrderHistory = useCallback(() => {
+    void navigate(PATHS.GUEST.ORDER_HISTORY_BUILD(storeId));
+  }, [navigate, storeId]);
 
   const resume = useCallback(async () => {
     const result = await commands.resume(storeId);
@@ -122,18 +179,17 @@ export function useLandingPageVM() {
           'guest.landing.startNewOrderPrompt',
           'You can start a new order now.',
         ),
-        confirmLabel: tDefault('guest.landing.startOrder', 'Start ordering'),
+        confirmLabel: tDefault('guest.landing.startOrder', 'New order'),
       });
-      if (selectedOrderType) {
-        await startOrder();
-      }
+      setManualOrderType(null);
+      setEntryMode('new-order');
       return;
     }
 
     if (result.status === 'failed' && result.message) {
       feedbackCommands.toast({ tone: 'error', message: result.message });
     }
-  }, [commands, navigate, selectedOrderType, startOrder, storeId]);
+  }, [commands, navigate, storeId]);
 
   return {
     store,
@@ -144,9 +200,14 @@ export function useLandingPageVM() {
     tableNumber,
     enabledOrderTypes,
     selectedOrderType,
-    setSelectedOrderType: setManualOrderType,
+    entryMode,
     canResume: resumeStoreId === storeId && canResume,
+    hasOrderHistory: resumeStoreId === storeId && hasOrderHistory,
     startOrder,
     resume,
+    goToJoin,
+    showNewOrder,
+    cancelNewOrder,
+    goToOrderHistory,
   };
 }

@@ -16,6 +16,14 @@ export function createGuestStorefrontActions(store: GuestStorefrontStore) {
       });
     },
 
+    storeLoaded(loadedStore: PublicStore) {
+      store.setState({
+        store: loadedStore,
+        error: null,
+        isLoading: false,
+      });
+    },
+
     loadFailed(error: string) {
       store.setState({ error, isLoading: false });
     },

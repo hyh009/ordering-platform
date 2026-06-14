@@ -1,4 +1,5 @@
 import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
+import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
 import type {
   AddCartItemRequest,
   CreateCartRequest,
@@ -9,6 +10,7 @@ import type {
 import type { GuestCommandFailure } from '@/services/utils/guestApiError';
 import type { CartMutationResult, GuestCartCommands } from '../cart/commands';
 import type { GuestOrderActions } from '../order/actions';
+import type { GuestOrderHistoryCommands } from '../orderHistory/commands';
 import type { GuestSessionWorkflowCommands } from '../sessionWorkflow/commands';
 
 export type GuestCartWorkflowCommands = {
@@ -52,12 +54,16 @@ export function createGuestCartWorkflowCommands(deps: {
   cartCommands: GuestCartCommands;
   guestSessionCommands: GuestSessionCommands;
   orderActions: GuestOrderActions;
+  orderHistoryCommands: GuestOrderHistoryCommands;
+  sessionStore: GuestSessionStore;
   sessionWorkflowCommands: GuestSessionWorkflowCommands;
 }): GuestCartWorkflowCommands {
   const {
     cartCommands,
     guestSessionCommands,
     orderActions,
+    orderHistoryCommands,
+    sessionStore,
     sessionWorkflowCommands,
   } = deps;
 
@@ -99,6 +105,11 @@ export function createGuestCartWorkflowCommands(deps: {
 
         if (result.order) {
           orderActions.orderUpdated(result.order);
+          orderHistoryCommands.recordOrder(
+            storeId,
+            result.order,
+            result.guestToken,
+          );
         }
 
         return {
@@ -149,9 +160,24 @@ export function createGuestCartWorkflowCommands(deps: {
     },
 
     async submitCart(expectedStoreId, request) {
+      const session = sessionStore.getState();
+      const token =
+        session.storeId === expectedStoreId ? session.guestToken : null;
       const result = await cartCommands.submitCart(expectedStoreId, request);
       if (result.status === 'submitted') {
         orderActions.orderUpdated(result.order);
+        const current = sessionStore.getState();
+        if (
+          token &&
+          current.storeId === expectedStoreId &&
+          current.guestToken === token
+        ) {
+          orderHistoryCommands.recordOrder(
+            expectedStoreId,
+            result.order,
+            token,
+          );
+        }
         return { status: 'submitted', orderId: result.order.id };
       }
 

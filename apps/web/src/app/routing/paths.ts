@@ -8,12 +8,12 @@ export const PATHS = {
     ORGANIZATIONS: '/admin/organizations',
     ORGANIZATION_DETAIL: '/admin/organizations/:organizationId',
     ORGANIZATION_DETAIL_BUILD: (id: string) => `/admin/organizations/${id}`,
-    ORGANIZATION_MEMBERSHIPS: '/admin/organizations/:organizationId/memberships',
+    ORGANIZATION_MEMBERSHIPS:
+      '/admin/organizations/:organizationId/memberships',
     ORGANIZATION_MEMBERSHIPS_BUILD: (id: string) =>
       `/admin/organizations/${id}/memberships`,
     STORE_LIST: '/admin/organizations/:organizationId/stores',
-    STORE_LIST_BUILD: (orgId: string) =>
-      `/admin/organizations/${orgId}/stores`,
+    STORE_LIST_BUILD: (orgId: string) => `/admin/organizations/${orgId}/stores`,
     STORE_CREATE: '/admin/organizations/:organizationId/stores/new',
     STORE_CREATE_BUILD: (orgId: string) =>
       `/admin/organizations/${orgId}/stores/new`,
@@ -23,6 +23,8 @@ export const PATHS = {
   GUEST: {
     LANDING: '/s/:storeId',
     LANDING_BUILD: (storeId: string) => `/s/${storeId}`,
+    JOIN_ENTRY: '/s/:storeId/join',
+    JOIN_ENTRY_BUILD: (storeId: string) => `/s/${storeId}/join`,
     JOIN: '/s/:storeId/join/:joinCode',
     JOIN_BUILD: (storeId: string, joinCode: string) =>
       `/s/${storeId}/join/${joinCode}`,
@@ -30,6 +32,8 @@ export const PATHS = {
     MENU_BUILD: (storeId: string) => `/s/${storeId}/menu`,
     CART: '/s/:storeId/cart',
     CART_BUILD: (storeId: string) => `/s/${storeId}/cart`,
+    ORDER_HISTORY: '/s/:storeId/orders',
+    ORDER_HISTORY_BUILD: (storeId: string) => `/s/${storeId}/orders`,
     ORDER: '/s/:storeId/orders/:orderId',
     ORDER_BUILD: (storeId: string, orderId: string) =>
       `/s/${storeId}/orders/${orderId}`,

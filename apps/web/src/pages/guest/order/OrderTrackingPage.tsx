@@ -92,9 +92,11 @@ export function OrderTrackingPage() {
             {tDefault('guest.order.refresh', 'Refresh status')}
           </Button>
         ) : null}
-        {vm.finished ? (
+        {vm.finished || vm.isHistoryOrder ? (
           <Button className="w-full" onClick={vm.goHome}>
-            {tDefault('guest.order.startAnother', 'Start another order')}
+            {vm.isHistoryOrder
+              ? tDefault('guest.order.backToHistory', 'Back to recent orders')
+              : tDefault('guest.order.startAnother', 'Start another order')}
           </Button>
         ) : null}
       </div>

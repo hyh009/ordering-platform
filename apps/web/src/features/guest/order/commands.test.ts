@@ -43,5 +43,61 @@ describe('guest order commands', () => {
       reason: 'not-found',
     });
     expect(orderStore.getState().order).toBeNull();
+    expect(orderStore.getState().isLoading).toBe(false);
+  });
+
+  it('loads a history order with its token without reading or changing session state', async () => {
+    const orderStore = createGuestOrderStore();
+    const sessionStore = createGuestSessionStore();
+    const tenantStore = createGuestTenantStore();
+    sessionStore.setState({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    tenantStore.setState({ activeStoreId: 'store-a' });
+    vi.mocked(guestOrderService.getOrder).mockResolvedValue({
+      id: 'history-order',
+      storeId: 'store-a',
+    } as Awaited<ReturnType<typeof guestOrderService.getOrder>>);
+    const commands = createGuestOrderCommands({
+      orderActions: createGuestOrderActions(orderStore),
+      sessionStore,
+      tenantStore,
+    });
+
+    await expect(
+      commands.loadOrderWithToken('store-a', 'history-order', 'history-token'),
+    ).resolves.toEqual({ status: 'loaded' });
+    expect(guestOrderService.getOrder).toHaveBeenCalledWith('history-token');
+    expect(sessionStore.getState()).toEqual({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+  });
+
+  it('finishes loading when a history token resolves to another order', async () => {
+    const orderStore = createGuestOrderStore();
+    const sessionStore = createGuestSessionStore();
+    const tenantStore = createGuestTenantStore();
+    tenantStore.setState({ activeStoreId: 'store-a' });
+    vi.mocked(guestOrderService.getOrder).mockResolvedValue({
+      id: 'another-order',
+      storeId: 'store-a',
+    } as Awaited<ReturnType<typeof guestOrderService.getOrder>>);
+    const commands = createGuestOrderCommands({
+      orderActions: createGuestOrderActions(orderStore),
+      sessionStore,
+      tenantStore,
+    });
+
+    await expect(
+      commands.loadOrderWithToken('store-a', 'route-order', 'history-token'),
+    ).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'not-found',
+    });
+    expect(orderStore.getState().isLoading).toBe(false);
   });
 });

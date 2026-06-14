@@ -13,6 +13,11 @@ export type GuestOrderCommands = {
     expectedStoreId: string,
     expectedOrderId: string,
   ): Promise<{ status: 'loaded' } | GuestCommandFailure>;
+  loadOrderWithToken(
+    expectedStoreId: string,
+    expectedOrderId: string,
+    guestToken: string,
+  ): Promise<{ status: 'loaded' } | GuestCommandFailure>;
 };
 
 export function createGuestOrderCommands(deps: {
@@ -60,8 +65,8 @@ export function createGuestOrderCommands(deps: {
             reason: 'session-store-mismatch',
           };
         }
-        if (order.id !== expectedOrderId) {
-          return {
+        if (order.id !== expectedOrderId || order.storeId !== expectedStoreId) {
+          const failure: GuestCommandFailure = {
             status: 'failed',
             message: tDefault(
               'guest.errors.orderNotFound',
@@ -69,6 +74,8 @@ export function createGuestOrderCommands(deps: {
             ),
             reason: 'not-found',
           };
+          orderActions.loadFailed(failure.message);
+          return failure;
         }
 
         orderActions.orderUpdated(order);
@@ -82,6 +89,48 @@ export function createGuestOrderCommands(deps: {
           currentSession.guestToken === token &&
           tenantStore.getState().activeStoreId === expectedStoreId
         ) {
+          orderActions.loadFailed(failure.message);
+        }
+        return failure;
+      }
+    },
+
+    async loadOrderWithToken(expectedStoreId, expectedOrderId, guestToken) {
+      if (tenantStore.getState().activeStoreId !== expectedStoreId) {
+        return {
+          status: 'failed',
+          message: '',
+          reason: 'session-store-mismatch',
+        };
+      }
+
+      orderActions.loadStarted();
+      try {
+        const order = await guestOrderService.getOrder(guestToken);
+        if (tenantStore.getState().activeStoreId !== expectedStoreId) {
+          return {
+            status: 'failed',
+            message: '',
+            reason: 'session-store-mismatch',
+          };
+        }
+        if (order.id !== expectedOrderId || order.storeId !== expectedStoreId) {
+          const failure: GuestCommandFailure = {
+            status: 'failed',
+            message: tDefault(
+              'guest.errors.orderNotFound',
+              'This order was not found.',
+            ),
+            reason: 'not-found',
+          };
+          orderActions.loadFailed(failure.message);
+          return failure;
+        }
+        orderActions.orderUpdated(order);
+        return { status: 'loaded' };
+      } catch (error) {
+        const failure = mapGuestApiError(error);
+        if (tenantStore.getState().activeStoreId === expectedStoreId) {
           orderActions.loadFailed(failure.message);
         }
         return failure;

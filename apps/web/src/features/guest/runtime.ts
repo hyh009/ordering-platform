@@ -8,6 +8,9 @@ import { createGuestCartWorkflowCommands } from './cartWorkflow/commands';
 import { createGuestOrderActions } from './order/actions';
 import { createGuestOrderCommands } from './order/commands';
 import { createGuestOrderStore } from './order/store';
+import { createGuestOrderHistoryActions } from './orderHistory/actions';
+import { createGuestOrderHistoryCommands } from './orderHistory/commands';
+import { createGuestOrderHistoryStore } from './orderHistory/store';
 import { createGuestSessionWorkflowCommands } from './sessionWorkflow/commands';
 import { createGuestStorefrontActions } from './storefront/actions';
 import { createGuestStorefrontCommands } from './storefront/commands';
@@ -22,12 +25,14 @@ export function createGuestRuntime() {
   const cartStore = createGuestCartStore();
   const orderStore = createGuestOrderStore();
   const tenantStore = createGuestTenantStore();
+  const orderHistoryStore = createGuestOrderHistoryStore();
 
   const sessionActions = createGuestSessionActions(sessionStore);
   const storefrontActions = createGuestStorefrontActions(storefrontStore);
   const cartActions = createGuestCartActions(cartStore);
   const orderActions = createGuestOrderActions(orderStore);
   const tenantActions = createGuestTenantActions(tenantStore);
+  const orderHistoryActions = createGuestOrderHistoryActions(orderHistoryStore);
   const guestSessionCommands = createGuestSessionCommands(
     sessionActions,
     sessionStore,
@@ -52,6 +57,10 @@ export function createGuestRuntime() {
     tenantActions,
     tenantStore,
   });
+  const orderHistoryCommands = createGuestOrderHistoryCommands({
+    actions: orderHistoryActions,
+    tenantStore,
+  });
 
   return {
     stores: {
@@ -60,6 +69,7 @@ export function createGuestRuntime() {
       cart: cartStore,
       order: orderStore,
       tenant: tenantStore,
+      orderHistory: orderHistoryStore,
     },
     commands: {
       session: sessionWorkflowCommands,
@@ -72,6 +82,8 @@ export function createGuestRuntime() {
         cartCommands,
         guestSessionCommands,
         orderActions,
+        orderHistoryCommands,
+        sessionStore,
         sessionWorkflowCommands,
       }),
       order: createGuestOrderCommands({
@@ -79,6 +91,7 @@ export function createGuestRuntime() {
         sessionStore,
         tenantStore,
       }),
+      orderHistory: orderHistoryCommands,
     },
   };
 }

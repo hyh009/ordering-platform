@@ -4,7 +4,11 @@ export {
   storeOrderTypes,
   updateStoreSchema,
 } from '@repo/shared';
-export { getStoreCheckoutModeLabel, getStoreOrderTypeLabel } from './display';
+export {
+  getStoreCheckoutModeLabel,
+  getStoreOrderTypeDescription,
+  getStoreOrderTypeLabel,
+} from './display';
 export { storeModel } from './model';
 export type {
   CreateStoreRequest,

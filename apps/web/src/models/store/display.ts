@@ -13,6 +13,18 @@ export function getStoreOrderTypeLabel(
   }
 }
 
+export function getStoreOrderTypeDescription(
+  type: StoreOrderType,
+  tDefault: AppTranslator,
+) {
+  switch (type) {
+    case 'dine_in':
+      return tDefault('store.orderTypes.dineInSub', 'In-store dining');
+    case 'takeaway':
+      return tDefault('store.orderTypes.takeawaySub', 'Pickup');
+  }
+}
+
 export function getStoreCheckoutModeLabel(
   mode: StoreCheckoutMode,
   tDefault: AppTranslator,

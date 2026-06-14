@@ -1,9 +1,9 @@
-import { CheckCircle2, ShoppingBag, Store, Users } from 'lucide-react';
+import { CheckCircle2, Store } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import logoUrl from '@/assets/logo.svg';
+import { OrderTypeSelector } from '@/features/guest/components/OrderTypeSelector';
 import { useLocalizedText } from '@/features/guest/components/useLocalizedText';
-import type { StoreOrderType } from '@/models/store';
 import { Button } from '@/shared/components/ui/button';
 import { useLandingPageVM } from './useLandingPageVM';
 
@@ -36,16 +36,6 @@ export function LandingPage() {
     todayHours?.isOpen && todayHours.openTime && todayHours.closeTime
       ? `${todayHours.openTime} - ${todayHours.closeTime}`
       : null;
-
-  const orderTypeLabel = (type: StoreOrderType) =>
-    type === 'dine_in'
-      ? tDefault('store.orderTypes.dineIn', 'Dine-in')
-      : tDefault('store.orderTypes.takeaway', 'Takeaway');
-
-  const orderTypeSubLabel = (type: StoreOrderType) =>
-    type === 'dine_in'
-      ? tDefault('store.orderTypes.dineInSub', 'In-store dining')
-      : tDefault('store.orderTypes.takeawaySub', 'Pickup');
 
   return (
     <div className="flex flex-1 flex-col">
@@ -121,50 +111,13 @@ export function LandingPage() {
             ) : null}
           </div>
 
-          {/* Order type picker */}
-          <div className="mt-7">
-            <p className="text-center font-semibold">
-              {tDefault('guest.landing.howToOrder', 'How would you like to order?')}
-            </p>
-            <p className="mt-0.5 text-center text-sm text-storefront-text-muted">
-              {tDefault('guest.landing.selectOrderMode', 'Select a dining option')}
-            </p>
-
-            {vm.enabledOrderTypes.length > 1 ? (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {vm.enabledOrderTypes.map((type) => (
-                  <button
-                    key={type}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-5 transition ${
-                      vm.selectedOrderType === type
-                        ? 'border-storefront-primary bg-storefront-primary/10'
-                        : 'border-storefront-border bg-storefront-bg hover:border-storefront-primary/50'
-                    }`}
-                    type="button"
-                    onClick={() => vm.setSelectedOrderType(type)}
-                  >
-                    {type === 'dine_in' ? (
-                      <Users className="h-8 w-8 text-storefront-text-muted" />
-                    ) : (
-                      <ShoppingBag className="h-8 w-8 text-storefront-text-muted" />
-                    )}
-                    <span className="font-semibold text-storefront-text">
-                      {orderTypeLabel(type)}
-                    </span>
-                    <span className="text-xs text-storefront-text-muted">
-                      {orderTypeSubLabel(type)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Resume session */}
-          {vm.canResume ? (
+          {vm.entryMode === 'chooser' && vm.canResume ? (
             <div className="mt-5 rounded-xl border border-storefront-border bg-storefront-bg p-4">
               <p className="font-medium text-storefront-text">
-                {tDefault('guest.landing.hasActiveOrder', 'You have an active order')}
+                {tDefault(
+                  'guest.landing.hasActiveOrder',
+                  'You have an active order',
+                )}
               </p>
               <p className="text-sm text-storefront-text-muted">
                 {tDefault(
@@ -172,28 +125,86 @@ export function LandingPage() {
                   'Your previous order is still open',
                 )}
               </p>
-              <Button className="mt-3 w-full" variant="storefront" onClick={vm.resume}>
+              <Button
+                className="mt-3 w-full"
+                variant="storefront"
+                onClick={vm.resume}
+              >
                 {tDefault('guest.landing.resume', 'Resume order')}
               </Button>
             </div>
           ) : null}
 
-          {/* Action buttons */}
-          <div className="mt-4 flex gap-3">
-            <Button
-              className="flex-1"
-              disabled={!vm.isOpen || !vm.selectedOrderType || vm.isMutating}
-              variant={vm.canResume ? 'outline' : 'storefront'}
-              onClick={() => {
-                void vm.startOrder();
-              }}
-            >
-              {tDefault('guest.landing.startOrder', 'New order')}
-            </Button>
-            <Button className="flex-1" disabled variant="outline">
-              {tDefault('guest.landing.joinOrder', 'Join order')}
-            </Button>
-          </div>
+          {vm.entryMode === 'chooser' ? (
+            <>
+              <div className="mt-4 flex gap-3">
+                <Button
+                  className="flex-1"
+                  disabled={!vm.isOpen}
+                  variant={vm.canResume ? 'outline' : 'storefront'}
+                  onClick={vm.showNewOrder}
+                >
+                  {tDefault('guest.landing.startOrder', 'New order')}
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={vm.goToJoin}
+                >
+                  {tDefault('guest.landing.joinOrder', 'Join order')}
+                </Button>
+              </div>
+              {vm.hasOrderHistory ? (
+                <div className="mt-8 border-t border-storefront-border pt-5">
+                  <Button
+                    className="w-full"
+                    variant="ghost"
+                    onClick={vm.goToOrderHistory}
+                  >
+                    {tDefault(
+                      'guest.landing.recentOrders',
+                      'View recent orders',
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="mt-7">
+              <p className="text-center font-semibold">
+                {tDefault(
+                  'guest.landing.howToOrder',
+                  'How would you like to order?',
+                )}
+              </p>
+              <p className="mt-0.5 text-center text-sm text-storefront-text-muted">
+                {tDefault(
+                  'guest.landing.selectOrderMode',
+                  'Select a dining option',
+                )}
+              </p>
+              <div className="mt-3">
+                <OrderTypeSelector
+                  availableTypes={vm.enabledOrderTypes}
+                  disabled={!vm.isOpen || vm.isMutating}
+                  value={vm.selectedOrderType}
+                  onChange={(type) => {
+                    void vm.startOrder(type);
+                  }}
+                />
+              </div>
+              <div className="mt-4">
+                <Button
+                  className="w-full"
+                  disabled={vm.isMutating}
+                  variant="outline"
+                  onClick={vm.cancelNewOrder}
+                >
+                  {tDefault('common.cancel', 'Cancel')}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
