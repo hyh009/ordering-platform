@@ -15,7 +15,7 @@ const allowedImageMimeTypes = [
   'image/avif',
 ] as const;
 
-const maxImageSizeBytes = 5 * 1024 * 1024;
+export const maxImageSizeBytes = 5 * 1024 * 1024;
 const storageFolderPattern = /^[a-zA-Z0-9][a-zA-Z0-9/_-]*$/;
 
 export type AssetProvider = 'cloudinary';
@@ -153,10 +153,14 @@ export class AssetService {
 
     try {
       return await this.storageProvider.uploadImage(input);
-    } catch {
+    } catch (error) {
+      // This service is the boundary around the storage provider: don't let the
+      // provider's error shape leak out, but keep the original via `cause` so the
+      // central handler can log it. isOperational stays false -> generic 500.
       throw new InternalServerError(
         'Image upload failed',
         ERROR_CODES.INTERNAL_SERVER_ERROR,
+        { cause: error },
       );
     }
   }

@@ -1,4 +1,7 @@
-import type { LocalizedString, SupportedLocale } from '@src/models/common/model';
+import type {
+  LocalizedString,
+  SupportedLocale,
+} from '@src/models/common/model';
 
 export const storeStatuses = ['active', 'disabled'] as const;
 export type StoreStatus = (typeof storeStatuses)[number];
@@ -25,6 +28,8 @@ export type StoreOrderMode = {
 export type StoreProfile = {
   displayName: LocalizedString;
   description?: LocalizedString;
+  logoUrl?: string;
+  bannerUrl?: string;
 };
 
 export type StoreLocale = {

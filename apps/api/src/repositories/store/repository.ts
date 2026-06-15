@@ -32,6 +32,9 @@ export type UpdateStoreInput = {
   profile?: {
     displayName?: StoreProfile['displayName'];
     description?: StoreProfile['description'];
+    // null clears the stored image; a string sets it.
+    logoUrl?: string | null;
+    bannerUrl?: string | null;
   };
   locale?: {
     defaultLocale?: StoreLocale['defaultLocale'];

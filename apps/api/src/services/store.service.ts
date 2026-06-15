@@ -38,19 +38,27 @@ export type CreateStoreInput = {
 };
 
 export type UpdateStoreInput = {
-  profile?: {
-    displayName?: StoreProfile['displayName'] | undefined;
-    description?: StoreProfile['description'] | undefined;
-  } | undefined;
-  locale?: {
-    defaultLocale?: SupportedLocale | undefined;
-    supportedLocales?: SupportedLocale[] | undefined;
-  } | undefined;
-  operation?: {
-    businessHours?: BusinessHourInput[] | undefined;
-    serviceFeeRate?: number | undefined;
-    orderModes?: StoreOrderMode[] | undefined;
-  } | undefined;
+  profile?:
+    | {
+        displayName?: StoreProfile['displayName'] | undefined;
+        description?: StoreProfile['description'] | undefined;
+        logoUrl?: string | null | undefined;
+        bannerUrl?: string | null | undefined;
+      }
+    | undefined;
+  locale?:
+    | {
+        defaultLocale?: SupportedLocale | undefined;
+        supportedLocales?: SupportedLocale[] | undefined;
+      }
+    | undefined;
+  operation?:
+    | {
+        businessHours?: BusinessHourInput[] | undefined;
+        serviceFeeRate?: number | undefined;
+        orderModes?: StoreOrderMode[] | undefined;
+      }
+    | undefined;
   status?: StoreStatus | undefined;
 };
 
@@ -127,7 +135,11 @@ export class StoreService {
 
     return {
       stores: result.stores.map(toStoreListItemDto),
-      pagination: { offset: query.offset, limit: query.limit, total: result.total },
+      pagination: {
+        offset: query.offset,
+        limit: query.limit,
+        total: result.total,
+      },
     };
   }
 
@@ -145,26 +157,43 @@ export class StoreService {
     const repoInput: Parameters<typeof storeRepository.update>[1] = {};
 
     if (input.profile !== undefined) {
-      const profile: NonNullable<Parameters<typeof storeRepository.update>[1]['profile']> = {};
-      if (input.profile.displayName !== undefined) profile.displayName = input.profile.displayName;
-      if (input.profile.description !== undefined) profile.description = input.profile.description;
+      const profile: NonNullable<
+        Parameters<typeof storeRepository.update>[1]['profile']
+      > = {};
+      if (input.profile.displayName !== undefined)
+        profile.displayName = input.profile.displayName;
+      if (input.profile.description !== undefined)
+        profile.description = input.profile.description;
+      if (input.profile.logoUrl !== undefined)
+        profile.logoUrl = input.profile.logoUrl;
+      if (input.profile.bannerUrl !== undefined)
+        profile.bannerUrl = input.profile.bannerUrl;
       repoInput.profile = profile;
     }
 
     if (input.locale !== undefined) {
-      const locale: NonNullable<Parameters<typeof storeRepository.update>[1]['locale']> = {};
-      if (input.locale.defaultLocale !== undefined) locale.defaultLocale = input.locale.defaultLocale;
-      if (input.locale.supportedLocales !== undefined) locale.supportedLocales = input.locale.supportedLocales;
+      const locale: NonNullable<
+        Parameters<typeof storeRepository.update>[1]['locale']
+      > = {};
+      if (input.locale.defaultLocale !== undefined)
+        locale.defaultLocale = input.locale.defaultLocale;
+      if (input.locale.supportedLocales !== undefined)
+        locale.supportedLocales = input.locale.supportedLocales;
       repoInput.locale = locale;
     }
 
     if (input.operation !== undefined) {
-      const operation: NonNullable<Parameters<typeof storeRepository.update>[1]['operation']> = {};
+      const operation: NonNullable<
+        Parameters<typeof storeRepository.update>[1]['operation']
+      > = {};
       if (input.operation.businessHours !== undefined) {
-        operation.businessHours = input.operation.businessHours.map(toBusinessHour);
+        operation.businessHours =
+          input.operation.businessHours.map(toBusinessHour);
       }
-      if (input.operation.serviceFeeRate !== undefined) operation.serviceFeeRate = input.operation.serviceFeeRate;
-      if (input.operation.orderModes !== undefined) operation.orderModes = input.operation.orderModes;
+      if (input.operation.serviceFeeRate !== undefined)
+        operation.serviceFeeRate = input.operation.serviceFeeRate;
+      if (input.operation.orderModes !== undefined)
+        operation.orderModes = input.operation.orderModes;
       repoInput.operation = operation;
     }
 

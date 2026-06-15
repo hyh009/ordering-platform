@@ -17,6 +17,7 @@ type FakeDoc = {
   locale: Record<string, unknown>;
   operation: Record<string, unknown>;
   status: string;
+  set: (path: string, value: unknown) => void;
   save: () => Promise<void>;
   toObject: () => Record<string, unknown>;
 };
@@ -27,6 +28,16 @@ function fakeDoc(save: () => Promise<void>): FakeDoc {
     locale: {},
     operation: {},
     status: 'active',
+    // Mirror mongoose's nested path setter used by the repository.
+    set(path: string, value: unknown) {
+      const [root, key] = path.split('.');
+      (
+        doc[root as 'profile' | 'locale' | 'operation'] as Record<
+          string,
+          unknown
+        >
+      )[key as string] = value;
+    },
     save,
     toObject: () => ({
       id: 'store-1',
@@ -94,6 +105,26 @@ describe('storeMongoRepository.update optimistic lock', () => {
       storeMongoRepository.update('store-1', { status: 'disabled' }),
     ).rejects.toThrow('boom');
     expect(findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('sets a logo url and clears a banner url on the profile', async () => {
+    const doc = fakeDoc(() => Promise.resolve());
+    doc.profile.bannerUrl = 'https://cdn.example.com/old-banner.png';
+    whenFindOneReturns(doc);
+
+    const result = await storeMongoRepository.update('store-1', {
+      profile: {
+        logoUrl: 'https://cdn.example.com/logo.png',
+        bannerUrl: null,
+      },
+    });
+
+    expect(result?.profile).toMatchObject({
+      logoUrl: 'https://cdn.example.com/logo.png',
+    });
+    expect(
+      (result?.profile as Record<string, unknown>).bannerUrl,
+    ).toBeUndefined();
   });
 
   it('returns null when the store does not exist', async () => {

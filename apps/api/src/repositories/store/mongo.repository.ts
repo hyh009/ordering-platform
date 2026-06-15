@@ -99,6 +99,12 @@ export const storeMongoRepository = {
         doc.profile.displayName = input.profile.displayName;
       if (input.profile?.description !== undefined)
         doc.profile.description = input.profile.description;
+      // null clears the image (unset the path); a string sets it. doc.set is
+      // used so unsetting is allowed under exactOptionalPropertyTypes.
+      if (input.profile?.logoUrl !== undefined)
+        doc.set('profile.logoUrl', input.profile.logoUrl ?? undefined);
+      if (input.profile?.bannerUrl !== undefined)
+        doc.set('profile.bannerUrl', input.profile.bannerUrl ?? undefined);
 
       if (input.locale?.defaultLocale !== undefined)
         doc.locale.defaultLocale = input.locale.defaultLocale;

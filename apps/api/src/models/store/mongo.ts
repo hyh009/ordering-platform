@@ -103,6 +103,14 @@ const storeProfileSchema = new Schema(
     description: {
       type: localizedStringSchema,
     },
+    logoUrl: {
+      type: String,
+      trim: true,
+    },
+    bannerUrl: {
+      type: String,
+      trim: true,
+    },
   },
   { _id: false },
 );

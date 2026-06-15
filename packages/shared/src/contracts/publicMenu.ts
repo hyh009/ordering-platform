@@ -22,6 +22,8 @@ export type PublicStoreDto = {
   id: string;
   displayName: LocalizedStringDto;
   description?: LocalizedStringDto;
+  logoUrl?: string;
+  bannerUrl?: string;
   locale: StoreLocaleDto;
   businessHours: BusinessHourDto[];
   serviceFeeRate: number;

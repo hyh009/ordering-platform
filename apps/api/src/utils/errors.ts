@@ -73,8 +73,9 @@ export class InternalServerError extends AppError {
   constructor(
     message = 'Internal Server Error',
     code: ErrorCode = ERROR_CODES.INTERNAL_SERVER_ERROR,
+    details?: unknown,
     isOperational = false,
   ) {
-    super(500, message, code, isOperational);
+    super(500, message, code, details, isOperational);
   }
 }

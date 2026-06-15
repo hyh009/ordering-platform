@@ -33,6 +33,12 @@ export function toStoreDto(store: StoreEntity): StoreDto {
   if (store.profile.description !== undefined) {
     profile.description = store.profile.description;
   }
+  if (store.profile.logoUrl !== undefined) {
+    profile.logoUrl = store.profile.logoUrl;
+  }
+  if (store.profile.bannerUrl !== undefined) {
+    profile.bannerUrl = store.profile.bannerUrl;
+  }
 
   return {
     id: store.id,
@@ -74,6 +80,12 @@ export function toPublicStoreDto(store: StoreEntity): PublicStoreDto {
 
   if (store.profile.description !== undefined) {
     dto.description = store.profile.description;
+  }
+  if (store.profile.logoUrl !== undefined) {
+    dto.logoUrl = store.profile.logoUrl;
+  }
+  if (store.profile.bannerUrl !== undefined) {
+    dto.bannerUrl = store.profile.bannerUrl;
   }
 
   return dto;

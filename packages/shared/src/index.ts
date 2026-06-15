@@ -1,4 +1,5 @@
 export * from './contracts/api.js';
+export * from './contracts/asset.js';
 export * from './contracts/auth.js';
 export * from './contracts/cart.js';
 export * from './contracts/category.js';

@@ -7,6 +7,7 @@ import {
   updateProductSchema,
 } from '@repo/shared';
 import { requireAuth, requireOrgRole } from '@src/middlewares/auth';
+import { singleImageUpload, uploadRequestImage } from '@src/middlewares/upload';
 import { validate } from '@src/middlewares/validate';
 import { productService } from '@src/services/product.service';
 import { Router } from 'express';
@@ -22,6 +23,7 @@ import type {
   ToggleProductSoldOutSuccessResponse,
   UpdateProductRequest,
   UpdateProductSuccessResponse,
+  UploadImageSuccessResponse,
 } from '@repo/shared';
 
 const router = Router({ mergeParams: true });
@@ -348,6 +350,68 @@ router.post<
     );
 
     res.status(201).json({ status: 'success', data: { product } });
+  },
+);
+
+/**
+ * @openapi
+ * /v1/merchant/stores/{storeId}/products/images:
+ *   post:
+ *     tags:
+ *       - Merchant / Products
+ *     summary: Upload a product image
+ *     description: >-
+ *       Uploads a single image file and returns its hosted URL. The returned
+ *       url should be persisted into a product's imageUrls via the create or
+ *       update product endpoints.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: storeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: store-123
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpeg, png, webp, or avif; max 5 MB).
+ *     responses:
+ *       201:
+ *         description: Image uploaded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadImageSuccessResponse'
+ *       400:
+ *         description: Missing, oversized, or unsupported image file
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post<ProductStoreParams, UploadImageSuccessResponse>(
+  '/images',
+  requireAuth,
+  requireOrgRole('org_owner', 'org_admin'),
+  validate(productStoreParamsSchema, 'params'),
+  singleImageUpload(),
+  async (req, res) => {
+    const image = await uploadRequestImage(req.file, {
+      folder: `stores/${req.params.storeId}/menu-products`,
+    });
+
+    res.status(201).json({ status: 'success', data: { image } });
   },
 );
 

@@ -54,14 +54,18 @@ describe('AssetService', () => {
     expect(storageProvider.uploadImage).not.toHaveBeenCalled();
   });
 
-  it('maps storage failures to an internal server error', async () => {
+  it('wraps storage failures in an InternalServerError that preserves the cause', async () => {
+    const failure = new Error('upload failed');
     const storageProvider: AssetStorageProvider = {
-      uploadImage: vi.fn().mockRejectedValue(new Error('upload failed')),
+      uploadImage: vi.fn().mockRejectedValue(failure),
     };
     const service = createAssetService(storageProvider);
 
     await expect(
       service.uploadImage(createUploadInput()),
     ).rejects.toBeInstanceOf(InternalServerError);
+    await expect(
+      service.uploadImage(createUploadInput()),
+    ).rejects.toMatchObject({ details: { cause: failure } });
   });
 });

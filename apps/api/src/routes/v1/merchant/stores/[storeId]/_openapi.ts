@@ -34,4 +34,50 @@
  *               end:
  *                 type: string
  *                 example: "17:00"
+ *     UploadedImage:
+ *       type: object
+ *       required:
+ *         - url
+ *         - publicId
+ *         - width
+ *         - height
+ *         - format
+ *         - bytes
+ *       properties:
+ *         url:
+ *           type: string
+ *           format: uri
+ *           example: https://res.cloudinary.com/demo/image/upload/latte.png
+ *         publicId:
+ *           type: string
+ *           example: stores/store-123/menu-products/latte
+ *         width:
+ *           type: integer
+ *           example: 800
+ *         height:
+ *           type: integer
+ *           example: 600
+ *         format:
+ *           type: string
+ *           example: png
+ *         bytes:
+ *           type: integer
+ *           example: 20480
+ *     UploadImageSuccessResponse:
+ *       type: object
+ *       required:
+ *         - status
+ *         - data
+ *       properties:
+ *         status:
+ *           type: string
+ *           enum:
+ *             - success
+ *         data:
+ *           type: object
+ *           required:
+ *             - image
+ *           properties:
+ *             image:
+ *               $ref: '#/components/schemas/UploadedImage'
  */

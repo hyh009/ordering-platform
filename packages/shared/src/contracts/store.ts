@@ -29,6 +29,8 @@ export type StoreOrderModeDto = {
 export type StoreProfileDto = {
   displayName: LocalizedStringDto;
   description?: LocalizedStringDto;
+  logoUrl?: string;
+  bannerUrl?: string;
 };
 
 export type StoreLocaleDto = {
@@ -172,6 +174,9 @@ export const updateStoreSchema = z
       .object({
         displayName: storeDisplayNameSchema.optional(),
         description: storeLocalizedTextSchema.optional(),
+        // null clears the stored image; a string sets it.
+        logoUrl: z.string().trim().url().nullable().optional(),
+        bannerUrl: z.string().trim().url().nullable().optional(),
       })
       .optional(),
     locale: z
