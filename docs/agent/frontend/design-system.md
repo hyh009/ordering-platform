@@ -56,10 +56,10 @@ Use Tailwind's mobile-first breakpoints:
 
 Start with the mobile layout, then add breakpoint variants only where the layout needs to change.
 
-## Guest Layout
+## StoreFront Layout
 
-The guest ordering flow uses `GuestLayout`, which centers the page at
-`max-w-(--guest-layout-max-w)` (defined in `global.css`). Individual guest pages
+The storefront ordering flow uses `StoreFrontLayout`, which centers the page at
+`max-w-(--storefront-layout-max-w)` (defined in `global.css`). Individual storefront pages
 must **not** re-apply narrow `max-w-*` constraints on every inner section.
 
 **Rule:** Use a single content wrapper with the desired `max-w-*`, then let

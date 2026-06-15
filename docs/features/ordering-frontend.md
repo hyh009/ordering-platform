@@ -28,10 +28,10 @@ Existing (backend domain the frontend depends on):
 
 Planned (following existing frontend architecture conventions):
 
-- `apps/web/src/pages/guest/...` (each page: View + Page VM hook)
-- `apps/web/src/features/guest/...` (runtime / store / actions / commands)
-- `apps/web/src/models/{guestMenu,cart,order}/...`
-- `apps/web/src/services/{guestMenu,guestCart,guestOrder}.service.ts`
+- `apps/web/src/pages/storeFront/...` (each page: View + Page VM hook)
+- `apps/web/src/features/storeFront/...` (runtime / store / actions / commands)
+- `apps/web/src/models/{storeFrontMenu,cart,order}/...`
+- `apps/web/src/services/{storeFrontMenu,storeFrontCart,storeFrontOrder}.service.ts`
 - Backend guest public routes `apps/api/src/routes/v1/public/...`, cart/order/
   public-menu contracts in `packages/shared`, guest token issuance, SSE push
 

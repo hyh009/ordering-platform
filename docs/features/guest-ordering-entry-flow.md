@@ -160,7 +160,7 @@ type GuestOrderHistoryEntry = {
 Suggested store-scoped key:
 
 ```txt
-ordering-platform.guestOrderHistory:<storeId>
+ordering-platform.storeFrontOrderHistory:<storeId>
 ```
 
 Each history entry keeps the token that authorizes that participant to read the

@@ -17,10 +17,10 @@ Landing, Resume, Join, and Recent orders UI behavior is defined in
 Frontend:
 
 - `apps/web/src/app/global/guestSession/`
-- `apps/web/src/features/guest/runtime.ts`
-- `apps/web/src/features/guest/sessionWorkflow/`
-- `apps/web/src/features/guest/{storefront,cart,order}/`
-- `apps/web/src/pages/guest/`
+- `apps/web/src/features/storeFront/runtime.ts`
+- `apps/web/src/features/storeFront/sessionWorkflow/`
+- `apps/web/src/features/storeFront/{storefront,cart,order}/`
+- `apps/web/src/pages/storeFront/`
 
 ## User-Visible Behavior
 
@@ -162,8 +162,8 @@ required. This does not permit either tab to use another store's session.
 
 - `src/app/global/guestSession` owns guest identity, tokens, per-store
   persistence, and the current tab's active session identity.
-- `src/features/guest/runtime.ts` wires the shared live guest feature runtime
-  used by guest pages inside one tab.
+- `src/features/storeFront/runtime.ts` wires the shared live storefront feature runtime
+  used by storefront pages inside one tab.
 - Guest tenant workflow commands activate the route store and clear stale
   in-memory feature state.
 - Guest session workflow commands restore or end one store's session and
