@@ -49,12 +49,12 @@
   --guest-layout-max-w: 1200px;
 
   /* Storefront (customer ordering) palette */
-  --storefront-bg: #FAF9F6;
-  --storefront-primary: #E8B647;
-  --storefront-secondary: #78C2C4;
-  --storefront-text: #2B221A;
-  --storefront-text-muted: #7D7065;
-  --storefront-border: #E6E1DA;
+  --storefront-bg: #ffffff;
+  --storefront-primary: #e8b647;
+  --storefront-secondary: #78c2c4;
+  --storefront-text: #2b221a;
+  --storefront-text-muted: #7d7065;
+  --storefront-border: #e6e1da;
   --z-page-modal: 50;
   --z-feedback-modal: 100;
   --z-feedback-toast: 110;
