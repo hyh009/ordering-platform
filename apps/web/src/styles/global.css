@@ -46,7 +46,7 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --app-header-height: 4rem;
-  --guest-layout-max-w: 1200px;
+  --storefront-layout-max-w: 1200px;
 
   /* Storefront (customer ordering) palette */
   --storefront-bg: #ffffff;

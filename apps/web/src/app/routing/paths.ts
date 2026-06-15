@@ -20,7 +20,7 @@ export const PATHS = {
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },
-  GUEST: {
+  STOREFRONT: {
     LANDING: '/s/:storeId',
     LANDING_BUILD: (storeId: string) => `/s/${storeId}`,
     JOIN_ENTRY: '/s/:storeId/join',

@@ -45,7 +45,7 @@ export type CartItem = CartItemDto;
 export type SelectedModifierOption = SelectedModifierOptionDto;
 export type OrderingParticipant = OrderingParticipantDto;
 
-/** Frontend model of the restored guest context. */
+/** Frontend model of the restored storefront session context. */
 export type GuestSession = {
   participantId: string;
   cart?: Cart;

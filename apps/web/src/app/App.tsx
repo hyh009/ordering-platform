@@ -6,7 +6,7 @@ import {
   MerchantLayout,
   SuperAdminLayout,
 } from '@/app/layout/AppLayout';
-import { GuestLayout } from '@/app/layout/GuestLayout';
+import { StoreFrontLayout } from '@/app/layout/StoreFrontLayout';
 import { PublicLayout } from '@/app/layout/PublicLayout';
 import { PATHS } from '@/app/routing/paths';
 import { PublicOnly } from '@/app/routing/PublicOnly';
@@ -22,13 +22,13 @@ import { OrganizationMembershipsPage } from '@/pages/admin/organizationMembershi
 import { StoreCreatePage } from '@/pages/admin/storeCreate/StoreCreatePage';
 import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
 import { LoginPage } from '@/pages/login/LoginPage';
-import { CartPage } from '@/pages/guest/cart/CartPage';
-import { JoinEntryPage } from '@/pages/guest/join/JoinEntryPage';
-import { JoinPage } from '@/pages/guest/join/JoinPage';
-import { LandingPage } from '@/pages/guest/landing/LandingPage';
-import { MenuPage } from '@/pages/guest/menu/MenuPage';
-import { OrderTrackingPage } from '@/pages/guest/order/OrderTrackingPage';
-import { OrderHistoryPage } from '@/pages/guest/orderHistory/OrderHistoryPage';
+import { CartPage } from '@/pages/storeFront/cart/CartPage';
+import { JoinEntryPage } from '@/pages/storeFront/join/JoinEntryPage';
+import { JoinPage } from '@/pages/storeFront/join/JoinPage';
+import { LandingPage } from '@/pages/storeFront/landing/LandingPage';
+import { MenuPage } from '@/pages/storeFront/menu/MenuPage';
+import { OrderTrackingPage } from '@/pages/storeFront/order/OrderTrackingPage';
+import { OrderHistoryPage } from '@/pages/storeFront/orderHistory/OrderHistoryPage';
 import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
 import { ProductCreatePage } from '@/pages/merchant/productCreate/ProductCreatePage';
 import { ProductDetailPage } from '@/pages/merchant/productDetail/ProductDetailPage';
@@ -63,18 +63,18 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<RouteErrorBoundary />}>
-          {/* Public guest ordering never initializes management auth. */}
-          <Route element={<GuestLayout />}>
-            <Route element={<LandingPage />} path={PATHS.GUEST.LANDING} />
-            <Route element={<JoinEntryPage />} path={PATHS.GUEST.JOIN_ENTRY} />
-            <Route element={<JoinPage />} path={PATHS.GUEST.JOIN} />
-            <Route element={<MenuPage />} path={PATHS.GUEST.MENU} />
-            <Route element={<CartPage />} path={PATHS.GUEST.CART} />
+          {/* Public storefront ordering never initializes management auth. */}
+          <Route element={<StoreFrontLayout />}>
+            <Route element={<LandingPage />} path={PATHS.STOREFRONT.LANDING} />
+            <Route element={<JoinEntryPage />} path={PATHS.STOREFRONT.JOIN_ENTRY} />
+            <Route element={<JoinPage />} path={PATHS.STOREFRONT.JOIN} />
+            <Route element={<MenuPage />} path={PATHS.STOREFRONT.MENU} />
+            <Route element={<CartPage />} path={PATHS.STOREFRONT.CART} />
             <Route
               element={<OrderHistoryPage />}
-              path={PATHS.GUEST.ORDER_HISTORY}
+              path={PATHS.STOREFRONT.ORDER_HISTORY}
             />
-            <Route element={<OrderTrackingPage />} path={PATHS.GUEST.ORDER} />
+            <Route element={<OrderTrackingPage />} path={PATHS.STOREFRONT.ORDER} />
             <Route element={<NotFoundPage embedded />} path="/s/*" />
           </Route>
 

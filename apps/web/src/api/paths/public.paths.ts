@@ -15,31 +15,32 @@ export const publicPaths = {
   cartsJoin(storeId: string) {
     return `${publicStoreBase(storeId)}/carts/join`;
   },
+  /** Keeps the `guest` prefix to match the backend DTO concept (`guestToken`), not the UI feature name. */
   guestSession() {
     return '/v1/public/guest/session';
   },
-  guestCart() {
+  storeFrontCart() {
     return '/v1/public/guest/cart';
   },
-  guestCartItems() {
+  storeFrontCartItems() {
     return '/v1/public/guest/cart/items';
   },
-  guestCartItemDetail(itemId: string) {
+  storeFrontCartItemDetail(itemId: string) {
     return `/v1/public/guest/cart/items/${encodeURIComponent(itemId)}`;
   },
-  guestCartLeave() {
+  storeFrontCartLeave() {
     return '/v1/public/guest/cart/leave';
   },
-  guestCartSubmit() {
+  storeFrontCartSubmit() {
     return '/v1/public/guest/cart/submit';
   },
-  guestOrder() {
+  storeFrontOrder() {
     return '/v1/public/guest/order';
   },
-  guestOrderBatches() {
+  storeFrontOrderBatches() {
     return '/v1/public/guest/order/batches';
   },
-  guestOrderStream() {
+  storeFrontOrderStream() {
     return '/v1/public/guest/order/stream';
   },
 } as const;
