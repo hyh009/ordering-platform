@@ -1,3 +1,4 @@
+import deepEqual from 'fast-deep-equal';
 import type { Store, CreateStoreRequest, UpdateStoreRequest } from '@/models/store';
 import type { StoreFormValues } from './useStoreForm';
 
@@ -18,10 +19,6 @@ export function fromStore(store: Store): StoreFormValues {
   };
 }
 
-function eq(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 function buildBusinessHours(hours: StoreFormValues['businessHours']) {
   return hours.map((h) => ({
     dayOfWeek: h.dayOfWeek,
@@ -36,34 +33,35 @@ export function toUpdateStoreRequest(
 ): UpdateStoreRequest {
   const patch: UpdateStoreRequest = {};
 
-  const displayNameChanged = !eq(original.displayName, current.displayName);
-  const descriptionChanged = !eq(original.description, current.description);
+  const displayNameChanged = !deepEqual(original.displayName, current.displayName);
+  const descriptionChanged = !deepEqual(original.description, current.description);
   if (displayNameChanged || descriptionChanged) {
-    const hasDescription = Object.values(current.description).some(Boolean);
-    patch.profile = {
-      ...(displayNameChanged ? { displayName: current.displayName } : {}),
-      ...(descriptionChanged ? { description: hasDescription ? current.description : undefined } : {}),
-    };
+    const profile: NonNullable<UpdateStoreRequest['profile']> = {};
+    if (displayNameChanged) profile.displayName = current.displayName;
+    if (descriptionChanged && Object.values(current.description).some(Boolean)) {
+      profile.description = current.description;
+    }
+    patch.profile = profile;
   }
 
   const defaultLocaleChanged = original.defaultLocale !== current.defaultLocale;
-  const supportedLocalesChanged = !eq(original.supportedLocales, current.supportedLocales);
+  const supportedLocalesChanged = !deepEqual(original.supportedLocales, current.supportedLocales);
   if (defaultLocaleChanged || supportedLocalesChanged) {
-    patch.locale = {
-      ...(defaultLocaleChanged ? { defaultLocale: current.defaultLocale } : {}),
-      ...(supportedLocalesChanged ? { supportedLocales: current.supportedLocales } : {}),
-    };
+    const locale: NonNullable<UpdateStoreRequest['locale']> = {};
+    if (defaultLocaleChanged) locale.defaultLocale = current.defaultLocale;
+    if (supportedLocalesChanged) locale.supportedLocales = current.supportedLocales;
+    patch.locale = locale;
   }
 
   const serviceFeeRateChanged = original.serviceFeeRate !== current.serviceFeeRate;
-  const businessHoursChanged = !eq(original.businessHours, current.businessHours);
-  const orderModesChanged = !eq(original.orderModes, current.orderModes);
+  const businessHoursChanged = !deepEqual(original.businessHours, current.businessHours);
+  const orderModesChanged = !deepEqual(original.orderModes, current.orderModes);
   if (serviceFeeRateChanged || businessHoursChanged || orderModesChanged) {
-    patch.operation = {
-      ...(serviceFeeRateChanged ? { serviceFeeRate: current.serviceFeeRate } : {}),
-      ...(businessHoursChanged ? { businessHours: buildBusinessHours(current.businessHours) } : {}),
-      ...(orderModesChanged ? { orderModes: current.orderModes } : {}),
-    };
+    const operation: NonNullable<UpdateStoreRequest['operation']> = {};
+    if (serviceFeeRateChanged) operation.serviceFeeRate = current.serviceFeeRate;
+    if (businessHoursChanged) operation.businessHours = buildBusinessHours(current.businessHours);
+    if (orderModesChanged) operation.orderModes = current.orderModes;
+    patch.operation = operation;
   }
 
   return patch;

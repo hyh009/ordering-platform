@@ -67,10 +67,13 @@ export function LocalizedStringInput({
   }, [allowedLocales, displayLocales, defaultLocale]);
 
   const handleValueChange = (locale: SupportedLocale, newValue: string) => {
-    onChange?.({
-      ...value,
-      [locale]: newValue || undefined,
-    });
+    const next = { ...value };
+    if (newValue) {
+      next[locale] = newValue;
+    } else {
+      delete next[locale];
+    }
+    onChange?.(next);
   };
 
   const addLocale = (locale: SupportedLocale) => {

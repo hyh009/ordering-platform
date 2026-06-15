@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'; // useState kept for isStatusUpdating
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
-import {
-  fromStore,
-  toUpdateStoreRequest,
-} from '@/features/components/store/storeForm/storeFormMapper';
+import deepEqual from 'fast-deep-equal';
+import { toUpdateStoreRequest, fromStore } from '@/features/components/store/storeForm/storeFormMapper';
 import { createStoreDetailRuntime } from '@/features/merchant/store/detail/runtime';
 import { useStoreForm } from '@/features/components/store/storeForm/useStoreForm';
 import { tDefault } from '@/app/i18n';
@@ -41,10 +39,10 @@ export function useStoreSettingsPageVM() {
   // isDirty: true when form.values diverges from savedValues.
   // Also intended for blocking navigation via useBlocker (in-app) +
   // beforeunload (tab close) — not wired up yet.
-  const isDirty = useMemo(() => {
-    if (!savedValues) return false;
-    return JSON.stringify(savedValues) !== JSON.stringify(form.values);
-  }, [savedValues, form.values]);
+  const isDirty = useMemo(
+    () => savedValues !== null && !deepEqual(savedValues, form.values),
+    [savedValues, form.values],
+  );
 
   useEffect(() => {
     if (!storeId) return;
@@ -52,8 +50,8 @@ export function useStoreSettingsPageVM() {
   }, [storeId, commands]);
 
   useEffect(() => {
-    if (store) resetForm(fromStore(store));
-  }, [store, resetForm]);
+    if (savedValues) resetForm(savedValues);
+  }, [savedValues, resetForm]);
 
   const submit = useCallback(async () => {
     if (!storeId || !savedValues) return;
