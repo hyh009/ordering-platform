@@ -57,6 +57,8 @@ Keep the summary:
 - concise
 - specific enough to identify the change
 
+When a body is needed, describe each change in one line. No long paragraphs.
+
 Examples:
 
 ```txt
