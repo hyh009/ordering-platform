@@ -138,6 +138,11 @@ router.get<StoreWithOrgParams, GetStoreSuccessResponse, Record<string, never>>(
  *                     type: number
  *                     minimum: 0
  *                     maximum: 1
+ *                   guestOrderingDurationMinutes:
+ *                     type: integer
+ *                     minimum: 15
+ *                     maximum: 720
+ *                     nullable: true
  *                   orderModes:
  *                     type: array
  *                     items:

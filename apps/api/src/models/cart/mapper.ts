@@ -16,6 +16,7 @@ export function toOrderingParticipantDto(
 ): OrderingParticipantDto {
   const dto: OrderingParticipantDto = {
     id: participant.id,
+    avatarKey: participant.avatarKey,
     joinedAt: participant.joinedAt.toISOString(),
   };
 
@@ -78,6 +79,7 @@ export function toCartDto(cart: CartEntity): CartDto {
     serviceFeeRate: cart.serviceFeeRate,
     serviceFeeAmount: cart.serviceFeeAmount,
     totalAmount: cart.totalAmount,
+    expiresAt: cart.expiresAt.toISOString(),
     createdAt: cart.createdAt.toISOString(),
     updatedAt: cart.updatedAt.toISOString(),
   };
@@ -96,6 +98,9 @@ export function toCartDto(cart: CartEntity): CartDto {
 
   if (cart.orderId !== undefined) {
     dto.orderId = cart.orderId;
+  }
+  if (cart.orderingClosesAt !== undefined) {
+    dto.orderingClosesAt = cart.orderingClosesAt.toISOString();
   }
 
   return dto;

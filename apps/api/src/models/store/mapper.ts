@@ -40,6 +40,20 @@ export function toStoreDto(store: StoreEntity): StoreDto {
     profile.bannerUrl = store.profile.bannerUrl;
   }
 
+  const operation: StoreDto['operation'] = {
+    businessHours: store.operation.businessHours.map(toBusinessHourDto),
+    serviceFeeRate: store.operation.serviceFeeRate,
+    orderModes: store.operation.orderModes.map((mode) => ({
+      type: mode.type,
+      isEnabled: mode.isEnabled,
+      checkoutMode: mode.checkoutMode,
+    })),
+  };
+  if (store.operation.guestOrderingDurationMinutes !== undefined) {
+    operation.guestOrderingDurationMinutes =
+      store.operation.guestOrderingDurationMinutes;
+  }
+
   return {
     id: store.id,
     organizationId: store.organizationId,
@@ -48,15 +62,7 @@ export function toStoreDto(store: StoreEntity): StoreDto {
       defaultLocale: store.locale.defaultLocale,
       supportedLocales: store.locale.supportedLocales,
     },
-    operation: {
-      businessHours: store.operation.businessHours.map(toBusinessHourDto),
-      serviceFeeRate: store.operation.serviceFeeRate,
-      orderModes: store.operation.orderModes.map((mode) => ({
-        type: mode.type,
-        isEnabled: mode.isEnabled,
-        checkoutMode: mode.checkoutMode,
-      })),
-    },
+    operation,
     status: store.status,
     createdAt: store.createdAt.toISOString(),
     updatedAt: store.updatedAt.toISOString(),
@@ -87,6 +93,5 @@ export function toPublicStoreDto(store: StoreEntity): PublicStoreDto {
   if (store.profile.bannerUrl !== undefined) {
     dto.bannerUrl = store.profile.bannerUrl;
   }
-
   return dto;
 }

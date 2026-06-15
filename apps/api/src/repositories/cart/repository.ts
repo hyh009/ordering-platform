@@ -20,6 +20,8 @@ export type CreateCartInput = {
   tableNumber?: string | undefined;
   participants: OrderingParticipantSnapshot[];
   serviceFeeRate: number;
+  expiresAt: Date;
+  orderingClosesAt?: Date | undefined;
 };
 
 export type UpdateCartInput = {

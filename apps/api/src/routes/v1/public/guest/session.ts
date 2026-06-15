@@ -28,9 +28,8 @@ export function guestClaims(req: Request): GuestTokenClaims {
  *       - Public / Guest Session
  *     summary: Restore the guest ordering session from a guest token
  *     description: >
- *       Returns the cart while it is active (or abandoned), and the order once
- *       the cart has been checked out. The frontend uses this to resume after
- *       a reload.
+ *       Returns a usable active cart, or the order once the cart has been
+ *       checked out. A usable Join Code is exposed at session level.
  *     security:
  *       - guestToken: []
  *     responses:
@@ -62,6 +61,19 @@ export function guestClaims(req: Request): GuestTokenClaims {
  *                   statusCode: 401
  *                   code: INVALID_GUEST_TOKEN
  *                   message: Invalid guest token
+ *       409:
+ *         description: Active cart expired or reached its ordering deadline
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               cartNotActive:
+ *                 value:
+ *                   status: error
+ *                   statusCode: 409
+ *                   code: CART_NOT_ACTIVE
+ *                   message: Cart is no longer active
  */
 router.get('/', requireGuest, async (req, res) => {
   const session = await getGuestSession(guestClaims(req));

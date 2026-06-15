@@ -1,3 +1,4 @@
+import { anonymousAvatarKeys } from '@repo/shared';
 import { cartStatuses } from '@src/models/cart/model';
 import {
   hasAtLeastOneLocalizedValue,
@@ -36,6 +37,11 @@ export const participantSnapshotSchema =
         type: String,
         required: true,
         trim: true,
+      },
+      avatarKey: {
+        type: String,
+        required: true,
+        enum: anonymousAvatarKeys,
       },
       displayName: {
         type: String,
@@ -214,6 +220,13 @@ const cartSchema = new Schema<CartEntity>(
     orderId: {
       type: String,
       trim: true,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+    },
+    orderingClosesAt: {
+      type: Date,
     },
   },
   {

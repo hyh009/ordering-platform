@@ -34,6 +34,7 @@ export type CreateStoreInput = {
     businessHours: BusinessHourInput[];
     serviceFeeRate: number;
     orderModes: StoreOrderMode[];
+    guestOrderingDurationMinutes?: number | undefined;
   };
 };
 
@@ -57,6 +58,7 @@ export type UpdateStoreInput = {
         businessHours?: BusinessHourInput[] | undefined;
         serviceFeeRate?: number | undefined;
         orderModes?: StoreOrderMode[] | undefined;
+        guestOrderingDurationMinutes?: number | null | undefined;
       }
     | undefined;
   status?: StoreStatus | undefined;
@@ -98,6 +100,12 @@ export class StoreService {
         businessHours: input.operation.businessHours.map(toBusinessHour),
         serviceFeeRate: input.operation.serviceFeeRate,
         orderModes: input.operation.orderModes,
+        ...(input.operation.guestOrderingDurationMinutes !== undefined
+          ? {
+              guestOrderingDurationMinutes:
+                input.operation.guestOrderingDurationMinutes,
+            }
+          : {}),
       },
     });
 
@@ -194,6 +202,9 @@ export class StoreService {
         operation.serviceFeeRate = input.operation.serviceFeeRate;
       if (input.operation.orderModes !== undefined)
         operation.orderModes = input.operation.orderModes;
+      if (input.operation.guestOrderingDurationMinutes !== undefined)
+        operation.guestOrderingDurationMinutes =
+          input.operation.guestOrderingDurationMinutes;
       repoInput.operation = operation;
     }
 

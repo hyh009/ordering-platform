@@ -117,6 +117,11 @@ export const storeMongoRepository = {
         doc.operation.serviceFeeRate = input.operation.serviceFeeRate;
       if (input.operation?.orderModes !== undefined)
         doc.operation.orderModes = input.operation.orderModes;
+      if (input.operation?.guestOrderingDurationMinutes !== undefined)
+        doc.set(
+          'operation.guestOrderingDurationMinutes',
+          input.operation.guestOrderingDurationMinutes ?? undefined,
+        );
 
       if (input.status !== undefined) doc.status = input.status;
 

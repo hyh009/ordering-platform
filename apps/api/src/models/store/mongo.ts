@@ -187,6 +187,11 @@ const storeOperationSchema = new Schema(
         },
       ],
     },
+    guestOrderingDurationMinutes: {
+      type: Number,
+      min: 15,
+      max: 720,
+    },
   },
   { _id: false },
 );

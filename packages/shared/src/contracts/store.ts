@@ -42,6 +42,7 @@ export type StoreOperationDto = {
   businessHours: BusinessHourDto[];
   serviceFeeRate: number;
   orderModes: StoreOrderModeDto[];
+  guestOrderingDurationMinutes?: number;
 };
 
 export type StoreDto = {
@@ -158,6 +159,12 @@ export const createStoreSchema = z
       businessHours: businessHoursSchema,
       serviceFeeRate: z.number().min(0).max(1),
       orderModes: z.array(storeOrderModeSchema),
+      guestOrderingDurationMinutes: z
+        .number()
+        .int()
+        .min(15)
+        .max(720)
+        .optional(),
     }),
   })
   .refine(
@@ -190,6 +197,13 @@ export const updateStoreSchema = z
         businessHours: businessHoursSchema.optional(),
         serviceFeeRate: z.number().min(0).max(1).optional(),
         orderModes: z.array(storeOrderModeSchema).optional(),
+        guestOrderingDurationMinutes: z
+          .number()
+          .int()
+          .min(15)
+          .max(720)
+          .nullable()
+          .optional(),
       })
       .optional(),
     status: z.enum(storeStatuses).optional(),

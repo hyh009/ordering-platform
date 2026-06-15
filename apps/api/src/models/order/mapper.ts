@@ -52,6 +52,7 @@ export function toOrderDto(order: OrderEntity): OrderDto {
     serviceFeeRate: order.serviceFeeRate,
     serviceFeeAmount: order.serviceFeeAmount,
     totalAmount: order.totalAmount,
+    orderingClosesAt: order.orderingClosesAt.toISOString(),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
   };
@@ -63,7 +64,6 @@ export function toOrderDto(order: OrderEntity): OrderDto {
   if (order.notes !== undefined) {
     dto.notes = order.notes;
   }
-
   if (order.paidAt !== undefined) {
     dto.paidAt = order.paidAt.toISOString();
   }

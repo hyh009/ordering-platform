@@ -66,6 +66,7 @@ export type OrderDto = {
   serviceFeeRate: number;
   serviceFeeAmount: number;
   totalAmount: number;
+  orderingClosesAt: string;
   paidAt?: string;
   servedAt?: string;
   completedAt?: string;

@@ -35,6 +35,7 @@ export type CreateOrderInput = {
   serviceFeeRate: number;
   serviceFeeAmount: number;
   totalAmount: number;
+  orderingClosesAt: Date;
 };
 
 export type UpdateOrderInput = {

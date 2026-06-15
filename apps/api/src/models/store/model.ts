@@ -41,6 +41,7 @@ export type StoreOperation = {
   businessHours: BusinessHour[];
   serviceFeeRate: number;
   orderModes: StoreOrderMode[];
+  guestOrderingDurationMinutes?: number;
 };
 
 export type StoreEntity = {

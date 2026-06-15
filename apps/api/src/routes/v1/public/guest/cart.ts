@@ -71,6 +71,19 @@ router.use(requireGuest);
  *                   statusCode: 401
  *                   code: INVALID_GUEST_TOKEN
  *                   message: Invalid guest token
+ *       409:
+ *         description: Cart no longer active or its deadline passed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               cartNotActive:
+ *                 value:
+ *                   status: error
+ *                   statusCode: 409
+ *                   code: CART_NOT_ACTIVE
+ *                   message: Cart is no longer active
  */
 router.get('/', async (req, res) => {
   const cart = await getGuestCart(guestClaims(req));

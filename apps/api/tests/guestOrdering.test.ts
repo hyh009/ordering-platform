@@ -23,6 +23,7 @@ type TestStore = {
       isEnabled: boolean;
       checkoutMode: 'pay_first' | 'pay_later';
     }[];
+    guestOrderingDurationMinutes?: number;
   };
   status: 'active' | 'disabled';
   createdAt: Date;
@@ -79,6 +80,8 @@ type TestCart = Record<string, unknown> & {
   participants: { id: string; displayName?: string; joinedAt: Date }[];
   items: { id: string; addedByParticipantId?: string }[];
   orderId?: string;
+  expiresAt: Date;
+  orderingClosesAt?: Date;
   updatedAt: Date;
 };
 
@@ -89,6 +92,7 @@ type TestOrder = Record<string, unknown> & {
   checkoutMode: string;
   participants: { id: string; displayName?: string; joinedAt: Date }[];
   batches: { batchNumber: number }[];
+  orderingClosesAt: Date;
   updatedAt: Date;
 };
 
@@ -415,11 +419,21 @@ function seedModifier(overrides: Partial<TestModifier> = {}) {
 async function createDineInCart(displayName = 'Amy') {
   const response = await request(app)
     .post(`/api/v1/public/stores/${STORE_ID}/carts`)
-    .send({ orderType: 'dine_in', tableNumber: 'T1', displayName });
+    .send({
+      orderType: 'dine_in',
+      tableNumber: 'T1',
+      avatarKey: 'cat',
+      displayName,
+    });
 
   expect(response.status).toBe(201);
   return response.body.data as {
-    cart: { id: string; joinCode?: string };
+    cart: {
+      id: string;
+      joinCode?: string;
+      expiresAt: string;
+      orderingClosesAt?: string;
+    };
     participantId: string;
     guestToken: string;
   };
@@ -484,6 +498,20 @@ describe('public store and menu', () => {
 });
 
 describe('cart lifecycle', () => {
+  it('requires a supported avatar when creating a cart', async () => {
+    const missing = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts`)
+      .send({ orderType: 'dine_in' });
+    const invalid = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts`)
+      .send({ orderType: 'dine_in', avatarKey: 'dragon' });
+
+    expect(missing.status).toBe(400);
+    expect(missing.body.code).toBe('VALIDATION_ERROR');
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.code).toBe('VALIDATION_ERROR');
+  });
+
   it('creates a dine-in pay-later cart with a join code and guest token', async () => {
     const { cart, participantId, guestToken } = await createDineInCart();
 
@@ -497,6 +525,70 @@ describe('cart lifecycle', () => {
 
     expect(session.status).toBe(200);
     expect(session.body.data.session.cart.id).toBe(cart.id);
+    expect(session.body.data.session.joinCode).toBe(cart.joinCode);
+    expect(session.body.data.session.cart.participants[0]).toMatchObject({
+      avatarKey: 'cat',
+      displayName: 'Amy',
+    });
+    expect(new Date(cart.expiresAt).getTime() - Date.now()).toBeGreaterThan(
+      11 * 60 * 60 * 1000,
+    );
+  });
+
+  it('snapshots the configured guest ordering deadline at cart creation', async () => {
+    seedStore({
+      operation: {
+        businessHours: alwaysOpenHours(),
+        serviceFeeRate: 0,
+        orderModes: [
+          { type: 'dine_in', isEnabled: true, checkoutMode: 'pay_later' },
+        ],
+        guestOrderingDurationMinutes: 30,
+      },
+    });
+
+    const { cart } = await createDineInCart();
+
+    expect(cart.orderingClosesAt).toBeDefined();
+    expect(
+      new Date(cart.orderingClosesAt!).getTime() -
+        (new Date(cart.expiresAt).getTime() - 12 * 60 * 60 * 1000),
+    ).toBe(30 * 60 * 1000);
+  });
+
+  it('rejects session restore and cart operations after fixed expiry', async () => {
+    const product = seedProduct();
+    const owner = await createDineInCart();
+    mocks.carts.get(owner.cart.id)!.expiresAt = new Date(Date.now() - 1);
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+    const read = await request(app)
+      .get('/api/v1/public/guest/cart')
+      .set(auth(owner.guestToken));
+    const addItem = await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+    const leave = await request(app)
+      .post('/api/v1/public/guest/cart/leave')
+      .set(auth(owner.guestToken));
+    const submit = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    expect(session.status).toBe(409);
+    expect(session.body.code).toBe('CART_NOT_ACTIVE');
+    expect(read.status).toBe(409);
+    expect(read.body.code).toBe('CART_NOT_ACTIVE');
+    expect(addItem.status).toBe(409);
+    expect(addItem.body.code).toBe('CART_NOT_ACTIVE');
+    expect(leave.status).toBe(409);
+    expect(leave.body.code).toBe('CART_NOT_ACTIVE');
+    expect(submit.status).toBe(409);
+    expect(submit.body.code).toBe('CART_NOT_ACTIVE');
   });
 
   it('rejects a disabled order type', async () => {
@@ -512,7 +604,7 @@ describe('cart lifecycle', () => {
 
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts`)
-      .send({ orderType: 'takeaway' });
+      .send({ orderType: 'takeaway', avatarKey: 'cat' });
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('ORDER_TYPE_NOT_ENABLED');
@@ -531,7 +623,7 @@ describe('cart lifecycle', () => {
 
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts`)
-      .send({ orderType: 'dine_in' });
+      .send({ orderType: 'dine_in', avatarKey: 'cat' });
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('STORE_NOT_OPEN');
@@ -604,7 +696,11 @@ describe('group ordering', () => {
 
     const joinResponse = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
-      .send({ joinCode: owner.cart.joinCode, displayName: 'Ben' });
+      .send({
+        joinCode: owner.cart.joinCode,
+        avatarKey: 'dog',
+        displayName: 'Ben',
+      });
 
     expect(joinResponse.status).toBe(200);
     const joiner = joinResponse.body.data as {
@@ -625,10 +721,56 @@ describe('group ordering', () => {
   it('rejects an unknown join code', async () => {
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
-      .send({ joinCode: 'NOPE123456' });
+      .send({ joinCode: 'NOPE123456', avatarKey: 'dog' });
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('INVALID_JOIN_CODE');
+  });
+
+  it('rejects joining an active cart after its ordering deadline', async () => {
+    const owner = await createDineInCart();
+    mocks.carts.get(owner.cart.id)!.orderingClosesAt = new Date(Date.now() - 1);
+
+    const response = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({ joinCode: owner.cart.joinCode, avatarKey: 'dog' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('INVALID_JOIN_CODE');
+  });
+
+  it('allows dine-in pay-first joining only before checkout', async () => {
+    seedStore({
+      operation: {
+        businessHours: alwaysOpenHours(),
+        serviceFeeRate: 0,
+        orderModes: [
+          { type: 'dine_in', isEnabled: true, checkoutMode: 'pay_first' },
+        ],
+      },
+    });
+    const product = seedProduct();
+    const owner = await createDineInCart();
+
+    const beforeCheckout = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({ joinCode: owner.cart.joinCode, avatarKey: 'dog' });
+    expect(beforeCheckout.status).toBe(200);
+
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+    await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    const afterCheckout = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({ joinCode: owner.cart.joinCode, avatarKey: 'owl' });
+    expect(afterCheckout.status).toBe(400);
+    expect(afterCheckout.body.code).toBe('INVALID_JOIN_CODE');
   });
 
   it('removes a leaving participant with their items and abandons an empty cart', async () => {
@@ -654,8 +796,8 @@ describe('group ordering', () => {
       .get('/api/v1/public/guest/cart')
       .set(auth(owner.guestToken));
 
-    expect(afterLeave.status).toBe(401);
-    expect(afterLeave.body.code).toBe('INVALID_GUEST_TOKEN');
+    expect(afterLeave.status).toBe(409);
+    expect(afterLeave.body.code).toBe('CART_NOT_ACTIVE');
   });
 });
 
@@ -758,12 +900,43 @@ describe('submit and order', () => {
 
     const joinResponse = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
-      .send({ joinCode: owner.cart.joinCode, displayName: 'Ben' });
+      .send({
+        joinCode: owner.cart.joinCode,
+        avatarKey: 'dog',
+        displayName: 'Ben',
+      });
 
     expect(joinResponse.status).toBe(200);
     const session = joinResponse.body.data.session;
     expect(session.order.id).toBe(submitResponse.body.data.order.id);
     expect(session.cart).toBeUndefined();
     expect(session.order.participants).toHaveLength(2);
+    expect(session.joinCode).toBe(owner.cart.joinCode);
+  });
+
+  it('copies the cart fallback deadline and locks post-checkout group ordering after it', async () => {
+    const { owner, product, submitResponse } = await submitOrder();
+    const order = submitResponse.body.data.order;
+
+    expect(order.orderingClosesAt).toBe(owner.cart.expiresAt);
+    mocks.orders.get(order.id)!.orderingClosesAt = new Date(Date.now() - 1);
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+    const join = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({ joinCode: owner.cart.joinCode, avatarKey: 'owl' });
+    const addOn = await request(app)
+      .post('/api/v1/public/guest/order/batches')
+      .set(auth(owner.guestToken))
+      .send({ items: [{ productId: product.id, quantity: 1 }] });
+
+    expect(session.status).toBe(200);
+    expect(session.body.data.session.joinCode).toBeUndefined();
+    expect(join.status).toBe(400);
+    expect(join.body.code).toBe('INVALID_JOIN_CODE');
+    expect(addOn.status).toBe(409);
+    expect(addOn.body.code).toBe('ORDER_LOCKED');
   });
 });

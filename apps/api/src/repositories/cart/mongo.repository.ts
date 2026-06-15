@@ -26,6 +26,8 @@ const cartEntityKeys = [
   'serviceFeeAmount',
   'totalAmount',
   'orderId',
+  'expiresAt',
+  'orderingClosesAt',
   'createdAt',
   'updatedAt',
 ] as const satisfies readonly (keyof CartEntity)[];
@@ -57,6 +59,10 @@ export const cartMongoRepository = {
         : {}),
       participants: input.participants,
       serviceFeeRate: input.serviceFeeRate,
+      expiresAt: input.expiresAt,
+      ...(input.orderingClosesAt !== undefined
+        ? { orderingClosesAt: input.orderingClosesAt }
+        : {}),
     });
 
     await doc.save();

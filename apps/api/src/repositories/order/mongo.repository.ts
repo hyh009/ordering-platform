@@ -30,6 +30,7 @@ const orderEntityKeys = [
   'serviceFeeRate',
   'serviceFeeAmount',
   'totalAmount',
+  'orderingClosesAt',
   'paidAt',
   'servedAt',
   'completedAt',
@@ -76,6 +77,7 @@ export const orderMongoRepository = {
       serviceFeeRate: input.serviceFeeRate,
       serviceFeeAmount: input.serviceFeeAmount,
       totalAmount: input.totalAmount,
+      orderingClosesAt: input.orderingClosesAt,
     });
 
     await doc.save();

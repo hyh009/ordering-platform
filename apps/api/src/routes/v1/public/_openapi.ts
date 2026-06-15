@@ -181,11 +181,15 @@
  *       type: object
  *       required:
  *         - id
+ *         - avatarKey
  *         - joinedAt
  *       properties:
  *         id:
  *           type: string
  *           example: participant-123
+ *         avatarKey:
+ *           type: string
+ *           enum: [bear, cat, dog, eagle, elephant, flamingo, gorilla, lion, monkey, octopus, owl, ox, sheep, unicorn, wolf, zebra]
  *         displayName:
  *           type: string
  *           example: Amy
@@ -265,6 +269,7 @@
  *         - serviceFeeRate
  *         - serviceFeeAmount
  *         - totalAmount
+ *         - expiresAt
  *         - createdAt
  *         - updatedAt
  *       properties:
@@ -315,6 +320,12 @@
  *           type: number
  *         orderId:
  *           type: string
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *         orderingClosesAt:
+ *           type: string
+ *           format: date-time
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -381,6 +392,7 @@
  *         - serviceFeeRate
  *         - serviceFeeAmount
  *         - totalAmount
+ *         - orderingClosesAt
  *         - createdAt
  *         - updatedAt
  *       properties:
@@ -446,6 +458,9 @@
  *           type: number
  *         totalAmount:
  *           type: number
+ *         orderingClosesAt:
+ *           type: string
+ *           format: date-time
  *         paidAt:
  *           type: string
  *           format: date-time
@@ -472,6 +487,9 @@
  *         participantId:
  *           type: string
  *           example: participant-123
+ *         joinCode:
+ *           type: string
+ *           description: Present only while the Join Code is currently usable.
  *         cart:
  *           $ref: '#/components/schemas/Cart'
  *         order:

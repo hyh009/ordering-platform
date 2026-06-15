@@ -164,6 +164,10 @@ const orderSchema = new Schema<OrderEntity>(
       min: 0,
       default: 0,
     },
+    orderingClosesAt: {
+      type: Date,
+      required: true,
+    },
     paidAt: {
       type: Date,
     },

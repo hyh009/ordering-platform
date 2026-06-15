@@ -7,11 +7,32 @@ import { storeOrderTypes } from './store.js';
 import type { StoreCheckoutMode, StoreOrderType } from './store.js';
 
 export const cartStatuses = ['active', 'checked_out', 'abandoned'] as const;
+export const anonymousAvatarKeys = [
+  'bear',
+  'cat',
+  'dog',
+  'eagle',
+  'elephant',
+  'flamingo',
+  'gorilla',
+  'lion',
+  'monkey',
+  'octopus',
+  'owl',
+  'ox',
+  'sheep',
+  'unicorn',
+  'wolf',
+  'zebra',
+] as const;
 
 export type CartStatus = (typeof cartStatuses)[number];
+export type AnonymousAvatarKey = (typeof anonymousAvatarKeys)[number];
+export const anonymousAvatarKeySchema = z.enum(anonymousAvatarKeys);
 
 export type OrderingParticipantDto = {
   id: string;
+  avatarKey: AnonymousAvatarKey;
   displayName?: string;
   joinedAt: string;
 };
@@ -54,6 +75,8 @@ export type CartDto = {
   serviceFeeAmount: number;
   totalAmount: number;
   orderId?: string;
+  expiresAt: string;
+  orderingClosesAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -67,11 +90,13 @@ const cartItemNotesSchema = z.string().trim().min(1).max(500);
 export const createCartSchema = z.object({
   orderType: z.enum(storeOrderTypes),
   tableNumber: cartTableNumberSchema.optional(),
+  avatarKey: anonymousAvatarKeySchema,
   displayName: guestDisplayNameSchema.optional(),
 });
 
 export const joinCartSchema = z.object({
   joinCode: z.string().trim().min(1).max(64),
+  avatarKey: anonymousAvatarKeySchema,
   displayName: guestDisplayNameSchema.optional(),
 });
 
@@ -133,6 +158,7 @@ export type CartItemParams = z.infer<typeof cartItemParamsSchema>;
  */
 export type GuestSessionDto = {
   participantId: string;
+  joinCode?: string;
   cart?: CartDto;
   order?: OrderDto;
 };

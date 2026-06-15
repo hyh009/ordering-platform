@@ -26,8 +26,8 @@ const router = Router({ mergeParams: true });
  *     summary: Start a new guest cart
  *     description: >
  *       Creates an active cart for the chosen order type and issues the guest
- *       token of the first participant. Dine-in pay-later carts also receive a
- *       join code for group ordering.
+ *       token of the first participant. Every dine-in cart receives a join
+ *       code for group ordering before checkout.
  *     parameters:
  *       - in: path
  *         name: storeId
@@ -42,6 +42,7 @@ const router = Router({ mergeParams: true });
  *             type: object
  *             required:
  *               - orderType
+ *               - avatarKey
  *             properties:
  *               orderType:
  *                 type: string
@@ -51,6 +52,9 @@ const router = Router({ mergeParams: true });
  *               tableNumber:
  *                 type: string
  *                 example: T1
+ *               avatarKey:
+ *                 type: string
+ *                 enum: [bear, cat, dog, eagle, elephant, flamingo, gorilla, lion, monkey, octopus, owl, ox, sheep, unicorn, wolf, zebra]
  *               displayName:
  *                 type: string
  *                 example: Amy
@@ -155,10 +159,14 @@ router.post(
  *             type: object
  *             required:
  *               - joinCode
+ *               - avatarKey
  *             properties:
  *               joinCode:
  *                 type: string
  *                 example: WXK7M2PQ9R
+ *               avatarKey:
+ *                 type: string
+ *                 enum: [bear, cat, dog, eagle, elephant, flamingo, gorilla, lion, monkey, octopus, owl, ox, sheep, unicorn, wolf, zebra]
  *               displayName:
  *                 type: string
  *                 example: Ben

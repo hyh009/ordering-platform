@@ -8,6 +8,8 @@ import {
 import { CounterMongoModel } from '../src/models/counter/mongo.js';
 import { OrderMongoModel } from '../src/models/order/mongo.js';
 
+const orderingClosesAt = new Date('2026-05-17T00:00:00.000Z');
+
 describe('ordering runtime Mongo models', () => {
   it('builds daily per-store counter ids', () => {
     expect(buildDailyOrderCounterId('store-1', '2026-05-16')).toBe(
@@ -36,9 +38,11 @@ describe('ordering runtime Mongo models', () => {
       orderType: 'dine_in',
       checkoutMode: 'pay_later',
       tableNumber: 'A1',
+      expiresAt: orderingClosesAt,
       participants: [
         {
           id: 'participant-1',
+          avatarKey: 'cat',
           displayName: 'Hsinyi',
         },
       ],
@@ -94,9 +98,11 @@ describe('ordering runtime Mongo models', () => {
       displayNumber: 'A023',
       status: 'pending_confirmation',
       paymentStatus: 'unpaid',
+      orderingClosesAt,
       participants: [
         {
           id: 'participant-1',
+          avatarKey: 'cat',
           displayName: 'Hsinyi',
         },
       ],
@@ -160,6 +166,7 @@ describe('ordering runtime Mongo models', () => {
       displayNumber: 'A023',
       status: 'completed',
       paymentStatus: 'paid',
+      orderingClosesAt,
       paidAt,
       servedAt,
       completedAt,
@@ -184,11 +191,31 @@ describe('ordering runtime Mongo models', () => {
       displayNumber: 'A023',
       status: 'served',
       paymentStatus: 'unpaid',
+      orderingClosesAt,
       servedAt,
     });
 
     expect(order.validateSync()).toBeUndefined();
     expect(order.servedAt).toEqual(servedAt);
+  });
+
+  it('requires every order to have an ordering deadline', () => {
+    const order = new OrderMongoModel({
+      id: 'order-1',
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      orderType: 'dine_in',
+      checkoutMode: 'pay_later',
+      businessDate: '2026-05-16',
+      dailySequence: 23,
+      displayNumber: 'A023',
+      status: 'pending_confirmation',
+      paymentStatus: 'unpaid',
+    });
+
+    expect(order.validateSync()?.errors.orderingClosesAt?.message).toBe(
+      'Path `orderingClosesAt` is required.',
+    );
   });
 
   it('validates order batch status', () => {

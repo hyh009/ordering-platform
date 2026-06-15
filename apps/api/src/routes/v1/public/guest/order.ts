@@ -80,8 +80,9 @@ router.get('/', async (req, res) => {
  *       - Public / Guest Order
  *     summary: Add an add-on batch to an open pay-later order
  *     description: >
- *       Allowed while the dine-in pay-later order is unpaid and not completed
- *       or cancelled. The new batch needs staff confirmation again.
+ *       Allowed before the order deadline while the dine-in pay-later order is
+ *       unpaid and not completed or cancelled. The new batch needs staff
+ *       confirmation again.
  *     security:
  *       - guestToken: []
  *     requestBody:

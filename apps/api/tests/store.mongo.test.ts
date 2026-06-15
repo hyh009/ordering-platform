@@ -122,6 +122,26 @@ describe('StoreMongoModel', () => {
     );
   });
 
+  it('validates guest ordering duration', () => {
+    const tooShort = new StoreMongoModel({
+      ...base,
+      operation: { guestOrderingDurationMinutes: 14 },
+    });
+    const tooLong = new StoreMongoModel({
+      ...base,
+      operation: { guestOrderingDurationMinutes: 721 },
+    });
+
+    expect(
+      tooShort.validateSync()?.errors['operation.guestOrderingDurationMinutes']
+        ?.message,
+    ).toContain('less than minimum allowed value (15)');
+    expect(
+      tooLong.validateSync()?.errors['operation.guestOrderingDurationMinutes']
+        ?.message,
+    ).toContain('more than maximum allowed value (720)');
+  });
+
   it('requires at least one order mode', () => {
     const store = new StoreMongoModel({
       ...base,

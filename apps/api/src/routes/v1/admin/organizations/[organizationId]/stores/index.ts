@@ -84,6 +84,10 @@ const router = Router({ mergeParams: true });
  *                     minimum: 0
  *                     maximum: 1
  *                     example: 0.1
+ *                   guestOrderingDurationMinutes:
+ *                     type: integer
+ *                     minimum: 15
+ *                     maximum: 720
  *                   orderModes:
  *                     type: array
  *                     items:

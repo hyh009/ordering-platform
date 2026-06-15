@@ -44,6 +44,7 @@ export type UpdateStoreInput = {
     businessHours?: BusinessHour[];
     serviceFeeRate?: number;
     orderModes?: StoreOrderMode[];
+    guestOrderingDurationMinutes?: number | null;
   };
   status?: StoreStatus;
 };

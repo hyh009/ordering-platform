@@ -1,3 +1,4 @@
+import type { AnonymousAvatarKey } from '@repo/shared';
 import type { LocalizedString } from '@src/models/common/model';
 import type {
   StoreCheckoutMode,
@@ -10,6 +11,7 @@ export type CartStatus = (typeof cartStatuses)[number];
 
 export type OrderingParticipantSnapshot = {
   id: string;
+  avatarKey: AnonymousAvatarKey;
   /**
    * MVP customer-facing label for dine-in/takeaway ordering.
    * Add a dedicated contact/customer snapshot later if phone, email, or member
@@ -58,6 +60,8 @@ export type CartEntity = {
   serviceFeeAmount: number;
   totalAmount: number;
   orderId?: string;
+  expiresAt: Date;
+  orderingClosesAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -53,6 +53,7 @@ import type { GuestTokenClaims } from '@src/services/guestToken.service';
 const OPTIMISTIC_WRITE_ATTEMPTS = 3;
 const JOIN_CODE_CREATE_ATTEMPTS = 3;
 const JOIN_CODE_LENGTH = 10;
+const CART_LIFETIME_MS = 12 * 60 * 60 * 1000;
 // Excludes ambiguous characters (0/O, 1/I/L) for QR fallback readability.
 const JOIN_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -67,12 +68,15 @@ function generateJoinCode(): string {
 }
 
 function buildParticipant(
+  avatarKey: CreateCartRequest['avatarKey'],
   displayName: string | undefined,
+  joinedAt: Date,
 ): OrderingParticipantSnapshot {
   return {
     id: `participant-${randomUUID()}`,
+    avatarKey,
     ...(displayName !== undefined ? { displayName } : {}),
-    joinedAt: new Date(),
+    joinedAt,
   };
 }
 
@@ -90,8 +94,8 @@ function invalidJoinCodeError(): BadRequestError {
   );
 }
 
-function requireStoreOpen(store: StoreEntity): void {
-  if (!isStoreOpenAt(store.operation.businessHours, new Date())) {
+function requireStoreOpen(store: StoreEntity, requestTime: Date): void {
+  if (!isStoreOpenAt(store.operation.businessHours, requestTime)) {
     throw new ConflictError(
       'Store is not open for ordering',
       ERROR_CODES.STORE_NOT_OPEN,
@@ -116,13 +120,55 @@ function computeTotals(items: CartItemSnapshot[], serviceFeeRate: number) {
   };
 }
 
-function canGuestExtendOrder(order: OrderEntity): boolean {
+function isBeforeDeadline(deadline: Date, requestTime: Date): boolean {
+  return requestTime.getTime() < deadline.getTime();
+}
+
+function isActiveCartUsable(cart: CartEntity, requestTime: Date): boolean {
   return (
+    cart.status === 'active' &&
+    isBeforeDeadline(cart.expiresAt, requestTime) &&
+    (cart.orderingClosesAt === undefined ||
+      isBeforeDeadline(cart.orderingClosesAt, requestTime))
+  );
+}
+
+function canGuestExtendOrder(order: OrderEntity, requestTime: Date): boolean {
+  return (
+    order.orderType === 'dine_in' &&
     order.checkoutMode === 'pay_later' &&
     order.paymentStatus === 'unpaid' &&
     order.status !== 'completed' &&
-    order.status !== 'cancelled'
+    order.status !== 'cancelled' &&
+    isBeforeDeadline(order.orderingClosesAt, requestTime)
   );
+}
+
+export function isGuestJoinCodeUsable(
+  cart: CartEntity,
+  order: OrderEntity | undefined,
+  requestTime: Date,
+): boolean {
+  if (cart.joinCode === undefined || cart.orderType !== 'dine_in') {
+    return false;
+  }
+  if (cart.status === 'active') {
+    return isActiveCartUsable(cart, requestTime);
+  }
+  return (
+    cart.status === 'checked_out' &&
+    order !== undefined &&
+    canGuestExtendOrder(order, requestTime)
+  );
+}
+
+function assertActiveCartUsable(cart: CartEntity, requestTime: Date): void {
+  if (!isActiveCartUsable(cart, requestTime)) {
+    throw new ConflictError(
+      'Cart is no longer active',
+      ERROR_CODES.CART_NOT_ACTIVE,
+    );
+  }
 }
 
 async function loadCartForClaims(
@@ -421,8 +467,9 @@ export async function createCart(
   storeId: string,
   request: CreateCartRequest,
 ): Promise<CreateCartResult> {
+  const requestTime = new Date();
   const store = await getActivePublicStore(storeId);
-  requireStoreOpen(store);
+  requireStoreOpen(store, requestTime);
 
   const orderMode = store.operation.orderModes.find(
     (mode) => mode.type === request.orderType && mode.isEnabled,
@@ -434,9 +481,20 @@ export async function createCart(
     );
   }
 
-  const participant = buildParticipant(request.displayName);
-  const needsJoinCode =
-    request.orderType === 'dine_in' && orderMode.checkoutMode === 'pay_later';
+  const participant = buildParticipant(
+    request.avatarKey,
+    request.displayName,
+    requestTime,
+  );
+  const needsJoinCode = request.orderType === 'dine_in';
+  const expiresAt = new Date(requestTime.getTime() + CART_LIFETIME_MS);
+  const orderingClosesAt =
+    store.operation.guestOrderingDurationMinutes === undefined
+      ? undefined
+      : new Date(
+          requestTime.getTime() +
+            store.operation.guestOrderingDurationMinutes * 60 * 1000,
+        );
 
   let cart: CartEntity | undefined;
   for (let attempt = 0; attempt < JOIN_CODE_CREATE_ATTEMPTS; attempt += 1) {
@@ -452,6 +510,8 @@ export async function createCart(
           : {}),
         participants: [participant],
         serviceFeeRate: store.operation.serviceFeeRate,
+        expiresAt,
+        ...(orderingClosesAt !== undefined ? { orderingClosesAt } : {}),
       });
       break;
     } catch (error) {
@@ -491,12 +551,17 @@ export async function joinCart(
   storeId: string,
   request: JoinCartRequest,
 ): Promise<JoinCartResult> {
+  const requestTime = new Date();
   const cart = await cartRepository.findByJoinCode(request.joinCode);
   if (!cart || cart.storeId !== storeId || cart.status === 'abandoned') {
     throw invalidJoinCodeError();
   }
 
-  const participant = buildParticipant(request.displayName);
+  const participant = buildParticipant(
+    request.avatarKey,
+    request.displayName,
+    requestTime,
+  );
   const guestToken = signGuestToken({
     storeId,
     cartId: cart.id,
@@ -505,14 +570,18 @@ export async function joinCart(
 
   if (cart.status === 'active') {
     const updated = await updateCartWithRetry(cart.id, (fresh) => {
-      if (fresh.status !== 'active') {
+      if (!isGuestJoinCodeUsable(fresh, undefined, requestTime)) {
         throw invalidJoinCodeError();
       }
       return { participants: [...fresh.participants, participant] };
     });
 
     return {
-      session: { participantId: participant.id, cart: toCartDto(updated) },
+      session: {
+        participantId: participant.id,
+        joinCode: updated.joinCode!,
+        cart: toCartDto(updated),
+      },
       guestToken,
     };
   }
@@ -523,7 +592,7 @@ export async function joinCart(
   }
 
   const order = await updateOrderWithRetry(cart.orderId, (fresh) => {
-    if (!canGuestExtendOrder(fresh)) {
+    if (!isGuestJoinCodeUsable(cart, fresh, requestTime)) {
       throw invalidJoinCodeError();
     }
     return { participants: [...fresh.participants, participant] };
@@ -532,7 +601,11 @@ export async function joinCart(
   emitOrderUpdated(order);
 
   return {
-    session: { participantId: participant.id, order: toOrderDto(order) },
+    session: {
+      participantId: participant.id,
+      joinCode: cart.joinCode!,
+      order: toOrderDto(order),
+    },
     guestToken,
   };
 }
@@ -540,6 +613,7 @@ export async function joinCart(
 export async function getGuestSession(
   claims: GuestTokenClaims,
 ): Promise<GuestSessionDto> {
+  const requestTime = new Date();
   const cart = await loadCartForClaims(claims);
 
   if (cart.status === 'checked_out' && cart.orderId !== undefined) {
@@ -552,19 +626,34 @@ export async function getGuestSession(
       throw invalidGuestTokenError();
     }
 
-    return { participantId: claims.participantId, order: toOrderDto(order) };
+    return {
+      participantId: claims.participantId,
+      ...(isGuestJoinCodeUsable(cart, order, requestTime)
+        ? { joinCode: cart.joinCode }
+        : {}),
+      order: toOrderDto(order),
+    };
   }
 
+  assertActiveCartUsable(cart, requestTime);
   if (!findParticipant(cart.participants, claims.participantId)) {
     throw invalidGuestTokenError();
   }
 
-  return { participantId: claims.participantId, cart: toCartDto(cart) };
+  return {
+    participantId: claims.participantId,
+    ...(isGuestJoinCodeUsable(cart, undefined, requestTime)
+      ? { joinCode: cart.joinCode }
+      : {}),
+    cart: toCartDto(cart),
+  };
 }
 
 export async function getGuestCart(claims: GuestTokenClaims): Promise<CartDto> {
+  const requestTime = new Date();
   const cart = await loadCartForClaims(claims);
 
+  assertActiveCartUsable(cart, requestTime);
   if (!findParticipant(cart.participants, claims.participantId)) {
     throw invalidGuestTokenError();
   }
@@ -575,13 +664,9 @@ export async function getGuestCart(claims: GuestTokenClaims): Promise<CartDto> {
 function assertActiveCartMembership(
   cart: CartEntity,
   participantId: string,
+  requestTime: Date,
 ): OrderingParticipantSnapshot {
-  if (cart.status !== 'active') {
-    throw new ConflictError(
-      'Cart is no longer active',
-      ERROR_CODES.CART_NOT_ACTIVE,
-    );
-  }
+  assertActiveCartUsable(cart, requestTime);
 
   const participant = findParticipant(cart.participants, participantId);
   if (!participant) {
@@ -595,11 +680,16 @@ export async function addCartItem(
   claims: GuestTokenClaims,
   request: CartItemInput,
 ): Promise<CartDto> {
+  const requestTime = new Date();
   const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store);
+  requireStoreOpen(store, requestTime);
 
   const updated = await updateCartWithRetry(claims.cartId, async (cart) => {
-    const participant = assertActiveCartMembership(cart, claims.participantId);
+    const participant = assertActiveCartMembership(
+      cart,
+      claims.participantId,
+      requestTime,
+    );
     const item = await buildCartItemSnapshot(
       { storeId: cart.storeId },
       request,
@@ -618,8 +708,13 @@ export async function updateCartItem(
   itemId: string,
   request: UpdateCartItemRequest,
 ): Promise<CartDto> {
+  const requestTime = new Date();
   const updated = await updateCartWithRetry(claims.cartId, async (cart) => {
-    const participant = assertActiveCartMembership(cart, claims.participantId);
+    const participant = assertActiveCartMembership(
+      cart,
+      claims.participantId,
+      requestTime,
+    );
 
     const existing = cart.items.find((item) => item.id === itemId);
     if (!existing) {
@@ -679,8 +774,9 @@ export async function removeCartItem(
   claims: GuestTokenClaims,
   itemId: string,
 ): Promise<CartDto> {
+  const requestTime = new Date();
   const updated = await updateCartWithRetry(claims.cartId, (cart) => {
-    assertActiveCartMembership(cart, claims.participantId);
+    assertActiveCartMembership(cart, claims.participantId, requestTime);
 
     const existing = cart.items.find((item) => item.id === itemId);
     if (!existing) {
@@ -705,8 +801,9 @@ export async function removeCartItem(
 }
 
 export async function leaveCart(claims: GuestTokenClaims): Promise<string> {
+  const requestTime = new Date();
   const updated = await updateCartWithRetry(claims.cartId, (cart) => {
-    assertActiveCartMembership(cart, claims.participantId);
+    assertActiveCartMembership(cart, claims.participantId, requestTime);
 
     const participants = cart.participants.filter(
       (participant) => participant.id !== claims.participantId,
@@ -748,8 +845,9 @@ export async function submitCart(
   claims: GuestTokenClaims,
   request: SubmitCartRequest,
 ): Promise<OrderDto> {
+  const requestTime = new Date();
   const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store);
+  requireStoreOpen(store, requestTime);
 
   for (let attempt = 0; attempt < OPTIMISTIC_WRITE_ATTEMPTS; attempt += 1) {
     const cart = await cartRepository.findById(claims.cartId);
@@ -757,7 +855,7 @@ export async function submitCart(
       throw new NotFoundError('Cart not found', ERROR_CODES.CART_NOT_FOUND);
     }
 
-    assertActiveCartMembership(cart, claims.participantId);
+    assertActiveCartMembership(cart, claims.participantId, requestTime);
 
     if (cart.items.length === 0) {
       throw new BadRequestError('Cart is empty', ERROR_CODES.BAD_REQUEST);
@@ -787,7 +885,7 @@ export async function submitCart(
       continue;
     }
 
-    const businessDate = getBusinessDate(new Date());
+    const businessDate = getBusinessDate(requestTime);
     const dailySequence = await counterRepository.nextDailyOrderSequence(
       cart.storeId,
       businessDate,
@@ -821,6 +919,7 @@ export async function submitCart(
       serviceFeeRate: flipped.serviceFeeRate,
       serviceFeeAmount: flipped.serviceFeeAmount,
       totalAmount: flipped.totalAmount,
+      orderingClosesAt: flipped.orderingClosesAt ?? flipped.expiresAt,
     });
 
     await cartRepository.update(flipped.id, { orderId: order.id });
@@ -888,14 +987,15 @@ export async function addOrderBatch(
   claims: GuestTokenClaims,
   items: CartItemInput[],
 ): Promise<OrderDto> {
+  const requestTime = new Date();
   const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store);
+  requireStoreOpen(store, requestTime);
 
   // Validates membership and that the order exists before mutating.
   const existing = await loadOrderForClaims(claims);
 
   const updated = await updateOrderWithRetry(existing.id, async (order) => {
-    if (!canGuestExtendOrder(order)) {
+    if (!canGuestExtendOrder(order, requestTime)) {
       throw new ConflictError(
         'Order can no longer be extended by guests',
         ERROR_CODES.ORDER_LOCKED,

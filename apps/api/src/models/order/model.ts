@@ -71,6 +71,7 @@ export type OrderEntity = {
   serviceFeeRate: number;
   serviceFeeAmount: number;
   totalAmount: number;
+  orderingClosesAt: Date;
   paidAt?: Date;
   servedAt?: Date;
   completedAt?: Date;
