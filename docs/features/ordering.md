@@ -3,8 +3,9 @@
 ## Purpose
 
 Ordering lets dine-in and takeaway guests build a cart, submit order batches,
-and let staff confirm payment and kitchen progress. Dine-in pay-later guests can
-share a join code for group ordering and add-ons before payment.
+and let staff confirm payment and kitchen progress. Dine-in guests can share a
+Join Code before checkout; dine-in pay-later guests can continue group ordering
+and add-ons after checkout until the order closes.
 
 MVP does not integrate online payment. Staff manually confirms whether payment
 has been collected.
@@ -42,6 +43,25 @@ are checked out:
 `pending_payment` is reserved for future online payment. Without payment
 integration, submitted orders that staff can act on use `pending_confirmation`.
 
+## Group Ordering
+
+- Every dine-in Cart has a Join Code. Takeaway does not support group ordering.
+- Before checkout, the Join Code is usable for both dine-in `pay_first` and
+  `pay_later`.
+- After checkout, a dine-in `pay_first` Join Code is unusable.
+- After checkout, a dine-in `pay_later` Join Code remains usable while the Order
+  is unpaid, not `completed` or `cancelled`, and its optional
+  `orderingClosesAt` has not passed.
+- Joining and pay-later add-ons follow the same post-checkout availability
+  rules.
+
+Participants use a generated `participantId` as their authoritative identity.
+Each participant snapshot also keeps an `avatarKey`, an optional custom
+`displayName`, and the UI derives an unnamed participant's short discriminator
+from the final five characters of `participantId`, such as
+`Anonymous Cat A3F2B`. Avatar and display data are presentation snapshots and
+are not uniqueness or authorization constraints.
+
 ## Cart Lifecycle
 
 Cart statuses:
@@ -52,16 +72,47 @@ Cart statuses:
 
 Cart behavior:
 
-- active carts may have a `joinCode` for group ordering.
+- active dine-in carts have a `joinCode` for group ordering.
 - guests join by code and are stored as embedded participant snapshots.
-- cart items keep `addedByParticipantId` and `participantDisplayName` so the UI
-  can show who ordered each item.
+- cart items preserve enough participant display data to render the custom or
+  anonymous identity that added them.
 - checked-out carts keep `orderId`.
-- for dine-in `pay_later`, the checked-out cart's `joinCode` or order session
-  can still route guests to the order for add-ons until payment is confirmed.
-- active carts should expire into `abandoned` after an inactivity window.
+- every active Cart has a fixed `expiresAt = createdAt + 12 hours`.
+- when `Store.operation.guestOrderingDurationMinutes` is configured, Cart
+  creation snapshots `orderingClosesAt` by adding that duration to `createdAt`;
+  otherwise `orderingClosesAt` is absent.
+- joining participants and Cart activity do not extend either timestamp.
+- for dine-in `pay_later`, the Join Code or order session can still route guests
+  to the Order for joining and add-ons while its post-checkout group-ordering
+  rules remain satisfied.
+- an active Cart is operationally unusable once `expiresAt` or its optional
+  `orderingClosesAt` passes.
+- backend deadline checks are authoritative for every Cart API, including
+  session restore, reads, joins, mutations, leave, and submission; frontend
+  deadline checks are presentation only.
+- each service operation captures one server-side request time for deadline
+  comparison. A request received before the deadline may finish afterward,
+  including through optimistic concurrency retries; client-provided timestamps
+  are never trusted for deadline enforcement.
 - abandoned carts may be physically cleaned up later; do not hard-delete active
   carts as the primary lifecycle behavior.
+- reads do not lazily update an expired active Cart to `abandoned`; a future
+  scheduled process may persist that status when operationally needed.
+
+`Store.operation.guestOrderingDurationMinutes` is optional and, when present,
+must be from 15 minutes through 12 hours. Store setting changes affect only new
+Carts. Checkout sets `Order.orderingClosesAt` to the Cart's configured
+`orderingClosesAt`, or falls back to the Cart's fixed `expiresAt` when the store
+has no configured duration. This gives every pay-later Order a hard group
+ordering deadline without restarting the clock at checkout.
+
+Join enforcement, guest-session `joinCode` exposure, Invite availability, and
+future merchant Join Code display must use one shared Join Code usability
+predicate. Do not duplicate pay-first, payment, completion, cancellation, or
+deadline checks across those flows.
+
+Multiple active Carts may coexist for the same table. Orders are identified by
+`displayNumber`; `tableNumber` is not unique.
 
 ## Dine-In Pay Later
 
@@ -120,9 +171,9 @@ Guest adds more before payment:
 
 - allowed only when `orderType = dine_in`, `checkoutMode = pay_later`,
   `paymentStatus = unpaid`, and `Order.status` is not `completed` or
-  `cancelled`
+  `cancelled`, and optional `orderingClosesAt` has not passed
 - this includes already `ready` or `served` dine-in orders that have not been
-  paid or completed yet
+  paid, completed, cancelled, or closed by the optional ordering deadline
 - payment confirmation, order completion, and order cancellation all stop guest
   add-ons
 - guests continue from the original `joinCode` or order session after the cart
@@ -160,12 +211,14 @@ can use a table number or rely only on the order display number for pickup.
 Create and submit cart:
 
 - create an active cart with `checkoutMode = pay_first`
+- dine-in pay-first carts have a usable Join Code before submission
 - on guest submission, set `Cart.status = checked_out`
 - create `Order`
 - `Order.status = pending_confirmation`
 - `Order.paymentStatus = unpaid`
 - create the first batch with `status = pending_confirmation`
 - reserve `businessDate`, `dailySequence`, and `displayNumber`
+- submission makes a dine-in pay-first Join Code unusable
 
 Staff confirms payment:
 

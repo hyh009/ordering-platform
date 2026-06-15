@@ -49,12 +49,14 @@ sequenceDiagram
 
   Guest->>System: Start pay-first order
   Note over System: Cart.status = active<br/>checkoutMode = pay_first
+  Note over System: Dine-in has a usable Join Code before checkout<br/>takeaway has no group ordering
 
   Guest->>System: Add items to cart
   Note over System: Cart.items updated<br/>cart totals recalculated
 
   Guest->>System: Submit cart
   Note over System: Cart.status = checked_out<br/>Order created<br/>paymentStatus = unpaid<br/>Order.status = pending_confirmation<br/>one Batch.status = pending_confirmation
+  Note over System: Dine-in Join Code becomes unusable
 
   Staff->>System: Confirm order content and payment
   Note over System: paymentStatus = paid<br/>paidAt = now<br/>Batch.status = preparing<br/>Order.status = preparing
@@ -92,17 +94,17 @@ sequenceDiagram
   participant Kitchen
 
   Guest->>System: Start dine-in pay-later order
-  Note over System: Cart.status = active<br/>checkoutMode = pay_later<br/>joinCode generated<br/>tableNumber optional
+  Note over System: Cart.status = active<br/>checkoutMode = pay_later<br/>Join Code generated<br/>fixed expiresAt<br/>optional orderingClosesAt snapshot
 
   Guest->>System: Add items to cart
   Note over System: Cart.participants/items updated<br/>cart totals recalculated
 
   Guest->>System: Submit first batch
-  Note over System: Cart.status = checked_out<br/>Order created<br/>paymentStatus = unpaid<br/>Order.status = pending_confirmation<br/>first Batch.status = pending_confirmation<br/>joinCode routes to order
+  Note over System: Cart.status = checked_out<br/>Order created<br/>paymentStatus = unpaid<br/>Order.status = pending_confirmation<br/>first Batch.status = pending_confirmation<br/>Order deadline = orderingClosesAt or expiresAt fallback<br/>Join Code routes to order
 
-  opt Guest adds more while unpaid
-    Guest->>System: Submit add-on items
-    Note over System: May happen before or after ready/served<br/>if not paid/completed/cancelled<br/>append pending batch<br/>append Order.items<br/>recalculate totals<br/>Order.status may return to pending_confirmation
+  opt Group ordering remains open
+    Guest->>System: Join by code or submit add-on items
+    Note over System: Allowed while unpaid and not completed/cancelled<br/>and before Order.orderingClosesAt<br/>add-ons append a pending batch and Order.items
   end
 
   opt Staff takes payment before service

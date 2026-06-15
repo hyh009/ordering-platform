@@ -2,7 +2,8 @@
 
 The guest-facing ordering experience: a guest scans a QR code to enter a store,
 browses the menu, builds a cart, submits an order, tracks order status live, and
-(for dine-in pay-later) co-orders with others via a join code and adds on.
+co-orders on dine-in carts via a Join Code. Dine-in pay-later groups may
+continue joining and adding on after checkout while the order remains open.
 
 Backend order behavior is in [`ordering.md`](./ordering.md); flow diagrams are in
 [`ordering-flow.md`](./ordering-flow.md). Different-store browser tab and guest
@@ -51,8 +52,9 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
    through when present, otherwise omitted; the guest side never prompts for a
    table number.
 2. **Join** — `/s/:storeId/join` or `/s/:storeId/join/:joinCode`
-   Enter or validate the join code → enter a nickname (skippable) → join the
-   same cart → go to the menu.
+   Manual entry navigates to the shared Join confirmation route. Confirmation
+   shows the Join Code, avatar picker, and optional custom display name before
+   joining the Cart or open pay-later Order.
 3. **Menu** — `/s/:storeId/menu`
    Horizontal category nav, product cards (image/name/price/sold-out badge), and
    a sticky cart bar at the bottom; in add-on mode the top shows "adding to order
@@ -62,9 +64,8 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
    markers.
 5. **Cart** — `/s/:storeId/cart`
    Items grouped by participant (you may edit only your own before submit),
-   subtotal/service fee/total, order-level notes, "invite others to co-order"
-   (join-code QR + link), and submit (any participant may submit; confirm before
-   submitting).
+   subtotal/service fee/total, order-level notes, invite entry, and submit (any
+   participant may submit; confirm before submitting).
 6. **Order tracking** — `/s/:storeId/orders/:orderId`
    Large display number, order- and batch-level status (live via SSE), line
    items, total, payment status; pay-later while unpaid shows "add on" → menu
@@ -73,6 +74,11 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
 7. **Recent orders** — `/s/:storeId/orders`
    Read-only entry to orders this browser participated in during the last 24
    hours.
+8. **Invite** — `/s/:storeId/invite`
+   Shows store name, Join Code, invite link, QR Code for that same link, copy
+   link, and return-to-menu action. All participants may share it. If inviting
+   or adding items is no longer allowed, show an unavailable modal and return to
+   Landing.
 
 ### Landing entry flow
 
@@ -98,31 +104,39 @@ Store closed (menu browsable; warning banner at the top, add-to-cart/submit
 buttons disabled), invalidated join code, expired cart (abandoned), missing
 store/order, and items sold out at submit time (per-item errors).
 
+The backend checks Cart expiry and the optional ordering deadline for every Cart
+API, including session restore and reads. Frontend deadline checks only control
+presentation. Each backend operation compares against one server-side request
+time, so a request received before the deadline may complete after it during an
+optimistic concurrency retry.
+
 ## Flows
 
 ### A. Dine-in pay-later group co-ordering
 
-1. Scan QR (table QR with table number, or a generic store QR) → Landing →
-   choose dine-in → menu.
-2. When the first person adds an item, the server creates the cart (issues a
-   guest token + join code).
-3. Friends scan the co-order QR on the cart page → Join page, enter a nickname →
-   order from the same cart.
-4. Any participant submits from the cart → an Order is created (first batch
+1. Scan QR → Landing → choose dine-in → choose avatar and optional custom
+   display name → create Cart and open Menu.
+2. Friends use manual Join Code entry, scan the Invite QR, or open the copied
+   Invite link → Join confirmation → choose avatar and optional custom display
+   name → join the same Cart.
+3. Any participant submits from the cart → an Order is created (first batch
    `pending_confirmation`) → everyone can open the order tracking page.
-5. The tracking page shows batch status live via SSE; **while unpaid**, "add on"
-   → menu add-on mode → submit appends a new batch.
-6. Staff takes payment → the join code is invalidated, add-on disappears; staff
+4. The tracking page shows batch status live via SSE; while unpaid, unfinished,
+   and before optional `orderingClosesAt`, "add on" → menu add-on mode → submit
+   appends a new batch. The same window permits new participants to join.
+5. Staff takes payment → the join code is invalidated, add-on disappears; staff
    completes → end screen.
 
 ### B. Pay-first (takeaway, or dine-in pay-first)
 
-1. Scan QR → choose takeaway (or dine-in pay-first, table number optional) →
-   menu → cart → submit.
-2. Tracking page shows the display number + "please pay at the counter".
-3. Staff confirms payment → preparing → ready (prominent pickup prompt) →
+1. Scan QR → choose takeaway or dine-in pay-first → choose participant identity
+   → menu → cart → submit.
+2. Dine-in participants may share and use the Join Code before checkout; it
+   becomes unusable at checkout. Takeaway has no group ordering.
+3. Tracking page shows the display number + "please pay at the counter".
+4. Staff confirms payment → preparing → ready (prominent pickup prompt) →
    served/completed.
-4. Add-ons always "start another order" with a fresh cart; the original order is
+5. Add-ons always "start another order" with a fresh cart; the original order is
    not mutated.
 
 ### C. Resuming after interruption
@@ -161,9 +175,13 @@ the Phase 0 backend work.
   with a generous fixed `exp`. The token only authenticates "identity + scope";
   **authorization always checks live order state** (after payment, the add-item
   endpoint rejects based on order status; no token revocation needed).
+- **Participant identity**: `participantId` is authoritative. The guest chooses
+  an `avatarKey` and may enter a custom `displayName`; when omitted, the UI
+  localizes the animal label and appends the uppercase final five characters of
+  `participantId`, such as `Anonymous Cat A3F2B`.
 - **Joining a group always requires the join code** (shared within your own
   party); scanning a bare table QR never auto-joins an existing cart, so
-  strangers cannot pad your bill (a pay-later safety concern).
+  strangers cannot add items to a dine-in group.
 - **Leaving a cart**: the backend removes the participant from
   `cart.participants[]` → the old token's `participantId` is no longer found and
   is implicitly invalidated; the participant's un-submitted items are removed
@@ -178,14 +196,16 @@ Decisions (promoted from the plan):
   updates (one-directional). Group co-ordering relies on the join code plus a
   refetch when opening the cart page — no live cart sync. AI chat streaming can
   reuse SSE later; upgrade to WebSocket only if true bidirectional needs arise.
-- Nicknames are skippable, auto-assigned as "Guest N".
-- The server cart is created only on the first add-item or invite (reduces
-  abandoned carts).
+- Avatar selection is required and randomly preselected; custom display names
+  are optional. Participants cannot change either after joining in MVP.
 - Currency is fixed to NT$ in MVP (`product.price` has no currency field).
 - URLs use `/s/:storeId`; a store-level slug is deferred (slug currently exists
   only on Organization, and an org may have multiple stores).
-- Join-code sharing in MVP supports QR + link only; manual code entry is
-  deferred.
+- Invite QR and copied links contain only `/s/:storeId/join/:joinCode`; they do
+  not contain session or participant data and do not auto-join.
+- Before joining, Join confirmation loads only the public Store summary. It does
+  not expose existing participants, participant count, Cart items, table number,
+  or Order details.
 - Guests cannot modify a submitted batch (existing rule): the guest UI only shows
   "please ask staff".
 

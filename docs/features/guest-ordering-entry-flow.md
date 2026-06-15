@@ -40,13 +40,14 @@ stateDiagram-v2
   [*] --> LandingChooser
 
   LandingChooser --> NewOrderOptions: Choose New order
-  NewOrderOptions --> Menu: Choose dine-in or takeaway
+  NewOrderOptions --> ParticipantIdentity: Choose dine-in or takeaway
+  ParticipantIdentity --> Menu: Create Cart
   NewOrderOptions --> LandingChooser: Cancel
 
   LandingChooser --> JoinCodeEntry: Choose Join a friend's order
-  JoinCodeEntry --> JoinParticipant: Valid Join Code
+  JoinCodeEntry --> JoinConfirmation: Submit Join Code
   JoinCodeEntry --> LandingChooser: Back
-  JoinParticipant --> MenuOrTracking: Join succeeds
+  JoinConfirmation --> MenuOrTracking: Confirm and join
 
   LandingChooser --> ResumeValidation: Choose Resume ordering
   ResumeValidation --> MenuOrCart: Active cart
@@ -65,7 +66,9 @@ Choosing **New order** conditionally reveals the enabled order modes on the
 Landing page. The order-mode controls are hidden before this action.
 
 - Show only modes enabled by `Store.operation.orderModes`.
-- Choosing dine-in or takeaway starts the new-order flow and navigates to Menu.
+- Choosing dine-in or takeaway opens participant identity selection before Cart
+  creation. The guest chooses an avatar and may enter a custom display name,
+  then the new Cart is created and Menu opens.
 - A table number from the Landing URL is carried into dine-in ordering.
 - Cancel returns to the initial Landing chooser without creating a session.
 - If an active session exists, confirm before abandoning it and opening the
@@ -88,15 +91,21 @@ Keep Join Code entry on a separate route instead of conditionally rendering it
 inside Landing because it has its own input, validation, error, loading, and
 back-navigation states.
 
-After a valid code is entered, the flow may continue to a participant-name step
-or join directly, depending on the final join API behavior. Shared invite links
-continue to use:
+Submitting a manually entered code navigates to the shared Join confirmation
+route without calling the Join API:
 
 ```txt
 /s/:storeId/join/:joinCode
 ```
 
-Both entry paths join the same store-scoped cart or order. Joining another order
+Opening a shared Invite link or scanning its QR Code opens that same route. Join
+confirmation shows the Join Code, avatar picker, and optional custom display
+name; the Join API is called only after the guest confirms. A successful active
+Cart join opens Menu, while joining an open pay-later Order opens Tracking.
+Before confirmation, the page loads only the public Store summary and does not
+expose group participants, Cart items, table number, or Order details.
+
+Both entry paths join the same store-scoped Cart or Order. Joining another group
 must confirm before replacing an existing active session for that store.
 
 ## Resume Ordering
@@ -181,7 +190,8 @@ after 24 hours.
 | ----------------------------- | -------------------------------------------------------- |
 | `/s/:storeId`                 | Landing chooser and conditional new-order mode selection |
 | `/s/:storeId/join`            | Manual Join Code entry                                   |
-| `/s/:storeId/join/:joinCode`  | Shared-link join flow                                    |
+| `/s/:storeId/join/:joinCode`  | Shared Join confirmation for manual entry, link, and QR  |
+| `/s/:storeId/invite`          | Join Code, Invite link, QR, and copy-link actions        |
 | `/s/:storeId/orders`          | Recent orders list                                       |
 | `/s/:storeId/orders/:orderId` | Active tracking or read-only recent-order detail         |
 
