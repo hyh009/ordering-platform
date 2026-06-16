@@ -85,7 +85,9 @@ View -> Page VM Hook -> Commands -> Service -> API
   pure form mappers"). This keeps the lower model layer from importing
   `features`.
 - Raw API DTOs do not leak past services into commands, actions, stores, VMs,
-  or views.
+  or views. A model is usually a `type Model = Dto` alias, so a value that has
+  passed `deserialize` is a model, not a leak. See
+  `docs/agent/frontend/model-dto-boundary.md`.
 
 ## Common Failure Patterns
 

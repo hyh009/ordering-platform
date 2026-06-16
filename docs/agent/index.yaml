@@ -104,6 +104,10 @@ agent_docs:
       path: docs/agent/frontend/architecture-validation.md
       use_when: Checking frontend architecture boundaries before finishing frontend code.
 
+    - name: frontend-model-dto-boundary
+      path: docs/agent/frontend/model-dto-boundary.md
+      use_when: Deciding if a value is a DTO leak, or which fields a model deserialize must map.
+
     - name: frontend-state-ownership
       path: docs/agent/frontend/state-ownership.md
       use_when: Deciding whether frontend state belongs in app global state, a feature store, a page VM, or component local state.
