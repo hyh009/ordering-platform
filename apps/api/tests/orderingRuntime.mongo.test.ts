@@ -42,7 +42,7 @@ describe('ordering runtime Mongo models', () => {
       participants: [
         {
           id: 'participant-1',
-          avatarKey: 'cat',
+          avatarKey: 'rainbow_cat',
           displayName: 'Hsinyi',
         },
       ],
@@ -102,7 +102,7 @@ describe('ordering runtime Mongo models', () => {
       participants: [
         {
           id: 'participant-1',
-          avatarKey: 'cat',
+          avatarKey: 'rainbow_cat',
           displayName: 'Hsinyi',
         },
       ],

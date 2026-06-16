@@ -422,7 +422,7 @@ async function createDineInCart(displayName = 'Amy') {
     .send({
       orderType: 'dine_in',
       tableNumber: 'T1',
-      avatarKey: 'cat',
+      avatarKey: 'rainbow_cat',
       displayName,
     });
 
@@ -527,7 +527,7 @@ describe('cart lifecycle', () => {
     expect(session.body.data.session.cart.id).toBe(cart.id);
     expect(session.body.data.session.joinCode).toBe(cart.joinCode);
     expect(session.body.data.session.cart.participants[0]).toMatchObject({
-      avatarKey: 'cat',
+      avatarKey: 'rainbow_cat',
       displayName: 'Amy',
     });
     expect(new Date(cart.expiresAt).getTime() - Date.now()).toBeGreaterThan(
@@ -604,7 +604,7 @@ describe('cart lifecycle', () => {
 
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts`)
-      .send({ orderType: 'takeaway', avatarKey: 'cat' });
+      .send({ orderType: 'takeaway', avatarKey: 'rainbow_cat' });
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('ORDER_TYPE_NOT_ENABLED');
@@ -623,7 +623,7 @@ describe('cart lifecycle', () => {
 
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts`)
-      .send({ orderType: 'dine_in', avatarKey: 'cat' });
+      .send({ orderType: 'dine_in', avatarKey: 'rainbow_cat' });
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('STORE_NOT_OPEN');
