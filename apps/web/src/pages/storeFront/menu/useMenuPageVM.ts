@@ -112,6 +112,10 @@ export function useMenuPageVM() {
     void navigate(PATHS.STOREFRONT.CART_BUILD(storeId));
   }, [navigate, storeId]);
 
+  const goToInvite = useCallback(() => {
+    void navigate(PATHS.STOREFRONT.INVITE_BUILD(storeId));
+  }, [navigate, storeId]);
+
   return {
     store,
     isLoading,
@@ -125,5 +129,6 @@ export function useMenuPageVM() {
     setOpenProduct,
     addItem,
     goToCart,
+    goToInvite,
   };
 }

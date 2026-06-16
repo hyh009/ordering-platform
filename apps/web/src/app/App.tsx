@@ -25,6 +25,7 @@ import { LoginPage } from '@/pages/login/LoginPage';
 import { CartPage } from '@/pages/storeFront/cart/CartPage';
 import { JoinEntryPage } from '@/pages/storeFront/join/JoinEntryPage';
 import { JoinPage } from '@/pages/storeFront/join/JoinPage';
+import { InvitePage } from '@/pages/storeFront/invite/InvitePage';
 import { LandingPage } from '@/pages/storeFront/landing/LandingPage';
 import { MenuPage } from '@/pages/storeFront/menu/MenuPage';
 import { OrderTrackingPage } from '@/pages/storeFront/order/OrderTrackingPage';
@@ -69,6 +70,7 @@ export function App() {
             <Route element={<JoinEntryPage />} path={PATHS.STOREFRONT.JOIN_ENTRY} />
             <Route element={<JoinPage />} path={PATHS.STOREFRONT.JOIN} />
             <Route element={<MenuPage />} path={PATHS.STOREFRONT.MENU} />
+            <Route element={<InvitePage />} path={PATHS.STOREFRONT.INVITE} />
             <Route element={<CartPage />} path={PATHS.STOREFRONT.CART} />
             <Route
               element={<OrderHistoryPage />}

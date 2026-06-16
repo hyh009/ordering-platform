@@ -16,6 +16,10 @@ export const storeFrontMenuModel = {
       store.description = dto.description;
     }
 
+    if (dto.logoUrl !== undefined) {
+      store.logoUrl = dto.logoUrl;
+    }
+
     return store;
   },
 

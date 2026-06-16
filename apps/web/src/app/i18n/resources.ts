@@ -32,6 +32,21 @@ const manualResources: Resource = {
   'zh-TW': {
     translation: {
       guest: {
+        invite: {
+          title: '邀請朋友一起點餐',
+          cardTitle: '加入這份訂單一起點餐！',
+          codeLabel: 'Join Code',
+          copyCode: '複製',
+          copied: '已複製！',
+          qrCaption: '掃描 QR Code 加入訂單',
+          shareTitle: '分享連結',
+          copyLink: '複製邀請連結',
+          unavailableTitle: '無法邀請',
+          unavailableMessage: '這份團體訂單已無法分享。',
+        },
+        menu: {
+          invite: '邀請',
+        },
         participant: {
           anonymousDisplayName: '匿名{{animal}} {{suffix}}',
           anonymousNamePreview: '匿名{{animal}}',
@@ -115,6 +130,7 @@ const manualResources: Resource = {
         },
       },
       common: {
+        copyFailed: '無法複製。',
         actions: {
           back: '返回',
           cancel: '取消',

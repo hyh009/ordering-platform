@@ -1,11 +1,29 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 interface StorefrontPageHeaderProps {
   title: string;
   onBack?: () => void;
+  /** Left control glyph: a back arrow (default) or a close cross. */
+  backIcon?: 'back' | 'close';
+  /** Optional circular store logo rendered on the right. */
+  logoUrl?: string;
+  logoAlt?: string;
 }
 
-export function StorefrontPageHeader({ title, onBack }: StorefrontPageHeaderProps) {
+/**
+ * Shared storefront header. Both side cells are a fixed `2rem` and the title
+ * column is `1fr` with centered text, so the title stays centered regardless of
+ * which side controls are present.
+ */
+export function StorefrontPageHeader({
+  title,
+  onBack,
+  backIcon = 'back',
+  logoUrl,
+  logoAlt,
+}: StorefrontPageHeaderProps) {
+  const LeftIcon = backIcon === 'close' ? X : ArrowLeft;
+
   return (
     <div className="grid grid-cols-[2rem_1fr_2rem] items-center px-4 py-3">
       {onBack ? (
@@ -14,7 +32,7 @@ export function StorefrontPageHeader({ title, onBack }: StorefrontPageHeaderProp
           type="button"
           onClick={onBack}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <LeftIcon className="h-5 w-5" />
         </button>
       ) : (
         <div />
@@ -22,7 +40,15 @@ export function StorefrontPageHeader({ title, onBack }: StorefrontPageHeaderProp
       <h1 className="mb-0 text-center text-base font-semibold text-storefront-text">
         {title}
       </h1>
-      <div />
+      {logoUrl ? (
+        <img
+          alt={logoAlt ?? ''}
+          className="h-8 w-8 justify-self-end rounded-full object-cover"
+          src={logoUrl}
+        />
+      ) : (
+        <div />
+      )}
     </div>
   );
 }

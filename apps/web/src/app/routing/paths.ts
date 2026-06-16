@@ -30,6 +30,8 @@ export const PATHS = {
       `/s/${storeId}/join/${joinCode}`,
     MENU: '/s/:storeId/menu',
     MENU_BUILD: (storeId: string) => `/s/${storeId}/menu`,
+    INVITE: '/s/:storeId/invite',
+    INVITE_BUILD: (storeId: string) => `/s/${storeId}/invite`,
     CART: '/s/:storeId/cart',
     CART_BUILD: (storeId: string) => `/s/${storeId}/cart`,
     ORDER_HISTORY: '/s/:storeId/orders',

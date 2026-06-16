@@ -29,9 +29,16 @@ export function MenuPage() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-border bg-background p-4">
-        <h1 className="text-lg font-bold">
-          {vm.store ? localize(vm.store.displayName) : ''}
-        </h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-lg font-bold">
+            {vm.store ? localize(vm.store.displayName) : ''}
+          </h1>
+          {/* Temporary entry to the Invite page; final placement comes with the
+              later Menu refactor. */}
+          <Button size="sm" variant="outline" onClick={vm.goToInvite}>
+            {tDefault('guest.menu.invite', 'Invite')}
+          </Button>
+        </div>
         {!vm.isOpen ? (
           <p className="mt-1 text-sm text-muted-foreground">
             {tDefault(
