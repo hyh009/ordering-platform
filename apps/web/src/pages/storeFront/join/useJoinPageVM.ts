@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
+import {
+  toParticipantIdentitySubmission,
+  useParticipantIdentityForm,
+} from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { createJoinPageCommands } from './joinPage.commands';
@@ -25,7 +29,8 @@ export function useJoinPageVM() {
   );
   const isMutating = isActiveStore && rawIsMutating;
 
-  const [displayName, setDisplayName] = useState('');
+  const { values: identityValues, setValue: setIdentityValues } =
+    useParticipantIdentityForm();
 
   useEffect(() => {
     if (!storeId) return;
@@ -38,10 +43,9 @@ export function useJoinPageVM() {
   const join = useCallback(async () => {
     if (!joinCode) return;
 
-    const trimmed = displayName.trim();
     const result = await commands.join(storeId, {
       joinCode,
-      ...(trimmed.length > 0 ? { displayName: trimmed } : {}),
+      ...toParticipantIdentitySubmission(identityValues),
     });
 
     if (result.status === 'joined') {
@@ -58,12 +62,13 @@ export function useJoinPageVM() {
     if (result.message) {
       feedbackCommands.toast({ tone: 'error', message: result.message });
     }
-  }, [commands, displayName, joinCode, navigate, storeId]);
+  }, [commands, identityValues, joinCode, navigate, storeId]);
 
   return {
     store,
-    displayName,
-    setDisplayName,
+    joinCode,
+    identityValues,
+    setIdentityValues,
     isMutating,
     join,
   };

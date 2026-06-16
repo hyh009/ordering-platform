@@ -17,6 +17,7 @@ export const cartModel = {
       serviceFeeRate: dto.serviceFeeRate,
       serviceFeeAmount: dto.serviceFeeAmount,
       totalAmount: dto.totalAmount,
+      expiresAt: dto.expiresAt,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
     };
@@ -25,12 +26,19 @@ export const cartModel = {
     if (dto.tableNumber !== undefined) cart.tableNumber = dto.tableNumber;
     if (dto.notes !== undefined) cart.notes = dto.notes;
     if (dto.orderId !== undefined) cart.orderId = dto.orderId;
+    if (dto.orderingClosesAt !== undefined) {
+      cart.orderingClosesAt = dto.orderingClosesAt;
+    }
 
     return cart;
   },
 
   deserializeSession(dto: GuestSessionDto): GuestSession {
     const session: GuestSession = { participantId: dto.participantId };
+
+    if (dto.joinCode !== undefined) {
+      session.joinCode = dto.joinCode;
+    }
 
     if (dto.cart !== undefined) {
       session.cart = cartModel.deserialize(dto.cart);

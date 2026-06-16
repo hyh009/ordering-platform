@@ -74,13 +74,11 @@ export function JoinEntryPage() {
           {/* Primary action */}
           <Button
             className="mt-6 w-full"
-            disabled={!vm.joinCode.trim() || vm.isMutating}
+            disabled={!vm.joinCode.trim()}
             variant="storefront"
-            onClick={() => {
-              void vm.join();
-            }}
+            onClick={vm.submit}
           >
-            {tDefault('guest.joinEntry.submit', 'Join order')}
+            {tDefault('guest.joinEntry.submit', 'Continue')}
           </Button>
 
           {/* Divider */}

@@ -63,7 +63,10 @@ describe('storefront cart workflow order history', () => {
     });
 
     await expect(
-      runtime.commands.cart.joinCart('store-a', { joinCode: 'ABC123' }),
+      runtime.commands.cart.joinCart('store-a', {
+        joinCode: 'ABC123',
+        avatarKey: 'rainbow_cat',
+      }),
     ).resolves.toMatchObject({
       status: 'joined',
       target: 'order',

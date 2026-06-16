@@ -3,6 +3,7 @@ import { useAppTranslation } from '@/app/i18n';
 import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import logoUrl from '@/assets/logo.svg';
 import { OrderTypeSelector } from '@/features/storeFront/components/OrderTypeSelector';
+import { ParticipantIdentitySelector } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import { Button } from '@/shared/components/ui/button';
 import { useLandingPageVM } from './useLandingPageVM';
@@ -169,7 +170,7 @@ export function LandingPage() {
                 </div>
               ) : null}
             </>
-          ) : (
+          ) : vm.entryMode === 'new-order' ? (
             <div className="mt-7">
               <p className="text-center font-semibold">
                 {tDefault(
@@ -189,7 +190,7 @@ export function LandingPage() {
                   disabled={!vm.isOpen || vm.isMutating}
                   value={vm.selectedOrderType}
                   onChange={(type) => {
-                    void vm.startOrder(type);
+                    vm.selectOrderType(type);
                   }}
                 />
               </div>
@@ -200,7 +201,49 @@ export function LandingPage() {
                   variant="outline"
                   onClick={vm.cancelNewOrder}
                 >
-                  {tDefault('common.cancel', 'Cancel')}
+                  {tDefault('common.back', 'Back')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-7">
+              <p className="text-center font-semibold">
+                {tDefault(
+                  'guest.participant.title',
+                  'Set up how you appear',
+                )}
+              </p>
+              <p className="mt-0.5 text-center text-sm text-storefront-text-muted">
+                {tDefault(
+                  'guest.participant.subtitle',
+                  'Others in the order will see this',
+                )}
+              </p>
+              <div className="mt-4">
+                <ParticipantIdentitySelector
+                  disabled={vm.isMutating}
+                  value={vm.identityValues}
+                  onChange={vm.setIdentityValues}
+                />
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <Button
+                  className="w-full"
+                  disabled={!vm.isOpen || vm.isMutating}
+                  variant="storefront"
+                  onClick={() => {
+                    void vm.createOrder();
+                  }}
+                >
+                  {tDefault('guest.participant.startOrder', 'Start ordering')}
+                </Button>
+                <Button
+                  className="w-full"
+                  disabled={vm.isMutating}
+                  variant="outline"
+                  onClick={vm.backToOrderType}
+                >
+                  {tDefault('common.back', 'Back')}
                 </Button>
               </div>
             </div>

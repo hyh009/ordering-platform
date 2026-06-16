@@ -31,6 +31,30 @@ function mergeResources(base: Resource, override: Resource): Resource {
 const manualResources: Resource = {
   'zh-TW': {
     translation: {
+      guest: {
+        participant: {
+          anonymousDisplayName: '匿名{{animal}} {{suffix}}',
+          anonymousNamePreview: '匿名{{animal}}',
+          avatars: {
+            bear: '熊',
+            rainbow_cat: '彩虹貓',
+            dog: '狗',
+            eagle: '老鷹',
+            elephant: '大象',
+            flamingo: '紅鶴',
+            gorilla: '大猩猩',
+            lion: '獅子',
+            monkey: '猴子',
+            octopus: '章魚',
+            owl: '貓頭鷹',
+            ox: '牛',
+            sheep: '綿羊',
+            unicorn: '獨角獸',
+            wolf: '狼',
+            zebra: '斑馬',
+          },
+        },
+      },
       app: {
         errorBoundary: {
           description: '頁面停止渲染。請再試一次，或回到首頁。',

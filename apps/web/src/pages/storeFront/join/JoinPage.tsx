@@ -1,7 +1,7 @@
 import { useAppTranslation } from '@/app/i18n';
+import { ParticipantIdentitySelector } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { useJoinPageVM } from './useJoinPageVM';
 
 export function JoinPage() {
@@ -22,18 +22,22 @@ export function JoinPage() {
         ) : null}
       </header>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium" htmlFor="guest-nickname">
-          {tDefault('guest.join.nicknameLabel', 'Your name (optional)')}
-        </label>
-        <Input
-          id="guest-nickname"
-          value={vm.displayName}
-          maxLength={50}
-          placeholder={tDefault('guest.join.nicknamePlaceholder', 'e.g. Amy')}
-          onChange={(event) => vm.setDisplayName(event.target.value)}
-        />
-      </div>
+      {vm.joinCode ? (
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-sm text-storefront-text-muted">
+            {tDefault('guest.join.codeLabel', 'Join Code')}
+          </span>
+          <span className="font-mono text-lg font-bold uppercase tracking-widest text-storefront-text">
+            {vm.joinCode}
+          </span>
+        </div>
+      ) : null}
+
+      <ParticipantIdentitySelector
+        disabled={vm.isMutating}
+        value={vm.identityValues}
+        onChange={vm.setIdentityValues}
+      />
 
       <Button
         disabled={vm.isMutating}

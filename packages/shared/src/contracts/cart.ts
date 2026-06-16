@@ -9,7 +9,7 @@ import type { StoreCheckoutMode, StoreOrderType } from './store.js';
 export const cartStatuses = ['active', 'checked_out', 'abandoned'] as const;
 export const anonymousAvatarKeys = [
   'bear',
-  'cat',
+  'rainbow_cat',
   'dog',
   'eagle',
   'elephant',

@@ -19,6 +19,7 @@ export const orderModel = {
       serviceFeeRate: dto.serviceFeeRate,
       serviceFeeAmount: dto.serviceFeeAmount,
       totalAmount: dto.totalAmount,
+      orderingClosesAt: dto.orderingClosesAt,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
     };

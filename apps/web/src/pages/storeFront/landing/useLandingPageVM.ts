@@ -4,6 +4,10 @@ import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { tDefault } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
+import {
+  toParticipantIdentitySubmission,
+  useParticipantIdentityForm,
+} from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { isStoreOpenNow } from '@/models/storeFrontMenu';
 import type { StoreOrderType } from '@/models/store';
@@ -42,12 +46,17 @@ export function useLandingPageVM() {
   const [canResume, setCanResume] = useState(false);
   const [hasOrderHistory, setHasOrderHistory] = useState(false);
   const [resumeStoreId, setResumeStoreId] = useState<string | null>(null);
-  const [entryMode, setEntryMode] = useState<'chooser' | 'new-order'>(
-    'chooser',
-  );
+  const [entryMode, setEntryMode] = useState<
+    'chooser' | 'new-order' | 'identity'
+  >('chooser');
   const [manualOrderType, setManualOrderType] = useState<StoreOrderType | null>(
     null,
   );
+  const {
+    values: identityValues,
+    setValue: setIdentityValues,
+    reset: resetIdentity,
+  } = useParticipantIdentityForm();
 
   const enabledOrderTypes = useMemo<StoreOrderType[]>(
     () => store?.orderModes.map((mode) => mode.type) ?? [],
@@ -83,26 +92,32 @@ export function useLandingPageVM() {
     // it out of the deps prevents the init effect from re-running every render.
   }, [commands, storeId]);
 
-  const startOrder = useCallback(
-    async (orderType: StoreOrderType) => {
-      if (!storeId) return;
+  const selectOrderType = useCallback(
+    (orderType: StoreOrderType) => {
       setManualOrderType(orderType);
-      const result = await commands.startOrder(storeId, {
-        orderType,
-        ...(tableNumber !== undefined ? { tableNumber } : {}),
-      });
-
-      if (result.status === 'created') {
-        void navigate(PATHS.STOREFRONT.MENU_BUILD(storeId));
-        return;
-      }
-
-      if (result.message) {
-        feedbackCommands.toast({ tone: 'error', message: result.message });
-      }
+      resetIdentity();
+      setEntryMode('identity');
     },
-    [commands, navigate, storeId, tableNumber],
+    [resetIdentity],
   );
+
+  const createOrder = useCallback(async () => {
+    if (!storeId || !manualOrderType) return;
+    const result = await commands.startOrder(storeId, {
+      orderType: manualOrderType,
+      ...(tableNumber !== undefined ? { tableNumber } : {}),
+      ...toParticipantIdentitySubmission(identityValues),
+    });
+
+    if (result.status === 'created') {
+      void navigate(PATHS.STOREFRONT.MENU_BUILD(storeId));
+      return;
+    }
+
+    if (result.message) {
+      feedbackCommands.toast({ tone: 'error', message: result.message });
+    }
+  }, [commands, identityValues, manualOrderType, navigate, storeId, tableNumber]);
 
   const confirmAbandonCurrentSession = useCallback(async () => {
     if (!(resumeStoreId === storeId && canResume)) return true;
@@ -150,6 +165,11 @@ export function useLandingPageVM() {
   const cancelNewOrder = useCallback(() => {
     setManualOrderType(null);
     setEntryMode('chooser');
+  }, []);
+
+  const backToOrderType = useCallback(() => {
+    setManualOrderType(null);
+    setEntryMode('new-order');
   }, []);
 
   const goToOrderHistory = useCallback(() => {
@@ -201,13 +221,17 @@ export function useLandingPageVM() {
     enabledOrderTypes,
     selectedOrderType,
     entryMode,
+    identityValues,
+    setIdentityValues,
     canResume: resumeStoreId === storeId && canResume,
     hasOrderHistory: resumeStoreId === storeId && hasOrderHistory,
-    startOrder,
+    selectOrderType,
+    createOrder,
     resume,
     goToJoin,
     showNewOrder,
     cancelNewOrder,
+    backToOrderType,
     goToOrderHistory,
   };
 }

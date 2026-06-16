@@ -1,4 +1,5 @@
 export {
+  anonymousAvatarKeys,
   cartItemInputSchema,
   createCartSchema,
   joinCartSchema,
@@ -6,5 +7,10 @@ export {
   updateCartItemSchema,
 } from '@repo/shared';
 
+export {
+  getAnonymousAvatarLabel,
+  getAnonymousNamePreview,
+  getOrderingParticipantDisplayName,
+} from './display';
 export { cartModel } from './model';
 export type * from './types';

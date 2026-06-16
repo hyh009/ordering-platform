@@ -1,5 +1,6 @@
 import type {
   AddCartItemRequest,
+  AnonymousAvatarKey,
   CartDto,
   CartItemDto,
   CartItemInput,
@@ -24,6 +25,7 @@ import type { Order } from '@/models/order';
 
 export type {
   AddCartItemRequest,
+  AnonymousAvatarKey,
   CartItemInput,
   CartStatus,
   CreateCartRequest,
@@ -48,6 +50,7 @@ export type OrderingParticipant = OrderingParticipantDto;
 /** Frontend model of the restored storefront session context. */
 export type GuestSession = {
   participantId: string;
+  joinCode?: string;
   cart?: Cart;
   order?: Order;
 };
