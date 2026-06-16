@@ -6,7 +6,7 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
     async initialize(storeId: string) {
       await runtime.commands.tenant.activateStore(storeId);
       const [storefront, session] = await Promise.all([
-        runtime.commands.storefront.loadStorefront(storeId),
+        runtime.commands.storefront.loadStoreWithMenu(storeId),
         runtime.commands.session.restoreSession(storeId),
       ]);
       return { storefront, session };

@@ -6,11 +6,11 @@ import {
 import type { StorefrontActions } from './actions';
 import type { TenantStore } from '../tenant/store';
 
-export type LoadStorefrontResult = { status: 'loaded' } | StoreFrontCommandFailure;
+export type LoadStoreResult = { status: 'loaded' } | StoreFrontCommandFailure;
 
 export type StorefrontCommands = {
-  loadStore(storeId: string): Promise<LoadStorefrontResult>;
-  loadStorefront(storeId: string): Promise<LoadStorefrontResult>;
+  loadStore(storeId: string): Promise<LoadStoreResult>;
+  loadStoreWithMenu(storeId: string): Promise<LoadStoreResult>;
 };
 
 export function createStorefrontCommands(deps: {
@@ -48,7 +48,7 @@ export function createStorefrontCommands(deps: {
       }
     },
 
-    async loadStorefront(storeId) {
+    async loadStoreWithMenu(storeId) {
       if (!isActiveStore(storeId)) return mismatchedStore;
       deps.actions.loadStarted();
 
