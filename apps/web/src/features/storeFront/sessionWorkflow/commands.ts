@@ -16,7 +16,12 @@ export type ResumeSessionResult =
   | { status: 'none' }
   /** Stored session has ended (abandoned/expired); show the ended notice. */
   | { status: 'ended' }
+  /** Active cart restored into the cart store; resume into the menu/cart flow. */
   | { status: 'cart' }
+  /**
+   * Submitted order restored into the order store; resume into order tracking.
+   * `finished` marks a completed lifecycle; `orderId` is for navigation.
+   */
   | { status: 'order'; finished: boolean; orderId: string }
   | StoreFrontCommandFailure;
 
