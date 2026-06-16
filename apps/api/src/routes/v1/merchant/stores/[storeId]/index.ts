@@ -4,6 +4,7 @@ import {
   uploadStoreImageSchema,
 } from '@repo/shared';
 import { requireAuth, requireOrgRole } from '@src/middlewares/auth';
+import { storeAssetFolders } from '@src/models/asset/storagePaths';
 import { singleImageUpload, uploadRequestImage } from '@src/middlewares/upload';
 import { validate } from '@src/middlewares/validate';
 import { storeService } from '@src/services/store.service';
@@ -113,7 +114,7 @@ router.post<StoreParams, UploadImageSuccessResponse, UploadStoreImageRequest>(
   validate(uploadStoreImageSchema),
   async (req, res) => {
     const image = await uploadRequestImage(req.file, {
-      folder: `stores/${req.params.storeId}/branding`,
+      folder: storeAssetFolders.branding(req.params.storeId),
       // A store has at most one logo and one banner; reuse a stable public id so
       // re-uploads overwrite the previous file instead of accumulating assets.
       publicId: req.body.kind,

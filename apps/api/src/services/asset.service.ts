@@ -1,3 +1,4 @@
+import { maxImageSizeBytes, supportedImageMimeTypes } from '@repo/shared';
 import { cloudinaryClient } from '@src/config/cloudinary';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { BadRequestError, InternalServerError } from '@src/utils/errors';
@@ -8,14 +9,9 @@ import type {
   UploadApiResponse,
 } from 'cloudinary';
 
-const allowedImageMimeTypes = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/avif',
-] as const;
-
-export const maxImageSizeBytes = 5 * 1024 * 1024;
+// Re-exported so consumers that already import the cap from this service
+// (e.g. the upload middleware) keep working off the shared source of truth.
+export { maxImageSizeBytes };
 const storageFolderPattern = /^[a-zA-Z0-9][a-zA-Z0-9/_-]*$/;
 
 export type AssetProvider = 'cloudinary';
@@ -45,8 +41,8 @@ export type AssetStorageProvider = {
 
 function assertValidImageInput(input: UploadImageInput) {
   if (
-    !allowedImageMimeTypes.includes(
-      input.mimeType as (typeof allowedImageMimeTypes)[number],
+    !supportedImageMimeTypes.includes(
+      input.mimeType as (typeof supportedImageMimeTypes)[number],
     )
   ) {
     throw new BadRequestError(

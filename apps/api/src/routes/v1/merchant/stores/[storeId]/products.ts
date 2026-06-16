@@ -7,6 +7,7 @@ import {
   updateProductSchema,
 } from '@repo/shared';
 import { requireAuth, requireOrgRole } from '@src/middlewares/auth';
+import { storeAssetFolders } from '@src/models/asset/storagePaths';
 import { singleImageUpload, uploadRequestImage } from '@src/middlewares/upload';
 import { validate } from '@src/middlewares/validate';
 import { productService } from '@src/services/product.service';
@@ -408,7 +409,7 @@ router.post<ProductStoreParams, UploadImageSuccessResponse>(
   singleImageUpload(),
   async (req, res) => {
     const image = await uploadRequestImage(req.file, {
-      folder: `stores/${req.params.storeId}/menu-products`,
+      folder: storeAssetFolders.menuProducts(req.params.storeId),
     });
 
     res.status(201).json({ status: 'success', data: { image } });

@@ -1,5 +1,6 @@
 import { useAppTranslation } from '@/app/i18n';
 import { StoreDetailsView } from '@/features/components/store/StoreDetailsView';
+import { StoreImageUploadField } from '@/features/components/store/StoreImageUploadField';
 import { StoreForm } from '@/features/components/store/storeForm/StoreForm';
 import { StoreStatusBadge } from '@/features/components/store/StoreStatusBadge';
 import { Button } from '@/shared/components/ui/button';
@@ -67,6 +68,50 @@ export function StoreSettingsPage() {
               </Button>
             )}
           </div>
+
+          {/* Branding */}
+          {vm.canManage && (
+            <div className="grid gap-6 rounded-xl border border-border bg-card p-8 shadow-sm sm:grid-cols-2">
+              {[
+                {
+                  kind: 'logo' as const,
+                  value: vm.store.profile.logoUrl,
+                  label: tDefault(
+                    'merchant.storeSettings.branding.logo',
+                    'Logo',
+                  ),
+                  description: tDefault(
+                    'merchant.storeSettings.branding.logoHint',
+                    'Square image shown next to your store name.',
+                  ),
+                },
+                {
+                  kind: 'banner' as const,
+                  value: vm.store.profile.bannerUrl,
+                  label: tDefault(
+                    'merchant.storeSettings.branding.banner',
+                    'Banner',
+                  ),
+                  description: tDefault(
+                    'merchant.storeSettings.branding.bannerHint',
+                    'Wide image shown at the top of your store page.',
+                  ),
+                },
+              ].map(({ kind, value, label, description }) => (
+                <StoreImageUploadField
+                  key={kind}
+                  description={description}
+                  disabled={vm.imageUpdatingKind !== null}
+                  isBusy={vm.imageUpdatingKind === kind}
+                  label={label}
+                  onRemove={() => void vm.removeImage(kind)}
+                  onSelect={(file) => void vm.setImage(kind, file)}
+                  value={value}
+                  variant={kind}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Settings */}
           <div className="rounded-xl border border-border bg-card p-8 shadow-sm">

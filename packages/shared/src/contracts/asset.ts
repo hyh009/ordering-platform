@@ -20,6 +20,22 @@ export type UploadImageSuccessResponse = ApiSuccessResponse<{
   image: UploadedImageDto;
 }>;
 
+/**
+ * Image upload constraints shared by the API asset service and the web upload
+ * UI so both agree on accepted formats and the size cap. The API remains the
+ * enforcement point; the web uses these for pre-upload validation only.
+ */
+export const supportedImageMimeTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+] as const;
+
+export type SupportedImageMimeType = (typeof supportedImageMimeTypes)[number];
+
+export const maxImageSizeBytes = 5 * 1024 * 1024;
+
 export const storeImageKinds = ['logo', 'banner'] as const;
 
 export const uploadStoreImageSchema = z.object({

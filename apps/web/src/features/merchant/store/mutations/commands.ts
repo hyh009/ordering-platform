@@ -1,6 +1,7 @@
 import { tDefault } from '@/app/i18n';
 import { mapStoreValidationIssuesToFieldErrors } from '@/features/components/store/storeForm/storeFormErrors';
 import type { StoreFormFieldErrors } from '@/features/components/store/storeForm/useStoreForm';
+import type { StoreImageKind, UploadedImage } from '@/models/asset';
 import {
   updateStoreSchema,
   type Store,
@@ -15,6 +16,10 @@ import {
 export type UpdateStoreResult =
   | { status: 'saved'; store: Store }
   | (MerchantCommandFailure & { fieldErrors?: StoreFormFieldErrors });
+
+export type UploadStoreImageResult =
+  | { status: 'uploaded'; image: UploadedImage }
+  | MerchantCommandFailure;
 
 export function createStoreMutationCommands() {
   return {
@@ -43,6 +48,19 @@ export function createStoreMutationCommands() {
       try {
         const store = await storeService.updateStore(storeId, validation.data);
         return { status: 'saved', store };
+      } catch (error) {
+        return mapMerchantApiError(error);
+      }
+    },
+
+    async uploadStoreImage(
+      storeId: string,
+      kind: StoreImageKind,
+      file: File,
+    ): Promise<UploadStoreImageResult> {
+      try {
+        const image = await storeService.uploadStoreImage(storeId, kind, file);
+        return { status: 'uploaded', image };
       } catch (error) {
         return mapMerchantApiError(error);
       }

@@ -3,4 +3,7 @@ export const merchantStorePaths = {
   detail(storeId: string) {
     return `/v1/merchant/stores/${encodeURIComponent(storeId)}`;
   },
+  images(storeId: string) {
+    return `/v1/merchant/stores/${encodeURIComponent(storeId)}/images`;
+  },
 };

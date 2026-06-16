@@ -1,8 +1,15 @@
 import { apiJson } from '@/api';
 import { merchantStorePaths } from '@/api/paths/store.paths';
+import { assetModel } from '@/models/asset';
 import { storeModel } from '@/models/store';
 
-import type { GetStoreSuccessResponse, ListStoresSuccessResponse, UpdateStoreSuccessResponse } from '@repo/shared';
+import type {
+  GetStoreSuccessResponse,
+  ListStoresSuccessResponse,
+  UpdateStoreSuccessResponse,
+  UploadImageSuccessResponse,
+} from '@repo/shared';
+import type { StoreImageKind, UploadedImage } from '@/models/asset';
 import type { Store, StoreListItem, UpdateStoreRequest } from '@/models/store';
 
 export const storeService = {
@@ -40,5 +47,27 @@ export const storeService = {
     );
 
     return storeModel.deserialize(response.data.store);
+  },
+
+  async uploadStoreImage(
+    storeId: string,
+    kind: StoreImageKind,
+    file: File,
+  ): Promise<UploadedImage> {
+    const formData = new FormData();
+    // multer reads the text `kind` field before the binary `file` field, so
+    // append in that order.
+    formData.append('kind', kind);
+    formData.append('file', file);
+
+    const response = await apiJson<UploadImageSuccessResponse>(
+      merchantStorePaths.images(storeId),
+      {
+        body: formData,
+        method: 'POST',
+      },
+    );
+
+    return assetModel.deserialize(response.data.image);
   },
 };
