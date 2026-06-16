@@ -131,6 +131,8 @@ const manualResources: Resource = {
       },
       common: {
         copyFailed: '無法複製。',
+        loading: '載入中…',
+        ok: '確定',
         actions: {
           back: '返回',
           cancel: '取消',
