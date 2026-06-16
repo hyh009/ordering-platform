@@ -79,6 +79,11 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Shared HTTP DTO types are imported from `@repo/shared` at the model boundary.
 - DTO conversion functions live in model mapper files under `src/models` or
   `src/models/<domain>`.
+- A pure form-to-request mapper may instead live beside its reusable feature
+  form component when its form-value type is feature-owned, mirroring
+  `storeFormMapper.ts` (see `architecture.md`, "Domain reusable form hooks or
+  pure form mappers"). This keeps the lower model layer from importing
+  `features`.
 - Raw API DTOs do not leak past services into commands, actions, stores, VMs,
   or views.
 

@@ -23,7 +23,7 @@ Use this quick map when deciding where new frontend code belongs.
 | API service                 | `apps/web/src/services/`                                                           | commands, models                               |
 | Frontend model types        | `apps/web/src/models/<domain>/types.ts`                                            | pages, features                                |
 | DTO-to-model conversion     | `apps/web/src/models/<domain>/model.ts`                                            | services inline logic                          |
-| Request/form mapping        | `apps/web/src/models/<domain>/requestMapper.ts` or `formMapper.ts`                 | views                                          |
+| Request/form mapping        | `apps/web/src/models/<domain>/requestMapper.ts` or `formMapper.ts`; beside a reusable feature form component when its form-value type is feature-owned | views                                          |
 | Domain display labels       | `apps/web/src/models/<domain>/display.ts`                                          | components, shared contracts                   |
 | Domain model public export  | `apps/web/src/models/<domain>/index.ts`                                            | private subfile imports from callers           |
 | App shell or route guard    | `apps/web/src/app/`                                                                | pages, features                                |
@@ -47,5 +47,9 @@ Use this quick map when deciding where new frontend code belongs.
   ownership, and post-mutation data reloads.
 - Keep a page command wrapper for page-owned async flows, even when the wrapper
   only forwards to a feature read or mutation command.
+- Form-to-request mappers default to `models/<domain>`. Colocate a pure mapper
+  with its reusable feature form component instead when the form-value type is
+  owned by that feature and shared across pages, mirroring `storeFormMapper.ts`.
+  This keeps the lower model layer from importing `features`.
 - If the code type is not listed here, or if it could reasonably belong in more
   than one place, discuss ownership with the user before adding it.

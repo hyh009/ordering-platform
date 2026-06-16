@@ -94,6 +94,9 @@ Use this checklist when adding or changing frontend model files.
    - Start with `model.ts` for DTO-to-model conversion.
    - Add `requestMapper.ts` or `formMapper.ts` only when the direction or
      caller makes the split clearer.
+   - A pure form-to-request mapper may instead sit beside its reusable feature
+     form component when its form-value type is feature-owned, mirroring
+     `storeFormMapper.ts`, so the model layer never imports `features`.
 4. Keep domain UI display helpers in `display.ts`.
    - Use `display.ts` for enum labels, translated option labels, localized text
      fallback, and helpers for controls that need string labels.
