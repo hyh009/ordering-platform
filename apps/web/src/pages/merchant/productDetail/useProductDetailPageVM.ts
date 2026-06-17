@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
-import { PATHS } from '@/app/routing/paths';
+import { resolveMenuReturnTo } from '@/app/routing/menuReturnState';
 import { createProductDetailRuntime } from '@/features/merchant/menu/products/detail/runtime';
 import {
   toUpdateProductRequest,
@@ -27,6 +27,7 @@ export function useProductDetailPageVM() {
   const [{ commands, store }] = useState(createDetailPageContext);
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
   const canManage = useCanManageStoreResources();
@@ -101,8 +102,8 @@ export function useProductDetailPageVM() {
   }, [commands, product, productId, storeId]);
 
   const goBack = useCallback(() => {
-    void navigate(PATHS.MERCHANT.MENU);
-  }, [navigate]);
+    void navigate(resolveMenuReturnTo(location.state));
+  }, [location.state, navigate]);
 
   const pageTitle = useMemo(
     () => (product ? getLocalizedText(product.name, locale.defaultLocale) : ''),

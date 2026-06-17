@@ -1,7 +1,9 @@
+import { useCallback, useMemo } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { getLocalizedText } from '@/models/metadata';
 import type { Product, ProductActiveFilter } from '@/models/product';
+import { ProductCategoryBadges } from '@/features/merchant/menu/products/components/ProductCategoryBadges';
 import { ProductStatusBadge } from '@/features/merchant/menu/products/components/ProductStatusBadge';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
@@ -23,6 +25,40 @@ export function ProductListPage() {
     { label: tDefault('merchant.products.all', 'All'), value: 'all' },
   ];
 
+  const categoryNameById = useMemo(
+    () =>
+      new Map(
+        vm.categories.map((category) => [
+          category.id,
+          getLocalizedText(category.name, locale.defaultLocale),
+        ]),
+      ),
+    [vm.categories, locale.defaultLocale],
+  );
+
+  const categoryOptions = useMemo(
+    () => [
+      {
+        label: tDefault('merchant.products.allCategories', 'All categories'),
+        value: 'all',
+      },
+      ...[...categoryNameById].map(([value, label]) => ({ label, value })),
+    ],
+    [categoryNameById, tDefault],
+  );
+
+  const resolveCategoryNames = useCallback(
+    (product: Product) => {
+      const ids = new Set(product.categoryIds);
+      const names: string[] = [];
+      for (const [id, name] of categoryNameById) {
+        if (ids.has(id)) names.push(name);
+      }
+      return names;
+    },
+    [categoryNameById],
+  );
+
   const columns: DataTableColumn<Product>[] = [
     {
       key: 'name',
@@ -32,6 +68,13 @@ export function ProductListPage() {
         <span className="truncate font-semibold">
           {getLocalizedText(product.name, locale.defaultLocale)}
         </span>
+      ),
+    },
+    {
+      key: 'category',
+      header: tDefault('merchant.products.category', 'Category'),
+      render: (product) => (
+        <ProductCategoryBadges names={resolveCategoryNames(product)} />
       ),
     },
     {
@@ -134,11 +177,18 @@ export function ProductListPage() {
         }}
         rowKey={(product) => product.id}
         toolbar={
-          <FilterSelect
-            onChange={vm.setFilter}
-            options={visibilityOptions}
-            value={vm.filter}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterSelect
+              onChange={vm.setCategoryFilter}
+              options={categoryOptions}
+              value={vm.categoryFilter}
+            />
+            <FilterSelect
+              onChange={vm.setFilter}
+              options={visibilityOptions}
+              value={vm.filter}
+            />
+          </div>
         }
       />
     </section>
