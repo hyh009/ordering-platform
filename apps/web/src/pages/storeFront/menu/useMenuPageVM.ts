@@ -75,6 +75,20 @@ export function useMenuPageVM() {
         return;
       }
 
+      if (session.status === 'failed') {
+        // A benign race: the active store changed while the resume was in
+        // flight. The isActiveStore guard already nulls this page's data and
+        // another navigation is taking over, so there is nothing to do.
+        if (session.reason === 'session-store-mismatch') return;
+        // A transient failure (network/server). The stored session is left
+        // intact, so surface the error and stay put — the guest can keep
+        // browsing and retry (reload, and later SSE will resync).
+        if (session.message) {
+          feedbackCommands.toast({ tone: 'error', message: session.message });
+        }
+        return;
+      }
+
       // A placed order that can no longer be added to (pay-first, finished)
       // has no business on the menu — send it to order tracking.
       if (session.status === 'order' && !session.canAddOn) {
