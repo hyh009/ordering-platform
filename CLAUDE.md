@@ -44,8 +44,11 @@ View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store | Serv
 ```
 
 - Frontend views should not call stores, services, or commands directly.
-- Page VM hooks own React lifecycle, page-local state, and command-result
-  reactions such as navigation or modal feedback.
+- Page VM hooks own page-flow state and lifecycle: route/load effects,
+  page-local flow state, and command-result reactions such as navigation or
+  modal feedback. Pure presentational state not driven by page or business flow
+  (visibility toggles, hover, scroll-spy/measurement) stays component-local or
+  in a self-contained UI hook; see `docs/agent/frontend/state-ownership.md`.
 - Commands compose async flows. Feature actions mutate feature stores. Stores
   hold state only.
 - Raw API DTOs should not leak into frontend pages, commands, actions, stores,
