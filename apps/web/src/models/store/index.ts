@@ -9,10 +9,12 @@ export {
   getStoreCheckoutModeLabel,
   getStoreOrderTypeDescription,
   getStoreOrderTypeLabel,
+  isStoreOpenNow,
   STORE_ALL_DAY_TIME,
 } from './display';
 export { storeModel } from './model';
 export type {
+  BusinessHourDto,
   CreateStoreRequest,
   Store,
   StoreCheckoutMode,

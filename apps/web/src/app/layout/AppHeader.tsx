@@ -17,14 +17,13 @@ function UserAvatar({ username }: { username?: string }) {
 export function AppHeader({
   appName,
   environment,
+  headerContext,
   isAuthenticated,
-  isOpen,
   isSuperAdmin = false,
   language,
   languageOptions,
   onLanguageChange,
   onLogout,
-  orgName,
   username,
 }: AppHeaderProps) {
   const { tDefault } = useAppTranslation();
@@ -90,24 +89,15 @@ export function AppHeader({
 
   return (
     <header className="flex h-(--app-header-height) items-center justify-between gap-4 border-b border-border bg-card px-5 md:px-8">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <img alt="" className="h-8 w-8 shrink-0" src={logoUrl} />
-        <span className="text-sm font-bold text-foreground">{appName}</span>
-        {orgName && (
+        <span className="shrink-0 text-sm font-bold text-foreground">
+          {appName}
+        </span>
+        {headerContext && (
           <>
-            <span className="h-5 w-px bg-border" />
-            <span className="text-sm text-foreground">{orgName}</span>
-            <span
-              className={
-                isOpen
-                  ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground'
-              }
-            >
-              {isOpen
-                ? tDefault('app.navigation.businessOpen', '營業中')
-                : tDefault('app.navigation.businessClosed', '休息中')}
-            </span>
+            <span className="h-5 w-px shrink-0 bg-border" />
+            {headerContext}
           </>
         )}
       </div>

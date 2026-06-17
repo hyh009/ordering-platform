@@ -10,6 +10,7 @@ import { PATHS } from '@/app/routing/paths';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
 import { ToastHost } from '@/shared/components/feedback/ToastHost';
 import { AppShell } from '@/app/layout/AppShell';
+import { MerchantContextSwitcher } from '@/app/layout/merchantContext/MerchantContextSwitcher';
 import { MerchantSidebar } from '@/app/layout/MerchantSidebar';
 import { SuperAdminSidebar } from '@/app/layout/SuperAdminSidebar';
 
@@ -19,7 +20,10 @@ const envLabel: Record<string, string> = {
   production: 'Production',
 };
 
-export function createAuthenticatedLayout(sidebar?: ReactNode) {
+export function createAuthenticatedLayout(
+  sidebar?: ReactNode,
+  headerContext?: ReactNode,
+) {
   return function AuthenticatedLayout() {
     const appContext = useAppContextVM();
     const feedback = useFeedbackVM();
@@ -36,6 +40,7 @@ export function createAuthenticatedLayout(sidebar?: ReactNode) {
       <AppShell
         appName={appContext.appName}
         environment={envLabel[import.meta.env.MODE] ?? import.meta.env.MODE}
+        headerContext={headerContext}
         isAuthenticated
         isSuperAdmin={auth.user?.isSuperAdmin ?? false}
         language={language.currentLanguage}
@@ -74,4 +79,7 @@ export function createAuthenticatedLayout(sidebar?: ReactNode) {
 
 export const AppLayout = createAuthenticatedLayout();
 export const SuperAdminLayout = createAuthenticatedLayout(<SuperAdminSidebar />);
-export const MerchantLayout = createAuthenticatedLayout(<MerchantSidebar />);
+export const MerchantLayout = createAuthenticatedLayout(
+  <MerchantSidebar />,
+  <MerchantContextSwitcher />,
+);

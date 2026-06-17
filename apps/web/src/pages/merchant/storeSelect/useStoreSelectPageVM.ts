@@ -4,7 +4,9 @@ import { useStore } from 'zustand';
 import { activeOrgStore } from '@/app/global/activeOrg/activeOrg.store';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { PATHS } from '@/app/routing/paths';
+import { useAppTranslation } from '@/app/i18n';
 import { createStoreListRuntime } from '@/features/merchant/store/list/runtime';
+import { getLocalizedText, languageToLocale } from '@/models/metadata';
 import { createStoreSelectPageCommands } from './storeSelectPage.commands';
 
 export function useStoreSelectPageVM() {
@@ -22,6 +24,8 @@ export function useStoreSelectPageVM() {
   const error = useStore(runtime.store, (s) => s.error);
 
   const navigate = useNavigate();
+  const { language } = useAppTranslation();
+  const locale = languageToLocale(language);
 
   useEffect(() => {
     if (!organizationId) {
@@ -39,10 +43,15 @@ export function useStoreSelectPageVM() {
       const selected = stores.find((store) => store.id === storeId);
       if (!selected) return;
 
-      commands.selectStore(storeId, organizationId, selected.locale);
+      commands.selectStore(
+        storeId,
+        getLocalizedText(selected.profile.displayName, locale),
+        organizationId,
+        selected.locale,
+      );
       void navigate(PATHS.MERCHANT.MENU);
     },
-    [organizationId, stores, commands, navigate],
+    [organizationId, stores, locale, commands, navigate],
   );
 
   return {

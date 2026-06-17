@@ -10,14 +10,14 @@ type LanguageOption = {
 export type AppHeaderProps = {
   appName: string;
   environment?: string;
+  /** Merchant-only header content (org/store switcher) rendered after the brand. */
+  headerContext?: ReactNode;
   isAuthenticated: boolean;
-  isOpen?: boolean;
   isSuperAdmin?: boolean;
   language: SupportedLanguage;
   languageOptions: LanguageOption[];
   onLanguageChange: (language: string) => void | Promise<void>;
   onLogout: () => void;
-  orgName?: string;
   username?: string;
 };
 

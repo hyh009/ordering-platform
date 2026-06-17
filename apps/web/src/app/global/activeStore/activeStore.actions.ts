@@ -4,10 +4,11 @@ import { activeStoreStore } from './activeStore.store';
 export const activeStoreActions = {
   setStore(
     storeId: string,
+    storeName: string,
     organizationId: string,
     locale: StoreLocaleDto | null,
   ) {
-    activeStoreStore.setState({ storeId, organizationId, locale });
+    activeStoreStore.setState({ storeId, storeName, organizationId, locale });
   },
 
   setLocale(locale: StoreLocaleDto) {
@@ -17,6 +18,7 @@ export const activeStoreActions = {
   clearStore() {
     activeStoreStore.setState({
       storeId: null,
+      storeName: null,
       organizationId: null,
       locale: null,
     });

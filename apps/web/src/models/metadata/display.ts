@@ -43,3 +43,13 @@ export function getLocalizedText(
 ) {
   return value[locale] ?? value['zh-TW'] ?? value.en ?? '';
 }
+
+/**
+ * Narrows a UI language code to a content locale, or `undefined` when it is not
+ * a supported locale (callers then fall back to `getLocalizedText`'s default).
+ */
+export function languageToLocale(language: string): SupportedLocale | undefined {
+  return supportedMetadataLocales.includes(language as SupportedLocale)
+    ? (language as SupportedLocale)
+    : undefined;
+}

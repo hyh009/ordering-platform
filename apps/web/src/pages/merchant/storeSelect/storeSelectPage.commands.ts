@@ -13,10 +13,11 @@ export function createStoreSelectPageCommands(
 
     selectStore(
       storeId: string,
+      storeName: string,
       organizationId: string,
       locale: StoreLocaleDto,
     ) {
-      activeStoreCommands.setStore(storeId, organizationId, locale);
+      activeStoreCommands.setStore(storeId, storeName, organizationId, locale);
     },
   };
 }

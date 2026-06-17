@@ -4,6 +4,7 @@ import { activeStoreStore } from './activeStore.store';
 
 type StoredActiveStore = {
   storeId: string;
+  storeName?: string;
   organizationId: string;
   locale?: StoreLocaleDto;
 };
@@ -25,6 +26,7 @@ export const activeStoreCommands = {
       if (parsed.organizationId === activeOrgId) {
         activeStoreActions.setStore(
           parsed.storeId,
+          parsed.storeName ?? '',
           parsed.organizationId,
           parsed.locale ?? null,
         );
@@ -40,25 +42,36 @@ export const activeStoreCommands = {
 
   setStore(
     storeId: string,
+    storeName: string,
     organizationId: string,
     locale: StoreLocaleDto | null,
   ) {
     const value: StoredActiveStore = {
       storeId,
+      storeName,
       organizationId,
       locale: locale ?? undefined,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    activeStoreActions.setStore(storeId, organizationId, locale);
+    activeStoreActions.setStore(storeId, storeName, organizationId, locale);
   },
 
   // Refresh the cached locale after the active store's settings change, so
   // localized inputs/views stay in sync without re-selecting the store.
   setLocale(storeId: string, locale: StoreLocaleDto) {
-    const { storeId: activeId, organizationId } = activeStoreStore.getState();
+    const {
+      storeId: activeId,
+      storeName,
+      organizationId,
+    } = activeStoreStore.getState();
     if (activeId !== storeId || !organizationId) return;
 
-    const value: StoredActiveStore = { storeId, organizationId, locale };
+    const value: StoredActiveStore = {
+      storeId,
+      storeName: storeName ?? undefined,
+      organizationId,
+      locale,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
     activeStoreActions.setLocale(locale);
   },

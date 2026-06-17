@@ -9,7 +9,7 @@ import {
   useParticipantIdentityForm,
 } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
-import { isStoreOpenNow } from '@/models/storeFrontMenu';
+import { isStoreOpenNow } from '@/models/store';
 import type { StoreOrderType } from '@/models/store';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { createLandingPageCommands } from './landingPage.commands';

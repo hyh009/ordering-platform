@@ -1,4 +1,5 @@
 import type {
+  BusinessHourDto,
   CreateStoreRequest,
   OffsetPaginationDto,
   StoreCheckoutMode,
@@ -11,6 +12,7 @@ import type {
 } from '@repo/shared';
 
 export type {
+  BusinessHourDto,
   CreateStoreRequest,
   StoreCheckoutMode,
   StoreLocaleDto,

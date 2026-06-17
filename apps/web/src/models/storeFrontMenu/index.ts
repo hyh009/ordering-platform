@@ -1,7 +1,3 @@
-export {
-  buildModifierMap,
-  groupMenuByCategory,
-  isStoreOpenNow,
-} from './display';
+export { buildModifierMap, groupMenuByCategory } from './display';
 export { storeFrontMenuModel } from './model';
 export type * from './types';

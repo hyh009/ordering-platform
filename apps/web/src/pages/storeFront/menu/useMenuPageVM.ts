@@ -6,11 +6,8 @@ import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { AddCartItemRequest } from '@/models/cart';
 import { canGuestAddOn } from '@/models/order';
-import {
-  buildModifierMap,
-  groupMenuByCategory,
-  isStoreOpenNow,
-} from '@/models/storeFrontMenu';
+import { isStoreOpenNow } from '@/models/store';
+import { buildModifierMap, groupMenuByCategory } from '@/models/storeFrontMenu';
 import type { PublicProduct } from '@/models/storeFrontMenu';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { createMenuPageCommands } from './menuPage.commands';
