@@ -25,7 +25,7 @@ export function StorefrontPageHeader({
   const LeftIcon = backIcon === 'close' ? X : ArrowLeft;
 
   return (
-    <div className="grid grid-cols-[2rem_1fr_2rem] items-center px-4 py-3">
+    <div className="grid grid-cols-[2rem_1fr_2rem] items-center px-4 py-2 sm:py-3">
       {onBack ? (
         <button
           className="flex h-8 w-8 items-center justify-center rounded-full text-storefront-text hover:bg-storefront-border/60"
@@ -37,13 +37,13 @@ export function StorefrontPageHeader({
       ) : (
         <div />
       )}
-      <h1 className="mb-0 text-center text-base font-semibold text-storefront-text">
+      <h1 className="mb-0 text-center text-base font-semibold text-storefront-text justify-self-center">
         {title}
       </h1>
       {logoUrl ? (
         <img
           alt={logoAlt ?? ''}
-          className="h-8 w-8 justify-self-end rounded-full object-cover"
+          className="h-8 w-8 justify-self-end rounded-full border border-storefront-primary object-cover shadow-sm"
           src={logoUrl}
         />
       ) : (
