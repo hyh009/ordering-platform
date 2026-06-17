@@ -194,6 +194,9 @@ const manualResources: Resource = {
         },
       },
       store: {
+        businessHours: {
+          allDay: '24 小時營業',
+        },
         checkoutModes: {
           payFirst: '先付款',
           payLater: '後付款',

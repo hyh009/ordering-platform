@@ -4,7 +4,10 @@ import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import deepEqual from 'fast-deep-equal';
-import { toUpdateStoreRequest, fromStore } from '@/features/components/store/storeForm/storeFormMapper';
+import {
+  toUpdateStoreRequest,
+  fromStore,
+} from '@/features/components/store/storeForm/storeFormMapper';
 import { createStoreDetailRuntime } from '@/features/merchant/store/detail/runtime';
 import { useStoreForm } from '@/features/components/store/storeForm/useStoreForm';
 import { tDefault } from '@/app/i18n';
@@ -29,6 +32,9 @@ export function useStoreSettingsPageVM() {
   const isLoading = useStore(runtime.store, (s) => s.isLoading);
   const loadError = useStore(runtime.store, (s) => s.error);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+  // Admins default to a read-only view and opt into editing. Staff never edit,
+  // so this stays false for them.
+  const [isEditing, setIsEditing] = useState(false);
   // Which branding image is mid-request, so the view can disable just that
   // control. null when no upload/removal is in flight.
   const [imageUpdatingKind, setImageUpdatingKind] =
@@ -41,10 +47,7 @@ export function useStoreSettingsPageVM() {
   // savedValues: snapshot of form values at last successful load or save.
   // Derived from store so it stays in sync without a separate setState call.
   // Used as the diff baseline in submit and will drive isDirty below.
-  const savedValues = useMemo(
-    () => (store ? fromStore(store) : null),
-    [store],
-  );
+  const savedValues = useMemo(() => (store ? fromStore(store) : null), [store]);
 
   // isDirty: true when form.values diverges from savedValues.
   // Also intended for blocking navigation via useBlocker (in-app) +
@@ -77,6 +80,7 @@ export function useStoreSettingsPageVM() {
     form.setIsSubmitting(false);
 
     if (result.status === 'saved') {
+      setIsEditing(false);
       feedbackCommands.toast({
         tone: 'success',
         message: tDefault(
@@ -90,6 +94,15 @@ export function useStoreSettingsPageVM() {
     form.setFieldErrors(result.fieldErrors ?? {});
     form.setSubmitError(result.message);
   }, [storeId, savedValues, form, commands]);
+
+  const startEdit = useCallback(() => setIsEditing(true), []);
+
+  // Discard in-flight edits by snapping the form back to the saved snapshot,
+  // then leave edit mode.
+  const cancelEdit = useCallback(() => {
+    if (savedValues) resetForm(savedValues);
+    setIsEditing(false);
+  }, [savedValues, resetForm]);
 
   // Shared wrapper for branding-image mutations: flags the in-flight control,
   // runs the command, then toasts the outcome.
@@ -127,7 +140,10 @@ export function useStoreSettingsPageVM() {
 
       await runImageUpdate(
         kind,
-        tDefault('merchant.storeSettings.branding.imageUpdated', 'Image updated.'),
+        tDefault(
+          'merchant.storeSettings.branding.imageUpdated',
+          'Image updated.',
+        ),
         () => commands.setStoreImage(storeId, kind, file),
       );
     },
@@ -140,7 +156,10 @@ export function useStoreSettingsPageVM() {
 
       await runImageUpdate(
         kind,
-        tDefault('merchant.storeSettings.branding.imageRemoved', 'Image removed.'),
+        tDefault(
+          'merchant.storeSettings.branding.imageRemoved',
+          'Image removed.',
+        ),
         () => commands.removeStoreImage(storeId, kind),
       );
     },
@@ -176,14 +195,17 @@ export function useStoreSettingsPageVM() {
 
   return {
     canManage,
+    cancelEdit,
     form,
     imageUpdatingKind,
     isDirty,
+    isEditing,
     isLoading,
     isStatusUpdating,
     loadError,
     removeImage,
     setImage,
+    startEdit,
     store,
     submit,
     toggleStatus,

@@ -1,9 +1,9 @@
 import { useRef, type ChangeEvent } from 'react';
-import { ImageIcon, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { imageFileInputAccept } from '@/models/asset';
 import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/utils/cn';
+import { StoreImageFrame } from './StoreImageFrame';
 
 type StoreImageUploadFieldProps = {
   label: string;
@@ -45,25 +45,7 @@ export function StoreImageUploadField({
       </div>
 
       <div className="flex items-center gap-4">
-        <div
-          className={cn(
-            'flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30',
-            variant === 'logo' ? 'h-24 w-24' : 'h-24 w-48',
-          )}
-        >
-          {value ? (
-            <img
-              alt={label}
-              className="h-full w-full object-cover"
-              src={value}
-            />
-          ) : (
-            <ImageIcon
-              aria-hidden
-              className="h-8 w-8 text-muted-foreground/50"
-            />
-          )}
-        </div>
+        <StoreImageFrame alt={label} value={value} variant={variant} />
 
         <div className="flex flex-col gap-2">
           <input
@@ -86,10 +68,7 @@ export function StoreImageUploadField({
             {isBusy
               ? tDefault('common.actions.uploading', 'Uploading...')
               : value
-                ? tDefault(
-                    'merchant.storeSettings.branding.replace',
-                    'Replace',
-                  )
+                ? tDefault('merchant.storeSettings.branding.replace', 'Replace')
                 : tDefault('merchant.storeSettings.branding.upload', 'Upload')}
           </Button>
           {value && (

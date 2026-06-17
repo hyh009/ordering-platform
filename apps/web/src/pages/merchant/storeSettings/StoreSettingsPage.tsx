@@ -1,3 +1,4 @@
+import { PenSquare } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { StoreDetailsView } from '@/features/components/store/StoreDetailsView';
 import { StoreImageUploadField } from '@/features/components/store/StoreImageUploadField';
@@ -24,6 +25,17 @@ export function StoreSettingsPage() {
             )}
           </p>
         </div>
+        {vm.canManage && vm.store && !vm.isEditing && (
+          <Button
+            className="shrink-0"
+            type="button"
+            variant="outline"
+            onClick={vm.startEdit}
+          >
+            <PenSquare className="mr-2 h-4 w-4" />
+            {tDefault('common.actions.edit', 'Edit')}
+          </Button>
+        )}
       </div>
 
       {vm.isLoading && (
@@ -69,76 +81,84 @@ export function StoreSettingsPage() {
             )}
           </div>
 
-          {/* Branding */}
-          {vm.canManage && (
-            <div className="grid gap-6 rounded-xl border border-border bg-card p-8 shadow-sm sm:grid-cols-2">
-              {[
-                {
-                  kind: 'logo' as const,
-                  value: vm.store.profile.logoUrl,
-                  label: tDefault(
-                    'merchant.storeSettings.branding.logo',
-                    'Logo',
-                  ),
-                  description: tDefault(
-                    'merchant.storeSettings.branding.logoHint',
-                    'Square image shown next to your store name.',
-                  ),
-                },
-                {
-                  kind: 'banner' as const,
-                  value: vm.store.profile.bannerUrl,
-                  label: tDefault(
-                    'merchant.storeSettings.branding.banner',
-                    'Banner',
-                  ),
-                  description: tDefault(
-                    'merchant.storeSettings.branding.bannerHint',
-                    'Wide image shown at the top of your store page.',
-                  ),
-                },
-              ].map(({ kind, value, label, description }) => (
-                <StoreImageUploadField
-                  key={kind}
-                  description={description}
-                  disabled={vm.imageUpdatingKind !== null}
-                  isBusy={vm.imageUpdatingKind === kind}
-                  label={label}
-                  onRemove={() => void vm.removeImage(kind)}
-                  onSelect={(file) => void vm.setImage(kind, file)}
-                  value={value}
-                  variant={kind}
+          {vm.canManage && vm.isEditing ? (
+            <>
+              {/* Branding */}
+              <div className="grid gap-6 rounded-xl border border-border bg-card p-8 shadow-sm sm:grid-cols-2">
+                {[
+                  {
+                    kind: 'logo' as const,
+                    value: vm.store.profile.logoUrl,
+                    label: tDefault(
+                      'merchant.storeSettings.branding.logo',
+                      'Logo',
+                    ),
+                    description: tDefault(
+                      'merchant.storeSettings.branding.logoHint',
+                      'Square image shown next to your store name.',
+                    ),
+                  },
+                  {
+                    kind: 'banner' as const,
+                    value: vm.store.profile.bannerUrl,
+                    label: tDefault(
+                      'merchant.storeSettings.branding.banner',
+                      'Banner',
+                    ),
+                    description: tDefault(
+                      'merchant.storeSettings.branding.bannerHint',
+                      'Wide image shown at the top of your store page.',
+                    ),
+                  },
+                ].map(({ kind, value, label, description }) => (
+                  <StoreImageUploadField
+                    key={kind}
+                    description={description}
+                    disabled={vm.imageUpdatingKind !== null}
+                    isBusy={vm.imageUpdatingKind === kind}
+                    label={label}
+                    onRemove={() => void vm.removeImage(kind)}
+                    onSelect={(file) => void vm.setImage(kind, file)}
+                    value={value}
+                    variant={kind}
+                  />
+                ))}
+              </div>
+
+              {/* Settings form */}
+              <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+                <StoreForm
+                  form={vm.form}
+                  hideFooter
+                  id="store-settings-form"
+                  onCancel={vm.cancelEdit}
+                  onSubmit={vm.submit}
                 />
-              ))}
-            </div>
-          )}
+              </div>
 
-          {/* Settings */}
-          <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-            {vm.canManage ? (
-              <StoreForm
-                form={vm.form}
-                hideFooter
-                id="store-settings-form"
-                onCancel={() => undefined}
-                onSubmit={vm.submit}
-              />
-            ) : (
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <Button
+                  disabled={vm.form.isSubmitting}
+                  type="button"
+                  variant="ghost"
+                  onClick={vm.cancelEdit}
+                >
+                  {tDefault('common.actions.cancel', 'Cancel')}
+                </Button>
+                <Button
+                  disabled={vm.form.isSubmitting || !vm.isDirty}
+                  form="store-settings-form"
+                  type="submit"
+                >
+                  {vm.form.isSubmitting
+                    ? tDefault('common.actions.saving', 'Saving...')
+                    : tDefault('common.actions.save', 'Save')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
               <StoreDetailsView store={vm.store} />
-            )}
-          </div>
-
-          {vm.canManage && (
-            <div className="flex justify-end border-t border-border pt-4">
-              <Button
-                disabled={vm.form.isSubmitting || !vm.isDirty}
-                form="store-settings-form"
-                type="submit"
-              >
-                {vm.form.isSubmitting
-                  ? tDefault('common.actions.saving', 'Saving...')
-                  : tDefault('common.actions.save', 'Save')}
-              </Button>
             </div>
           )}
         </>

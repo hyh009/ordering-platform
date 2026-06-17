@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import { getSupportedCustomerLocaleLabel } from '@/models/metadata';
 import {
+  formatBusinessHours,
   getStoreCheckoutModeLabel,
   getStoreOrderTypeLabel,
   storeOrderTypes,
   type Store,
 } from '@/models/store';
 import { LocalizedStringView } from '@/shared/components/LocalizedStringView';
+import { StoreImageFrame } from './StoreImageFrame';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -29,6 +31,23 @@ function SectionHeading({ children }: { children: ReactNode }) {
     <h4 className="border-b border-border pb-2 text-sm font-semibold">
       {children}
     </h4>
+  );
+}
+
+function ImagePreview({
+  label,
+  value,
+  variant,
+}: {
+  label: string;
+  value: string | undefined;
+  variant: 'logo' | 'banner';
+}) {
+  return (
+    <div className="grid gap-2">
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <StoreImageFrame alt={label} value={value} variant={variant} />
+    </div>
   );
 }
 
@@ -73,6 +92,19 @@ export function StoreDetailsView({ store }: StoreDetailsViewProps) {
         </div>
       </section>
 
+      {/* Branding */}
+      <section className="grid gap-4">
+        <SectionHeading>Branding</SectionHeading>
+        <div className="flex flex-wrap gap-8">
+          <ImagePreview label="Logo" value={profile.logoUrl} variant="logo" />
+          <ImagePreview
+            label="Banner"
+            value={profile.bannerUrl}
+            variant="banner"
+          />
+        </div>
+      </section>
+
       {/* Operation */}
       <section className="grid gap-4">
         <SectionHeading>Operation</SectionHeading>
@@ -110,7 +142,7 @@ export function StoreDetailsView({ store }: StoreDetailsViewProps) {
                       </td>
                       <td className="px-4 py-2">
                         {hour.isOpen ? (
-                          `${hour.openTime ?? '—'} – ${hour.closeTime ?? '—'}`
+                          formatBusinessHours(hour, tDefault)
                         ) : (
                           <span className="text-muted-foreground">Closed</span>
                         )}

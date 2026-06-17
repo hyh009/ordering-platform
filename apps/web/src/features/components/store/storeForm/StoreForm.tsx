@@ -7,6 +7,7 @@ import {
 import {
   getStoreCheckoutModeLabel,
   getStoreOrderTypeLabel,
+  STORE_ALL_DAY_TIME,
   storeCheckoutModes,
   storeOrderTypes,
 } from '@/models/store';
@@ -19,8 +20,6 @@ import type { StoreFormVM } from './useStoreForm';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const ALL_DAY = '00:00';
-
 // A close time strictly before the open time means the window crosses midnight
 // (e.g. 18:00 → 02:00). 00:00 → 00:00 is the all-day marker, not overnight.
 function isOvernight(openTime: string, closeTime: string): boolean {
@@ -28,7 +27,7 @@ function isOvernight(openTime: string, closeTime: string): boolean {
     !!openTime &&
     !!closeTime &&
     closeTime < openTime &&
-    !(openTime === ALL_DAY && closeTime === ALL_DAY)
+    !(openTime === STORE_ALL_DAY_TIME && closeTime === STORE_ALL_DAY_TIME)
   );
 }
 
@@ -343,8 +342,8 @@ export function StoreForm({
                   {form.values.businessHours.map((hour, index) => {
                     const is24h =
                       hour.isOpen &&
-                      hour.openTime === ALL_DAY &&
-                      hour.closeTime === ALL_DAY;
+                      hour.openTime === STORE_ALL_DAY_TIME &&
+                      hour.closeTime === STORE_ALL_DAY_TIME;
                     const overnight = isOvernight(
                       hour.openTime ?? '',
                       hour.closeTime ?? '',
@@ -388,8 +387,12 @@ export function StoreForm({
                             type="checkbox"
                             onChange={(e) =>
                               form.setBusinessHour(hour.dayOfWeek, {
-                                openTime: e.target.checked ? ALL_DAY : '',
-                                closeTime: e.target.checked ? ALL_DAY : '',
+                                openTime: e.target.checked
+                                  ? STORE_ALL_DAY_TIME
+                                  : '',
+                                closeTime: e.target.checked
+                                  ? STORE_ALL_DAY_TIME
+                                  : '',
                               })
                             }
                           />
