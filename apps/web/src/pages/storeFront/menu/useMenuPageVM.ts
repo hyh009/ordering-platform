@@ -5,6 +5,7 @@ import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { AddCartItemRequest } from '@/models/cart';
+import { canGuestAddOn } from '@/models/order';
 import {
   buildModifierMap,
   groupMenuByCategory,
@@ -32,6 +33,7 @@ export function useMenuPageVM() {
     (state) => state.isLoading,
   );
   const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
+  const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const rawIsMutating = useStore(
     runtime.stores.cart,
     (state) => state.isMutating,
@@ -39,6 +41,7 @@ export function useMenuPageVM() {
   const store = isActiveStore ? rawStore : null;
   const menu = isActiveStore ? rawMenu : null;
   const cart = isActiveStore ? rawCart : null;
+  const order = isActiveStore ? rawOrder : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const isMutating = isActiveStore && rawIsMutating;
 
@@ -62,9 +65,22 @@ export function useMenuPageVM() {
 
     let active = true;
     async function init() {
-      const result = await commands.initialize(storeId);
-      if (active && result.session.status === 'none') {
-        void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), { replace: true });
+      const { session } = await commands.initialize(storeId);
+      if (!active) return;
+
+      if (session.status === 'none' || session.status === 'ended') {
+        void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+          replace: true,
+        });
+        return;
+      }
+
+      // A placed order that can no longer be added to (pay-first, finished)
+      // has no business on the menu — send it to order tracking.
+      if (session.status === 'order' && !session.canAddOn) {
+        void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, session.orderId), {
+          replace: true,
+        });
       }
     }
     void init();
@@ -76,6 +92,17 @@ export function useMenuPageVM() {
   const categoryGroups = useMemo(
     () => (menu ? groupMenuByCategory(menu) : []),
     [menu],
+  );
+
+  // Tabs and their stable keys, mirroring the section keys the view renders.
+  // The view feeds these keys to useScrollSpyTabs for scroll behavior.
+  const categoryTabs = useMemo(
+    () =>
+      categoryGroups.map((group) => ({
+        key: group.category?.id ?? 'uncategorized',
+        category: group.category,
+      })),
+    [categoryGroups],
   );
   const modifierMap = useMemo(
     () => (menu ? buildModifierMap(menu.modifiers) : new Map()),
@@ -91,6 +118,22 @@ export function useMenuPageVM() {
     () => cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
     [cart],
   );
+
+  // Header banner: adding on to a live pay-later order takes priority; with no
+  // order, a dine-in group cart (one with a Join Code) shows the invite prompt.
+  const orderBanner = useMemo<
+    | { mode: 'adding'; orderNumber: string }
+    | { mode: 'invite' }
+    | { mode: 'none' }
+  >(() => {
+    if (order && canGuestAddOn(order)) {
+      return { mode: 'adding', orderNumber: order.displayNumber };
+    }
+    if (!order && cart?.joinCode) {
+      return { mode: 'invite' };
+    }
+    return { mode: 'none' };
+  }, [cart, order]);
 
   const addItem = useCallback(
     async (request: AddCartItemRequest) => {
@@ -116,19 +159,26 @@ export function useMenuPageVM() {
     void navigate(PATHS.STOREFRONT.INVITE_BUILD(storeId));
   }, [navigate, storeId]);
 
+  const goToLanding = useCallback(() => {
+    void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId));
+  }, [navigate, storeId]);
+
   return {
     store,
     isLoading,
     isOpen,
     categoryGroups,
+    categoryTabs,
     modifierMap,
     cartItemCount,
     cartTotal: cart?.totalAmount ?? 0,
     isMutating,
+    orderBanner,
     openProduct,
     setOpenProduct,
     addItem,
     goToCart,
     goToInvite,
+    goToLanding,
   };
 }

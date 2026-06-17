@@ -46,6 +46,12 @@ const manualResources: Resource = {
         },
         menu: {
           invite: '邀請',
+          categoriesNav: '菜單分類',
+          other: '其他',
+          addingToOrder: '正在為訂單加點中',
+          payLaterBadge: 'Pay Later',
+          inviteTitle: '邀請朋友一起點餐',
+          inviteSubtitle: '分享 Join Code，一起加入這份訂單',
         },
         participant: {
           anonymousDisplayName: '匿名{{animal}} {{suffix}}',

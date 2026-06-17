@@ -7,7 +7,10 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
       await runtime.commands.tenant.activateStore(storeId);
       const [storefront, session] = await Promise.all([
         runtime.commands.storefront.loadStoreWithMenu(storeId),
-        runtime.commands.session.restoreSession(storeId),
+        // Resume over the network so the menu reflects the live cart/order
+        // (e.g. the pay-later add-on banner) even on a hard refresh. Ongoing
+        // freshness will come from SSE later.
+        runtime.commands.session.resumeSession(storeId),
       ]);
       return { storefront, session };
     },

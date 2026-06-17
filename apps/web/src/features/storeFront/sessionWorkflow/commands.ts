@@ -1,7 +1,7 @@
 import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import type { StoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
-import { isOrderFinished } from '@/models/order';
+import { canGuestAddOn } from '@/models/order';
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
 import {
   mapStoreFrontApiError,
@@ -20,9 +20,10 @@ export type ResumeSessionResult =
   | { status: 'cart' }
   /**
    * Submitted order restored into the order store; resume into order tracking.
-   * `finished` marks a completed lifecycle; `orderId` is for navigation.
+   * `canAddOn` says whether guests may still add to it (pay-later, unpaid, not
+   * finished); `orderId` is for navigation.
    */
-  | { status: 'order'; finished: boolean; orderId: string }
+  | { status: 'order'; canAddOn: boolean; orderId: string }
   | StoreFrontCommandFailure;
 
 export type StoreFrontSessionWorkflowCommands = {
@@ -117,7 +118,7 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
           orderActions.orderUpdated(session.order);
           return {
             status: 'order',
-            finished: isOrderFinished(session.order),
+            canAddOn: canGuestAddOn(session.order),
             orderId: session.order.id,
           };
         }
