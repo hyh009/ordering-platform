@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { AddCartItemRequest } from '@/models/cart';
@@ -10,6 +9,7 @@ import { isStoreOpenNow } from '@/models/store';
 import { buildModifierMap, groupMenuByCategory } from '@/models/storeFrontMenu';
 import type { PublicProduct } from '@/models/storeFrontMenu';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createMenuPageCommands } from './menuPage.commands';
 
 export function useMenuPageVM() {
@@ -80,9 +80,7 @@ export function useMenuPageVM() {
         // A transient failure (network/server). The stored session is left
         // intact, so surface the error and stay put — the guest can keep
         // browsing and retry (reload, and later SSE will resync).
-        if (session.message) {
-          feedbackCommands.toast({ tone: 'error', message: session.message });
-        }
+        handleStoreFrontFailure(session);
         return;
       }
 
@@ -155,9 +153,7 @@ export function useMenuPageVM() {
         return;
       }
 
-      if (result.message) {
-        feedbackCommands.toast({ tone: 'error', message: result.message });
-      }
+      handleStoreFrontFailure(result);
     },
     [commands, setOpenProduct, storeId],
   );
