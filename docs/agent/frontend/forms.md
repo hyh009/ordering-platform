@@ -148,6 +148,12 @@ render the field errors as the primary feedback. Show the generic submit error
 only when there are no field errors, such as network, server, permission, or
 other non-field failures.
 
+A shared per-domain failure helper may encode this precedence so each VM does
+not re-implement it: pass the form's `setSubmitError` (and optional
+`setFieldErrors`) and let the helper place field errors on fields, otherwise
+present the failure per its reason. See
+`docs/agent/frontend/error-feedback.md` (e.g. `handleStoreFrontFailure`).
+
 ## Editing Forms
 
 For edit pages, keep confirmed data and unsaved draft data separate.

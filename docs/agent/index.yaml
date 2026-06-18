@@ -146,7 +146,11 @@ agent_docs:
 
     - name: frontend-error-feedback
       path: docs/agent/frontend/error-feedback.md
-      use_when: Handling frontend API errors and page/domain error state.
+      use_when: Deciding how to surface a command failure (toast/modal/inline/silent) and where page/domain error state lives, once you have a typed failure.
+
+    - name: frontend-error-mapping
+      path: docs/agent/frontend/error-mapping.md
+      use_when: Producing a typed failure from a backend error (normalize, then code to reason to message), or unifying error messages across domains.
 
     - name: frontend-api-error-testing
       path: docs/agent/frontend/api-error-testing.md

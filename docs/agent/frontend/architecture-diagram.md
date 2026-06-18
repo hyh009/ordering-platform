@@ -18,7 +18,10 @@ Commands
   +--> Service --> API Client / Paths --> Backend API
   |
   +--> Feature Actions --> Feature Store
-       (when the flow updates API-loaded resource state)
+  |    (when the flow updates API-loaded resource state)
+  |
+  +--> typed failure { reason, message } --> Page VM Hook --> presentation
+       (toast / modal / inline / silent; see error-feedback.md)
 ```
 
 ## State Flow
@@ -52,6 +55,11 @@ Route and page interaction
 Form interaction
   -> draft values, field errors, submit state
   -> page-local or reusable domain form hook
+
+Command failure
+  -> typed failure { reason, message } returned by a command
+  -> page VM presents it (toast/modal/inline/silent) or branches on the
+     reason (navigate, clear session); see error-feedback.md / error-mapping.md
 
 Static app data
   -> i18n resources, constants, static assets

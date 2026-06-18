@@ -72,7 +72,9 @@ Use this checklist before implementing new or changed frontend state.
 - Services call `apiJson` and use `src/models` helpers for DTO
   deserialize/serialize.
 - Let `apiJson` throw `ApiError`; do not catch API errors in services.
-- Follow `docs/agent/frontend/error-feedback.md` when mapping API errors.
+- Follow `docs/agent/frontend/error-mapping.md` when mapping API errors
+  (code → reason → message), and `docs/agent/frontend/error-feedback.md` for
+  presenting them.
 - Update `apps/web/.env.example` when a new frontend env variable is required.
 - Update README or setup docs when local usage changes.
 
@@ -169,6 +171,7 @@ Use this checklist when adding or changing visible UI.
 - `docs/agent/frontend/commands.md`
 - `docs/agent/frontend/shared-components.md`
 - `docs/agent/frontend/reusable-primitives.md`
+- `docs/agent/frontend/error-mapping.md`
 - `docs/agent/frontend/error-feedback.md`
 - `docs/agent/frontend/api-error-testing.md`
 - `docs/agent/frontend/shared-feedback-ui.md`

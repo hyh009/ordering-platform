@@ -48,7 +48,9 @@ domain service in `apps/web/src/services`.
   deserialize/serialize.
 - Let `apiJson` throw `ApiError`; do not catch API errors in services.
 
-Follow `docs/agent/frontend/error-feedback.md` when mapping API errors.
+Follow `docs/agent/frontend/error-mapping.md` when mapping API errors
+(code → reason → message), and `docs/agent/frontend/error-feedback.md` for
+presenting them.
 
 ### 4. State
 
@@ -85,6 +87,9 @@ Determine whether the feature has async flows. If yes, add or update commands.
   when it only forwards to a feature command.
 - Commands coordinate request validation, service calls, actions, loading
   states, API errors, and typed outcomes.
+- Commands map API errors to a typed failure `{ reason, message }` via the
+  domain mapper in `src/services/utils/<domain>ApiError.ts`; see
+  `docs/agent/frontend/error-mapping.md`. They never call toast/modal.
 - Commands decide mutation success data reactions such as reloading list,
   detail, overview, or related read-slice state.
 - Page VMs decide mutation success UI reactions such as closing a modal,
@@ -101,6 +106,9 @@ Add or update the page VM hook in `apps/web/src/pages/<page>/`.
   reactions such as navigation, modal feedback, and form reset.
 - Page VM hooks own validation feedback, but submit or mutation commands own
   request schema validation before service calls.
+- Page VMs present command failures (toast/modal/inline/silent) via the shared
+  per-domain helper, e.g. `handleStoreFrontFailure(failure, { form })`; see
+  `docs/agent/frontend/error-feedback.md`.
 - Views read state and trigger behavior through the page VM hook only.
 - Do not call stores, services, or commands directly from views.
 

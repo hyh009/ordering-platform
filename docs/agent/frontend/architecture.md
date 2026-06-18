@@ -19,6 +19,11 @@ View -> Page VM Hook -> Commands -> Service -> API
                    when the flow owns resource state
 ```
 
+On failure, a command returns a typed failure `{ reason, message }` to the page
+VM, which presents it (toast / modal / inline / silent) or branches on the
+reason. See `docs/agent/frontend/error-mapping.md` (produce the failure) and
+`docs/agent/frontend/error-feedback.md` (surface it).
+
 State flow:
 
 ```txt
