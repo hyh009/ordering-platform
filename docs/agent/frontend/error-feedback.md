@@ -42,7 +42,8 @@ lives in `apps/web/src/app/global/feedback/`.
 
 The four presentation kinds:
 
-- `inline` — on the form that triggered it (form-level submit error)
+- `inline` — the form-level submit message, shown inline on the form (a per-field
+  error is not this kind; field errors are separate and always take precedence)
 - `toast` — transient; the page stays usable
 - `modal` — the user must acknowledge before continuing
 - `silent` — a control-flow signal with no user-facing message
@@ -66,7 +67,7 @@ Call it from the VM once a command returns a failure:
 // page with no form — let the convention decide
 if (result.status === 'failed') handleAreaFailure(result);
 
-// page with a form — route field/inline errors onto it
+// page with a form — route field errors and the submit message onto it
 handleAreaFailure(result, { form: { setSubmitError } });
 ```
 

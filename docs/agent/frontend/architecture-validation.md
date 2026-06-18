@@ -29,6 +29,13 @@ View -> Page VM Hook -> Commands -> Service -> API
 - Page VM hooks own command-result reactions, such as navigation after delete succeeds.
 - Page VM hooks own validation feedback and form error state, not request
   schema guards before service calls.
+- In an area with a failure helper, page VM hooks present command failures via
+  that area's `handle<Area>Failure` helper (passing the form on form pages). They
+  do not surface a failure by calling `feedbackCommands.toast` / `alert` or
+  `form.setFieldErrors` / `setSubmitError` directly. Direct feedback or
+  form-error calls are only for non-failure UX (confirm/outcome dialogs), or for
+  pages not in such an area (e.g. login). See
+  `docs/agent/frontend/error-feedback.md`.
 - Page VM hooks do not run request Zod validation such as
   `createXSchema.safeParse(request)`; submit and mutation commands own that
   schema check.
@@ -94,6 +101,9 @@ View -> Page VM Hook -> Commands -> Service -> API
 - `useEffect(..., [vm])`
 - `useEffect(..., [vm.actions])`
 - View code doing `await commandOrVMAction(); navigate(...)` without checking a typed result in the VM.
+- A page-VM failure branch (in an area with a failure helper) calling
+  `feedbackCommands.toast` / `alert` or `form.setFieldErrors` / `setSubmitError`
+  directly instead of `handle<Area>Failure`.
 - `*.commands.ts` importing React, router APIs, feedback UI APIs, or page modules from feature code.
 - Command placement or workflow ownership that violates
   `docs/agent/frontend/commands.md`.

@@ -113,7 +113,7 @@ src/
 - Reuse an existing reason before adding one. Add a reason only when message or
   behavior must differ regardless of page.
 - Never write `tDefault('<domain>.errors.*', ...)` outside a wording table.
-- Page-specific reactions (navigate, clear session, inline field error) live in
+- Page-specific reactions (navigate, clear session, field error) live in
   the page or command, not the mapper.
 
 > An area still using a legacy `if` / `Set` mapper should be migrated to the two
