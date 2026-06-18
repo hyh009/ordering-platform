@@ -16,9 +16,10 @@ this guide decides how to surface it and where error state lives.
 - Presentation (toast / modal / inline / silent) is decided at the page or VM
   layer — never in API, services, mappers, feature actions, or stores.
 - Surface a command failure through the area's failure helper
-  (`handle<Area>Failure`), not by calling `feedbackCommands.toast` / `alert`
-  directly in the VM. Direct feedback calls are only for non-failure UX such as
-  confirmations and outcome dialogs.
+  (`handle<Area>Failure`), not by calling `feedbackCommands.toast` / `alert` or
+  `form.setFieldErrors` / `setSubmitError` directly in the VM. Direct feedback or
+  form-error calls are only for non-failure UX (confirm / outcome dialogs) or
+  pages not in such an area (e.g. login).
 - Feature stores hold feature-owned page/domain error state only; feature
   actions only mutate that state.
 
@@ -67,8 +68,10 @@ Call it from the VM once a command returns a failure:
 // page with no form — let the convention decide
 if (result.status === 'failed') handleAreaFailure(result);
 
-// page with a form — route field errors and the submit message onto it
-handleAreaFailure(result, { form: { setSubmitError } });
+// page with a form — pass the form's error setters (setFieldErrors optional)
+handleAreaFailure(result, {
+  form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+});
 ```
 
 Only call the helper for `result.status === 'failed'`. Non-failure terminal
