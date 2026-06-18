@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
+import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
@@ -73,8 +74,9 @@ export function useProductModifierDetailPageVM() {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleMerchantFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [commands, form, modifierId, storeId]);
 
   const goBack = useCallback(() => {

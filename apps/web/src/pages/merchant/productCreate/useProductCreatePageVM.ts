@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
+import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { PATHS } from '@/app/routing/paths';
@@ -50,8 +51,9 @@ export function useProductCreatePageVM() {
         return;
       }
 
-      form.setFieldErrors(result.fieldErrors ?? {});
-      form.setSubmitError(result.message);
+      handleMerchantFailure(result, {
+        form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+      });
     },
     [form, navigate, storeId],
   );
