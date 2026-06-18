@@ -82,7 +82,7 @@ shared infrastructure reasons (`network` / `server` / `unknown`) for anything
 not listed. The mapper is then a few lines:
 
 ```ts
-export function mapStoreFrontApiError(error: unknown): StoreFrontCommandFailure {
+export function mapAreaApiError(error: unknown): AreaCommandFailure {
   const reason = classifyApiError(error, CODE_REASON);
   const message = MESSAGES[reason];
   return { status: 'failed', reason, message: tDefault(message.key, message.fallback) };
@@ -99,9 +99,7 @@ src/
   api/apiError.ts          # normalize: API response -> ApiError
   services/utils/
     classifyApiError.ts    # shared: code -> reason fallback (network/server/unknown)
-    storeFrontApiError.ts  # the two tables + mapper
-    merchantApiError.ts
-    adminApiError.ts
+    <area>ApiError.ts      # the two tables + mapper, one per area
 ```
 
 ## Rules
@@ -118,6 +116,5 @@ src/
 - Page-specific reactions (navigate, clear session, inline field error) live in
   the page or command, not the mapper.
 
-> storeFront is the reference implementation. `merchantApiError.ts` and
-> `adminApiError.ts` still use the legacy `if` / `Set` style and are pending
-> migration.
+> An area still using a legacy `if` / `Set` mapper should be migrated to the two
+> tables above.

@@ -106,8 +106,8 @@ Add or update the page VM hook in `apps/web/src/pages/<page>/`.
   reactions such as navigation, modal feedback, and form reset.
 - Page VM hooks own validation feedback, but submit or mutation commands own
   request schema validation before service calls.
-- Page VMs present command failures (toast/modal/inline/silent) via the shared
-  per-domain helper, e.g. `handleStoreFrontFailure(failure, { form })`; see
+- Page VMs present command failures (toast/modal/inline/silent) via the area's
+  failure helper, `handle<Area>Failure(failure, { form })`; see
   `docs/agent/frontend/error-feedback.md`.
 - Views read state and trigger behavior through the page VM hook only.
 - Do not call stores, services, or commands directly from views.

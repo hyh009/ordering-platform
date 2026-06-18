@@ -15,8 +15,8 @@ this guide decides how to surface it and where error state lives.
 - Do not create a global error store.
 - Presentation (toast / modal / inline / silent) is decided at the page or VM
   layer — never in API, services, mappers, feature actions, or stores.
-- Surface a command failure through the domain failure helper (e.g.
-  `handleStoreFrontFailure`), not by calling `feedbackCommands.toast` / `alert`
+- Surface a command failure through the area's failure helper
+  (`handle<Area>Failure`), not by calling `feedbackCommands.toast` / `alert`
   directly in the VM. Direct feedback calls are only for non-failure UX such as
   confirmations and outcome dialogs.
 - Feature stores hold feature-owned page/domain error state only; feature
@@ -24,9 +24,15 @@ this guide decides how to surface it and where error state lives.
 
 ## Presentation convention
 
-A failure's `reason` decides how it is shown. Keep this as a per-domain table
+A failure's `reason` decides how it is shown. Keep this as a per-area table
 (`reason → presentation`) consumed by one entry helper, so every page surfaces
 failures the same way and a new reason must declare its presentation.
+
+Each frontend area has its own table + helper — do not share one across areas
+(their reason sets differ). Place each at
+`apps/web/src/pages/<area>/<area>FailureFeedback.ts` and name the helper
+`handle<Area>Failure(failure, { form? })`. When adding one for a new area,
+mirror an existing area's implementation.
 
 The four presentation kinds:
 
@@ -35,11 +41,8 @@ The four presentation kinds:
 - `modal` — the user must acknowledge before continuing
 - `silent` — a control-flow signal with no user-facing message
 
-storeFront is the reference implementation. The table
-`STOREFRONT_FAILURE_PRESENTATION` (`reason → kind`) and the single entry helper
-`handleStoreFrontFailure(failure, { form? })` live in
-`apps/web/src/pages/storeFront/storeFrontFailureFeedback.ts`. The helper resolves
-in order:
+The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to a kind, and
+its helper resolves in this order:
 
 ```txt
 field errors present?  ──▶ put on fields, clear submit error   (see forms.md)
@@ -55,10 +58,10 @@ Call it from the VM once a command returns a failure:
 
 ```ts
 // page with no form — let the convention decide
-if (result.status === 'failed') handleStoreFrontFailure(result);
+if (result.status === 'failed') handleAreaFailure(result);
 
 // page with a form — route field/inline errors onto it
-handleStoreFrontFailure(result, { form: { setSubmitError } });
+handleAreaFailure(result, { form: { setSubmitError } });
 ```
 
 Only call the helper for `result.status === 'failed'`. Non-failure terminal
