@@ -49,15 +49,21 @@ export function JoinEntryPage() {
             </label>
             <div className="relative">
               <Input
+                aria-invalid={vm.codeError ? true : undefined}
                 className="pr-10 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
                 id="join-code-input"
                 maxLength={20}
-                placeholder={tDefault('guest.joinEntry.codePlaceholder', 'e.g. A1B2C3')}
+                placeholder={tDefault('guest.joinEntry.codePlaceholder', 'e.g. ABC234')}
                 value={vm.joinCode}
                 onChange={(e) => vm.setJoinCode(e.target.value)}
               />
               <QrCode className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-storefront-text-muted" />
             </div>
+            {vm.codeError ? (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {vm.codeError}
+              </p>
+            ) : null}
           </div>
 
           {/* Hint */}

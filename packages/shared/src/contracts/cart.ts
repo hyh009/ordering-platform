@@ -81,6 +81,23 @@ export type CartDto = {
   updatedAt: string;
 };
 
+// ── Join code format ─────────────────────────────────────────────────────────
+// Single source of truth for join code generation (backend) and validation
+// (backend request boundary + frontend manual entry).
+
+export const JOIN_CODE_LENGTH = 6;
+// Excludes ambiguous characters (0/O, 1/I/L) for QR fallback readability.
+export const JOIN_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+export const joinCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(
+    new RegExp(`^[${JOIN_CODE_ALPHABET}]{${JOIN_CODE_LENGTH}}$`),
+    'Invalid join code',
+  );
+
 // ── Request schemas ────────────────────────────────────────────────────────────
 
 const guestDisplayNameSchema = z.string().trim().min(1).max(50);
@@ -95,7 +112,7 @@ export const createCartSchema = z.object({
 });
 
 export const joinCartSchema = z.object({
-  joinCode: z.string().trim().min(1).max(64),
+  joinCode: joinCodeSchema,
   avatarKey: anonymousAvatarKeySchema,
   displayName: guestDisplayNameSchema.optional(),
 });

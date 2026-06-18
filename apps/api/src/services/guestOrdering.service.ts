@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 
+import { JOIN_CODE_ALPHABET, JOIN_CODE_LENGTH } from '@repo/shared';
 import { toCartDto } from '@src/models/cart/mapper';
 import { toOrderDto } from '@src/models/order/mapper';
 import {
@@ -52,10 +53,7 @@ import type { GuestTokenClaims } from '@src/services/guestToken.service';
 
 const OPTIMISTIC_WRITE_ATTEMPTS = 3;
 const JOIN_CODE_CREATE_ATTEMPTS = 3;
-const JOIN_CODE_LENGTH = 10;
 const CART_LIFETIME_MS = 12 * 60 * 60 * 1000;
-// Excludes ambiguous characters (0/O, 1/I/L) for QR fallback readability.
-const JOIN_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
