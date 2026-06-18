@@ -7,6 +7,7 @@ import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { CartItem } from '@/models/cart';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createCartPageCommands } from './cartPage.commands';
 
 export function useCartPageVM() {
@@ -61,8 +62,8 @@ export function useCartPageVM() {
   const removeItem = useCallback(
     async (item: CartItem) => {
       const result = await commands.removeItem(storeId, item.id);
-      if (result.status === 'failed' && result.message) {
-        feedbackCommands.toast({ tone: 'error', message: result.message });
+      if (result.status === 'failed') {
+        handleStoreFrontFailure(result);
       }
     },
     [commands, storeId],
@@ -74,8 +75,8 @@ export function useCartPageVM() {
       const result = await commands.updateItem(storeId, item.id, {
         quantity,
       });
-      if (result.status === 'failed' && result.message) {
-        feedbackCommands.toast({ tone: 'error', message: result.message });
+      if (result.status === 'failed') {
+        handleStoreFrontFailure(result);
       }
     },
     [commands, storeId],
@@ -102,8 +103,8 @@ export function useCartPageVM() {
       return;
     }
 
-    if (result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
+    if (result.status === 'failed') {
+      handleStoreFrontFailure(result);
     }
   }, [commands, navigate, storeId, tDefault]);
 
