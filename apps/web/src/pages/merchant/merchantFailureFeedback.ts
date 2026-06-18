@@ -12,22 +12,22 @@ import type {
 // Single source of truth for "what does each merchant failure reason do".
 // The exhaustive Record means a new reason cannot be added without declaring
 // its presentation.
+//
+// Merchant pages are form-heavy, so failures show inline on the form that
+// triggered them: field errors land on the fields (handled before the kind),
+// and every other reason becomes the form's submit message. On a page with no
+// form, `inline` falls back to a toast.
 export const MERCHANT_FAILURE_PRESENTATION: Record<
   MerchantCommandFailureReason,
   FailurePresentation
 > = {
-  // Belongs next to the form that triggered it, not a transient toast.
   invalid: 'inline',
-  // Resource-level conflicts (already exists, stale data): toast so the page
-  // stays usable and the user can decide whether to refresh.
-  conflict: 'toast',
-  // Permission failures are unexpected mid-action — toast so the page
-  // stays usable.
-  forbidden: 'toast',
-  'not-found': 'toast',
-  network: 'toast',
-  server: 'toast',
-  unknown: 'toast',
+  conflict: 'inline',
+  forbidden: 'inline',
+  'not-found': 'inline',
+  network: 'inline',
+  server: 'inline',
+  unknown: 'inline',
 };
 
 // One entry point for every merchant failure, form or not. Delegates to the
