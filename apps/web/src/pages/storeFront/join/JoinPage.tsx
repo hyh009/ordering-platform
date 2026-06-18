@@ -39,6 +39,15 @@ export function JoinPage() {
         onChange={vm.setIdentityValues}
       />
 
+      {vm.submitError ? (
+        <p
+          role="alert"
+          className="text-center text-sm font-medium text-destructive"
+        >
+          {vm.submitError}
+        </p>
+      ) : null}
+
       <Button
         disabled={vm.isMutating}
         onClick={() => {

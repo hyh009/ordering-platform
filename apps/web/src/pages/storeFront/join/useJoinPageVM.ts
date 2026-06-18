@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import {
   toParticipantIdentitySubmission,
@@ -9,6 +8,7 @@ import {
 } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createJoinPageCommands } from './joinPage.commands';
 
 export function useJoinPageVM() {
@@ -31,6 +31,9 @@ export function useJoinPageVM() {
 
   const { values: identityValues, setValue: setIdentityValues } =
     useParticipantIdentityForm();
+  // Form-level submit error (e.g. an invalid invite). Lives on this page next
+  // to the form rather than as a transient toast.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!storeId) return;
@@ -42,6 +45,7 @@ export function useJoinPageVM() {
 
   const join = useCallback(async () => {
     if (!joinCode) return;
+    setSubmitError(null);
 
     const result = await commands.join(storeId, {
       joinCode,
@@ -59,9 +63,9 @@ export function useJoinPageVM() {
       return;
     }
 
-    if (result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
-    }
+    // One entry point: invalid-join-code lands inline on the form, everything
+    // else (network/server/...) follows the shared presentation convention.
+    handleStoreFrontFailure(result, { form: { setSubmitError } });
   }, [commands, identityValues, joinCode, navigate, storeId]);
 
   return {
@@ -70,6 +74,7 @@ export function useJoinPageVM() {
     identityValues,
     setIdentityValues,
     isMutating,
+    submitError,
     join,
   };
 }

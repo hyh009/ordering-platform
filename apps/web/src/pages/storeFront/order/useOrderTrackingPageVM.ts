@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { canGuestAddOn, isOrderFinished } from '@/models/order';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
 
 export function useOrderTrackingPageVM() {
@@ -70,8 +70,8 @@ export function useOrderTrackingPageVM() {
       );
       return;
     }
-    if (result.status === 'failed' && result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
+    if (result.status === 'failed') {
+      handleStoreFrontFailure(result);
     }
   }, [access, commands, navigate, orderId, storeId]);
 
