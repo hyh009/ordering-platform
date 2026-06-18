@@ -1,11 +1,11 @@
-import {
-  getApiFailureReason,
-  hasApiErrorCode,
-  isApiError,
-} from '@/api/apiError';
+import { isApiError } from '@/api/apiError';
 import { tDefault } from '@/app/i18n';
+import { classifyApiError } from './classifyApiError';
+
+import type { ErrorCode } from '@repo/shared';
 
 export type MerchantCommandFailureReason =
+  | 'conflict'
   | 'forbidden'
   | 'invalid'
   | 'network'
@@ -19,75 +19,66 @@ export type MerchantCommandFailure = {
   reason: MerchantCommandFailureReason;
 };
 
-const notFoundCodes = new Set([
-  'STORE_NOT_FOUND',
-  'CATEGORY_NOT_FOUND',
-  'PRODUCT_MODIFIER_NOT_FOUND',
-  'PRODUCT_NOT_FOUND',
-  'TAG_NOT_FOUND',
-]);
+// Table 1: backend code -> reason. Each code is classified exactly once here.
+// Codes not listed fall back to shared infrastructure classification.
+const MERCHANT_CODE_REASON: Partial<Record<ErrorCode, MerchantCommandFailureReason>> = {
+  STORE_NOT_FOUND: 'not-found',
+  CATEGORY_NOT_FOUND: 'not-found',
+  PRODUCT_MODIFIER_NOT_FOUND: 'not-found',
+  PRODUCT_NOT_FOUND: 'not-found',
+  TAG_NOT_FOUND: 'not-found',
+  VALIDATION_ERROR: 'invalid',
+  INVALID_FIELD_VALUE: 'invalid',
+  RESOURCE_ALREADY_EXISTS: 'conflict',
+  FORBIDDEN: 'forbidden',
+};
+
+// Table 2: reason -> message. Exhaustive over every reason the mapper can
+// produce, so one reason resolves to exactly one message.
+const MERCHANT_MESSAGES: Record<MerchantCommandFailureReason, { key: string; fallback: string }> = {
+  'not-found': {
+    key: 'merchant.errors.notFound',
+    fallback: 'This record was not found.',
+  },
+  invalid: {
+    key: 'merchant.errors.invalidInput',
+    fallback: 'Invalid input. Check your details and try again.',
+  },
+  conflict: {
+    key: 'merchant.errors.conflict',
+    fallback: 'This record already exists or has been changed. Please refresh and try again.',
+  },
+  forbidden: {
+    key: 'merchant.errors.forbidden',
+    fallback: 'You do not have permission to perform this action.',
+  },
+  network: {
+    key: 'common.errors.checkApiServer',
+    fallback: 'Check that the API server is running, then try again.',
+  },
+  server: {
+    key: 'common.errors.apiServerUnavailable',
+    fallback: 'The service is temporarily unavailable.',
+  },
+  unknown: {
+    key: 'common.errors.tryAgainLater',
+    fallback: 'Try again in a moment.',
+  },
+};
 
 export function mapMerchantApiError(error: unknown): MerchantCommandFailure {
-  if (Array.from(notFoundCodes).some((code) => hasApiErrorCode(error, code))) {
-    return {
-      message: tDefault(
-        'merchant.errors.notFound',
-        'This record was not found.',
-      ),
-      reason: 'not-found',
-      status: 'failed',
-    };
+  let reason: MerchantCommandFailureReason = classifyApiError(error, MERCHANT_CODE_REASON);
+
+  // Preserve prior behavior: 403 status without a mapped code is still forbidden.
+  if (reason === 'unknown' && isApiError(error) && error.statusCode === 403) {
+    reason = 'forbidden';
   }
 
-  if (hasApiErrorCode(error, 'VALIDATION_ERROR')) {
-    return {
-      message: tDefault(
-        'merchant.errors.invalidInput',
-        'Invalid input. Check your details and try again.',
-      ),
-      reason: 'invalid',
-      status: 'failed',
-    };
-  }
-
-  if (isApiError(error) && error.statusCode === 403) {
-    return {
-      message: tDefault(
-        'merchant.errors.forbidden',
-        'You do not have permission to perform this action.',
-      ),
-      reason: 'forbidden',
-      status: 'failed',
-    };
-  }
-
-  const reason = getApiFailureReason(error);
-
-  if (reason === 'network') {
-    return {
-      message: tDefault(
-        'common.errors.checkApiServer',
-        'Check that the API server is running, then try again.',
-      ),
-      reason: 'network',
-      status: 'failed',
-    };
-  }
-
-  if (reason === 'server') {
-    return {
-      message: tDefault(
-        'common.errors.apiServerUnavailable',
-        'The service is temporarily unavailable.',
-      ),
-      reason: 'server',
-      status: 'failed',
-    };
-  }
+  const message = MERCHANT_MESSAGES[reason];
 
   return {
-    message: tDefault('common.errors.tryAgainLater', 'Try again in a moment.'),
-    reason: 'unknown',
     status: 'failed',
+    reason,
+    message: tDefault(message.key, message.fallback),
   };
 }

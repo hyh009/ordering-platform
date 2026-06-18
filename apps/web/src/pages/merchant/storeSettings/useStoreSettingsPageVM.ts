@@ -18,6 +18,7 @@ import {
 } from '@/models/asset';
 import type { UpdateStoreResult } from '@/features/merchant/store/mutations/commands';
 import type { StoreStatus } from '@/models/store';
+import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { createStoreSettingsPageCommands } from './storeSettingsPage.commands';
 
 export function useStoreSettingsPageVM() {
@@ -91,8 +92,7 @@ export function useStoreSettingsPageVM() {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleMerchantFailure(result, { form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors } });
   }, [storeId, savedValues, form, commands]);
 
   const startEdit = useCallback(() => setIsEditing(true), []);
@@ -116,11 +116,11 @@ export function useStoreSettingsPageVM() {
       const result = await run();
       setImageUpdatingKind(null);
 
-      feedbackCommands.toast(
-        result.status === 'saved'
-          ? { tone: 'success', message: successMessage }
-          : { tone: 'error', message: result.message },
-      );
+      if (result.status === 'saved') {
+        feedbackCommands.toast({ tone: 'success', message: successMessage });
+      } else {
+        handleMerchantFailure(result);
+      }
     },
     [],
   );
@@ -187,10 +187,7 @@ export function useStoreSettingsPageVM() {
       return;
     }
 
-    feedbackCommands.toast({
-      tone: 'error',
-      message: result.message,
-    });
+    handleMerchantFailure(result);
   }, [storeId, store, commands]);
 
   return {
