@@ -24,15 +24,21 @@ this guide decides how to surface it and where error state lives.
 
 ## Presentation convention
 
-A failure's `reason` decides how it is shown. Keep this as a per-area table
-(`reason → presentation`) consumed by one entry helper, so every page surfaces
-failures the same way and a new reason must declare its presentation.
+A failure's `reason` decides how it is shown, via a `reason → presentation`
+table, so every page surfaces failures the same way and a new reason must
+declare its presentation.
 
-Each frontend area has its own table + helper — do not share one across areas
-(their reason sets differ). Place each at
-`apps/web/src/pages/<area>/<area>FailureFeedback.ts` and name the helper
-`handle<Area>Failure(failure, { form? })`. When adding one for a new area,
-mirror an existing area's implementation.
+The dispatch logic is shared: one `presentFailure(failure, table, { form? })`
+applies the resolution order below for every area. Each frontend area supplies
+only its own table plus a thin `handle<Area>Failure` wrapper that calls
+`presentFailure` with that table. Do not reimplement the dispatch per area, and
+do not share one table across areas — their reason sets differ, and the same
+reason can map to a different kind per area (e.g. `invalid` is inline on a
+form-heavy area, toast elsewhere).
+
+Place each area's table + wrapper at
+`apps/web/src/pages/<area>/<area>FailureFeedback.ts`. The shared `presentFailure`
+lives in `apps/web/src/app/global/feedback/`.
 
 The four presentation kinds:
 
@@ -42,7 +48,7 @@ The four presentation kinds:
 - `silent` — a control-flow signal with no user-facing message
 
 The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to a kind, and
-its helper resolves in this order:
+`presentFailure` resolves in this order:
 
 ```txt
 field errors present?  ──▶ put on fields, clear submit error   (see forms.md)

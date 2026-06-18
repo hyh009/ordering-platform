@@ -127,6 +127,23 @@ function useLoginPageVM() {
 }
 ```
 
+For a page in an area with a failure helper, do not write those two `set*` calls
+by hand. Present the failure via the area helper, passing the form — it applies
+the field-error-over-submit-error precedence for you:
+
+```ts
+const result = await commands.updateThing(request);
+if (result.status === 'saved') {
+  form.reset();
+  return;
+}
+handleAreaFailure(result, { form });
+```
+
+The manual `setFieldErrors` / `setSubmitError` pattern above is the underlying
+behavior, used directly only by pages not in such an area (e.g. login). See
+`docs/agent/frontend/error-feedback.md`.
+
 ## Field Errors
 
 Use an object keyed by field name for field-level errors.
@@ -249,8 +266,7 @@ handles the result:
 const result = await commands.addMember(organizationId, request);
 
 if (result.status === 'failed') {
-  form.setFieldErrors(result.fieldErrors ?? {});
-  form.setSubmitError(result.message);
+  handleAreaFailure(result, { form });
 }
 ```
 
