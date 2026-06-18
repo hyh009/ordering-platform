@@ -12,6 +12,7 @@ import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { isStoreOpenNow } from '@/models/store';
 import type { StoreOrderType } from '@/models/store';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createLandingPageCommands } from './landingPage.commands';
 
 export function useLandingPageVM() {
@@ -114,9 +115,7 @@ export function useLandingPageVM() {
       return;
     }
 
-    if (result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
-    }
+    handleStoreFrontFailure(result);
   }, [commands, identityValues, manualOrderType, navigate, storeId, tableNumber]);
 
   const confirmAbandonCurrentSession = useCallback(async () => {
@@ -145,8 +144,8 @@ export function useLandingPageVM() {
       return true;
     }
 
-    if (result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
+    if (result.status === 'failed') {
+      handleStoreFrontFailure(result);
     }
     return false;
   }, [canResume, commands, resumeStoreId, storeId]);
@@ -206,8 +205,8 @@ export function useLandingPageVM() {
       return;
     }
 
-    if (result.status === 'failed' && result.message) {
-      feedbackCommands.toast({ tone: 'error', message: result.message });
+    if (result.status === 'failed') {
+      handleStoreFrontFailure(result);
     }
   }, [commands, navigate, storeId]);
 
