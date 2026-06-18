@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
 import { createAllergenListRuntime } from '@/features/admin/metadata/allergens/list/runtime';
 import type { Allergen, MetadataActiveFilter } from '@/models/metadata';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { createAllergenListPageCommands } from './allergenListPage.commands';
 import {
   toCreateAllergenRequest,
@@ -110,8 +111,9 @@ export function useAllergenListPageVM() {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [closeModal, commands, filter, form, modalMode]);
 
   const modalTitle = useMemo(() => {

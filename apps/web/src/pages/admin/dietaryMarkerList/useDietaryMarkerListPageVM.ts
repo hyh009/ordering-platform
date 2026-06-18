@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import { tDefault } from '@/app/i18n';
 import { createDietaryMarkerListRuntime } from '@/features/admin/metadata/dietaryMarkers/list/runtime';
 import type { DietaryMarker, MetadataActiveFilter } from '@/models/metadata';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { createDietaryMarkerListPageCommands } from './dietaryMarkerListPage.commands';
 import {
   toCreateDietaryMarkerRequest,
@@ -112,8 +113,9 @@ export function useDietaryMarkerListPageVM() {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [closeModal, commands, filter, form, modalMode]);
 
   const modalTitle = useMemo(() => {

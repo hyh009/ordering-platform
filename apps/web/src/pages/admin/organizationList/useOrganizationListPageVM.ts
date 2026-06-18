@@ -15,6 +15,7 @@ import {
   useOffsetPaginationControls,
   type OffsetPaginationLoadPageInput,
 } from '@/shared/hooks/useOffsetPaginationControls';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { createOrganizationListPageCommands } from './organizationListPage.commands';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -159,8 +160,9 @@ export function useOrganizationListPageVM() {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [
     closeCreateModal,
     commands,

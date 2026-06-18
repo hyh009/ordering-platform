@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { PATHS } from '@/app/routing/paths';
 import { toCreateStoreRequest } from '@/features/components/store/storeForm/storeFormMapper';
 import { useStoreForm } from '@/features/components/store/storeForm/useStoreForm';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { createStoreCreatePageCommands } from './storeCreatePage.commands';
 
 const storeCreatePageCommands = createStoreCreatePageCommands();
@@ -37,8 +38,9 @@ export function useStoreCreatePageVM(
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [form, navigate, organizationId]);
 
   return {

@@ -8,6 +8,7 @@ import {
   toUpdateOrganizationRequest,
   valuesFromOrganization,
 } from '@/models/organization';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { createOrganizationDetailPageCommands } from './organizationDetailPage.commands';
 
 function createOrganizationDetailPageContext() {
@@ -102,8 +103,9 @@ export function useOrganizationDetailPageVM(organizationId: string) {
       return;
     }
 
-    form.setFieldErrors(result.fieldErrors ?? {});
-    form.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+    });
   }, [discardAndCloseEditModal, commands, form, organizationId]);
 
   const reviewOrganization = useCallback(

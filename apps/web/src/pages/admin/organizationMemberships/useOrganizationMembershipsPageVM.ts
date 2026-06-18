@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { tDefault } from '@/app/i18n';
+import { handleAdminFailure } from '../adminFailureFeedback';
 import { useAddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/useAddMemberForm';
 import { createOrganizationMembershipListRuntime } from '@/features/admin/organization/membership/list/runtime';
 import type { OrganizationMembership } from '@/models/organizationMembership';
@@ -96,8 +97,9 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     }
 
     addForm.setIsSubmitting(false);
-    addForm.setFieldErrors(result.fieldErrors ?? {});
-    addForm.setSubmitError(result.message);
+    handleAdminFailure(result, {
+      form: { setSubmitError: addForm.setSubmitError, setFieldErrors: addForm.setFieldErrors },
+    });
   }, [commands, organizationId, addForm, pagination]);
 
   // Edit membership modal
@@ -151,11 +153,13 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
       return;
     }
 
-    setEditForm((prev) => ({
-      ...prev,
-      isSubmitting: false,
-      submitError: result.message,
-    }));
+    setEditForm((prev) => ({ ...prev, isSubmitting: false }));
+    handleAdminFailure(result, {
+      form: {
+        setSubmitError: (msg) =>
+          setEditForm((prev) => ({ ...prev, submitError: msg })),
+      },
+    });
   }, [commands, editTarget, editForm.role, organizationId, pagination]);
 
   const submitDisable = useCallback(async () => {
@@ -194,11 +198,13 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
       return;
     }
 
-    setEditForm((prev) => ({
-      ...prev,
-      isSubmitting: false,
-      submitError: result.message,
-    }));
+    setEditForm((prev) => ({ ...prev, isSubmitting: false }));
+    handleAdminFailure(result, {
+      form: {
+        setSubmitError: (msg) =>
+          setEditForm((prev) => ({ ...prev, submitError: msg })),
+      },
+    });
   }, [commands, editTarget, organizationId, feedbackVM, pagination]);
 
   return {

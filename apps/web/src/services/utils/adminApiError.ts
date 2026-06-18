@@ -1,9 +1,8 @@
-import {
-  getApiFailureReason,
-  hasApiErrorCode,
-  isApiError,
-} from '@/api/apiError';
+import { isApiError } from '@/api/apiError';
 import { tDefault } from '@/app/i18n';
+import { classifyApiError } from './classifyApiError';
+
+import type { ErrorCode } from '@repo/shared';
 
 export type AdminCommandFailureReason =
   | 'already-exists'
@@ -12,7 +11,8 @@ export type AdminCommandFailureReason =
   | 'network'
   | 'not-found'
   | 'server'
-  | 'unknown';
+  | 'unknown'
+  | 'user-disabled';
 
 export type AdminCommandFailure = {
   status: 'failed';
@@ -20,101 +20,73 @@ export type AdminCommandFailure = {
   reason: AdminCommandFailureReason;
 };
 
-const duplicateCodes = new Set([
-  'ALLERGEN_ALREADY_EXISTS',
-  'DIETARY_MARKER_ALREADY_EXISTS',
-  'ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS',
-  'USER_ALREADY_EXISTS',
-]);
+// Table 1: backend code -> reason. Each code is classified exactly once here.
+// Codes not listed fall back to shared infrastructure classification.
+const ADMIN_CODE_REASON: Partial<Record<ErrorCode, AdminCommandFailureReason>> = {
+  ALLERGEN_ALREADY_EXISTS: 'already-exists',
+  DIETARY_MARKER_ALREADY_EXISTS: 'already-exists',
+  ORGANIZATION_MEMBERSHIP_ALREADY_EXISTS: 'already-exists',
+  USER_ALREADY_EXISTS: 'already-exists',
+  ALLERGEN_NOT_FOUND: 'not-found',
+  DIETARY_MARKER_NOT_FOUND: 'not-found',
+  ORGANIZATION_NOT_FOUND: 'not-found',
+  ORGANIZATION_MEMBERSHIP_NOT_FOUND: 'not-found',
+  USER_NOT_FOUND: 'not-found',
+  VALIDATION_ERROR: 'invalid',
+  USER_DISABLED: 'user-disabled',
+  FORBIDDEN: 'forbidden',
+};
 
-const notFoundCodes = new Set([
-  'ALLERGEN_NOT_FOUND',
-  'DIETARY_MARKER_NOT_FOUND',
-  'ORGANIZATION_NOT_FOUND',
-  'ORGANIZATION_MEMBERSHIP_NOT_FOUND',
-  'USER_NOT_FOUND',
-]);
+// Table 2: reason -> message. Exhaustive over every reason the mapper can
+// produce, so one reason resolves to exactly one message.
+const ADMIN_MESSAGES: Record<AdminCommandFailureReason, { key: string; fallback: string }> = {
+  'already-exists': {
+    key: 'admin.errors.keyAlreadyExists',
+    fallback: 'A record with this key already exists.',
+  },
+  'not-found': {
+    key: 'admin.errors.notFound',
+    fallback: 'This record was not found.',
+  },
+  invalid: {
+    key: 'admin.errors.invalidInput',
+    fallback: 'Invalid input. Check your details and try again.',
+  },
+  forbidden: {
+    key: 'admin.errors.forbidden',
+    fallback: 'Your account cannot access this admin area.',
+  },
+  'user-disabled': {
+    key: 'admin.errors.userDisabled',
+    fallback: 'This user is disabled and cannot be added.',
+  },
+  network: {
+    key: 'common.errors.checkApiServer',
+    fallback: 'Check that the API server is running, then try again.',
+  },
+  server: {
+    key: 'common.errors.apiServerUnavailable',
+    fallback: 'The service is temporarily unavailable.',
+  },
+  unknown: {
+    key: 'common.errors.tryAgainLater',
+    fallback: 'Try again in a moment.',
+  },
+};
 
 export function mapAdminApiError(error: unknown): AdminCommandFailure {
-  if (Array.from(duplicateCodes).some((code) => hasApiErrorCode(error, code))) {
-    return {
-      message: tDefault(
-        'admin.errors.keyAlreadyExists',
-        'A record with this key already exists.',
-      ),
-      reason: 'already-exists',
-      status: 'failed',
-    };
+  let reason: AdminCommandFailureReason = classifyApiError(error, ADMIN_CODE_REASON);
+
+  // Preserve prior behavior: 403 status without a mapped code is still forbidden.
+  if (reason === 'unknown' && isApiError(error) && error.statusCode === 403) {
+    reason = 'forbidden';
   }
 
-  if (Array.from(notFoundCodes).some((code) => hasApiErrorCode(error, code))) {
-    return {
-      message: tDefault('admin.errors.notFound', 'This record was not found.'),
-      reason: 'not-found',
-      status: 'failed',
-    };
-  }
-
-  if (hasApiErrorCode(error, 'VALIDATION_ERROR')) {
-    return {
-      message: tDefault(
-        'admin.errors.invalidInput',
-        'Invalid input. Check your details and try again.',
-      ),
-      reason: 'invalid',
-      status: 'failed',
-    };
-  }
-
-  if (hasApiErrorCode(error, 'USER_DISABLED')) {
-    return {
-      message: tDefault(
-        'admin.errors.userDisabled',
-        'This user is disabled and cannot be added.',
-      ),
-      reason: 'forbidden',
-      status: 'failed',
-    };
-  }
-
-  if (isApiError(error) && error.statusCode === 403) {
-    return {
-      message: tDefault(
-        'admin.errors.forbidden',
-        'Your account cannot access this admin area.',
-      ),
-      reason: 'forbidden',
-      status: 'failed',
-    };
-  }
-
-  const reason = getApiFailureReason(error);
-
-  if (reason === 'network') {
-    return {
-      message: tDefault(
-        'common.errors.checkApiServer',
-        'Check that the API server is running, then try again.',
-      ),
-      reason: 'network',
-      status: 'failed',
-    };
-  }
-
-  if (reason === 'server') {
-    return {
-      message: tDefault(
-        'common.errors.apiServerUnavailable',
-        'The service is temporarily unavailable.',
-      ),
-      reason: 'server',
-      status: 'failed',
-    };
-  }
+  const message = ADMIN_MESSAGES[reason];
 
   return {
-    message: tDefault('common.errors.tryAgainLater', 'Try again in a moment.'),
-    reason: 'unknown',
     status: 'failed',
+    reason,
+    message: tDefault(message.key, message.fallback),
   };
 }
