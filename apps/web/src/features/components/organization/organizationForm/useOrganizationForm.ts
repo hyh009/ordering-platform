@@ -88,17 +88,12 @@ export function useOrganizationForm() {
     setSubmitError(null);
   }
 
-  function hasFieldErrors() {
-    return Object.values(fieldErrors).some(Boolean);
-  }
-
   function hasChanges() {
     return !areOrganizationFormValuesEqual(baselineValues, values);
   }
 
   return {
     fieldErrors,
-    hasFieldErrors,
     hasChanges,
     isSubmitting,
     reset,
