@@ -33,7 +33,6 @@ export function OrganizationForm({
   showStatus = false,
 }: OrganizationFormProps) {
   const { tDefault } = useAppTranslation();
-  const shouldShowSubmitError = form.submitError && !form.hasFieldErrors();
 
   const [userSearch, setUserSearch] = useState('');
   const debouncedUserSearch = useDebouncedValue(userSearch, 300);
@@ -101,7 +100,7 @@ export function OrganizationForm({
 
   return (
     <form className="grid gap-4" id={id} onSubmit={handleSubmit}>
-      {shouldShowSubmitError ? (
+      {form.submitError ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {form.submitError}
         </p>

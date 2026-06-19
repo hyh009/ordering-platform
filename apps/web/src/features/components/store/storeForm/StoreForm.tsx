@@ -77,8 +77,6 @@ export function StoreForm({
   onSubmit,
 }: StoreFormProps) {
   const { tDefault } = useAppTranslation();
-  const shouldShowSubmitError =
-    form.submitError && !Object.keys(form.fieldErrors).length;
 
   // Collapse per-row business-hour issues into one message under the table that
   // names the days to check, so highlighting a row never shifts the layout.
@@ -100,7 +98,7 @@ export function StoreForm({
 
   return (
     <form className="grid gap-8" id={id} onSubmit={handleSubmit}>
-      {shouldShowSubmitError && (
+      {form.submitError && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {form.submitError}
         </p>
