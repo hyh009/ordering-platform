@@ -13,6 +13,9 @@ export function JoinEntryPage() {
   return (
     <div className="flex flex-1 flex-col bg-storefront-bg">
       <StorefrontPageHeader
+        sticky
+        left={StorefrontPageHeader.Left.Back}
+        middle={StorefrontPageHeader.Middle.Title}
         title={tDefault('guest.joinEntry.title', 'Join a shared order')}
         onBack={vm.goBack}
       />

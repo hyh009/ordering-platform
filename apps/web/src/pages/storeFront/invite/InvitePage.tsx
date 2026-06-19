@@ -14,6 +14,10 @@ export function InvitePage() {
   return (
     <div className="flex flex-1 flex-col">
       <StorefrontPageHeader
+        sticky
+        left={StorefrontPageHeader.Left.Close}
+        middle={StorefrontPageHeader.Middle.Title}
+        right={StorefrontPageHeader.Right.Logo}
         title={tDefault('guest.invite.title', 'Invite to the order')}
         onBack={vm.goToMenu}
         logoUrl={vm.store?.logoUrl}

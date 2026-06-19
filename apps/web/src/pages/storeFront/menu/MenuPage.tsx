@@ -61,9 +61,11 @@ export function MenuPage() {
         className="sticky top-0 z-20 border-b border-storefront-border bg-storefront-bg"
       >
         <StorefrontPageHeader
-          title={vm.store ? localize(vm.store.displayName) : ''}
+          left={StorefrontPageHeader.Left.Back}
+          middle={StorefrontPageHeader.Middle.Title}
+          right={StorefrontPageHeader.Right.Logo}
+          title={vm.store ? localize(vm.store.displayName) : undefined}
           onBack={vm.goToLanding}
-          backIcon="close"
           logoUrl={vm.store?.logoUrl}
           logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
         />
