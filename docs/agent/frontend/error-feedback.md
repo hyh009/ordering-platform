@@ -29,17 +29,22 @@ A failure's `reason` decides how it is shown, via a `reason → presentation`
 table, so every page surfaces failures the same way and a new reason must
 declare its presentation.
 
-The dispatch logic is shared: one `presentFailure(failure, table, { form? })`
-applies the resolution order below for every area. Each frontend area supplies
-only its own table plus a thin `handle<Area>Failure` wrapper that calls
-`presentFailure` with that table. Do not reimplement the dispatch per area, and
-do not share one table across areas — their reason sets differ, and the same
-reason can map to a different kind per area (e.g. `invalid` is inline on a
-form-heavy area, toast elsewhere).
+Each frontend area supplies its own table plus a thin `handle<Area>Failure`
+wrapper that routes by the resolved kind, keeping form display and global
+feedback in separate layers:
+
+- failures that belong on a form (field errors, or an `inline` reason) go to
+  `applyFormFailure` in `apps/web/src/shared/components/form/formFailure.ts`
+- everything else goes to `presentFeedback` (toast / modal / silent) in
+  `apps/web/src/app/global/feedback/presentFeedback.ts`, which never touches form
+  state
+
+Do not reimplement this routing per VM, and do not share one table across areas
+— their reason sets differ, and the same reason can map to a different kind per
+area (e.g. `invalid` is inline on a form-heavy area, toast elsewhere).
 
 Place each area's table + wrapper at
-`apps/web/src/pages/<area>/<area>FailureFeedback.ts`. The shared `presentFailure`
-lives in `apps/web/src/app/global/feedback/`.
+`apps/web/src/pages/<area>/<area>FailureFeedback.ts`.
 
 The four presentation kinds:
 
@@ -49,17 +54,16 @@ The four presentation kinds:
 - `modal` — the user must acknowledge before continuing
 - `silent` — a control-flow signal with no user-facing message
 
-The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to a kind, and
-`presentFailure` resolves in this order:
+The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to a kind. The
+wrapper resolves in this order:
 
 ```txt
-field errors present?  ──▶ put on fields, clear submit error   (see forms.md)
-else the reason's kind:
-  inline (with a form)  ──▶ form submit error
-  inline (no form)      ──▶ fall back to toast (never drop the message)
-  modal                 ──▶ acknowledge dialog
-  toast                 ──▶ transient toast
-  silent                ──▶ nothing
+field errors present (with a form)?  ──▶ put on fields, clear submit error   (applyFormFailure)
+inline (with a form)                 ──▶ form submit error                   (applyFormFailure)
+inline (no form)                     ──▶ fall back to toast (never dropped)   (presentFeedback)
+modal                                ──▶ acknowledge dialog                  (presentFeedback)
+toast                                ──▶ transient toast                     (presentFeedback)
+silent                               ──▶ nothing                             (presentFeedback)
 ```
 
 Call it from the VM once a command returns a failure:
