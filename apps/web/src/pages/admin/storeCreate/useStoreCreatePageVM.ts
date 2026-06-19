@@ -21,7 +21,7 @@ export function useStoreCreatePageVM(
 
   const submit = useCallback(async () => {
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result = await storeCreatePageCommands.createStore(
       organizationId,

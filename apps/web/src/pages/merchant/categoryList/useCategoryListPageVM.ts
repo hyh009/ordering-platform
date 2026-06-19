@@ -161,7 +161,7 @@ export function useCategoryListPageVM() {
     }
 
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result =
       modalMode.type === 'create'

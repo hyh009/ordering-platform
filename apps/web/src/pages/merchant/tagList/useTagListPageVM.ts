@@ -106,7 +106,7 @@ export function useTagListPageVM() {
     }
 
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result =
       modalMode.type === 'create'

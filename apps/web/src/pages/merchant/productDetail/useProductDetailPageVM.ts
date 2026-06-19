@@ -70,7 +70,7 @@ export function useProductDetailPageVM() {
       if (!storeId || !productId) return;
 
       form.setIsSubmitting(true);
-      form.setSubmitError(null);
+      form.resetErrors();
       setSubmittingStatus(status);
 
       const request = toUpdateProductRequest(form.values, status);

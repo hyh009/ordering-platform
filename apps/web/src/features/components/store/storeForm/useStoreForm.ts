@@ -152,6 +152,11 @@ export function useStoreForm(initial?: StoreFormValues): StoreFormVM {
     setIsSubmitting(false);
   }, []);
 
+  const resetErrors = useCallback(() => {
+    setFieldErrors({});
+    setSubmitError(null);
+  }, []);
+
   return {
     values,
     fieldErrors,
@@ -165,5 +170,6 @@ export function useStoreForm(initial?: StoreFormValues): StoreFormVM {
     setSubmitError: useCallback((e) => setSubmitError(e), []),
     setIsSubmitting: useCallback((v) => setIsSubmitting(v), []),
     reset,
+    resetErrors,
   };
 }

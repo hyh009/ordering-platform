@@ -56,6 +56,11 @@ export function useOrganizationForm() {
     setIsSubmitting(false);
   }
 
+  function resetErrors() {
+    setFieldErrors({});
+    setSubmitError(null);
+  }
+
   function setField(name: OrganizationFormField, value: string) {
     setValues((current) => ({
       ...current,
@@ -97,6 +102,7 @@ export function useOrganizationForm() {
     hasChanges,
     isSubmitting,
     reset,
+    resetErrors,
     setAddress,
     setField,
     setFieldErrors,

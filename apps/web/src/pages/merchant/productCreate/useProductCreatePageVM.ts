@@ -34,7 +34,7 @@ export function useProductCreatePageVM() {
       if (!storeId) return;
 
       form.setIsSubmitting(true);
-      form.setSubmitError(null);
+      form.resetErrors();
       setSubmittingStatus(status);
 
       const request = toCreateProductRequest(form.values, status);

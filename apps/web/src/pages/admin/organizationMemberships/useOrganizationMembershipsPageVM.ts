@@ -79,7 +79,7 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
 
   const submitAdd = useCallback(async () => {
     addForm.setIsSubmitting(true);
-    addForm.setSubmitError(null);
+    addForm.resetErrors();
 
     const result = await commands.addMember(
       organizationId,

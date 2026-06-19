@@ -4,6 +4,7 @@ export type FormState<TValues extends Record<string, unknown>> = {
   fieldErrors: Partial<Record<keyof TValues, string>>;
   isSubmitting: boolean;
   reset: (nextValues?: TValues) => void;
+  resetErrors: () => void;
   setField: <K extends keyof TValues>(name: K, value: TValues[K]) => void;
   setFieldErrors: (errors: Partial<Record<keyof TValues, string>>) => void;
   setIsSubmitting: (value: boolean) => void;
@@ -29,6 +30,14 @@ export function useFormState<TValues extends Record<string, unknown>>(
     setIsSubmitting(false);
   }
 
+  // Clear both error slots without touching values — call at submit start so a
+  // prior submit's field errors do not linger when the next failure is not a
+  // field error.
+  function resetErrors() {
+    setFieldErrors({});
+    setSubmitError(null);
+  }
+
   function setField<K extends keyof TValues>(name: K, value: TValues[K]) {
     setValues((current) => ({
       ...current,
@@ -45,6 +54,7 @@ export function useFormState<TValues extends Record<string, unknown>>(
     fieldErrors,
     isSubmitting,
     reset,
+    resetErrors,
     setField,
     setFieldErrors,
     setIsSubmitting,

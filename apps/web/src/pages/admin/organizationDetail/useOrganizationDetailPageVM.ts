@@ -89,7 +89,7 @@ export function useOrganizationDetailPageVM(organizationId: string) {
 
   const submitOrganization = useCallback(async () => {
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result = await commands.saveOrganizationDetail(
       organizationId,

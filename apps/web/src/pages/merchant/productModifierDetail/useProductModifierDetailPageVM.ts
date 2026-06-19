@@ -62,7 +62,7 @@ export function useProductModifierDetailPageVM() {
     if (!storeId || !modifierId) return;
 
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const request = toProductModifierRequest(form.values);
     const result = await commands.updateModifier(storeId, modifierId, request);

@@ -28,7 +28,7 @@ export function useProductModifierCreatePageVM() {
     if (!storeId) return;
 
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const request = toProductModifierRequest(form.values);
     const result = await productModifierCreatePageCommands.createModifier(

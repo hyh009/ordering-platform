@@ -143,7 +143,7 @@ export function useOrganizationListPageVM() {
 
   const submitCreate = useCallback(async () => {
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result = await commands.createOrganization(
       toCreateOrganizationRequest(form.values),

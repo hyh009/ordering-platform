@@ -74,7 +74,7 @@ export function useStoreSettingsPageVM() {
     if (Object.keys(patch).length === 0) return;
 
     form.setIsSubmitting(true);
-    form.setSubmitError(null);
+    form.resetErrors();
 
     const result = await commands.updateStore(storeId, patch);
 
