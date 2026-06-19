@@ -132,13 +132,28 @@ by hand. Present the failure via the area helper, passing the form — it applie
 the field-error-over-submit-error precedence for you:
 
 ```ts
-const result = await commands.updateThing(request);
-if (result.status === 'saved') {
-  form.reset();
-  return;
+async function submit() {
+  // Clear both error slots at submit start, so a prior submit's field errors do
+  // not linger when this attempt fails with a non-field failure.
+  form.resetErrors();
+  form.setIsSubmitting(true);
+
+  const result = await commands.updateThing(request);
+  form.setIsSubmitting(false);
+
+  if (result.status === 'saved') {
+    form.reset();
+    return;
+  }
+  handleAreaFailure(result, { form });
 }
-handleAreaFailure(result, { form });
 ```
+
+Clear errors at submit start with `form.resetErrors()` (clears `fieldErrors` and
+`submitError` together), not inside the failure helper. The helper and
+`applyFormFailure` only ever *set* the current failure's errors; the VM owns
+*when* stale errors are cleared. `useFormState` provides `resetErrors`; any
+custom form hook used as a failure-helper form sink must expose it too.
 
 The manual `setFieldErrors` / `setSubmitError` pattern above is the underlying
 behavior, used directly only by pages not in such an area (e.g. login). See

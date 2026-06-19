@@ -78,6 +78,11 @@ handleAreaFailure(result, {
 });
 ```
 
+The helper and `applyFormFailure` only set the current failure's errors; they do
+not clear stale ones. Clear errors at submit start in the VM with
+`form.resetErrors()` (see `docs/agent/frontend/forms.md`), so a previous submit's
+field errors do not linger when this attempt fails with a non-field failure.
+
 Only call the helper for `result.status === 'failed'`. Non-failure terminal
 outcomes (such as an `ended` status) are not failures — handle those directly,
 not through the helper.
