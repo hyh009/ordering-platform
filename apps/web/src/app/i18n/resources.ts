@@ -137,7 +137,7 @@ const manualResources: Resource = {
         validation: {
           confirmPasswordRequired: '請輸入確認密碼。',
           passwordsDoNotMatch: '密碼不一致。',
-          submitInvalid: '請檢查標示欄位後再試一次。',
+          submitInvalid: '輸入有誤,請檢查後再試一次。',
         },
       },
       common: {
