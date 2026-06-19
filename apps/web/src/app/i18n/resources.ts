@@ -162,8 +162,8 @@ const manualResources: Resource = {
         },
         errors: {
           apiInvalidResponse: 'API 回傳了此頁面無法讀取的資料。',
-          apiServerUnavailable: '服務暫時無法使用。',
-          checkApiServer: '請確認 API server 正在執行，然後再試一次。',
+          apiServerUnavailable: '服務暫時無法使用，請稍後再試。',
+          checkApiServer: '連線發生問題，請檢查網路後再試一次。',
           tryAgainLater: '請稍後再試。',
         },
         table: {

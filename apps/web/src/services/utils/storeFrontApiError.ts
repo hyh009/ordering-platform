@@ -99,7 +99,7 @@ const STOREFRONT_MESSAGES: Record<
   },
   server: {
     key: 'common.errors.apiServerUnavailable',
-    fallback: 'The service is temporarily unavailable.',
+    fallback: 'The service is temporarily unavailable. Please try again later.',
   },
   unknown: {
     key: 'common.errors.tryAgainLater',

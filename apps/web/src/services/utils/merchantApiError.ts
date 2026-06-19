@@ -54,11 +54,11 @@ const MERCHANT_MESSAGES: Record<MerchantCommandFailureReason, { key: string; fal
   },
   network: {
     key: 'common.errors.checkApiServer',
-    fallback: 'Check that the API server is running, then try again.',
+    fallback: 'Connection problem. Check your network and try again.',
   },
   server: {
     key: 'common.errors.apiServerUnavailable',
-    fallback: 'The service is temporarily unavailable.',
+    fallback: 'The service is temporarily unavailable. Please try again later.',
   },
   unknown: {
     key: 'common.errors.tryAgainLater',
