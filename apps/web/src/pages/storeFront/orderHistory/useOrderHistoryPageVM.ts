@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createOrderHistoryPageCommands } from './orderHistoryPage.commands';
 
 export function useOrderHistoryPageVM() {
@@ -46,8 +46,8 @@ export function useOrderHistoryPageVM() {
     let active = true;
     async function init() {
       const result = await commands.initialize(storeId);
-      if (active && result.status === 'failed' && result.message) {
-        feedbackCommands.toast({ tone: 'error', message: result.message });
+      if (active && result.status === 'failed') {
+        handleStoreFrontFailure(result);
       }
     }
     void init();
