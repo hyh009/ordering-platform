@@ -64,6 +64,7 @@ export type PublicProductDto = {
   description?: LocalizedStringDto;
   imageUrls: string[];
   price: number;
+  tagIds: string[];
   allergenIds: string[];
   dietaryMarkerIds: string[];
   modifierIds: string[];
@@ -75,10 +76,17 @@ export type PublicMetadataItemDto = {
   name: LocalizedStringDto;
 };
 
+export type PublicTagDto = {
+  id: string;
+  name: LocalizedStringDto;
+  color?: string;
+};
+
 export type PublicMenuDto = {
   categories: PublicCategoryDto[];
   products: PublicProductDto[];
   modifiers: PublicModifierDto[];
+  tags: PublicTagDto[];
   allergens: PublicMetadataItemDto[];
   dietaryMarkers: PublicMetadataItemDto[];
 };

@@ -77,8 +77,8 @@ router.get('/', validate(storeParamsSchema, 'params'), async (req, res) => {
  *     summary: Get the guest-facing menu
  *     description: >
  *       Returns published, active products with their categories, modifiers,
- *       and referenced allergen/dietary metadata. Merchant-only fields are
- *       omitted.
+ *       tags (with color), and referenced allergen/dietary metadata.
+ *       Merchant-only fields are omitted.
  *     parameters:
  *       - in: path
  *         name: storeId

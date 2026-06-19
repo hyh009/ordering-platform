@@ -34,6 +34,7 @@ export function toPublicProductDto(product: ProductEntity): PublicProductDto {
     name: product.name,
     imageUrls: product.imageUrls,
     price: product.price,
+    tagIds: product.tagIds,
     allergenIds: product.allergenIds,
     dietaryMarkerIds: product.dietaryMarkerIds,
     modifierIds: product.modifierIds,
