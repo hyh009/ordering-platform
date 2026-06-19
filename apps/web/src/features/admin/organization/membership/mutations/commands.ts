@@ -30,7 +30,7 @@ function invalidMembershipResult(fieldErrors?: AddMemberCommandFieldErrors) {
     ...(fieldErrors ? { fieldErrors } : {}),
     message: tDefault(
       'admin.errors.validation',
-      'Check the highlighted fields and try again.',
+      'Invalid input. Check your details and try again.',
     ),
     reason: 'invalid',
     status: 'failed',
@@ -74,12 +74,11 @@ export const organizationMembershipMutationCommands = {
     }
 
     try {
-      const membership =
-        await organizationService.updateOrganizationMembership(
-          organizationId,
-          membershipId,
-          validation.data,
-        );
+      const membership = await organizationService.updateOrganizationMembership(
+        organizationId,
+        membershipId,
+        validation.data,
+      );
 
       return { status: 'saved', membership };
     } catch (error) {

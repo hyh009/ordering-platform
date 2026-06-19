@@ -23,7 +23,7 @@ function invalidStoreResult(fieldErrors: StoreMutationFieldErrors) {
     fieldErrors,
     message: tDefault(
       'admin.errors.validation',
-      'Check the highlighted fields and try again.',
+      'Invalid input. Check your details and try again.',
     ),
     reason: 'invalid',
     status: 'failed',

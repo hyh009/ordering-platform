@@ -30,12 +30,14 @@ export type SaveOrganizationResult =
       fieldErrors?: OrganizationMutationFieldErrors;
     });
 
-function invalidOrganizationResult(fieldErrors: OrganizationMutationFieldErrors) {
+function invalidOrganizationResult(
+  fieldErrors: OrganizationMutationFieldErrors,
+) {
   return {
     fieldErrors,
     message: tDefault(
       'admin.errors.validation',
-      'Check the highlighted fields and try again.',
+      'Invalid input. Check your details and try again.',
     ),
     reason: 'invalid',
     status: 'failed',

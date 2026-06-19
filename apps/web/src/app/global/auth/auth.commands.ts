@@ -94,7 +94,7 @@ export const authCommands = {
         ),
         message: tDefault(
           'auth.validation.submitInvalid',
-          'Check the highlighted fields and try again.',
+          'Invalid input. Check your details and try again.',
         ),
         status: 'failed',
       };
@@ -258,7 +258,7 @@ function mapAuthSubmitError(
       status: 'failed',
       message: tDefault(
         'auth.validation.submitInvalid',
-        'Check the highlighted fields and try again.',
+        'Invalid input. Check your details and try again.',
       ),
     };
   }

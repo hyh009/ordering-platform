@@ -88,7 +88,7 @@ describe('authCommands', () => {
         email: 'Enter a valid email.',
         password: 'Password is required.',
       },
-      message: 'Check the highlighted fields and try again.',
+      message: 'Invalid input. Check your details and try again.',
       status: 'failed',
     });
 

@@ -48,7 +48,7 @@ export function createProductModifierMutationCommands(): ProductModifierMutation
           fieldErrors: mapProductModifierFieldErrors(validation.error.issues),
           message: tDefault(
             'merchant.errors.validation',
-            'Check the highlighted fields and try again.',
+            'Invalid input. Check your details and try again.',
           ),
           reason: 'invalid',
           status: 'failed',
@@ -75,7 +75,7 @@ export function createProductModifierMutationCommands(): ProductModifierMutation
           fieldErrors: mapProductModifierFieldErrors(validation.error.issues),
           message: tDefault(
             'merchant.errors.validation',
-            'Check the highlighted fields and try again.',
+            'Invalid input. Check your details and try again.',
           ),
           reason: 'invalid',
           status: 'failed',
