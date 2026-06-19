@@ -1,8 +1,12 @@
 import {
-  presentFailure,
+  presentFeedback,
   type FailurePresentation,
+} from '@/app/global/feedback/presentFeedback';
+import {
+  applyFormFailure,
+  hasFieldErrors,
   type FormErrorSink,
-} from '@/app/global/feedback/presentFailure';
+} from '@/shared/components/form/formFailure';
 
 import type {
   StoreFrontCommandFailure,
@@ -33,13 +37,21 @@ export const STOREFRONT_FAILURE_PRESENTATION: Record<
   unknown: 'toast',
 };
 
-// One entry point for every storefront failure, form or not. Delegates to the
-// shared dispatch with this area's presentation table. Pages that need a
-// reason-specific reaction (navigate, clear session) handle that reason before
-// calling this.
+// One entry point for every storefront failure, form or not. Field errors (or an
+// `inline` reason) go on the form; everything else is global feedback. Pages
+// that need a reason-specific reaction (navigate, clear session) handle that
+// reason before calling this.
 export function handleStoreFrontFailure(
   failure: StoreFrontCommandFailure & { fieldErrors?: Record<string, string> },
   deps: { form?: FormErrorSink } = {},
 ): void {
-  presentFailure(failure, STOREFRONT_FAILURE_PRESENTATION, deps);
+  const { form } = deps;
+  const kind = STOREFRONT_FAILURE_PRESENTATION[failure.reason];
+
+  if (form && (hasFieldErrors(failure.fieldErrors) || kind === 'inline')) {
+    applyFormFailure(form, failure);
+    return;
+  }
+
+  presentFeedback(kind, failure.message);
 }

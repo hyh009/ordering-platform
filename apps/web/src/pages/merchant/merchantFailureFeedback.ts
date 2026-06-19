@@ -1,8 +1,12 @@
 import {
-  presentFailure,
+  presentFeedback,
   type FailurePresentation,
+} from '@/app/global/feedback/presentFeedback';
+import {
+  applyFormFailure,
+  hasFieldErrors,
   type FormErrorSink,
-} from '@/app/global/feedback/presentFailure';
+} from '@/shared/components/form/formFailure';
 
 import type {
   MerchantCommandFailure,
@@ -14,9 +18,9 @@ import type {
 // its presentation.
 //
 // Merchant pages are form-heavy, so failures show inline on the form that
-// triggered them: field errors land on the fields (handled before the kind),
-// and every other reason becomes the form's submit message. On a page with no
-// form, `inline` falls back to a toast.
+// triggered them: field errors land on the fields, and every other reason
+// becomes the form's submit message. On a page with no form, `inline` falls
+// back to a toast.
 export const MERCHANT_FAILURE_PRESENTATION: Record<
   MerchantCommandFailureReason,
   FailurePresentation
@@ -30,13 +34,21 @@ export const MERCHANT_FAILURE_PRESENTATION: Record<
   unknown: 'inline',
 };
 
-// One entry point for every merchant failure, form or not. Delegates to the
-// shared dispatch with this area's presentation table. Pages that need a
-// reason-specific reaction (navigate, refresh) handle that reason before
-// calling this.
+// One entry point for every merchant failure, form or not. Field errors (or an
+// `inline` reason) go on the form; everything else is global feedback. Pages
+// that need a reason-specific reaction (navigate, refresh) handle that reason
+// before calling this.
 export function handleMerchantFailure(
   failure: MerchantCommandFailure & { fieldErrors?: Record<string, string> },
   deps: { form?: FormErrorSink } = {},
 ): void {
-  presentFailure(failure, MERCHANT_FAILURE_PRESENTATION, deps);
+  const { form } = deps;
+  const kind = MERCHANT_FAILURE_PRESENTATION[failure.reason];
+
+  if (form && (hasFieldErrors(failure.fieldErrors) || kind === 'inline')) {
+    applyFormFailure(form, failure);
+    return;
+  }
+
+  presentFeedback(kind, failure.message);
 }
