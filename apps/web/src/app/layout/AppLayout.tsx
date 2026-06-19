@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
 import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
-import { useAppTranslation } from '@/app/i18n';
+import { initManagementLanguage, useAppTranslation } from '@/app/i18n';
 import { useLanguageVM } from '@/app/i18n/useLanguageVM';
 import { PATHS } from '@/app/routing/paths';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
@@ -29,6 +30,8 @@ export function createAuthenticatedLayout(
     const feedback = useFeedbackVM();
     const language = useLanguageVM();
     const { tDefault } = useAppTranslation();
+
+    useEffect(() => { void initManagementLanguage(); }, []);
     const navigate = useNavigate();
     const auth = useAuthVM({
       onLoggedOut() {

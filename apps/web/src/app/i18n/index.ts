@@ -29,7 +29,7 @@ i18n
       lookupLocalStorage: languageStorageKey,
       order: ['localStorage', 'navigator'],
     },
-    fallbackLng: 'zh-TW',
+    fallbackLng: defaultLanguage,
     interpolation: {
       escapeValue: false,
     },
@@ -81,6 +81,17 @@ export function useAppTranslation() {
 export async function changeLanguageTransient(lang: string): Promise<void> {
   if (!isSupportedLanguage(lang)) return;
   await i18n.changeLanguage(lang);
+}
+
+export async function initManagementLanguage(): Promise<void> {
+  if (localStorage.getItem(languageStorageKey)) return;
+  const browserLangs = [...(navigator.languages ?? [navigator.language])];
+  const match =
+    browserLangs.find((l) => isSupportedLanguage(l)) ??
+    browserLangs.map((l) => l.split('-')[0]).find((l) => isSupportedLanguage(l));
+  const lang = match ?? 'zh-TW';
+  await i18n.changeLanguage(lang);
+  localStorage.setItem(languageStorageKey, lang);
 }
 
 export { i18n };
