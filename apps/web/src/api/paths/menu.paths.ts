@@ -27,6 +27,9 @@ export const menuPaths = {
   productSoldOut(storeId: string, productId: string) {
     return `${storeBase(storeId)}/products/${encodeURIComponent(productId)}/sold-out`;
   },
+  productImages(storeId: string) {
+    return `${storeBase(storeId)}/products/images`;
+  },
   tags(storeId: string) {
     return `${storeBase(storeId)}/tags`;
   },

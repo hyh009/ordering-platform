@@ -6,7 +6,12 @@ import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { AddCartItemRequest } from '@/models/cart';
 import { canGuestAddOn } from '@/models/order';
 import { isStoreOpenNow } from '@/models/store';
-import { buildModifierMap, groupMenuByCategory } from '@/models/storeFrontMenu';
+import {
+  buildAllergenMap,
+  buildModifierMap,
+  buildTagMap,
+  groupMenuByCategory,
+} from '@/models/storeFrontMenu';
 import type { PublicProduct } from '@/models/storeFrontMenu';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
@@ -117,6 +122,14 @@ export function useMenuPageVM() {
     () => (menu ? buildModifierMap(menu.modifiers) : new Map()),
     [menu],
   );
+  const tagMap = useMemo(
+    () => (menu ? buildTagMap(menu.tags ?? []) : new Map()),
+    [menu],
+  );
+  const allergenMap = useMemo(
+    () => (menu ? buildAllergenMap(menu.allergens ?? []) : new Map()),
+    [menu],
+  );
 
   const isOpen = useMemo(
     () => (store ? isStoreOpenNow(store.businessHours) : false),
@@ -177,6 +190,8 @@ export function useMenuPageVM() {
     categoryGroups,
     categoryTabs,
     modifierMap,
+    tagMap,
+    allergenMap,
     cartItemCount,
     cartTotal: cart?.totalAmount ?? 0,
     isMutating,

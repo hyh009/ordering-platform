@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
+import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { PublicModifier } from '@/models/storeFrontMenu';
@@ -52,6 +53,14 @@ export function MenuPage() {
     ? vm.openProduct.modifierIds
         .map((id) => vm.modifierMap.get(id))
         .filter((modifier): modifier is PublicModifier => Boolean(modifier))
+    : [];
+
+  const openAllergens: string[] = vm.openProduct
+    ? (vm.openProduct.allergenIds ?? [])
+        .map((id) => vm.allergenMap.get(id))
+        .filter((a) => a !== undefined)
+        .map((a) => localize(a.name))
+        .filter((name) => name.length > 0)
     : [];
 
   return (
@@ -121,15 +130,32 @@ export function MenuPage() {
                     ? localize(group.category.name)
                     : tDefault('guest.menu.other', 'Other')}
                 </h2>
-                <div className="space-y-2">
-                  {group.products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      disabled={!vm.isOpen}
-                      onSelect={vm.setOpenProduct}
-                    />
-                  ))}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {group.products.map((product) => {
+                    const tags: TagDisplay[] = (product.tagIds ?? [])
+                      .map((id) => vm.tagMap.get(id))
+                      .filter((t) => t !== undefined)
+                      .map((t) => ({
+                        id: t.id,
+                        label: localize(t.name),
+                        color: t.color,
+                      }));
+                    const allergens = (product.allergenIds ?? [])
+                      .map((id) => vm.allergenMap.get(id))
+                      .filter((a) => a !== undefined)
+                      .map((a) => localize(a.name))
+                      .filter((name) => name.length > 0);
+                    return (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        tags={tags}
+                        allergens={allergens}
+                        disabled={!vm.isOpen}
+                        onSelect={vm.setOpenProduct}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
@@ -153,6 +179,7 @@ export function MenuPage() {
         <ProductConfigSheet
           product={vm.openProduct}
           modifiers={openModifiers}
+          allergens={openAllergens}
           isMutating={vm.isMutating}
           onClose={() => vm.setOpenProduct(null)}
           onConfirm={(request) => {

@@ -11,6 +11,7 @@ import type {
   PublicProductDto,
   PublicStoreDto,
   PublicStoreOrderModeDto,
+  PublicTagDto,
 } from '@repo/shared';
 
 export type {
@@ -28,6 +29,7 @@ export type PublicProduct = PublicProductDto;
 export type PublicModifier = PublicModifierDto;
 export type PublicModifierOption = PublicModifierOptionDto;
 export type PublicMetadataItem = PublicMetadataItemDto;
+export type PublicTag = PublicTagDto;
 
 /**
  * View grouping of the flat menu. `category` is null for the bucket of

@@ -1,7 +1,9 @@
 import type {
   MenuCategoryGroup,
   PublicMenu,
+  PublicMetadataItem,
   PublicModifier,
+  PublicTag,
 } from './types';
 
 /**
@@ -41,4 +43,14 @@ export function buildModifierMap(
   modifiers: PublicModifier[],
 ): Map<string, PublicModifier> {
   return new Map(modifiers.map((modifier) => [modifier.id, modifier]));
+}
+
+export function buildTagMap(tags: PublicTag[]): Map<string, PublicTag> {
+  return new Map(tags.map((tag) => [tag.id, tag]));
+}
+
+export function buildAllergenMap(
+  allergens: PublicMetadataItem[],
+): Map<string, PublicMetadataItem> {
+  return new Map(allergens.map((allergen) => [allergen.id, allergen]));
 }

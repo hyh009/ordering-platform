@@ -1,4 +1,5 @@
 import { useAppTranslation } from '@/app/i18n';
+import { AllergenDisplay } from '@/features/storeFront/components/AllergenDisplay';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { AddCartItemRequest } from '@/models/cart';
 import type { PublicModifier, PublicProduct } from '@/models/storeFrontMenu';
@@ -10,6 +11,7 @@ import { useProductConfig } from './useProductConfig';
 type ProductConfigSheetProps = {
   product: PublicProduct;
   modifiers: PublicModifier[];
+  allergens: string[];
   isMutating: boolean;
   onClose: () => void;
   onConfirm: (request: AddCartItemRequest) => void;
@@ -18,6 +20,7 @@ type ProductConfigSheetProps = {
 export function ProductConfigSheet({
   product,
   modifiers,
+  allergens,
   isMutating,
   onClose,
   onConfirm,
@@ -27,7 +30,7 @@ export function ProductConfigSheet({
   const config = useProductConfig(product, modifiers);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center">
       <button
         type="button"
         aria-label={tDefault('common.close', 'Close')}
@@ -35,7 +38,7 @@ export function ProductConfigSheet({
         onClick={onClose}
       />
 
-      <div className="relative mx-auto flex max-h-[85vh] w-full max-w-md flex-col rounded-t-2xl bg-background">
+      <div className="relative flex max-h-[85vh] w-full flex-col rounded-t-2xl bg-background lg:mx-auto lg:max-w-lg lg:rounded-2xl lg:shadow-xl">
         <div className="flex-1 overflow-y-auto p-4">
           <h2 className="text-lg font-bold">{localize(product.name)}</h2>
           {product.description ? (
@@ -43,6 +46,7 @@ export function ProductConfigSheet({
               {localize(product.description)}
             </p>
           ) : null}
+          <AllergenDisplay allergens={allergens} />
 
           {modifiers.map((modifier) => (
             <section key={modifier.id} className="mt-4">
@@ -125,6 +129,7 @@ export function ProductConfigSheet({
 
         <div className="border-t border-border p-4">
           <Button
+            variant="storefront"
             className="w-full"
             disabled={!config.isValid || isMutating}
             onClick={() => onConfirm(config.buildRequest())}

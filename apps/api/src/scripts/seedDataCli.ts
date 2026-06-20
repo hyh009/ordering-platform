@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 
 import {
   seedAllergens,
+  seedBreakfastLab,
   seedDietaryMarkers,
   seedOrganizations,
 } from './seedData';
@@ -23,6 +24,9 @@ async function run() {
 
     const orgsCount = await seedOrganizations(30);
     logger.info(`Seeded ${orgsCount} organizations.`);
+
+    const breakfastLabCount = await seedBreakfastLab();
+    logger.info(`Seeded ${breakfastLabCount} Breakfast Lab (早餐研究所) products.`);
 
     logger.info('Data seeding completed successfully.');
     process.exit(0);

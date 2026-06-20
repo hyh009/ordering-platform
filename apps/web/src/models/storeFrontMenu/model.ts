@@ -28,6 +28,7 @@ export const storeFrontMenuModel = {
       categories: dto.categories,
       products: dto.products,
       modifiers: dto.modifiers,
+      tags: dto.tags,
       allergens: dto.allergens,
       dietaryMarkers: dto.dietaryMarkers,
     };

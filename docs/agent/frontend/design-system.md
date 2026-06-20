@@ -56,6 +56,44 @@ Use Tailwind's mobile-first breakpoints:
 
 Start with the mobile layout, then add breakpoint variants only where the layout needs to change.
 
+## StoreFront Design System
+
+### Breakpoint
+
+The storefront uses Tailwind v4's `lg` breakpoint (1024px) as the single
+mobile / PC dividing line. Design for mobile first, then add `lg:` variants
+where the layout changes for a wider screen.
+
+```tsx
+{/* mobile: stacked full-width | pc: side-by-side */}
+<div className="flex flex-col lg:flex-row">…</div>
+```
+
+### Color Tokens
+
+Storefront-specific tokens are defined in `global.css` and exposed as Tailwind
+color utilities. Always use these instead of the management-platform tokens
+(`--primary`, `--secondary`, etc.) inside storefront components.
+
+| Token                   | CSS variable                | Value     | Usage                              |
+|-------------------------|-----------------------------|-----------|------------------------------------|
+| `storefront-bg`         | `--storefront-bg`           | `#ffffff` | Page / card backgrounds            |
+| `storefront-primary`    | `--storefront-primary`      | `#e8b647` | CTAs, "+" buttons, active states   |
+| `storefront-secondary`  | `--storefront-secondary`    | `#78c2c4` | Accent / secondary actions         |
+| `storefront-text`       | `--storefront-text`         | `#2b221a` | Body text, button labels on primary|
+| `storefront-text-muted` | `--storefront-text-muted`   | `#7d7065` | Subtitles, helper text             |
+| `storefront-border`     | `--storefront-border`       | `#e6e1da` | Card borders, dividers             |
+
+### Button Variant
+
+Use `variant="storefront"` for all storefront CTA buttons. This applies
+`bg-storefront-primary text-storefront-text`. Never use `variant="default"`
+(green, shares `--primary` with the management platform) in storefront UI.
+
+```tsx
+<Button variant="storefront" className="w-full">Add to cart</Button>
+```
+
 ## StoreFront Layout
 
 The storefront ordering flow uses `StoreFrontLayout`, which centers the page at
