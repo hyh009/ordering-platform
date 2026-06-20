@@ -145,14 +145,14 @@ export function useMenuPageVM() {
   // order, a dine-in group cart (one with a Join Code) shows the invite prompt.
   const orderBanner = useMemo<
     | { mode: 'adding'; orderNumber: string }
-    | { mode: 'invite' }
+    | { mode: 'invite'; joinCode: string }
     | { mode: 'none' }
   >(() => {
     if (order && canGuestAddOn(order)) {
       return { mode: 'adding', orderNumber: order.displayNumber };
     }
     if (!order && cart?.joinCode) {
-      return { mode: 'invite' };
+      return { mode: 'invite', joinCode: cart.joinCode };
     }
     return { mode: 'none' };
   }, [cart, order]);

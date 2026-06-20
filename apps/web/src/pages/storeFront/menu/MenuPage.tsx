@@ -96,7 +96,11 @@ export function MenuPage() {
                 orderNumber={vm.orderBanner.orderNumber}
               />
             ) : (
-              <MenuStatusBanner mode="invite" onInvite={vm.goToInvite} />
+              <MenuStatusBanner
+                mode="invite"
+                joinCode={vm.orderBanner.mode === 'invite' ? vm.orderBanner.joinCode : ''}
+                onInvite={vm.goToInvite}
+              />
             )}
           </div>
         ) : null}
@@ -163,7 +167,7 @@ export function MenuPage() {
       </div>
 
       {vm.cartItemCount > 0 ? (
-        <div className="fixed inset-x-0 bottom-4 z-20 mx-auto w-full max-w-md px-4">
+        <div className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
           <button
             type="button"
             onClick={vm.goToCart}
