@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { changeLanguageTransient } from '@/app/i18n';
-import { isSupportedLanguage, languageOptions } from '@/app/i18n/languages';
+import { isSupportedLanguage } from '@/app/i18n/languages';
 import type { SupportedLanguage } from '@/app/i18n/languages';
 import { getStoreFrontRuntime } from '../runtime';
-
-const STORAGE_KEY_PREFIX = 'sf_lang_';
+import { getStorefrontLangKey } from './storefrontLanguage.storage';
+import { useStorefrontSupportedLanguages } from './useStorefrontSupportedLanguages';
 
 export function useStorefrontLanguagePrompt() {
   const runtime = getStoreFrontRuntime();
@@ -20,12 +20,12 @@ export function useStorefrontLanguagePrompt() {
 
     if (supported.length <= 1) {
       const only = supported[0] ?? store.locale.defaultLocale;
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${activeStoreId}`, only);
+      localStorage.setItem(getStorefrontLangKey(activeStoreId), only);
       if (isSupportedLanguage(only)) void changeLanguageTransient(only);
       return;
     }
 
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${activeStoreId}`);
+    const saved = localStorage.getItem(getStorefrontLangKey(activeStoreId));
     if (saved && isSupportedLanguage(saved) && supported.includes(saved)) {
       void changeLanguageTransient(saved);
     }
@@ -36,21 +36,15 @@ export function useStorefrontLanguagePrompt() {
     if (!store || !activeStoreId || dismissed) return false;
     const supported = store.locale.supportedLocales as string[];
     if (supported.length <= 1) return false;
-    const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${activeStoreId}`);
+    const saved = localStorage.getItem(getStorefrontLangKey(activeStoreId));
     return !saved || !isSupportedLanguage(saved) || !supported.includes(saved);
   }, [store, activeStoreId, dismissed]);
 
-  const supportedOptions = useMemo(
-    () =>
-      languageOptions.filter((opt) =>
-        (store?.locale.supportedLocales as string[] | undefined)?.includes(opt.value),
-      ),
-    [store],
-  );
+  const supportedOptions = useStorefrontSupportedLanguages();
 
   function handleSelect(lang: SupportedLanguage) {
     if (activeStoreId) {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${activeStoreId}`, lang);
+      localStorage.setItem(getStorefrontLangKey(activeStoreId), lang);
     }
     void changeLanguageTransient(lang);
     setDismissed(true);
