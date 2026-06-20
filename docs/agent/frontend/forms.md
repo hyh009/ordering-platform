@@ -201,6 +201,32 @@ On save:
 - reload or update confirmed feature state through the page flow after success
 - reset or realign the page-local draft state after success
 
+For pages with a read-only/edit toggle (e.g. a detail page that switches
+between view and edit), keep the toggle in the page VM — not in the form hook.
+The form hook resets to the confirmed values when the VM calls `form.reset()`
+on enter or cancel; the form hook itself has no concept of "edit mode".
+
+```ts
+// page VM owns the toggle and drives the form
+const [isEditing, setIsEditing] = useState(false);
+const form = useProductForm({ storeId, uploadFn });
+
+const enterEditMode = useCallback(() => {
+  form.reset(valuesFromProduct(product));
+  setIsEditing(true);
+}, [form, product]);
+
+const cancelEdit = useCallback(() => {
+  form.reset(valuesFromProduct(product));
+  setIsEditing(false);
+}, [form, product]);
+```
+
+Do not put `isEditMode`, `enterEditMode`, or `cancelEdit` inside a feature form
+hook. Mixing page-flow toggle state into the form hook forces a `reset`
+override hack and makes the hook harder to reuse across pages with different
+toggle behavior.
+
 ## Form Labels And Options
 
 Keep form labels, option labels, and helper text user-facing and localized.

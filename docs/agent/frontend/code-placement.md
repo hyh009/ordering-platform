@@ -18,6 +18,7 @@ Use this quick map when deciding where new frontend code belongs.
 | Request boundary validation | feature or page command that owns the submit/mutation flow                         | views, services                                |
 | Feature runtime wiring      | `<resource>/runtime.ts` or `<resource>/<slice>/runtime.ts`                         | page components                                |
 | Domain reusable component   | feature-local `components/` or `features/components/<domain>/`                     | `shared/components`                            |
+| Feature form hook           | inside the form's `components/<form>/` folder — `features/<area>/<resource>/components/<form>/` when the form is used only within one feature area; `features/components/<domain>/<form>/` when the form is shared across actor areas such as `admin/` and `merchant/` | directly under the feature area or resource folder |
 | Project-generic UI control  | `apps/web/src/shared/components/`                                                  | domain feature folders                         |
 | API path constants          | `apps/web/src/api/paths/`                                                          | services, pages                                |
 | API service                 | `apps/web/src/services/`                                                           | commands, models                               |
