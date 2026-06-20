@@ -1,7 +1,11 @@
 import { tDefault } from '@/app/i18n';
 import { mapStoreValidationIssuesToFieldErrors } from '@/features/components/store/storeForm/storeFormErrors';
 import type { StoreFormFieldErrors } from '@/features/components/store/storeForm/useStoreForm';
-import type { StoreImageKind, UploadedImage } from '@/models/asset';
+import {
+  getImageFileValidationMessage,
+  validateImageFile,
+  type StoreImageKind,
+} from '@/models/asset';
 import {
   updateStoreSchema,
   type Store,
@@ -11,15 +15,14 @@ import { storeService } from '@/services/store.service';
 import {
   mapMerchantApiError,
   type MerchantCommandFailure,
+  type UploadImageResult,
 } from '@/services/utils/merchantApiError';
+
+export type { UploadImageResult as UploadStoreImageResult };
 
 export type UpdateStoreResult =
   | { status: 'saved'; store: Store }
   | (MerchantCommandFailure & { fieldErrors?: StoreFormFieldErrors });
-
-export type UploadStoreImageResult =
-  | { status: 'uploaded'; image: UploadedImage }
-  | MerchantCommandFailure;
 
 export function createStoreMutationCommands() {
   return {
@@ -57,7 +60,16 @@ export function createStoreMutationCommands() {
       storeId: string,
       kind: StoreImageKind,
       file: File,
-    ): Promise<UploadStoreImageResult> {
+    ): Promise<UploadImageResult> {
+      const validation = validateImageFile(file);
+      if (!validation.ok) {
+        return {
+          message: getImageFileValidationMessage(validation.reason, tDefault),
+          reason: 'invalid' as const,
+          status: 'failed' as const,
+        };
+      }
+
       try {
         const image = await storeService.uploadStoreImage(storeId, kind, file);
         return { status: 'uploaded', image };

@@ -1,5 +1,6 @@
 import { isApiError } from '@/api/apiError';
 import { tDefault } from '@/app/i18n';
+import type { UploadedImage } from '@/models/asset';
 import { classifyApiError } from './classifyApiError';
 
 import type { ErrorCode } from '@repo/shared';
@@ -18,6 +19,10 @@ export type MerchantCommandFailure = {
   message: string;
   reason: MerchantCommandFailureReason;
 };
+
+export type UploadImageResult =
+  | { status: 'uploaded'; image: UploadedImage }
+  | MerchantCommandFailure;
 
 // Table 1: backend code -> reason. Each code is classified exactly once here.
 // Codes not listed fall back to shared infrastructure classification.

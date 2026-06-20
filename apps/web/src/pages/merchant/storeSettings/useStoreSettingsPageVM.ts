@@ -11,11 +11,7 @@ import {
 import { createStoreDetailRuntime } from '@/features/merchant/store/detail/runtime';
 import { useStoreForm } from '@/features/components/store/storeForm/useStoreForm';
 import { tDefault } from '@/app/i18n';
-import {
-  getImageFileValidationMessage,
-  validateImageFile,
-  type StoreImageKind,
-} from '@/models/asset';
+import type { StoreImageKind } from '@/models/asset';
 import type { UpdateStoreResult } from '@/features/merchant/store/mutations/commands';
 import type { StoreStatus } from '@/models/store';
 import { handleMerchantFailure } from '../merchantFailureFeedback';
@@ -92,7 +88,12 @@ export function useStoreSettingsPageVM() {
       return;
     }
 
-    handleMerchantFailure(result, { form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors } });
+    handleMerchantFailure(result, {
+      form: {
+        setSubmitError: form.setSubmitError,
+        setFieldErrors: form.setFieldErrors,
+      },
+    });
   }, [storeId, savedValues, form, commands]);
 
   const startEdit = useCallback(() => setIsEditing(true), []);
@@ -128,15 +129,6 @@ export function useStoreSettingsPageVM() {
   const setImage = useCallback(
     async (kind: StoreImageKind, file: File) => {
       if (!storeId) return;
-
-      const validation = validateImageFile(file);
-      if (!validation.ok) {
-        feedbackCommands.toast({
-          tone: 'error',
-          message: getImageFileValidationMessage(validation.reason, tDefault),
-        });
-        return;
-      }
 
       await runImageUpdate(
         kind,
