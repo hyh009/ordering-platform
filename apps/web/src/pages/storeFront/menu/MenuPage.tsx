@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
+import { ShoppingCart } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
 import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { PublicModifier } from '@/models/storeFrontMenu';
-import { Button } from '@/shared/components/ui/button';
-import { formatPrice } from '@/shared/utils/money';
 import { MenuCategoryTabs } from './MenuCategoryTabs';
 import { MenuStatusBanner } from './MenuStatusBanner';
 import { ProductConfigSheet } from './ProductConfigSheet';
@@ -88,7 +87,7 @@ export function MenuPage() {
         ) : null}
       </header>
 
-      <div className="flex-1 pb-24">
+      <div className="flex-1 bg-storefront-bg pb-20">
         {vm.orderBanner.mode !== 'none' ? (
           <div className="p-4 pb-2">
             {vm.orderBanner.mode === 'adding' ? (
@@ -164,14 +163,22 @@ export function MenuPage() {
       </div>
 
       {vm.cartItemCount > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 mx-auto w-full max-w-md border-t border-border bg-background p-3">
-          <Button className="w-full justify-between" onClick={vm.goToCart}>
-            <span>
-              {tDefault('guest.menu.viewCart', 'View cart')} ({vm.cartItemCount}
-              )
+        <div className="fixed inset-x-0 bottom-4 z-20 mx-auto w-full max-w-md px-4">
+          <button
+            type="button"
+            onClick={vm.goToCart}
+            className="flex w-full items-center justify-between rounded-full bg-storefront-primary px-5 py-3.5 text-storefront-text shadow-lg transition-opacity hover:opacity-90 active:opacity-80"
+          >
+            <div className="flex items-center gap-2">
+              <ShoppingCart size={18} strokeWidth={2} />
+              <span className="text-sm font-semibold">
+                {vm.cartItemCount} {tDefault('guest.menu.itemCount', '項')}
+              </span>
+            </div>
+            <span className="text-sm font-semibold">
+              {tDefault('guest.menu.viewCart', '查看購物車')} →
             </span>
-            <span>{formatPrice(vm.cartTotal)}</span>
-          </Button>
+          </button>
         </div>
       ) : null}
 

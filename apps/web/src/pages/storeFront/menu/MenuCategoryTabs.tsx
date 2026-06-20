@@ -50,7 +50,7 @@ export function MenuCategoryTabs({
             type="button"
             onClick={() => onSelect(tab.key)}
             className={cn(
-              'shrink-0 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              'shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors',
               isActive
                 ? 'bg-storefront-primary text-storefront-text'
                 : 'bg-storefront-primary/10 text-storefront-text-muted hover:bg-storefront-primary/20',

@@ -53,7 +53,7 @@ export function ProductCard({
           onSelect(product);
         }
       }}
-      className="flex w-full cursor-pointer select-none flex-row items-start gap-3 rounded-xl border border-storefront-border bg-white p-3 text-left transition-colors hover:border-storefront-primary/50 aria-disabled:cursor-default aria-disabled:opacity-60"
+      className="flex w-full cursor-pointer select-none flex-row items-start gap-3 rounded-xl border border-storefront-border bg-white p-3 text-left shadow-sm transition-colors hover:border-storefront-primary/50 aria-disabled:cursor-default aria-disabled:opacity-60"
     >
       {/* Image — hidden when no imageUrl */}
       {imageSrc ? (

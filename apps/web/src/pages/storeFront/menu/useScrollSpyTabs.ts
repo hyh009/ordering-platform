@@ -61,6 +61,7 @@ export function useScrollSpyTabs(keys: string[]): ScrollSpyTabs {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [tabsHeight, setTabsHeight] = useState(0);
   const [trackedKey, setTrackedKey] = useState<string | null>(null);
+  const [atBottom, setAtBottom] = useState(false);
 
   // Stable height binders (their identity must not change, or the ref would
   // detach/reattach and re-create the observer every render). Measuring on
@@ -124,6 +125,23 @@ export function useScrollSpyTabs(keys: string[]): ScrollSpyTabs {
   // Stable dependency for the observer: re-observe when the section set changes.
   const keysSignature = keys.join(',');
 
+  // Force-activate the last tab when the user has scrolled to near the bottom,
+  // because the last section is often too short to enter the scroll-spy zone.
+  useEffect(() => {
+    if (keysSignature === '') return;
+    const firstSection = [...sectionRefs.current.values()][0];
+    const scroller =
+      (firstSection ? getScrollParent(firstSection) : null) ??
+      document.documentElement;
+    const checkBottom = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scroller;
+      setAtBottom(scrollTop + clientHeight >= scrollHeight * 0.95);
+    };
+    scroller.addEventListener('scroll', checkBottom, { passive: true });
+    checkBottom();
+    return () => scroller.removeEventListener('scroll', checkBottom);
+  }, [keysSignature]);
+
   // Scroll-spy: highlight the tab whose section sits just below the pinned tabs.
   // The top inset hides the pinned band; the bottom inset keeps the active row
   // near the top so the last section can still win.
@@ -155,7 +173,9 @@ export function useScrollSpyTabs(keys: string[]): ScrollSpyTabs {
     return () => observer.disconnect();
   }, [keysSignature, pinnedHeight]);
 
-  const activeKey = trackedKey ?? keys[0] ?? null;
+  const lastKey = keys[keys.length - 1] ?? null;
+  const activeKey =
+    atBottom && lastKey ? lastKey : (trackedKey ?? keys[0] ?? null);
 
   return {
     activeKey,
