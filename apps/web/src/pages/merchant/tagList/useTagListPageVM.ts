@@ -126,7 +126,10 @@ export function useTagListPageVM() {
     }
 
     handleMerchantFailure(result, {
-      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+      form: {
+        setSubmitError: form.setSubmitError,
+        setFieldErrors: form.setFieldErrors,
+      },
     });
   }, [closeModal, commands, filter, form, modalMode, storeId]);
 

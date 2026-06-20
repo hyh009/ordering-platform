@@ -1,4 +1,7 @@
-import { createProductMutationCommands } from '@/features/merchant/menu/products/mutations/commands';
+import {
+  createProductMutationCommands,
+  type UploadProductImageResult,
+} from '@/features/merchant/menu/products/mutations/commands';
 import type { ProductCommandFieldErrors } from '@/features/merchant/menu/products/components/productForm/productFormErrors';
 import type { CreateProductRequest, Product } from '@/models/product';
 import type { MerchantCommandFailure } from '@/services/utils/merchantApiError';
@@ -14,6 +17,10 @@ export type ProductCreatePageCommands = {
     storeId: string,
     input: CreateProductRequest,
   ): Promise<CreateProductResult>;
+  uploadProductImage(
+    storeId: string,
+    file: File,
+  ): Promise<UploadProductImageResult>;
 };
 
 export function createProductCreatePageCommands(): ProductCreatePageCommands {
@@ -29,5 +36,7 @@ export function createProductCreatePageCommands(): ProductCreatePageCommands {
 
       return { product: result.product, status: 'created' };
     },
+
+    uploadProductImage: mutationCommands.uploadProductImage,
   };
 }

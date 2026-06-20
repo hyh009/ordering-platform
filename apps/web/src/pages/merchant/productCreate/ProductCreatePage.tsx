@@ -38,7 +38,11 @@ export function ProductCreatePage() {
           <ProductBasicInfoFields form={form} locale={vm.locale} />
           <ProductMetadataFields form={form} formOptions={vm.formOptions} />
           <ProductModifiersField form={form} formOptions={vm.formOptions} />
-          <ProductImageField form={form} />
+          <ProductImageField
+            form={form}
+            onRemove={form.removeProductImage}
+            onSelect={form.setPendingImageFile}
+          />
         </div>
 
         <aside className="grid h-fit gap-6 lg:sticky lg:top-6">

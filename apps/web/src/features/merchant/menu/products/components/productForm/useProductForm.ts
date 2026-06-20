@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useFormState } from '@/shared/hooks/useFormState';
 import type {
   CreateProductRequest,
   LocalizedStringDto,
@@ -5,7 +7,6 @@ import type {
   ProductStatus,
   UpdateProductRequest,
 } from '@/models/product';
-import { useFormState } from '@/shared/hooks/useFormState';
 
 export type ProductFormValues = {
   name: LocalizedStringDto;
@@ -102,8 +103,50 @@ export function valuesFromProduct(product: Product): ProductFormValues {
   };
 }
 
-export function useProductForm(initial: ProductFormValues = initialValues) {
-  return useFormState<ProductFormValues>(initial);
-}
+type BaseProductForm = ReturnType<typeof useFormState<ProductFormValues>>;
 
-export type ProductForm = ReturnType<typeof useProductForm>;
+export type ProductForm = BaseProductForm & {
+  pendingImageFile: File | null;
+  imagePreviewUrl: string;
+  setPendingImageFile: (file: File) => void;
+  removeProductImage: () => void;
+};
+
+export function useProductForm(): ProductForm {
+  const formState = useFormState<ProductFormValues>(initialValues);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+
+  const previewObjectUrl = useMemo(
+    () => (pendingImageFile ? URL.createObjectURL(pendingImageFile) : null),
+    [pendingImageFile],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    };
+  }, [previewObjectUrl]);
+
+  const imagePreviewUrl = previewObjectUrl ?? formState.values.imageUrl;
+
+  const removeProductImage = () => {
+    setPendingImageFile(null);
+    formState.setField('imageUrl', '');
+  };
+
+  // Override reset to also clear the pending file
+  const originalReset = formState.reset;
+  const reset = (nextValues?: ProductFormValues) => {
+    originalReset(nextValues);
+    setPendingImageFile(null);
+  };
+
+  return {
+    ...formState,
+    reset,
+    pendingImageFile,
+    imagePreviewUrl,
+    setPendingImageFile,
+    removeProductImage,
+  };
+}

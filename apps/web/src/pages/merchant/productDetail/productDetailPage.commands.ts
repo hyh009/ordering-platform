@@ -3,12 +3,12 @@ import {
   createProductDetailCommands,
   type LoadProductResult,
 } from '@/features/merchant/menu/products/detail/commands';
-import { createProductMutationCommands } from '@/features/merchant/menu/products/mutations/commands';
+import {
+  createProductMutationCommands,
+  type UploadProductImageResult,
+} from '@/features/merchant/menu/products/mutations/commands';
 import type { ProductCommandFieldErrors } from '@/features/merchant/menu/products/components/productForm/productFormErrors';
-import type {
-  Product,
-  UpdateProductRequest,
-} from '@/models/product';
+import type { Product, UpdateProductRequest } from '@/models/product';
 import type { MerchantCommandFailure } from '@/services/utils/merchantApiError';
 
 export type { LoadProductResult };
@@ -35,6 +35,10 @@ export type ProductDetailPageCommands = {
     productId: string,
     isSoldOut: boolean,
   ): Promise<ToggleSoldOutResult>;
+  uploadProductImage(
+    storeId: string,
+    file: File,
+  ): Promise<UploadProductImageResult>;
 };
 
 export function createProductDetailPageCommands(
@@ -71,5 +75,7 @@ export function createProductDetailPageCommands(
 
       return result;
     },
+
+    uploadProductImage: mutationCommands.uploadProductImage,
   };
 }

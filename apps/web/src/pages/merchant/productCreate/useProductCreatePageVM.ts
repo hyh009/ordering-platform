@@ -21,9 +21,8 @@ export function useProductCreatePageVM() {
   const locale = useActiveStoreLocale();
   const form = useProductForm();
   const formOptions = useProductFormOptions(storeId, locale.defaultLocale);
-  const [submittingStatus, setSubmittingStatus] = useState<ProductStatus | null>(
-    null,
-  );
+  const [submittingStatus, setSubmittingStatus] =
+    useState<ProductStatus | null>(null);
 
   const goBack = useCallback(() => {
     void navigate(PATHS.MERCHANT.MENU);
@@ -37,7 +36,25 @@ export function useProductCreatePageVM() {
       form.resetErrors();
       setSubmittingStatus(status);
 
-      const request = toCreateProductRequest(form.values, status);
+      let imageUrl = form.values.imageUrl;
+
+      if (form.pendingImageFile) {
+        const uploadResult = await productCreatePageCommands.uploadProductImage(
+          storeId,
+          form.pendingImageFile,
+        );
+
+        if (uploadResult.status !== 'uploaded') {
+          form.setIsSubmitting(false);
+          setSubmittingStatus(null);
+          handleMerchantFailure(uploadResult);
+          return;
+        }
+
+        imageUrl = uploadResult.image.url;
+      }
+
+      const request = toCreateProductRequest({ ...form.values, imageUrl }, status);
       const result = await productCreatePageCommands.createProduct(
         storeId,
         request,
@@ -52,7 +69,10 @@ export function useProductCreatePageVM() {
       }
 
       handleMerchantFailure(result, {
-        form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+        form: {
+          setSubmitError: form.setSubmitError,
+          setFieldErrors: form.setFieldErrors,
+        },
       });
     },
     [form, navigate, storeId],

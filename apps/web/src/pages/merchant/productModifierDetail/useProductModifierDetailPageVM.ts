@@ -75,7 +75,10 @@ export function useProductModifierDetailPageVM() {
     }
 
     handleMerchantFailure(result, {
-      form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+      form: {
+        setSubmitError: form.setSubmitError,
+        setFieldErrors: form.setFieldErrors,
+      },
     });
   }, [commands, form, modifierId, storeId]);
 

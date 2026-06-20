@@ -40,10 +40,21 @@ export function useProductDetailPageVM() {
   const error = useStore(store, (state) => state.error);
 
   const [isEditMode, setIsEditMode] = useState(false);
-  const [submittingStatus, setSubmittingStatus] = useState<ProductStatus | null>(
-    null,
-  );
+  const [submittingStatus, setSubmittingStatus] =
+    useState<ProductStatus | null>(null);
+
   const form = useProductForm();
+
+  const enterEditMode = useCallback(() => {
+    if (!product) return;
+    form.reset(valuesFromProduct(product));
+    setIsEditMode(true);
+  }, [form, product]);
+
+  const cancelEdit = useCallback(() => {
+    if (product) form.reset(valuesFromProduct(product));
+    setIsEditMode(false);
+  }, [form, product]);
 
   const load = useCallback(async () => {
     if (!storeId || !productId) return;
@@ -55,16 +66,6 @@ export function useProductDetailPageVM() {
     void load();
   }, [load]);
 
-  const enterEditMode = useCallback(() => {
-    if (product) form.reset(valuesFromProduct(product));
-    setIsEditMode(true);
-  }, [form, product]);
-
-  const cancelEdit = useCallback(() => {
-    setIsEditMode(false);
-    if (product) form.reset(valuesFromProduct(product));
-  }, [form, product]);
-
   const save = useCallback(
     async (status: ProductStatus) => {
       if (!storeId || !productId) return;
@@ -73,7 +74,25 @@ export function useProductDetailPageVM() {
       form.resetErrors();
       setSubmittingStatus(status);
 
-      const request = toUpdateProductRequest(form.values, status);
+      let imageUrl = form.values.imageUrl;
+
+      if (form.pendingImageFile) {
+        const uploadResult = await commands.uploadProductImage(
+          storeId,
+          form.pendingImageFile,
+        );
+
+        if (uploadResult.status !== 'uploaded') {
+          form.setIsSubmitting(false);
+          setSubmittingStatus(null);
+          handleMerchantFailure(uploadResult);
+          return;
+        }
+
+        imageUrl = uploadResult.image.url;
+      }
+
+      const request = toUpdateProductRequest({ ...form.values, imageUrl }, status);
       const result = await commands.updateProduct(storeId, productId, request);
 
       form.setIsSubmitting(false);
@@ -85,7 +104,10 @@ export function useProductDetailPageVM() {
       }
 
       handleMerchantFailure(result, {
-        form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+        form: {
+          setSubmitError: form.setSubmitError,
+          setFieldErrors: form.setFieldErrors,
+        },
       });
     },
     [commands, form, productId, storeId],

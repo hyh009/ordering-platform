@@ -32,7 +32,8 @@ export function ProductDetailPage() {
           {tDefault('merchant.products.title', 'Menu')}
         </Button>
         <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error ?? tDefault('merchant.errors.notFound', 'This record was not found.')}
+          {vm.error ??
+            tDefault('merchant.errors.notFound', 'This record was not found.')}
         </p>
       </section>
     );
@@ -84,12 +85,19 @@ export function ProductDetailPage() {
               <ProductBasicInfoFields form={form} locale={vm.locale} />
               <ProductMetadataFields form={form} formOptions={vm.formOptions} />
               <ProductModifiersField form={form} formOptions={vm.formOptions} />
-              <ProductImageField form={form} />
+              <ProductImageField
+                form={form}
+                onRemove={form.removeProductImage}
+                onSelect={form.setPendingImageFile}
+              />
             </div>
 
             <aside className="grid h-fit gap-6 lg:sticky lg:top-6">
               <ProductPreviewCard locale={vm.locale} values={form.values} />
-              <ProductSummaryCard status={product.status} values={form.values} />
+              <ProductSummaryCard
+                status={product.status}
+                values={form.values}
+              />
             </aside>
           </div>
 

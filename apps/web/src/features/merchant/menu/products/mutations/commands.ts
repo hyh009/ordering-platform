@@ -1,4 +1,8 @@
 import { tDefault } from '@/app/i18n';
+import {
+  getImageFileValidationMessage,
+  validateImageFile,
+} from '@/models/asset';
 import { createProductSchema, updateProductSchema } from '@/models/product';
 import type {
   CreateProductRequest,
@@ -10,6 +14,7 @@ import { productService } from '@/services/product.service';
 import {
   mapMerchantApiError,
   type MerchantCommandFailure,
+  type UploadImageResult,
 } from '@/services/utils/merchantApiError';
 import {
   mapProductFieldErrors,
@@ -17,6 +22,7 @@ import {
 } from '../components/productForm/productFormErrors';
 
 export type { ProductCommandFieldErrors };
+export type { UploadImageResult as UploadProductImageResult };
 
 export type SaveProductResult =
   | { product: Product; status: 'saved' }
@@ -43,6 +49,10 @@ export type ProductMutationCommands = {
     productId: string,
     input: ToggleProductSoldOutRequest,
   ): Promise<ToggleProductSoldOutResult>;
+  uploadProductImage(
+    storeId: string,
+    file: File,
+  ): Promise<UploadImageResult>;
 };
 
 export function createProductMutationCommands(): ProductMutationCommands {
@@ -108,6 +118,24 @@ export function createProductMutationCommands(): ProductMutationCommands {
         );
 
         return { product, status: 'saved' };
+      } catch (error) {
+        return mapMerchantApiError(error);
+      }
+    },
+
+    async uploadProductImage(storeId, file) {
+      const validation = validateImageFile(file);
+      if (!validation.ok) {
+        return {
+          message: getImageFileValidationMessage(validation.reason, tDefault),
+          reason: 'invalid' as const,
+          status: 'failed' as const,
+        };
+      }
+
+      try {
+        const image = await productService.uploadProductImage(storeId, file);
+        return { status: 'uploaded', image };
       } catch (error) {
         return mapMerchantApiError(error);
       }
