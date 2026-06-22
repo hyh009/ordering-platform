@@ -25,11 +25,11 @@ export function ProductPreviewCard({ values, locale }: Props) {
         {imageUrl ? (
           <img
             alt={name}
-            className="aspect-video w-full object-cover"
+            className="aspect-square w-full object-cover"
             src={imageUrl}
           />
         ) : (
-          <div className="flex aspect-video w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+          <div className="flex aspect-square w-full items-center justify-center bg-muted text-xs text-muted-foreground">
             {tDefault('merchant.products.noImage', 'No image')}
           </div>
         )}

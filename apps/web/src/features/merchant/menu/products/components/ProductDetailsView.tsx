@@ -55,7 +55,7 @@ export function ProductDetailsView({ product, formOptions, locale }: Props) {
         {imageUrl ? (
           <img
             alt=""
-            className="aspect-video w-full max-w-md rounded-md border border-border object-cover"
+            className="h-auto w-full max-w-xs rounded-md border border-border"
             src={imageUrl}
           />
         ) : null}
