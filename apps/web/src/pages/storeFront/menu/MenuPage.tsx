@@ -167,11 +167,11 @@ export function MenuPage() {
       </div>
 
       {vm.cartItemCount > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
+        <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
           <button
             type="button"
             onClick={vm.goToCart}
-            className="flex w-full items-center justify-between rounded-full bg-storefront-primary px-5 py-3.5 text-storefront-text shadow-lg transition-opacity hover:opacity-90 active:opacity-80"
+            className="mx-auto flex w-full max-w-md sm:max-w-lg lg:max-w-2xl items-center justify-between rounded-full bg-storefront-primary px-5 py-3.5 text-storefront-text shadow-lg transition-opacity hover:opacity-90 active:opacity-80"
           >
             <div className="flex items-center gap-2">
               <ShoppingCart size={18} strokeWidth={2} />
