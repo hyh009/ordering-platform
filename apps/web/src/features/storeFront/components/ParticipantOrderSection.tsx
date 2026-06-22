@@ -35,6 +35,7 @@ export function ParticipantOrderSection({
 
   const avatarSrc = anonymousAvatarImages[participant.avatarKey];
   const name = getOrderingParticipantDisplayName(participant, tDefault);
+  const subtotal = items.reduce((sum, item) => sum + item.totalItemPrice, 0);
 
   return (
     <section>
@@ -55,13 +56,13 @@ export function ParticipantOrderSection({
             <p className="font-semibold text-storefront-text">{name}</p>
             {isCurrentUser ? (
               <span className="rounded-full bg-storefront-primary/20 px-1.5 py-0.5 text-xs font-medium text-storefront-primary">
-                我
+                {tDefault('guest.cart.currentUserBadge', '我')}
               </span>
             ) : null}
           </div>
           <p className="text-xs text-storefront-text-muted">
             {items.length > 0
-              ? `${items.length} ${tDefault('guest.cart.itemCount', '項商品')}`
+              ? `${items.length} ${tDefault('guest.cart.itemCount', '項商品')} · ${formatPrice(subtotal)}`
               : tDefault('guest.cart.noOrders', '尚未點餐')}
           </p>
         </div>
