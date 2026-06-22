@@ -40,6 +40,7 @@ export function ProductCreatePage() {
           <ProductModifiersField form={form} formOptions={vm.formOptions} />
           <ProductImageField
             form={form}
+            onInvalidFile={vm.handleInvalidImageFile}
             onRemove={form.removeProductImage}
             onSelect={form.setPendingImageFile}
           />

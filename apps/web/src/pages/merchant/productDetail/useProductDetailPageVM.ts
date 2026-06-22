@@ -5,6 +5,7 @@ import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { useCanManageStoreResources } from '@/app/global/activeOrg/useActiveOrgRole';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
+import { tDefault } from '@/app/i18n';
 import { resolveMenuReturnTo } from '@/app/routing/menuReturnState';
 import { createProductDetailRuntime } from '@/features/merchant/menu/products/detail/runtime';
 import {
@@ -13,6 +14,10 @@ import {
   valuesFromProduct,
 } from '@/features/merchant/menu/products/components/productForm/useProductForm';
 import { useProductFormOptions } from '@/features/merchant/menu/products/components/productForm/useProductFormOptions';
+import {
+  getImageFileValidationMessage,
+  type ImageFileValidationError,
+} from '@/models/asset';
 import { getLocalizedText } from '@/models/metadata';
 import type { ProductStatus } from '@/models/product';
 import { createProductDetailPageCommands } from './productDetailPage.commands';
@@ -55,6 +60,17 @@ export function useProductDetailPageVM() {
     if (product) form.reset(valuesFromProduct(product));
     setIsEditMode(false);
   }, [form, product]);
+
+  const handleInvalidImageFile = useCallback(
+    (reason: ImageFileValidationError) => {
+      handleMerchantFailure({
+        reason: 'invalid',
+        status: 'failed',
+        message: getImageFileValidationMessage(reason, tDefault),
+      });
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     if (!storeId || !productId) return;
@@ -141,6 +157,7 @@ export function useProductDetailPageVM() {
     error,
     form,
     goBack,
+    handleInvalidImageFile,
     isEditMode,
     isLoading,
     locale,

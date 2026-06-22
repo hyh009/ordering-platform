@@ -87,6 +87,7 @@ export function ProductDetailPage() {
               <ProductModifiersField form={form} formOptions={vm.formOptions} />
               <ProductImageField
                 form={form}
+                onInvalidFile={vm.handleInvalidImageFile}
                 onRemove={form.removeProductImage}
                 onSelect={form.setPendingImageFile}
               />

@@ -142,6 +142,7 @@ const manualResources: Resource = {
       },
       common: {
         copyFailed: '無法複製。',
+        imageCropFailed: '無法處理圖片，請再試一次。',
         loading: '載入中…',
         ok: '確定',
         actions: {

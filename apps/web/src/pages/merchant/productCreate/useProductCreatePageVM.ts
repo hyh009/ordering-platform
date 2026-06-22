@@ -4,12 +4,17 @@ import { useStore } from 'zustand';
 import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
+import { tDefault } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import {
   toCreateProductRequest,
   useProductForm,
 } from '@/features/merchant/menu/products/components/productForm/useProductForm';
 import { useProductFormOptions } from '@/features/merchant/menu/products/components/productForm/useProductFormOptions';
+import {
+  getImageFileValidationMessage,
+  type ImageFileValidationError,
+} from '@/models/asset';
 import type { ProductStatus } from '@/models/product';
 import { createProductCreatePageCommands } from './productCreatePage.commands';
 
@@ -27,6 +32,17 @@ export function useProductCreatePageVM() {
   const goBack = useCallback(() => {
     void navigate(PATHS.MERCHANT.MENU);
   }, [navigate]);
+
+  const handleInvalidImageFile = useCallback(
+    (reason: ImageFileValidationError) => {
+      handleMerchantFailure({
+        reason: 'invalid',
+        status: 'failed',
+        message: getImageFileValidationMessage(reason, tDefault),
+      });
+    },
+    [],
+  );
 
   const submit = useCallback(
     async (status: ProductStatus) => {
@@ -84,6 +100,7 @@ export function useProductCreatePageVM() {
   return {
     form,
     goBack,
+    handleInvalidImageFile,
     locale,
     publish,
     formOptions,
