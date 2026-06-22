@@ -114,8 +114,18 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
           };
         }
 
+        // The session may now carry BOTH a live draft cart and an order at the
+        // same time (reusable-cart model). Hydrate every store the session
+        // provides so the resumed flow has the full live state.
+        if (session.cart && session.cart.status === 'active') {
+          cartActions.cartUpdated(session.cart);
+        }
+
         if (session.order) {
           orderActions.orderUpdated(session.order);
+          // TODO(phase4): when both a draft cart and an order are present, decide
+          // whether to resume into order tracking or the add-on draft flow. For
+          // now preserve current behavior and resume into order tracking.
           return {
             status: 'order',
             canAddOn: canGuestAddOn(session.order),
@@ -124,7 +134,6 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
         }
 
         if (session.cart && session.cart.status === 'active') {
-          cartActions.cartUpdated(session.cart);
           return { status: 'cart' };
         }
 

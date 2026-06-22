@@ -170,8 +170,12 @@ export type CartItemParams = z.infer<typeof cartItemParamsSchema>;
 
 /**
  * Current guest ordering context resolved from a guest token.
- * `cart` is present while the cart is active; `order` is present once the
- * cart has been checked out into an order.
+ * `cart` and `order` are independently optional and can coexist:
+ * - `cart` is present while there is a usable/active draft cart (the live
+ *   next-round buffer); it is omitted once the cart is terminal.
+ * - `order` is present whenever an order exists for this participant.
+ * In the reusable-cart model a session may have a draft cart, an order, both,
+ * or neither.
  */
 export type GuestSessionDto = {
   participantId: string;

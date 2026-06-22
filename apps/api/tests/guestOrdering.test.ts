@@ -864,8 +864,12 @@ describe('submit and order', () => {
       .get('/api/v1/public/guest/session')
       .set(auth(owner.guestToken));
 
+    // Reusable-cart model: after round 1 the cart stays active (drained) AND an
+    // order exists, so the session carries BOTH the live draft cart and order.
     expect(session.body.data.session.order.id).toBe(order.id);
-    expect(session.body.data.session.cart).toBeUndefined();
+    expect(session.body.data.session.cart.id).toBe(owner.cart.id);
+    expect(session.body.data.session.cart.status).toBe('active');
+    expect(session.body.data.session.cart.items).toHaveLength(0);
   });
 
   it('lets a participant read their order while the shared cart is still active', async () => {
@@ -885,11 +889,42 @@ describe('submit and order', () => {
     expect(order.body.data.order.id).toBe(orderId);
   });
 
-  it('returns the order session branch regardless of cart status', async () => {
+  it('returns BOTH cart and order when an active draft cart and an order coexist', async () => {
     const { owner, submitResponse } = await submitOrder();
     const orderId = submitResponse.body.data.order.id as string;
 
-    mocks.carts.get(owner.cart.id)!.status = 'active';
+    // Shared cart is still active (next-round draft) and an order exists.
+    expect(mocks.carts.get(owner.cart.id)!.status).toBe('active');
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+
+    expect(session.status).toBe(200);
+    expect(session.body.data.session.order.id).toBe(orderId);
+    expect(session.body.data.session.cart.id).toBe(owner.cart.id);
+    expect(session.body.data.session.cart.status).toBe('active');
+  });
+
+  it('returns cart only when there is an active draft cart and no order yet', async () => {
+    const owner = await createDineInCart('Amy');
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+
+    expect(session.status).toBe(200);
+    expect(session.body.data.session.cart.id).toBe(owner.cart.id);
+    expect(session.body.data.session.order).toBeUndefined();
+  });
+
+  it('returns order only when the cart is terminal (checked_out)', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+
+    // Drive the cart terminal (e.g. order locked): a checked_out cart is not a
+    // draft, so the session carries the order only.
+    mocks.carts.get(owner.cart.id)!.status = 'checked_out';
 
     const session = await request(app)
       .get('/api/v1/public/guest/session')
@@ -1186,9 +1221,37 @@ describe('submit and order', () => {
     ).toBe(true);
   });
 
-  it('routes the join code to the open order after checkout', async () => {
+  it('returns BOTH cart and order when joining an active cart with an order', async () => {
     const { owner, submitResponse } = await submitOrder();
     expect(submitResponse.status).toBe(201);
+
+    // The shared cart is still active (reusable next-round draft) with a linked
+    // order, so the joiner sees BOTH the live draft and the existing order.
+    expect(mocks.carts.get(owner.cart.id)!.status).toBe('active');
+
+    const joinResponse = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({
+        joinCode: owner.cart.joinCode,
+        avatarKey: 'dog',
+        displayName: 'Ben',
+      });
+
+    expect(joinResponse.status).toBe(200);
+    const session = joinResponse.body.data.session;
+    expect(session.order.id).toBe(submitResponse.body.data.order.id);
+    expect(session.cart.id).toBe(owner.cart.id);
+    expect(session.cart.status).toBe('active');
+    expect(session.order.participants).toHaveLength(2);
+    expect(session.joinCode).toBe(owner.cart.joinCode);
+  });
+
+  it('routes the join code to the open order only once the cart is terminal', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    expect(submitResponse.status).toBe(201);
+
+    // Cart is terminal (checked_out): the join code routes to the open order.
+    mocks.carts.get(owner.cart.id)!.status = 'checked_out';
 
     const joinResponse = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)

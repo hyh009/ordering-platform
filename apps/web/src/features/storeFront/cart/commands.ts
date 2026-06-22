@@ -22,7 +22,9 @@ import type {
 import type { StoreFrontCartActions } from './actions';
 import type { TenantStore } from '../tenant/store';
 
-export type CartMutationResult = { status: 'updated' } | StoreFrontCommandFailure;
+export type CartMutationResult =
+  | { status: 'updated' }
+  | StoreFrontCommandFailure;
 
 export type StoreFrontCartCommands = {
   createCart(
@@ -178,7 +180,15 @@ export function createStoreFrontCartCommands(deps: {
         if (!isActiveStore(storeId)) return mismatchedSession;
 
         if (result.session.order) {
-          cartActions.cartCleared();
+          // The session may carry BOTH an order and a live draft cart now.
+          // Hydrate the cart store with the draft when present; otherwise clear.
+          // TODO(phase4): decide the join landing target when both are present;
+          // for now preserve current behavior and route to the order.
+          if (result.session.cart) {
+            cartActions.cartUpdated(result.session.cart);
+          } else {
+            cartActions.cartCleared();
+          }
           return {
             guestToken: result.guestToken,
             order: result.session.order,
@@ -271,7 +281,11 @@ export function createStoreFrontCartCommands(deps: {
       cartActions.mutateStarted();
 
       try {
-        const cart = await storeFrontCartService.updateItem(token, itemId, parsed);
+        const cart = await storeFrontCartService.updateItem(
+          token,
+          itemId,
+          parsed,
+        );
         if (!hasScopedToken(expectedStoreId, token)) {
           return mismatchedSession;
         }

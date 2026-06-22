@@ -480,6 +480,12 @@
  *           type: string
  *           format: date-time
  *     GuestSession:
+ *       description: >-
+ *         Guest ordering context. `cart` and `order` are independently optional
+ *         and can coexist: `cart` is the live next-round draft (present while a
+ *         usable/active draft cart exists, omitted once terminal); `order` is
+ *         present whenever an order exists for the participant. A session may
+ *         carry a draft cart, an order, both, or neither.
  *       type: object
  *       required:
  *         - participantId
@@ -491,8 +497,10 @@
  *           type: string
  *           description: Present only while the Join Code is currently usable.
  *         cart:
+ *           description: Live next-round draft cart, present when one is usable.
  *           $ref: '#/components/schemas/Cart'
  *         order:
+ *           description: Submitted order, present when one exists for the participant.
  *           $ref: '#/components/schemas/Order'
  *     CartItemInput:
  *       type: object

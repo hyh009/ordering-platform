@@ -578,7 +578,8 @@ export async function joinCart(
 
     // If a round has already been submitted (the cart is still reusable and now
     // links an order), the joiner must also become a real order participant so
-    // they can read the order and own their items in later rounds.
+    // they can read the order and own their items in later rounds. They see BOTH
+    // the existing order and the live next-round draft cart.
     if (updated.orderId !== undefined) {
       const order = await updateOrderWithRetry(updated.orderId, (fresh) => ({
         participants: [...fresh.participants, participant],
@@ -590,6 +591,7 @@ export async function joinCart(
         session: {
           participantId: participant.id,
           joinCode: updated.joinCode!,
+          cart: toCartDto(updated),
           order: toOrderDto(order),
         },
         guestToken,
@@ -637,34 +639,36 @@ export async function getGuestSession(
   const cart = await loadCartForClaims(claims);
 
   // Resolve the order by participant membership (decoupled from cart status), so
-  // every participant sees the order branch once an order exists for them — even
-  // while the shared cart is still `active`.
+  // every participant sees the order once one exists for them — even while the
+  // shared cart is still `active`.
   const order = await orderRepository.findByStoreAndParticipant(
     claims.storeId,
     claims.participantId,
   );
 
-  if (order) {
-    return {
-      participantId: claims.participantId,
-      ...(isGuestJoinCodeUsable(cart, order, requestTime)
-        ? { joinCode: cart.joinCode }
-        : {}),
-      order: toOrderDto(order),
-    };
-  }
+  // A live draft cart is the next-round buffer. It is only includable while the
+  // cart is still an active/usable draft; a terminal (`checked_out`) cart is not
+  // a draft and is omitted. When there is no order yet, the token holder must be
+  // a cart member for the session to resolve at all.
+  const hasDraftCart =
+    isActiveCartUsable(cart, requestTime) &&
+    findParticipant(cart.participants, claims.participantId) !== undefined;
 
-  assertActiveCartUsable(cart, requestTime);
-  if (!findParticipant(cart.participants, claims.participantId)) {
+  if (!order && !hasDraftCart) {
+    // No order for this participant and no usable draft cart: the same failure
+    // the cart-only path produced before (expired/terminal cart, or a token that
+    // does not belong to this cart).
+    assertActiveCartUsable(cart, requestTime);
     throw invalidGuestTokenError();
   }
 
   return {
     participantId: claims.participantId,
-    ...(isGuestJoinCodeUsable(cart, undefined, requestTime)
+    ...(isGuestJoinCodeUsable(cart, order ?? undefined, requestTime)
       ? { joinCode: cart.joinCode }
       : {}),
-    cart: toCartDto(cart),
+    ...(hasDraftCart ? { cart: toCartDto(cart) } : {}),
+    ...(order ? { order: toOrderDto(order) } : {}),
   };
 }
 
