@@ -14,6 +14,7 @@ import type {
   StoreCheckoutMode,
   StoreOrderType,
 } from '@src/models/store/model';
+import type { ClientSession } from 'mongoose';
 
 export type CreateOrderInput = {
   organizationId: string;
@@ -56,11 +57,18 @@ export type UpdateOrderInput = {
 
 export type UpdateOrderOptions = {
   expectedUpdatedAt?: Date | undefined;
+  session?: ClientSession | undefined;
 };
 
 export type OrderRepository = {
-  create(input: CreateOrderInput): Promise<OrderEntity>;
-  findById(orderId: string): Promise<OrderEntity | null>;
+  create(
+    input: CreateOrderInput,
+    session?: ClientSession,
+  ): Promise<OrderEntity>;
+  findById(
+    orderId: string,
+    session?: ClientSession,
+  ): Promise<OrderEntity | null>;
   findByStoreAndParticipant(
     storeId: string,
     participantId: string,

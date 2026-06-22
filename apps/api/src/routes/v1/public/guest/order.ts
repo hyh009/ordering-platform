@@ -1,8 +1,5 @@
-import { addOrderBatchSchema } from '@repo/shared';
 import { requireGuest } from '@src/middlewares/guestAuth';
-import { validate } from '@src/middlewares/validate';
 import {
-  addOrderBatch,
   getGuestOrder,
   subscribeToGuestOrder,
 } from '@src/services/guestOrdering.service';
@@ -11,8 +8,6 @@ import { Router } from 'express';
 import { guestClaims } from './session';
 
 import type {
-  AddOrderBatchRequest,
-  AddOrderBatchSuccessResponse,
   GetGuestOrderSuccessResponse,
   OrderStreamEventDto,
 } from '@repo/shared';
@@ -70,74 +65,6 @@ router.get('/', async (req, res) => {
     data: { order },
   };
   res.status(200).json(response);
-});
-
-/**
- * @openapi
- * /v1/public/guest/order/batches:
- *   post:
- *     tags:
- *       - Public / Guest Order
- *     summary: Add an add-on batch to an open pay-later order
- *     description: >
- *       Allowed before the order deadline while the dine-in pay-later order is
- *       unpaid and not completed or cancelled. The new batch needs staff
- *       confirmation again.
- *     security:
- *       - guestToken: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - items
- *             properties:
- *               items:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   $ref: '#/components/schemas/CartItemInput'
- *     responses:
- *       201:
- *         description: Updated order with the appended batch
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: object
- *                   properties:
- *                     order:
- *                       $ref: '#/components/schemas/Order'
- *       409:
- *         description: Order locked for guest add-ons or store closed
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               orderLocked:
- *                 value:
- *                   status: error
- *                   statusCode: 409
- *                   code: ORDER_LOCKED
- *                   message: Order can no longer be extended by guests
- */
-router.post('/batches', validate(addOrderBatchSchema), async (req, res) => {
-  const { items } = req.body as AddOrderBatchRequest;
-  const order = await addOrderBatch(guestClaims(req), items);
-
-  const response: AddOrderBatchSuccessResponse = {
-    status: 'success',
-    data: { order },
-  };
-  res.status(201).json(response);
 });
 
 /**

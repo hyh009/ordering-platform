@@ -26,6 +26,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '@src/utils/errors';
+import mongoose from 'mongoose';
 
 import type {
   CartDto,
@@ -41,6 +42,7 @@ import type {
 import type {
   CartEntity,
   CartItemSnapshot,
+  CartStatus,
   OrderingParticipantSnapshot,
   SelectedModifierOptionSnapshot,
 } from '@src/models/cart/model';
@@ -574,6 +576,26 @@ export async function joinCart(
       return { participants: [...fresh.participants, participant] };
     });
 
+    // If a round has already been submitted (the cart is still reusable and now
+    // links an order), the joiner must also become a real order participant so
+    // they can read the order and own their items in later rounds.
+    if (updated.orderId !== undefined) {
+      const order = await updateOrderWithRetry(updated.orderId, (fresh) => ({
+        participants: [...fresh.participants, participant],
+      }));
+
+      emitOrderUpdated(order);
+
+      return {
+        session: {
+          participantId: participant.id,
+          joinCode: updated.joinCode!,
+          order: toOrderDto(order),
+        },
+        guestToken,
+      };
+    }
+
     return {
       session: {
         participantId: participant.id,
@@ -838,6 +860,32 @@ function buildBatch(input: {
   };
 }
 
+function unionParticipants(
+  base: OrderingParticipantSnapshot[],
+  incoming: OrderingParticipantSnapshot[],
+): OrderingParticipantSnapshot[] {
+  const byId = new Map(
+    base.map((participant) => [participant.id, participant]),
+  );
+  for (const participant of incoming) {
+    if (!byId.has(participant.id)) {
+      byId.set(participant.id, participant);
+    }
+  }
+  return [...byId.values()];
+}
+
+/**
+ * Submit the current cart round: flush the cart's items into a new order batch
+ * (creating the order on round 1, appending on round N), then clear only the
+ * flushed items from the cart so concurrent adds survive into the next round.
+ *
+ * The whole flush runs in one Mongo transaction (D4). A concurrent cart write
+ * (another participant's `addCartItem`) triggers a write-conflict abort and
+ * `withTransaction` retries the callback, so no item is lost and no batch is
+ * duplicated. The empty guard (D6) makes a double-submit a graceful no-op for
+ * the loser instead of creating a second batch.
+ */
 export async function submitCart(
   claims: GuestTokenClaims,
   request: SubmitCartRequest,
@@ -846,89 +894,191 @@ export async function submitCart(
   const store = await getActivePublicStore(claims.storeId);
   requireStoreOpen(store, requestTime);
 
-  for (let attempt = 0; attempt < OPTIMISTIC_WRITE_ATTEMPTS; attempt += 1) {
-    const cart = await cartRepository.findById(claims.cartId);
-    if (!cart) {
-      throw new NotFoundError('Cart not found', ERROR_CODES.CART_NOT_FOUND);
-    }
+  const session = await mongoose.connection.startSession();
 
-    assertActiveCartMembership(cart, claims.participantId, requestTime);
+  try {
+    const order = await session.withTransaction(async () => {
+      const cart = await cartRepository.findById(claims.cartId, session);
+      if (!cart) {
+        throw new NotFoundError('Cart not found', ERROR_CODES.CART_NOT_FOUND);
+      }
 
-    if (cart.items.length === 0) {
-      throw new BadRequestError('Cart is empty', ERROR_CODES.BAD_REQUEST);
-    }
-
-    const unavailable = await findUnavailableItems(cart.storeId, cart.items);
-    if (unavailable.length > 0) {
-      throw new BadRequestError(
-        'Some items are no longer available',
-        ERROR_CODES.PRODUCT_SOLD_OUT,
-        { unavailableItems: unavailable },
+      const participant = findParticipant(
+        cart.participants,
+        claims.participantId,
       );
-    }
+      if (!participant) {
+        throw invalidGuestTokenError();
+      }
 
-    // Flip the cart first so concurrent edits or double submits lose the race,
-    // then create the order from the flipped cart state.
-    const flipped = await cartRepository.update(
-      cart.id,
-      {
-        status: 'checked_out',
-        ...(request.notes !== undefined ? { notes: request.notes } : {}),
-      },
-      { expectedUpdatedAt: cart.updatedAt },
-    );
+      const existingOrder =
+        cart.orderId === undefined
+          ? null
+          : await orderRepository.findById(cart.orderId, session);
 
-    if (!flipped) {
-      continue;
-    }
+      const flushed = cart.items;
+      const flushedIds = new Set(flushed.map((item) => item.id));
 
-    const businessDate = getBusinessDate(requestTime);
-    const dailySequence = await counterRepository.nextDailyOrderSequence(
-      cart.storeId,
-      businessDate,
-    );
+      // Before any order exists, the live cart must still be usable (active +
+      // before its deadline); an expired cart can never open a round. Once an
+      // order exists, extendability (`canGuestExtendOrder`) is the gate instead,
+      // so the double-submit loser can still resolve gracefully below.
+      if (existingOrder === null) {
+        assertActiveCartUsable(cart, requestTime);
+      }
 
-    const order = await orderRepository.create({
-      organizationId: flipped.organizationId,
-      storeId: flipped.storeId,
-      cartId: flipped.id,
-      orderType: flipped.orderType,
-      checkoutMode: flipped.checkoutMode,
-      businessDate,
-      dailySequence,
-      displayNumber: String(dailySequence).padStart(3, '0'),
-      status: 'pending_confirmation',
-      paymentStatus: 'unpaid',
-      ...(flipped.tableNumber !== undefined
-        ? { tableNumber: flipped.tableNumber }
-        : {}),
-      participants: flipped.participants,
-      items: flipped.items,
-      batches: [
-        buildBatch({
-          batchNumber: 1,
-          items: flipped.items,
-          submittedByParticipantId: claims.participantId,
-        }),
-      ],
-      ...(flipped.notes !== undefined ? { notes: flipped.notes } : {}),
-      subtotal: flipped.subtotal,
-      serviceFeeRate: flipped.serviceFeeRate,
-      serviceFeeAmount: flipped.serviceFeeAmount,
-      totalAmount: flipped.totalAmount,
-      orderingClosesAt: flipped.orderingClosesAt ?? flipped.expiresAt,
+      // Empty guard (D6): a flush with nothing to hand off is either a
+      // double-submit (the cart was already drained by the winner) or a genuine
+      // empty submit. Never create a second batch from an empty round.
+      if (flushed.length === 0) {
+        if (existingOrder) {
+          return existingOrder;
+        }
+        throw new BadRequestError('Cart is empty', ERROR_CODES.BAD_REQUEST);
+      }
+
+      const unavailable = await findUnavailableItems(cart.storeId, flushed);
+      if (unavailable.length > 0) {
+        throw new BadRequestError(
+          'Some items are no longer available',
+          ERROR_CODES.PRODUCT_SOLD_OUT,
+          { unavailableItems: unavailable },
+        );
+      }
+
+      let resultOrder: OrderEntity;
+
+      if (existingOrder === null) {
+        // Round 1: create the order with batch #1 from the flushed items.
+        const businessDate = getBusinessDate(requestTime);
+        const dailySequence = await counterRepository.nextDailyOrderSequence(
+          cart.storeId,
+          businessDate,
+        );
+
+        resultOrder = await orderRepository.create(
+          {
+            organizationId: cart.organizationId,
+            storeId: cart.storeId,
+            cartId: cart.id,
+            orderType: cart.orderType,
+            checkoutMode: cart.checkoutMode,
+            businessDate,
+            dailySequence,
+            displayNumber: String(dailySequence).padStart(3, '0'),
+            status: 'pending_confirmation',
+            paymentStatus: 'unpaid',
+            ...(cart.tableNumber !== undefined
+              ? { tableNumber: cart.tableNumber }
+              : {}),
+            participants: cart.participants,
+            items: flushed,
+            batches: [
+              buildBatch({
+                batchNumber: 1,
+                items: flushed,
+                submittedByParticipantId: claims.participantId,
+              }),
+            ],
+            ...(request.notes !== undefined ? { notes: request.notes } : {}),
+            subtotal: cart.subtotal,
+            serviceFeeRate: cart.serviceFeeRate,
+            serviceFeeAmount: cart.serviceFeeAmount,
+            totalAmount: cart.totalAmount,
+            orderingClosesAt: cart.orderingClosesAt ?? cart.expiresAt,
+          },
+          session,
+        );
+      } else {
+        // Round N: the order must still be guest-extendable.
+        if (!canGuestExtendOrder(existingOrder, requestTime)) {
+          throw new ConflictError(
+            'Order can no longer be extended by guests',
+            ERROR_CODES.ORDER_LOCKED,
+          );
+        }
+
+        const nextBatchNumber =
+          existingOrder.batches.reduce(
+            (max, batch) => Math.max(max, batch.batchNumber),
+            0,
+          ) + 1;
+        const nextItems = [...existingOrder.items, ...flushed];
+        const participants = unionParticipants(
+          existingOrder.participants,
+          cart.participants,
+        );
+
+        const updated = await orderRepository.update(
+          existingOrder.id,
+          {
+            participants,
+            items: nextItems,
+            batches: [
+              ...existingOrder.batches,
+              buildBatch({
+                batchNumber: nextBatchNumber,
+                items: flushed,
+                submittedByParticipantId: claims.participantId,
+              }),
+            ],
+            // A new pending batch always needs staff confirmation again.
+            status: 'pending_confirmation',
+            ...computeTotals(nextItems, existingOrder.serviceFeeRate),
+          },
+          { session },
+        );
+
+        if (!updated) {
+          throw new ConflictError(
+            'Order was modified concurrently, please retry',
+            ERROR_CODES.CONFLICT,
+          );
+        }
+        resultOrder = updated;
+      }
+
+      // Participant reconciliation already happened above: round 1 copies the
+      // cart participants in on create; round N unions them into the order.
+
+      // Clear ONLY the flushed items so concurrent adds (made after the read)
+      // survive into the next round. Recompute cart totals from what remains.
+      const remaining = cart.items.filter((item) => !flushedIds.has(item.id));
+      // Keep the cart reusable for add-on rounds; otherwise terminate it.
+      const nextStatus: CartStatus = canGuestExtendOrder(
+        resultOrder,
+        requestTime,
+      )
+        ? 'active'
+        : 'checked_out';
+
+      const cartUpdated = await cartRepository.update(
+        cart.id,
+        {
+          items: remaining,
+          ...computeTotals(remaining, cart.serviceFeeRate),
+          status: nextStatus,
+          orderId: resultOrder.id,
+        },
+        { session },
+      );
+
+      if (!cartUpdated) {
+        throw new ConflictError(
+          'Cart was modified concurrently, please retry',
+          ERROR_CODES.CONFLICT,
+        );
+      }
+
+      return resultOrder;
     });
 
-    await cartRepository.update(flipped.id, { orderId: order.id });
-
+    // emitOrderUpdated must run after the transaction commits.
     emitOrderUpdated(order);
     return toOrderDto(order);
+  } finally {
+    await session.endSession();
   }
-
-  throw new ConflictError(
-    'Cart was modified concurrently, please retry',
-    ERROR_CODES.CONFLICT,
-  );
 }
 
 async function loadOrderForClaims(
@@ -974,70 +1124,4 @@ export async function subscribeToGuestOrder(
     initial: { type: 'order_updated', order: toOrderDto(order) },
     unsubscribe,
   };
-}
-
-export async function addOrderBatch(
-  claims: GuestTokenClaims,
-  items: CartItemInput[],
-): Promise<OrderDto> {
-  const requestTime = new Date();
-  const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store, requestTime);
-
-  // Validates membership and that the order exists before mutating.
-  const existing = await loadOrderForClaims(claims);
-
-  const updated = await updateOrderWithRetry(existing.id, async (order) => {
-    if (!canGuestExtendOrder(order, requestTime)) {
-      throw new ConflictError(
-        'Order can no longer be extended by guests',
-        ERROR_CODES.ORDER_LOCKED,
-      );
-    }
-
-    const participant = findParticipant(
-      order.participants,
-      claims.participantId,
-    );
-    if (!participant) {
-      throw invalidGuestTokenError();
-    }
-
-    const snapshots: CartItemSnapshot[] = [];
-    for (const item of items) {
-      snapshots.push(
-        await buildCartItemSnapshot(
-          { storeId: order.storeId },
-          item,
-          participant,
-        ),
-      );
-    }
-
-    const nextBatchNumber =
-      order.batches.reduce(
-        (max, batch) => Math.max(max, batch.batchNumber),
-        0,
-      ) + 1;
-
-    const nextItems = [...order.items, ...snapshots];
-
-    return {
-      items: nextItems,
-      batches: [
-        ...order.batches,
-        buildBatch({
-          batchNumber: nextBatchNumber,
-          items: snapshots,
-          submittedByParticipantId: claims.participantId,
-        }),
-      ],
-      // A new pending batch always needs staff confirmation again.
-      status: 'pending_confirmation' as const,
-      ...computeTotals(nextItems, order.serviceFeeRate),
-    };
-  });
-
-  emitOrderUpdated(updated);
-  return toOrderDto(updated);
 }

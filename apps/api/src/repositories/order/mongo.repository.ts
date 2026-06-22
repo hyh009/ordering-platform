@@ -8,6 +8,7 @@ import type {
   UpdateOrderInput,
   UpdateOrderOptions,
 } from '@src/repositories/order/repository';
+import type { ClientSession } from 'mongoose';
 
 const orderEntityKeys = [
   'id',
@@ -53,7 +54,7 @@ function toOrderEntity(doc: OrderEntity): OrderEntity {
 }
 
 export const orderMongoRepository = {
-  async create(input: CreateOrderInput) {
+  async create(input: CreateOrderInput, session?: ClientSession) {
     const doc = new OrderMongoModel({
       id: `order-${randomUUID()}`,
       organizationId: input.organizationId,
@@ -80,12 +81,13 @@ export const orderMongoRepository = {
       orderingClosesAt: input.orderingClosesAt,
     });
 
-    await doc.save();
+    await doc.save({ session: session ?? null });
     return toOrderEntity(doc.toObject());
   },
 
-  async findById(orderId: string) {
+  async findById(orderId: string, session?: ClientSession) {
     const doc = await OrderMongoModel.findOne({ id: orderId })
+      .session(session ?? null)
       .lean<OrderEntity>()
       .exec();
 
@@ -130,6 +132,7 @@ export const orderMongoRepository = {
 
     if (Object.keys(setUpdate).length === 0) {
       const existing = await OrderMongoModel.findOne({ id: orderId })
+        .session(options?.session ?? null)
         .lean<OrderEntity>()
         .exec();
 
@@ -144,7 +147,7 @@ export const orderMongoRepository = {
     const doc = await OrderMongoModel.findOneAndUpdate(
       filter,
       { $set: setUpdate },
-      { new: true, runValidators: true },
+      { new: true, runValidators: true, session: options?.session ?? null },
     )
       .lean<OrderEntity>()
       .exec();

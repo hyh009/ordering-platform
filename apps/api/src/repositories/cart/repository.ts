@@ -10,6 +10,7 @@ import type {
   StoreCheckoutMode,
   StoreOrderType,
 } from '@src/models/store/model';
+import type { ClientSession } from 'mongoose';
 
 export type CreateCartInput = {
   organizationId: string;
@@ -37,11 +38,12 @@ export type UpdateCartInput = {
 
 export type UpdateCartOptions = {
   expectedUpdatedAt?: Date | undefined;
+  session?: ClientSession | undefined;
 };
 
 export type CartRepository = {
-  create(input: CreateCartInput): Promise<CartEntity>;
-  findById(cartId: string): Promise<CartEntity | null>;
+  create(input: CreateCartInput, session?: ClientSession): Promise<CartEntity>;
+  findById(cartId: string, session?: ClientSession): Promise<CartEntity | null>;
   findByJoinCode(joinCode: string): Promise<CartEntity | null>;
   update(
     cartId: string,

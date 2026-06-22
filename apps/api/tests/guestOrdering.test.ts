@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -454,9 +455,27 @@ function auth(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
+// `submitCart` wraps its flush in a Mongo transaction
+// (`mongoose.connection.startSession()` + `session.withTransaction(...)`). There
+// is no real Mongo in these unit tests, so we stub the session to run the
+// transaction callback directly (the mocked repos ignore the `session` arg).
+function fakeSession(): mongoose.ClientSession {
+  return {
+    async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+      return fn();
+    },
+    async endSession() {
+      return undefined;
+    },
+  } as unknown as mongoose.ClientSession;
+}
+
 beforeEach(() => {
   mocks.reset();
   seedStore();
+  vi.spyOn(mongoose.connection, 'startSession').mockImplementation(async () =>
+    fakeSession(),
+  );
 });
 
 describe('public store and menu', () => {
@@ -919,36 +938,252 @@ describe('submit and order', () => {
     );
   });
 
-  it('appends an add-on batch while the pay-later order is unpaid', async () => {
+  it('round 1 clears flushed items and keeps the cart reusable (active)', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    expect(submitResponse.status).toBe(201);
+
+    // canGuestExtendOrder is true for this dine-in pay-later/unpaid order, so the
+    // cart stays active and reusable for the next round, and is fully drained.
+    const cart = mocks.carts.get(owner.cart.id)!;
+    expect(cart.status).toBe('active');
+    expect(cart.items).toHaveLength(0);
+    expect(cart.orderId).toBe(submitResponse.body.data.order.id);
+  });
+
+  it('round 1 checks out the cart when the order cannot be extended', async () => {
+    // Drive canGuestExtendOrder to false via its inputs: a pay-first order is
+    // not guest-extendable, so after submit the cart becomes terminal.
+    seedStore({
+      operation: {
+        businessHours: alwaysOpenHours(),
+        serviceFeeRate: 0.1,
+        orderModes: [
+          { type: 'dine_in', isEnabled: true, checkoutMode: 'pay_first' },
+        ],
+      },
+    });
+    const product = seedProduct();
+    const owner = await createDineInCart('Amy');
+
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+
+    const submitResponse = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    expect(submitResponse.status).toBe(201);
+    const cart = mocks.carts.get(owner.cart.id)!;
+    expect(cart.status).toBe('checked_out');
+    expect(cart.items).toHaveLength(0);
+  });
+
+  it('round N appends a new batch from the cart and clears flushed items', async () => {
     const { owner, product, submitResponse } = await submitOrder();
     expect(submitResponse.status).toBe(201);
 
-    const addOn = await request(app)
-      .post('/api/v1/public/guest/order/batches')
+    // Next round: add to the still-active shared cart, then submit again.
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
       .set(auth(owner.guestToken))
-      .send({ items: [{ productId: product.id, quantity: 1 }] });
+      .send({ productId: product.id, quantity: 1 });
+
+    const addOn = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
 
     expect(addOn.status).toBe(201);
     const order = addOn.body.data.order;
     expect(order.batches).toHaveLength(2);
     expect(order.batches[1].batchNumber).toBe(2);
     expect(order.status).toBe('pending_confirmation');
+    // Round 1 had quantity 2 (one item); round 2 added one more item.
     expect(order.items).toHaveLength(2);
+
+    const cart = mocks.carts.get(owner.cart.id)!;
+    expect(cart.status).toBe('active');
+    expect(cart.items).toHaveLength(0);
   });
 
-  it('locks guest add-ons after payment', async () => {
+  it('does not drop a concurrent add: the transaction retries and re-flushes it', async () => {
+    const { owner, product, submitResponse } = await submitOrder();
+    expect(submitResponse.status).toBe(201);
+
+    // Stage a fresh round with one item.
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+
+    // Model the real Mongo behavior: a concurrent `addCartItem` commits between
+    // this submit's read and its cart write, so the first attempt's cart write
+    // conflicts (update returns null -> ConflictError) and `withTransaction`
+    // retries the whole callback. On the retry the re-read cart includes the
+    // concurrent item, so the flush re-reads everything and no item is lost.
+    const concurrentItem = {
+      id: 'cart-item-concurrent',
+      productId: product.id,
+      productName: 'Beef Curry Rice',
+      quantity: 1,
+      unitPrice: 180,
+      selectedOptions: [],
+      addedByParticipantId: owner.participantId,
+      totalItemPrice: 180,
+      createdAt: new Date(),
+    };
+
+    // Retrying transaction with rollback semantics: snapshot the cart/order
+    // state, run the callback, and on a thrown CONFLICT roll the state back (as
+    // a real aborted Mongo transaction would), inject the concurrent add (as if
+    // a racing addCartItem committed), then re-run. The re-flush must lose no
+    // item.
+    vi.spyOn(mongoose.connection, 'startSession').mockImplementation(
+      async () =>
+        ({
+          async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+            const cartSnap = mocks.clone(mocks.carts.get(owner.cart.id)!);
+            const orderSnap = mocks.clone([...mocks.orders.values()]);
+            try {
+              return await fn();
+            } catch (error) {
+              if ((error as { code?: string } | null)?.code !== 'CONFLICT') {
+                throw error;
+              }
+              // Roll back the partial writes from the aborted attempt.
+              mocks.carts.set(owner.cart.id, cartSnap as never);
+              mocks.orders.clear();
+              for (const order of orderSnap as { id: string }[]) {
+                mocks.orders.set(order.id, order as never);
+              }
+              // A racing addCartItem committed during the aborted attempt.
+              const persisted = mocks.carts.get(owner.cart.id)!;
+              persisted.items = [...persisted.items, concurrentItem] as never;
+              return fn();
+            }
+          },
+          async endSession() {
+            return undefined;
+          },
+        }) as unknown as mongoose.ClientSession,
+    );
+
+    // Force only the first cart write to conflict so the retry path runs.
+    const updateSpy = vi
+      .spyOn(mocks.cartRepository, 'update')
+      .mockResolvedValueOnce(null as never);
+
+    const addOn = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    updateSpy.mockRestore();
+
+    expect(addOn.status).toBe(201);
+    // The re-flush picked up both the original round item and the concurrent add.
+    expect(addOn.body.data.order.batches[1].items).toHaveLength(2);
+    // No item was dropped: the cart is drained, everything landed in the order.
+    const cart = mocks.carts.get(owner.cart.id)!;
+    expect(cart.items).toHaveLength(0);
+    expect(addOn.body.data.order.items).toHaveLength(3);
+  });
+
+  it('double-submit does not create a second batch (loser sees empty cart)', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+    expect(mocks.orders.get(orderId)!.batches).toHaveLength(1);
+
+    // The cart was drained by the first submit; a second submit finds nothing to
+    // flush and returns the existing order without appending a batch.
+    const second = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    expect(second.status).toBe(201);
+    expect(second.body.data.order.id).toBe(orderId);
+    expect(second.body.data.order.batches).toHaveLength(1);
+    expect(mocks.orders.get(orderId)!.batches).toHaveLength(1);
+  });
+
+  it('rejects submitting an empty cart with no order yet', async () => {
+    const owner = await createDineInCart('Amy');
+
+    const response = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('BAD_REQUEST');
+  });
+
+  it('locks the next round when the order can no longer be extended', async () => {
     const { owner, product, submitResponse } = await submitOrder();
     const orderId = submitResponse.body.data.order.id as string;
 
+    // Drive canGuestExtendOrder to false on the existing order (payment locks
+    // it), then try another round.
     mocks.orders.get(orderId)!.paymentStatus = 'paid';
 
-    const addOn = await request(app)
-      .post('/api/v1/public/guest/order/batches')
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
       .set(auth(owner.guestToken))
-      .send({ items: [{ productId: product.id, quantity: 1 }] });
+      .send({ productId: product.id, quantity: 1 });
+
+    const addOn = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
 
     expect(addOn.status).toBe(409);
     expect(addOn.body.code).toBe('ORDER_LOCKED');
+  });
+
+  it('reconciles a participant who joined the active cart into the order', async () => {
+    const { owner, product, submitResponse } = await submitOrder();
+    expect(submitResponse.status).toBe(201);
+
+    // A late joiner joins the still-active shared cart after round 1.
+    const joinResponse = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({
+        joinCode: owner.cart.joinCode,
+        avatarKey: 'dog',
+        displayName: 'Ben',
+      });
+    expect(joinResponse.status).toBe(200);
+    const joiner = joinResponse.body.data as {
+      session: { participantId: string };
+      guestToken: string;
+    };
+
+    // The joiner adds to the cart and submits a new round.
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(joiner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+    await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(joiner.guestToken))
+      .send({});
+
+    // The joiner is now a real order participant and can read the order.
+    const order = await request(app)
+      .get('/api/v1/public/guest/order')
+      .set(auth(joiner.guestToken));
+
+    expect(order.status).toBe(200);
+    expect(
+      order.body.data.order.participants.some(
+        (participant: { id: string }) =>
+          participant.id === joiner.session.participantId,
+      ),
+    ).toBe(true);
   });
 
   it('routes the join code to the open order after checkout', async () => {
@@ -971,12 +1206,16 @@ describe('submit and order', () => {
     expect(session.joinCode).toBe(owner.cart.joinCode);
   });
 
-  it('copies the cart fallback deadline and locks post-checkout group ordering after it', async () => {
-    const { owner, product, submitResponse } = await submitOrder();
+  it('copies the cart fallback deadline and locks group ordering after it', async () => {
+    const { owner, submitResponse } = await submitOrder();
     const order = submitResponse.body.data.order;
 
     expect(order.orderingClosesAt).toBe(owner.cart.expiresAt);
+
+    // Expire the shared deadline on both the order (gates further rounds via
+    // canGuestExtendOrder) and the still-active cart (gates join + reads).
     mocks.orders.get(order.id)!.orderingClosesAt = new Date(Date.now() - 1);
+    mocks.carts.get(owner.cart.id)!.orderingClosesAt = new Date(Date.now() - 1);
 
     const session = await request(app)
       .get('/api/v1/public/guest/session')
@@ -984,16 +1223,10 @@ describe('submit and order', () => {
     const join = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
       .send({ joinCode: owner.cart.joinCode, avatarKey: 'owl' });
-    const addOn = await request(app)
-      .post('/api/v1/public/guest/order/batches')
-      .set(auth(owner.guestToken))
-      .send({ items: [{ productId: product.id, quantity: 1 }] });
 
     expect(session.status).toBe(200);
     expect(session.body.data.session.joinCode).toBeUndefined();
     expect(join.status).toBe(400);
     expect(join.body.code).toBe('INVALID_JOIN_CODE');
-    expect(addOn.status).toBe(409);
-    expect(addOn.body.code).toBe('ORDER_LOCKED');
   });
 });

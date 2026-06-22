@@ -8,6 +8,7 @@ import type {
   UpdateCartInput,
   UpdateCartOptions,
 } from '@src/repositories/cart/repository';
+import type { ClientSession } from 'mongoose';
 
 const cartEntityKeys = [
   'id',
@@ -46,7 +47,7 @@ function toCartEntity(doc: CartEntity): CartEntity {
 }
 
 export const cartMongoRepository = {
-  async create(input: CreateCartInput) {
+  async create(input: CreateCartInput, session?: ClientSession) {
     const doc = new CartMongoModel({
       id: `cart-${randomUUID()}`,
       organizationId: input.organizationId,
@@ -65,12 +66,13 @@ export const cartMongoRepository = {
         : {}),
     });
 
-    await doc.save();
+    await doc.save({ session: session ?? null });
     return toCartEntity(doc.toObject());
   },
 
-  async findById(cartId: string) {
+  async findById(cartId: string, session?: ClientSession) {
     const doc = await CartMongoModel.findOne({ id: cartId })
+      .session(session ?? null)
       .lean<CartEntity>()
       .exec();
 
@@ -107,6 +109,7 @@ export const cartMongoRepository = {
 
     if (Object.keys(setUpdate).length === 0) {
       const existing = await CartMongoModel.findOne({ id: cartId })
+        .session(options?.session ?? null)
         .lean<CartEntity>()
         .exec();
 
@@ -121,7 +124,7 @@ export const cartMongoRepository = {
     const doc = await CartMongoModel.findOneAndUpdate(
       filter,
       { $set: setUpdate },
-      { new: true, runValidators: true },
+      { new: true, runValidators: true, session: options?.session ?? null },
     )
       .lean<CartEntity>()
       .exec();
