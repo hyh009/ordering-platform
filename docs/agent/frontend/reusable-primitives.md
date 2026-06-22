@@ -56,8 +56,10 @@ Use shared hooks for generic reusable React state behavior.
 - Offset pagination controls: `apps/web/src/shared/hooks/useOffsetPaginationControls.ts`
 - Throttle: `apps/web/src/shared/hooks/useThrottle.ts`
 
-Shared hooks must not call services, APIs, commands, toast, navigation, or
-domain stores directly.
+Shared hooks must not call services, APIs, domain commands, navigation, or
+domain stores directly. They may report a purely client-side error through
+`presentClientError` (see
+`docs/agent/frontend/error-feedback.md`, "Purely client-side errors").
 
 For pagination-specific guidance, use
 `docs/agent/frontend/pagination.md`.

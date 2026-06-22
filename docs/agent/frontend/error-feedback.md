@@ -23,6 +23,18 @@ this guide decides how to surface it and where error state lives.
 - Feature stores hold feature-owned page/domain error state only; feature
   actions only mutate that state.
 
+## Purely client-side errors
+
+Errors that never reach a command — canvas crop, clipboard write, file read —
+have no API `reason` and no area failure table. Surface them through
+`presentClientError(message, kind)` in
+`apps/web/src/app/global/feedback/presentClientError.ts` (`kind` defaults to
+`toast`, pass `'modal'` to make the user acknowledge). This is the only
+sanctioned reason a shared hook may reach the global feedback runtime.
+
+If a purely client-side error fits neither toast nor modal, discuss the
+approach with the user before building it.
+
 ## Presentation convention
 
 A failure's `reason` decides how it is shown, via a `reason → presentation`

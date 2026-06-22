@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
+import { presentClientError } from '@/app/global/feedback/presentClientError';
 import { tDefault } from '@/app/i18n';
 
 /**
@@ -29,10 +29,7 @@ export function useCopyToClipboard(resetMs = 2000) {
         clear();
         timerRef.current = window.setTimeout(() => setCopied(false), resetMs);
       } catch {
-        feedbackCommands.toast({
-          tone: 'error',
-          message: tDefault('common.copyFailed', 'Could not copy.'),
-        });
+        presentClientError(tDefault('common.copyFailed', 'Could not copy.'));
       }
     },
     [clear, resetMs],
