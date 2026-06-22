@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components -- compound component:
+   `StorefrontPageHeader` is exported via Object.assign with its slot maps, which
+   the react-refresh rule cannot recognize as a single component export. */
 import { useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
@@ -34,7 +37,13 @@ interface StorefrontPageHeaderProps {
 
 // Isolated so store subscriptions (via useStorefrontHeaderMenu) only exist when
 // the logo slot is actually rendered.
-function LogoMenuButton({ logoUrl, logoAlt }: { logoUrl: string; logoAlt?: string }) {
+function LogoMenuButton({
+  logoUrl,
+  logoAlt,
+}: {
+  logoUrl: string;
+  logoAlt?: string;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menu = useStorefrontHeaderMenu();
   const { tDefault } = useAppTranslation();
@@ -43,7 +52,9 @@ function LogoMenuButton({ logoUrl, logoAlt }: { logoUrl: string; logoAlt?: strin
   return (
     <>
       <button
-        aria-label={storeName || tDefault('guest.header.storeMenu', 'Store menu')}
+        aria-label={
+          storeName || tDefault('guest.header.storeMenu', 'Store menu')
+        }
         className="block rounded-full focus-visible:outline-2 focus-visible:outline-storefront-primary"
         type="button"
         onClick={() => setMenuOpen((o) => !o)}

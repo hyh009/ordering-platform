@@ -38,9 +38,11 @@ export const MERCHANT_FAILURE_PRESENTATION: Record<
 // `inline` reason) go on the form; everything else is global feedback. Pages
 // that need a reason-specific reaction (navigate, refresh) handle that reason
 // before calling this.
-export function handleMerchantFailure(
-  failure: MerchantCommandFailure & { fieldErrors?: Record<string, string> },
-  deps: { form?: FormErrorSink } = {},
+export function handleMerchantFailure<
+  E extends object = Record<string, string>,
+>(
+  failure: MerchantCommandFailure & { fieldErrors?: E },
+  deps: { form?: FormErrorSink<E> } = {},
 ): void {
   const { form } = deps;
   const kind = MERCHANT_FAILURE_PRESENTATION[failure.reason];

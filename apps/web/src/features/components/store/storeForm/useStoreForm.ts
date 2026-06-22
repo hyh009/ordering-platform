@@ -77,6 +77,7 @@ export type StoreFormVM = {
   setSubmitError(error: string | null): void;
   setIsSubmitting(value: boolean): void;
   reset(values?: StoreFormValues): void;
+  resetErrors(): void;
 };
 
 export function useStoreForm(initial?: StoreFormValues): StoreFormVM {

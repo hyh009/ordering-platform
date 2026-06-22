@@ -12,6 +12,7 @@ function product(id: string, categoryIds: string[]): PublicProduct {
     allergenIds: [],
     dietaryMarkerIds: [],
     modifierIds: [],
+    tagIds: [],
     isSoldOut: false,
   };
 }
@@ -21,6 +22,7 @@ function menu(partial: Partial<PublicMenu>): PublicMenu {
     categories: [],
     products: [],
     modifiers: [],
+    tags: [],
     allergens: [],
     dietaryMarkers: [],
     ...partial,
