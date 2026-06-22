@@ -190,6 +190,7 @@ const orderSchema = new Schema<OrderEntity>(
 );
 
 orderSchema.index({ id: 1 }, { unique: true });
+orderSchema.index({ storeId: 1, 'participants.id': 1 });
 
 export const OrderMongoModel =
   (models.Order as Model<OrderEntity> | undefined) ??

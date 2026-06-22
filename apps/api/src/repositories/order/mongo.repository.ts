@@ -92,6 +92,17 @@ export const orderMongoRepository = {
     return doc ? toOrderEntity(doc) : null;
   },
 
+  async findByStoreAndParticipant(storeId: string, participantId: string) {
+    const doc = await OrderMongoModel.findOne({
+      storeId,
+      'participants.id': participantId,
+    })
+      .lean<OrderEntity>()
+      .exec();
+
+    return doc ? toOrderEntity(doc) : null;
+  },
+
   async update(
     orderId: string,
     input: UpdateOrderInput,

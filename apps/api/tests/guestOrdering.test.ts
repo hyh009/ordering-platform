@@ -87,6 +87,7 @@ type TestCart = Record<string, unknown> & {
 
 type TestOrder = Record<string, unknown> & {
   id: string;
+  storeId: string;
   status: string;
   paymentStatus: string;
   checkoutMode: string;
@@ -245,6 +246,16 @@ const mocks = vi.hoisted(() => {
       },
       async findById(orderId: string) {
         const order = orders.get(orderId);
+        return order ? clone(order) : null;
+      },
+      async findByStoreAndParticipant(storeId: string, participantId: string) {
+        const order = [...orders.values()].find(
+          (candidate) =>
+            candidate.storeId === storeId &&
+            candidate.participants.some(
+              (participant) => participant.id === participantId,
+            ),
+        );
         return order ? clone(order) : null;
       },
       async update(
@@ -836,6 +847,52 @@ describe('submit and order', () => {
 
     expect(session.body.data.session.order.id).toBe(order.id);
     expect(session.body.data.session.cart).toBeUndefined();
+  });
+
+  it('lets a participant read their order while the shared cart is still active', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+
+    // Simulate the multi-participant timing where the shared cart is still
+    // `active` for a co-participant: order access must no longer gate on the
+    // cart being `checked_out`.
+    mocks.carts.get(owner.cart.id)!.status = 'active';
+
+    const order = await request(app)
+      .get('/api/v1/public/guest/order')
+      .set(auth(owner.guestToken));
+
+    expect(order.status).toBe(200);
+    expect(order.body.data.order.id).toBe(orderId);
+  });
+
+  it('returns the order session branch regardless of cart status', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+
+    mocks.carts.get(owner.cart.id)!.status = 'active';
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+
+    expect(session.status).toBe(200);
+    expect(session.body.data.session.order.id).toBe(orderId);
+    expect(session.body.data.session.cart).toBeUndefined();
+  });
+
+  it('rejects an order read for a token whose participant is not in any order', async () => {
+    await submitOrder();
+
+    // A separate cart in the same store: its participant is in no order yet.
+    const outsider = await createDineInCart('Cara');
+
+    const order = await request(app)
+      .get('/api/v1/public/guest/order')
+      .set(auth(outsider.guestToken));
+
+    expect(order.status).toBe(404);
+    expect(order.body.code).toBe('ORDER_NOT_FOUND');
   });
 
   it('rejects submit when an item went sold out and reports the items', async () => {

@@ -614,16 +614,15 @@ export async function getGuestSession(
   const requestTime = new Date();
   const cart = await loadCartForClaims(claims);
 
-  if (cart.status === 'checked_out' && cart.orderId !== undefined) {
-    const order = await orderRepository.findById(cart.orderId);
-    if (!order) {
-      throw new NotFoundError('Order not found', ERROR_CODES.ORDER_NOT_FOUND);
-    }
+  // Resolve the order by participant membership (decoupled from cart status), so
+  // every participant sees the order branch once an order exists for them — even
+  // while the shared cart is still `active`.
+  const order = await orderRepository.findByStoreAndParticipant(
+    claims.storeId,
+    claims.participantId,
+  );
 
-    if (!findParticipant(order.participants, claims.participantId)) {
-      throw invalidGuestTokenError();
-    }
-
+  if (order) {
     return {
       participantId: claims.participantId,
       ...(isGuestJoinCodeUsable(cart, order, requestTime)
@@ -935,19 +934,15 @@ export async function submitCart(
 async function loadOrderForClaims(
   claims: GuestTokenClaims,
 ): Promise<OrderEntity> {
-  const cart = await loadCartForClaims(claims);
-
-  if (cart.status !== 'checked_out' || cart.orderId === undefined) {
-    throw new NotFoundError('Order not found', ERROR_CODES.ORDER_NOT_FOUND);
-  }
-
-  const order = await orderRepository.findById(cart.orderId);
+  // Resolve the order directly by participant membership (decoupled from the
+  // cart), so every participant of the order can read it regardless of cart
+  // status. The query enforces membership, so a miss is a NotFound.
+  const order = await orderRepository.findByStoreAndParticipant(
+    claims.storeId,
+    claims.participantId,
+  );
   if (!order) {
     throw new NotFoundError('Order not found', ERROR_CODES.ORDER_NOT_FOUND);
-  }
-
-  if (!findParticipant(order.participants, claims.participantId)) {
-    throw invalidGuestTokenError();
   }
 
   return order;

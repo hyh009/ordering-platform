@@ -61,6 +61,10 @@ export type UpdateOrderOptions = {
 export type OrderRepository = {
   create(input: CreateOrderInput): Promise<OrderEntity>;
   findById(orderId: string): Promise<OrderEntity | null>;
+  findByStoreAndParticipant(
+    storeId: string,
+    participantId: string,
+  ): Promise<OrderEntity | null>;
   update(
     orderId: string,
     input: UpdateOrderInput,
