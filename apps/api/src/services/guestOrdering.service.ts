@@ -1064,11 +1064,13 @@ export async function submitCart(
         { session },
       );
 
+      // No `expectedUpdatedAt` guard here, so this returns null only when the
+      // cart no longer exists (e.g. TTL-deleted mid-transaction), not on a
+      // concurrent edit. Concurrency safety is the transaction's job: a racing
+      // cart write makes Mongo abort with a write-conflict and `withTransaction`
+      // retries the whole flush (see the function docstring).
       if (!cartUpdated) {
-        throw new ConflictError(
-          'Cart was modified concurrently, please retry',
-          ERROR_CODES.CONFLICT,
-        );
+        throw new ConflictError('Cart no longer exists', ERROR_CODES.CONFLICT);
       }
 
       return resultOrder;
