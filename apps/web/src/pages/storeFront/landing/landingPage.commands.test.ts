@@ -54,11 +54,34 @@ describe('landing page commands', () => {
     expect(runtime.commands.session.hasStoredSession('store-a')).toBe(false);
   });
 
-  it('clears an active order session without leaving the checked-out cart', async () => {
+  it('blocks abandoning an unfinished order so the guest resumes it', async () => {
     const runtime = createStoreFrontRuntime();
     vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
       participantId: 'participant-a',
-      order: { id: 'order-a', storeId: 'store-a' } as Order,
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'preparing',
+      } as Order,
+    } satisfies GuestSession);
+
+    await expect(
+      createLandingPageCommands(runtime).abandonCurrentSession('store-a'),
+    ).resolves.toEqual({ status: 'blocked', orderId: 'order-a' });
+    expect(storeFrontCartService.leaveCart).not.toHaveBeenCalled();
+    // The order is a live obligation, so its session is kept for resuming.
+    expect(runtime.commands.session.hasStoredSession('store-a')).toBe(true);
+  });
+
+  it('clears a finished order session without leaving the checked-out cart', async () => {
+    const runtime = createStoreFrontRuntime();
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'completed',
+      } as Order,
     } satisfies GuestSession);
 
     await expect(
@@ -66,5 +89,42 @@ describe('landing page commands', () => {
     ).resolves.toEqual({ status: 'left' });
     expect(storeFrontCartService.leaveCart).not.toHaveBeenCalled();
     expect(runtime.commands.session.hasStoredSession('store-a')).toBe(false);
+  });
+
+  it('currentOrderIsOpen is true while unfinished and false once finished', async () => {
+    const runtime = createStoreFrontRuntime();
+    const commands = createLandingPageCommands(runtime);
+
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'preparing',
+      } as Order,
+    } satisfies GuestSession);
+    await expect(commands.currentOrderIsOpen('store-a')).resolves.toBe(true);
+
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'completed',
+      } as Order,
+    } satisfies GuestSession);
+    await expect(commands.currentOrderIsOpen('store-a')).resolves.toBe(false);
+  });
+
+  it('currentOrderIsOpen is false for an active cart', async () => {
+    const runtime = createStoreFrontRuntime();
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      cart: { id: 'cart-a', status: 'active' } as Cart,
+    } satisfies GuestSession);
+
+    await expect(
+      createLandingPageCommands(runtime).currentOrderIsOpen('store-a'),
+    ).resolves.toBe(false);
   });
 });

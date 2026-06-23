@@ -1,5 +1,6 @@
 import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { CreateCartRequest } from '@/models/cart';
+import { isOrderFinished } from '@/models/order';
 
 export function createLandingPageCommands(runtime: StoreFrontRuntime) {
   async function abandonCurrentSession(storeId: string) {
@@ -19,16 +20,34 @@ export function createLandingPageCommands(runtime: StoreFrontRuntime) {
       return result;
     }
 
-    if (
-      session.status === 'none' ||
-      session.status === 'ended' ||
-      session.status === 'order'
-    ) {
+    if (session.status === 'order') {
+      const order = runtime.stores.order.getState().order;
+      if (order && !isOrderFinished(order)) {
+        // An unfinished order is a live obligation (and leaving only forgets it
+        // locally, it does not cancel it on the server). Force the guest to
+        // resume it instead of abandoning it to start another order.
+        return { status: 'blocked' as const, orderId: session.orderId };
+      }
+      runtime.commands.session.clearSession(storeId);
+      return { status: 'left' as const };
+    }
+
+    if (session.status === 'none' || session.status === 'ended') {
       runtime.commands.session.clearSession(storeId);
       return { status: 'left' as const };
     }
 
     return session;
+  }
+
+  // Read-only: is the current stored session an order that is not finished yet?
+  // Used to block "new order"/"join" before showing a leave confirmation.
+  async function currentOrderIsOpen(storeId: string): Promise<boolean> {
+    await runtime.commands.tenant.activateStore(storeId);
+    const session = await runtime.commands.session.resumeSession(storeId);
+    if (session.status !== 'order') return false;
+    const order = runtime.stores.order.getState().order;
+    return !!order && !isOrderFinished(order);
   }
 
   return {
@@ -60,5 +79,6 @@ export function createLandingPageCommands(runtime: StoreFrontRuntime) {
     },
 
     abandonCurrentSession,
+    currentOrderIsOpen,
   };
 }

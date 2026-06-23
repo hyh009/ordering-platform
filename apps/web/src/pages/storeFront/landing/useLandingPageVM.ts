@@ -116,10 +116,35 @@ export function useLandingPageVM() {
     }
 
     handleStoreFrontFailure(result);
-  }, [commands, identityValues, manualOrderType, navigate, storeId, tableNumber]);
+  }, [
+    commands,
+    identityValues,
+    manualOrderType,
+    navigate,
+    storeId,
+    tableNumber,
+  ]);
 
   const confirmAbandonCurrentSession = useCallback(async () => {
     if (!(resumeStoreId === storeId && canResume)) return true;
+
+    // An unfinished order cannot be abandoned to start another one: it is a live
+    // (often unpaid) obligation, so the guest must resume it instead. A
+    // not-yet-submitted cart has no such obligation and can still be left.
+    if (await commands.currentOrderIsOpen(storeId)) {
+      await feedbackCommands.alert({
+        title: tDefault(
+          'guest.landing.openOrderBlockTitle',
+          'Finish your current order first',
+        ),
+        message: tDefault(
+          'guest.landing.openOrderBlockMessage',
+          'You have an order in progress. Resume it to pay or finish it before starting or joining another order.',
+        ),
+        confirmLabel: tDefault('guest.landing.openOrderBlockConfirm', 'OK'),
+      });
+      return false;
+    }
 
     const confirmed = await feedbackCommands.confirm({
       title: tDefault(
