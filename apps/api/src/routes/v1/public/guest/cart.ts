@@ -5,6 +5,7 @@ import {
   updateCartItemSchema,
 } from '@repo/shared';
 import { requireGuest } from '@src/middlewares/guestAuth';
+import { requireOpenStore } from '@src/middlewares/requireOpenStore';
 import { validate } from '@src/middlewares/validate';
 import {
   addCartItem,
@@ -178,18 +179,23 @@ router.get('/', async (req, res) => {
  *                   code: STORE_NOT_OPEN
  *                   message: Store is not open for ordering
  */
-router.post('/items', validate(cartItemInputSchema), async (req, res) => {
-  const cart = await addCartItem(
-    guestClaims(req),
-    req.body as AddCartItemRequest,
-  );
+router.post(
+  '/items',
+  requireOpenStore,
+  validate(cartItemInputSchema),
+  async (req, res) => {
+    const cart = await addCartItem(
+      guestClaims(req),
+      req.body as AddCartItemRequest,
+    );
 
-  const response: MutateGuestCartSuccessResponse = {
-    status: 'success',
-    data: { cart },
-  };
-  res.status(200).json(response);
-});
+    const response: MutateGuestCartSuccessResponse = {
+      status: 'success',
+      data: { cart },
+    };
+    res.status(200).json(response);
+  },
+);
 
 /**
  * @openapi
@@ -497,17 +503,22 @@ router.post('/leave', async (req, res) => {
  *                   code: CART_NOT_ACTIVE
  *                   message: Cart is no longer active
  */
-router.post('/submit', validate(submitCartSchema), async (req, res) => {
-  const order = await submitCart(
-    guestClaims(req),
-    req.body as SubmitCartRequest,
-  );
+router.post(
+  '/submit',
+  requireOpenStore,
+  validate(submitCartSchema),
+  async (req, res) => {
+    const order = await submitCart(
+      guestClaims(req),
+      req.body as SubmitCartRequest,
+    );
 
-  const response: SubmitCartSuccessResponse = {
-    status: 'success',
-    data: { order },
-  };
-  res.status(201).json(response);
-});
+    const response: SubmitCartSuccessResponse = {
+      status: 'success',
+      data: { order },
+    };
+    res.status(201).json(response);
+  },
+);
 
 export default router;

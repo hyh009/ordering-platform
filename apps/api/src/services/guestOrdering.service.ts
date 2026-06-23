@@ -3,6 +3,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { JOIN_CODE_ALPHABET, JOIN_CODE_LENGTH } from '@repo/shared';
 import { toCartDto } from '@src/models/cart/mapper';
 import { toOrderDto } from '@src/models/order/mapper';
+import { canGuestExtendOrder } from '@src/models/order/model';
 import {
   getBusinessDate,
   isStoreOpenAt,
@@ -46,7 +47,6 @@ import type {
   OrderingParticipantSnapshot,
   SelectedModifierOptionSnapshot,
 } from '@src/models/cart/model';
-import { canGuestExtendOrder } from '@src/models/order/model';
 import type { OrderEntity } from '@src/models/order/model';
 import type { ProductModifierEntity } from '@src/models/productModifier/model';
 import type { StoreEntity } from '@src/models/store/model';
@@ -95,7 +95,7 @@ function invalidJoinCodeError(): BadRequestError {
   );
 }
 
-function requireStoreOpen(store: StoreEntity, requestTime: Date): void {
+export function requireStoreOpen(store: StoreEntity, requestTime: Date): void {
   if (!isStoreOpenAt(store.operation.businessHours, requestTime)) {
     throw new ConflictError(
       'Store is not open for ordering',
@@ -704,9 +704,6 @@ export async function addCartItem(
   request: CartItemInput,
 ): Promise<CartDto> {
   const requestTime = new Date();
-  const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store, requestTime);
-
   const updated = await updateCartWithRetry(claims.cartId, async (cart) => {
     const participant = assertActiveCartMembership(
       cart,
@@ -895,9 +892,6 @@ export async function submitCart(
   request: SubmitCartRequest,
 ): Promise<OrderDto> {
   const requestTime = new Date();
-  const store = await getActivePublicStore(claims.storeId);
-  requireStoreOpen(store, requestTime);
-
   const session = await mongoose.connection.startSession();
 
   try {
