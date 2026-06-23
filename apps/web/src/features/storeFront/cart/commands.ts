@@ -185,7 +185,7 @@ export function createStoreFrontCartCommands(deps: {
           // A joiner lands on the order (their source-of-truth); the add-on path
           // back to the menu is offered from order tracking. The draft cart is
           // still hydrated so the menu cart bar and cart page reflect the round.
-          if (result.session.cart) {
+          if (result.session.cart?.status === 'active') {
             cartActions.cartUpdated(result.session.cart);
           } else {
             cartActions.cartCleared();
@@ -199,14 +199,8 @@ export function createStoreFrontCartCommands(deps: {
           };
         }
 
-        if (result.session.cart) {
+        if (result.session.cart?.status === 'active') {
           cartActions.cartUpdated(result.session.cart);
-          return {
-            guestToken: result.guestToken,
-            participantId: result.session.participantId,
-            status: 'joined',
-            target: 'cart',
-          };
         }
 
         return {

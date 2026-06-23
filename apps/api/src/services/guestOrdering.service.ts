@@ -1042,9 +1042,6 @@ export async function submitCart(
         resultOrder = updated;
       }
 
-      // Participant reconciliation already happened above: round 1 copies the
-      // cart participants in on create; round N unions them into the order.
-
       // Clear ONLY the flushed items so concurrent adds (made after the read)
       // survive into the next round. Recompute cart totals from what remains.
       const remaining = cart.items.filter((item) => !flushedIds.has(item.id));
