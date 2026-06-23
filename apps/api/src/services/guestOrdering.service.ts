@@ -46,6 +46,7 @@ import type {
   OrderingParticipantSnapshot,
   SelectedModifierOptionSnapshot,
 } from '@src/models/cart/model';
+import { canGuestExtendOrder } from '@src/models/order/model';
 import type { OrderEntity } from '@src/models/order/model';
 import type { ProductModifierEntity } from '@src/models/productModifier/model';
 import type { StoreEntity } from '@src/models/store/model';
@@ -130,17 +131,6 @@ function isActiveCartUsable(cart: CartEntity, requestTime: Date): boolean {
     isBeforeDeadline(cart.expiresAt, requestTime) &&
     (cart.orderingClosesAt === undefined ||
       isBeforeDeadline(cart.orderingClosesAt, requestTime))
-  );
-}
-
-function canGuestExtendOrder(order: OrderEntity, requestTime: Date): boolean {
-  return (
-    order.orderType === 'dine_in' &&
-    order.checkoutMode === 'pay_later' &&
-    order.paymentStatus === 'unpaid' &&
-    order.status !== 'completed' &&
-    order.status !== 'cancelled' &&
-    isBeforeDeadline(order.orderingClosesAt, requestTime)
   );
 }
 

@@ -385,6 +385,7 @@
  *         - displayNumber
  *         - status
  *         - paymentStatus
+ *         - canAddOn
  *         - participants
  *         - items
  *         - batches
@@ -434,6 +435,11 @@
  *             - paid
  *             - refunded
  *             - voided
+ *         canAddOn:
+ *           type: boolean
+ *           description: >-
+ *             Whether a guest may still add another batch to this order
+ *             (dine-in pay-later, unpaid, not finished, before the deadline).
  *         tableNumber:
  *           type: string
  *         participants:

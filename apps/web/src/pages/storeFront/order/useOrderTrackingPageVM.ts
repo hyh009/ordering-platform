@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
-import { canGuestAddOn, isOrderFinished } from '@/models/order';
+import { isOrderFinished } from '@/models/order';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
@@ -92,7 +92,7 @@ export function useOrderTrackingPageVM() {
 
   // Add-on is only offered for the participant's own live session, not when
   // viewing a past order from local history.
-  const canAddOn = order ? canGuestAddOn(order) && access === 'active' : false;
+  const canAddOn = order ? order.canAddOn && access === 'active' : false;
 
   return {
     order,

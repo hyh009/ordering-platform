@@ -1,7 +1,6 @@
 import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import type { StoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
-import { canGuestAddOn } from '@/models/order';
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
 import {
   mapStoreFrontApiError,
@@ -130,7 +129,7 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
           // hydrated above, so the menu cart bar and cart page stay live.
           return {
             status: 'order',
-            canAddOn: canGuestAddOn(session.order),
+            canAddOn: session.order.canAddOn,
             orderId: session.order.id,
           };
         }

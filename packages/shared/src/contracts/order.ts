@@ -54,6 +54,12 @@ export type OrderDto = {
   displayNumber: string;
   status: OrderStatus;
   paymentStatus: OrderPaymentStatus;
+  /**
+   * Whether a guest may still add another batch to this order, computed
+   * server-side (dine-in pay-later, unpaid, not finished, before the deadline).
+   * The single source of truth — clients read this instead of recomputing.
+   */
+  canAddOn: boolean;
   tableNumber?: string;
   participants: OrderingParticipantDto[];
   items: CartItemDto[];

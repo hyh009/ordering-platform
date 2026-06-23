@@ -79,3 +79,20 @@ export type OrderEntity = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+/**
+ * Whether a guest may still add another batch to this order: a dine-in
+ * pay-later order that is unpaid, not finished, and before its ordering
+ * deadline. Single source of truth for both the reusable-cart submit flow and
+ * the `canAddOn` flag exposed on the order DTO.
+ */
+export function canGuestExtendOrder(order: OrderEntity, now: Date): boolean {
+  return (
+    order.orderType === 'dine_in' &&
+    order.checkoutMode === 'pay_later' &&
+    order.paymentStatus === 'unpaid' &&
+    order.status !== 'completed' &&
+    order.status !== 'cancelled' &&
+    now.getTime() < order.orderingClosesAt.getTime()
+  );
+}

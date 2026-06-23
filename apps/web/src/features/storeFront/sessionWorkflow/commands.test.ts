@@ -89,6 +89,7 @@ describe('storefront session workflow', () => {
         checkoutMode: 'pay_later',
         paymentStatus: 'unpaid',
         status: 'pending_confirmation',
+        canAddOn: true,
       } as never,
     });
 

@@ -1,5 +1,4 @@
 export {
-  canGuestAddOn,
   getOrderBatchStatusLabel,
   getOrderPaymentStatusLabel,
   getOrderStatusLabel,

@@ -69,12 +69,3 @@ export function getOrderBatchStatusLabel(
 export function isOrderFinished(order: Order): boolean {
   return order.status === 'completed' || order.status === 'cancelled';
 }
-
-/** Guests may add on while a pay-later order is unpaid and not finished. */
-export function canGuestAddOn(order: Order): boolean {
-  return (
-    order.checkoutMode === 'pay_later' &&
-    order.paymentStatus === 'unpaid' &&
-    !isOrderFinished(order)
-  );
-}

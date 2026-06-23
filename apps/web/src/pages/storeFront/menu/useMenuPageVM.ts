@@ -4,7 +4,6 @@ import { useStore } from 'zustand';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { AddCartItemRequest } from '@/models/cart';
-import { canGuestAddOn } from '@/models/order';
 import { isStoreOpenNow } from '@/models/store';
 import {
   buildAllergenMap,
@@ -148,7 +147,7 @@ export function useMenuPageVM() {
     | { mode: 'invite'; joinCode: string }
     | { mode: 'none' }
   >(() => {
-    if (order && canGuestAddOn(order)) {
+    if (order && order.canAddOn) {
       return { mode: 'adding', orderNumber: order.displayNumber };
     }
     if (!order && cart?.joinCode) {

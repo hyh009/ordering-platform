@@ -14,6 +14,7 @@ describe('orderModel', () => {
       displayNumber: '001',
       status: 'pending_confirmation',
       paymentStatus: 'unpaid',
+      canAddOn: true,
       participants: [
         {
           id: 'participant-1',
@@ -35,6 +36,7 @@ describe('orderModel', () => {
     const order = orderModel.deserialize(dto);
 
     expect(order.orderingClosesAt).toBe('2026-06-16T13:00:00.000Z');
+    expect(order.canAddOn).toBe(true);
     expect(order.participants[0]?.avatarKey).toBe('owl');
   });
 });

@@ -12,6 +12,7 @@ export const orderModel = {
       displayNumber: dto.displayNumber,
       status: dto.status,
       paymentStatus: dto.paymentStatus,
+      canAddOn: dto.canAddOn,
       participants: dto.participants,
       items: dto.items,
       batches: dto.batches,

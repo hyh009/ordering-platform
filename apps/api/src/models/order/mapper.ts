@@ -3,6 +3,8 @@ import {
   toOrderingParticipantDto,
 } from '@src/models/cart/mapper';
 
+import { canGuestExtendOrder } from './model';
+
 import type { OrderBatchSnapshot, OrderEntity } from './model';
 import type { OrderBatchDto, OrderDto } from '@repo/shared';
 
@@ -35,10 +37,14 @@ function toOrderBatchDto(batch: OrderBatchSnapshot): OrderBatchDto {
   return dto;
 }
 
-export function toOrderDto(order: OrderEntity): OrderDto {
+export function toOrderDto(
+  order: OrderEntity,
+  now: Date = new Date(),
+): OrderDto {
   const dto: OrderDto = {
     id: order.id,
     storeId: order.storeId,
+    canAddOn: canGuestExtendOrder(order, now),
     orderType: order.orderType,
     checkoutMode: order.checkoutMode,
     businessDate: order.businessDate,
