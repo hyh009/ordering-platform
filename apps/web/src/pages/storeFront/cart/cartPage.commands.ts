@@ -15,6 +15,17 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
       ) {
         return { status: 'none' as const };
       }
+      // No live draft cart (it is terminal, or an order already exists). Instead
+      // of dead-ending on the cart, resolve the combined session and hand the
+      // participant to order tracking when an order exists. This removes the
+      // post-checkout CART_NOT_ACTIVE dead-end.
+      if (result.status === 'failed' && result.reason === 'cart-not-active') {
+        const resumed = await runtime.commands.session.resumeSession(storeId);
+        if (resumed.status === 'order') {
+          return { status: 'order' as const, orderId: resumed.orderId };
+        }
+        return { status: 'none' as const };
+      }
       return result;
     },
 

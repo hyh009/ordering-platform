@@ -84,14 +84,25 @@ export function useOrderTrackingPageVM() {
     void navigate(PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId));
   }, [access, commands, navigate, storeId]);
 
+  // Add-on round: send the participant back to the menu, where they stage the
+  // next round into the still-active shared cart and submit it as a new batch.
+  const addMore = useCallback(() => {
+    void navigate(PATHS.STOREFRONT.MENU_BUILD(storeId));
+  }, [navigate, storeId]);
+
+  // Add-on is only offered for the participant's own live session, not when
+  // viewing a past order from local history.
+  const canAddOn = order ? canGuestAddOn(order) && access === 'active' : false;
+
   return {
     order,
     isLoading,
     error,
     refresh,
     goHome,
+    addMore,
     finished: order ? isOrderFinished(order) : false,
-    canAddOn: order ? canGuestAddOn(order) : false,
+    canAddOn,
     isHistoryOrder: access === 'history',
   };
 }

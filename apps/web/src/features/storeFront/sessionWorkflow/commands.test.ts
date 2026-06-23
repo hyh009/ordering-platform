@@ -71,6 +71,42 @@ describe('storefront session workflow', () => {
     expect(loadStoredGuestSession('store-b')).not.toBeNull();
   });
 
+  it('resumes into order tracking and hydrates both stores when a draft cart and order coexist', async () => {
+    saveStoredGuestSession({
+      guestToken: 'token-a',
+      participantId: 'participant-a',
+      storeId: 'store-a',
+    });
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      cart: { id: 'cart-a', status: 'active' } as never,
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        checkoutMode: 'pay_later',
+        paymentStatus: 'unpaid',
+        status: 'pending_confirmation',
+      } as never,
+    });
+
+    await expect(
+      runtime.commands.session.resumeSession('store-a'),
+    ).resolves.toEqual({
+      status: 'order',
+      canAddOn: true,
+      orderId: 'order-a',
+    });
+    // The live draft cart stays hydrated for the menu cart bar / cart page, and
+    // the order store drives order tracking.
+    expect(runtime.stores.cart.getState().cart).toMatchObject({ id: 'cart-a' });
+    expect(runtime.stores.order.getState().order).toMatchObject({
+      id: 'order-a',
+    });
+  });
+
   it('does not clear the active store session when a stale restore runs', async () => {
     saveStoredGuestSession({
       guestToken: 'token-b',

@@ -41,7 +41,9 @@ describe('storefront cart workflow order history', () => {
       participantId: 'participant-a',
       storeId: 'store-a',
     });
-    vi.mocked(storeFrontCartService.submitCart).mockResolvedValue(order('order-a'));
+    vi.mocked(storeFrontCartService.submitCart).mockResolvedValue(
+      order('order-a'),
+    );
 
     await expect(
       runtime.commands.cart.submitCart('store-a', {}),
@@ -49,6 +51,11 @@ describe('storefront cart workflow order history', () => {
     expect(
       runtime.commands.orderHistory.findEntry('store-a', 'order-a'),
     ).toMatchObject({ guestToken: 'submit-token' });
+    // The order store is hydrated so the menu add-on banner and order page see
+    // the submitted round immediately; the next add-on round reuses this flow.
+    expect(runtime.stores.order.getState().order).toMatchObject({
+      id: 'order-a',
+    });
   });
 
   it('records join-to-order history with the token from the join response', async () => {

@@ -1,6 +1,7 @@
 import { useAppTranslation } from '@/app/i18n';
 import { OrderTotals } from '@/features/storeFront/components/OrderTotals';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
+import { getOrderingParticipantDisplayName } from '@/models/cart';
 import {
   getOrderBatchStatusLabel,
   getOrderPaymentStatusLabel,
@@ -27,6 +28,13 @@ export function OrderTrackingPage() {
 
   const { order } = vm;
 
+  const participantNameById = new Map(
+    order.participants.map((participant) => [
+      participant.id,
+      getOrderingParticipantDisplayName(participant, tDefault),
+    ]),
+  );
+
   return (
     <div className="flex flex-1 flex-col p-4">
       <header className="text-center">
@@ -46,31 +54,43 @@ export function OrderTrackingPage() {
       </header>
 
       <div className="mt-6 flex-1 space-y-4">
-        {order.batches.map((batch) => (
-          <section
-            key={batch.id}
-            className="rounded-lg border border-border p-3"
-          >
-            <div className="flex justify-between text-sm font-semibold">
-              <span>
-                {tDefault('guest.order.batch', 'Batch')} {batch.batchNumber}
-              </span>
-              <span className="text-muted-foreground">
-                {getOrderBatchStatusLabel(batch.status, tDefault)}
-              </span>
-            </div>
-            <ul className="mt-2 space-y-1 text-sm">
-              {batch.items.map((item) => (
-                <li key={item.id} className="flex justify-between">
-                  <span>
-                    {localize(item.productName)} × {item.quantity}
-                  </span>
-                  <span>{formatPrice(item.totalItemPrice)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+        {order.batches.map((batch) => {
+          const submittedByName = batch.submittedByParticipantId
+            ? participantNameById.get(batch.submittedByParticipantId)
+            : undefined;
+
+          return (
+            <section
+              key={batch.id}
+              className="rounded-lg border border-border p-3"
+            >
+              <div className="flex justify-between text-sm font-semibold">
+                <span>
+                  {tDefault('guest.order.batch', 'Round')} {batch.batchNumber}
+                </span>
+                <span className="text-muted-foreground">
+                  {getOrderBatchStatusLabel(batch.status, tDefault)}
+                </span>
+              </div>
+              {submittedByName ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {tDefault('guest.order.batchSubmittedBy', 'Added by')}{' '}
+                  {submittedByName}
+                </p>
+              ) : null}
+              <ul className="mt-2 space-y-1 text-sm">
+                {batch.items.map((item) => (
+                  <li key={item.id} className="flex justify-between">
+                    <span>
+                      {localize(item.productName)} × {item.quantity}
+                    </span>
+                    <span>{formatPrice(item.totalItemPrice)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
 
         <OrderTotals
           subtotal={order.subtotal}
@@ -80,6 +100,11 @@ export function OrderTrackingPage() {
       </div>
 
       <div className="mt-4 space-y-2">
+        {vm.canAddOn ? (
+          <Button className="w-full" onClick={vm.addMore}>
+            {tDefault('guest.order.addMore', '繼續加點')}
+          </Button>
+        ) : null}
         {!vm.finished ? (
           <Button
             variant="outline"

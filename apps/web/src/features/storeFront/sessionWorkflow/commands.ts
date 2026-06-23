@@ -123,9 +123,11 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
 
         if (session.order) {
           orderActions.orderUpdated(session.order);
-          // TODO(phase4): when both a draft cart and an order are present, decide
-          // whether to resume into order tracking or the add-on draft flow. For
-          // now preserve current behavior and resume into order tracking.
+          // When both a live draft cart and an order are present (add-on mode),
+          // resume into order tracking: the order is the participant's
+          // source-of-truth, and the tracking page exposes the "add more" path
+          // back to the menu for the next round. The draft cart is still
+          // hydrated above, so the menu cart bar and cart page stay live.
           return {
             status: 'order',
             canAddOn: canGuestAddOn(session.order),

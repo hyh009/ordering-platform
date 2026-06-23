@@ -44,8 +44,19 @@ export function useCartPageVM() {
     let active = true;
     async function init() {
       const result = await commands.initialize(storeId);
-      if (active && result.status === 'none') {
-        void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), { replace: true });
+      if (!active) return;
+      if (result.status === 'none') {
+        void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+          replace: true,
+        });
+        return;
+      }
+      // The cart is terminal but an order exists: send the participant to order
+      // tracking instead of dead-ending on the cart.
+      if (result.status === 'order') {
+        void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, result.orderId), {
+          replace: true,
+        });
       }
     }
     void init();

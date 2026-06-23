@@ -1,6 +1,4 @@
 import type {
-  AddOrderBatchRequest,
-  AddOrderBatchSuccessResponse,
   GetGuestOrderSuccessResponse,
   OrderBatchDto,
   OrderBatchStatus,
@@ -11,8 +9,6 @@ import type {
 } from '@repo/shared';
 
 export type {
-  AddOrderBatchRequest,
-  AddOrderBatchSuccessResponse,
   GetGuestOrderSuccessResponse,
   OrderBatchStatus,
   OrderPaymentStatus,

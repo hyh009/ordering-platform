@@ -37,9 +37,6 @@ export const publicPaths = {
   storeFrontOrder() {
     return '/v1/public/guest/order';
   },
-  storeFrontOrderBatches() {
-    return '/v1/public/guest/order/batches';
-  },
   storeFrontOrderStream() {
     return '/v1/public/guest/order/stream';
   },

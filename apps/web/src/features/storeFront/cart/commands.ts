@@ -182,8 +182,9 @@ export function createStoreFrontCartCommands(deps: {
         if (result.session.order) {
           // The session may carry BOTH an order and a live draft cart now.
           // Hydrate the cart store with the draft when present; otherwise clear.
-          // TODO(phase4): decide the join landing target when both are present;
-          // for now preserve current behavior and route to the order.
+          // A joiner lands on the order (their source-of-truth); the add-on path
+          // back to the menu is offered from order tracking. The draft cart is
+          // still hydrated so the menu cart bar and cart page reflect the round.
           if (result.session.cart) {
             cartActions.cartUpdated(result.session.cart);
           } else {
