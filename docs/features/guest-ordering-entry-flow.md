@@ -71,8 +71,12 @@ Landing page. The order-mode controls are hidden before this action.
   then the new Cart is created and Menu opens.
 - A table number from the Landing URL is carried into dine-in ordering.
 - Cancel returns to the initial Landing chooser without creating a session.
-- If an active session exists, confirm before abandoning it and opening the
-  order-mode choices.
+- If the active session is a not-yet-submitted cart, confirm before abandoning it
+  and opening the order-mode choices.
+- If the active session is an **unfinished order** (submitted, not yet
+  completed/cancelled), it cannot be abandoned to start or join another order: it
+  is a live, often unpaid obligation, and leaving only forgets it locally. The
+  landing blocks New order / Join and prompts the guest to **Resume** it instead.
 
 Even when the store enables only one order mode, the mode is shown after the
 guest chooses **New order**. This avoids creating or replacing a session from a
@@ -106,7 +110,9 @@ Before confirmation, the page loads only the public Store summary and does not
 expose group participants, Cart items, table number, or Order details.
 
 Both entry paths join the same store-scoped Cart or Order. Joining another group
-must confirm before replacing an existing active session for that store.
+must confirm before replacing an existing active session for that store, and is
+blocked when the existing session is an unfinished order (the guest must resume
+that order first; see New Order above).
 
 ## Resume Ordering
 
@@ -147,7 +153,10 @@ security boundary.
 
 - Store entries separately from the active guest session.
 - Partition entries by `storeId`.
-- Add or update an entry when a submitted order is created or joined.
+- Add or update an entry when a submitted order is created or joined, and when a
+  participant opens an order they belong to through their active session. This
+  records the order for every participant who has viewed it, not only the
+  submitter or post-submission joiners.
 - Keep the entry when that order becomes completed/cancelled or when another
   active session replaces it.
 - Keep entries for 24 hours using a frontend TTL.

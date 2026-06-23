@@ -185,6 +185,12 @@ activate route store
 
 - Multi-store session isolation is a frontend state and persistence boundary,
   not an authorization boundary.
+- A restored store session may resolve to a live cart, an order, or both at once
+  (dine-in pay-later add-on mode); see
+  [`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md).
+- Leaving clears only a not-yet-submitted cart's session. A store whose active
+  session is an unfinished order cannot be abandoned to start another order — the
+  guest must resume it. This does not affect other stores' sessions.
 - Different-store tabs are supported independently.
 - Same-store multi-tab live synchronization is not currently required.
 - Existing unscoped guest-session storage is discarded. No compatibility or

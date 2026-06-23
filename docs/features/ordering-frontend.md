@@ -9,11 +9,13 @@ Backend order behavior is in [`ordering.md`](./ordering.md); flow diagrams are i
 [`ordering-flow.md`](./ordering-flow.md). Different-store browser tab and guest
 session isolation behavior is in
 [`guest-multi-store-sessions.md`](./guest-multi-store-sessions.md). This
-document describes the **agreed guest frontend behavior**. Landing, Resume,
-Join, and Recent orders behavior is in
-[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md). The frontend
-code and the guest public API are not yet implemented; the Code Map and API
-sections mark "existing vs planned".
+document describes the guest frontend behavior. Landing, Resume, Join, and Recent
+orders behavior is in
+[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md). The guest
+frontend and the guest public API are implemented; the dine-in pay-later
+reusable-cart add-on flow is detailed in [`ordering-flow.md`](./ordering-flow.md).
+Live SSE order sync is not yet wired — order tracking currently refreshes
+manually.
 
 MVP does not integrate online payment. Staff manually confirms payment.
 
@@ -27,17 +29,21 @@ Existing (backend domain the frontend depends on):
 - `apps/api/src/models/store/model.ts` (`operation.orderModes`)
 - `packages/shared/src/contracts/store.ts`
 
-Planned (following existing frontend architecture conventions):
+Implemented (frontend, following the frontend architecture conventions):
 
-- `apps/web/src/pages/storeFront/...` (each page: View + Page VM hook)
-- `apps/web/src/features/storeFront/...` (runtime / store / actions / commands)
+- `apps/web/src/pages/storeFront/...` (each page: View + Page VM hook + commands)
+- `apps/web/src/features/storeFront/...` (runtime / stores / actions / commands;
+  `cartWorkflow`, `sessionWorkflow`, `orderHistory`)
 - `apps/web/src/models/{storeFrontMenu,cart,order}/...`
 - `apps/web/src/services/{storeFrontMenu,storeFrontCart,storeFrontOrder}.service.ts`
-- Backend guest public routes `apps/api/src/routes/v1/public/...`, cart/order/
-  public-menu contracts in `packages/shared`, guest token issuance, SSE push
 
-> Interim planning detail:
-> `docs/agent/temp/plan/guest-ordering-frontend-20260610-1126.md`.
+Implemented (backend the frontend calls):
+
+- guest public routes `apps/api/src/routes/v1/public/guest/...`
+- `apps/api/src/services/guestOrdering.service.ts`, cart/order/public-menu
+  contracts in `packages/shared`, guest token issuance
+
+Not yet wired: live SSE push (order tracking refreshes manually for now).
 
 ## Frontend
 
@@ -67,10 +73,12 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
    subtotal/service fee/total, order-level notes, invite entry, and submit (any
    participant may submit; confirm before submitting).
 6. **Order tracking** — `/s/:storeId/orders/:orderId`
-   Large display number, order- and batch-level status (live via SSE), line
-   items, total, payment status; pay-later while unpaid shows "add on" → menu
-   add-on mode; pay-first shows "start another order"; `completed`/`cancelled`
-   shows an end screen and clears the active guest session.
+   Large display number, order- and batch-level status, each batch's items and
+   "added by", totals, payment status. While the server-computed `canAddOn` is
+   true it shows "繼續加點" → menu add-on mode; otherwise it shows "Refresh
+   status". A finished order or one opened from local history shows "Start another
+   order" / "Back to recent orders". Status updates via manual refresh today
+   (SSE push is planned).
 7. **Recent orders** — `/s/:storeId/orders`
    Read-only entry to orders this browser participated in during the last 24
    hours.
@@ -94,7 +102,10 @@ chooser:
 - **Back to landing (non-destructive)**: pure navigation; the token is kept and
   "Resume ordering" remains.
 - **Leave this group / start over (destructive)**: performs leave, clears the
-  token, and the chooser returns to a clean state.
+  token, and the chooser returns to a clean state. This is allowed for a
+  not-yet-submitted cart, but **not** for an unfinished order — a submitted,
+  unpaid/unfinished order cannot be abandoned to start another; the guest must
+  resume it (see [`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md)).
 - The order tracking page itself shows an end screen + "Start another order /
   Home" and clears the token when the order ends, so it is never a dead end.
 
@@ -120,10 +131,14 @@ optimistic concurrency retry.
    Invite link → Join confirmation → choose avatar and optional custom display
    name → join the same Cart.
 3. Any participant submits from the cart → an Order is created (first batch
-   `pending_confirmation`) → everyone can open the order tracking page.
-4. The tracking page shows batch status live via SSE; while unpaid, unfinished,
-   and before optional `orderingClosesAt`, "add on" → menu add-on mode → submit
-   appends a new batch. The same window permits new participants to join.
+   `pending_confirmation`) and the cart is cleared but stays active → every
+   participant can read the order (access is by participant membership, not tied
+   to the submitter's device).
+4. While `canAddOn` is true (unpaid, unfinished, before `orderingClosesAt`),
+   "繼續加點" → menu add-on mode → add to the still-active shared cart → submit
+   flushes a new batch. The same submit serves the first and later rounds, and
+   the same window permits new participants to join. (Status refreshes manually;
+   SSE is planned.)
 5. Staff takes payment → the join code is invalidated, add-on disappears; staff
    completes → end screen.
 
@@ -152,11 +167,16 @@ identity). Expected surface:
 - Public menu: returns the store's `published + isActive` products with their
   modifiers/categories; **must not leak merchant-only fields**.
 - Cart: create (issues guest token + join code), join (join by join code, adds a
-  participant and issues that participant's token), add/edit item (own items
-  only, before submit), leave (removes the participant), submit (creates or
-  appends an Order).
-- Order: fetch, add on (pay-later appends a batch / pay-first starts a new cart),
-  SSE stream of order and batch status.
+  participant and issues that participant's token; if an order already exists the
+  joiner is added to it too), add/edit item (own items only), leave (removes the
+  participant), submit (flushes the cart into a new Order batch — creating the
+  Order on the first round — in one transaction). Add-on reuses the same submit;
+  there is no separate add-on-batch endpoint.
+- Session: returns the live cart and the order together when both exist (add-on
+  mode), so a participant sees the submitted order and the next-round draft.
+- Order: fetch (resolved by participant membership, independent of cart state, so
+  any participant can read it; carries the server-computed `canAddOn`). Live SSE
+  stream of order/batch status is planned, not yet wired.
 
 Request/response shapes and error codes are defined with their contracts during
 the Phase 0 backend work.
@@ -192,10 +212,16 @@ the Phase 0 backend work.
 
 Decisions (promoted from the plan):
 
-- Real-time push uses **SSE**; in MVP it is used only for order-tracking status
-  updates (one-directional). Group co-ordering relies on the join code plus a
-  refetch when opening the cart page — no live cart sync. AI chat streaming can
-  reuse SSE later; upgrade to WebSocket only if true bidirectional needs arise.
+- Real-time push will use **SSE** for order-tracking status updates
+  (one-directional), but it is **not yet wired**: order tracking and group
+  co-ordering currently rely on the join code plus a refetch (manual refresh /
+  reopening the cart) — no live sync yet. AI chat streaming can reuse SSE later;
+  upgrade to WebSocket only if true bidirectional needs arise.
+- Dine-in pay-later add-on reuses the cart as a **reusable per-round draft**:
+  submit flushes the cart into a new order batch and clears it while keeping it
+  active; order access is decoupled from the cart (participant membership), and
+  whether a guest may add on is the server-computed `OrderDto.canAddOn`. See
+  [`ordering-flow.md`](./ordering-flow.md).
 - Avatar selection is required and randomly preselected; custom display names
   are optional. Participants cannot change either after joining in MVP.
 - Currency is fixed to NT$ in MVP (`product.price` has no currency field).

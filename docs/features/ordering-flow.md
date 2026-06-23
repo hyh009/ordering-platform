@@ -24,8 +24,8 @@ flowchart TD
   DineMode -->|pay_first| PayFirst
   DineMode -->|pay_later| PayLater
 
-  PayFirst -.-> PFData[(Cart.checkoutMode = pay_first\nsubmitted cart creates one-batch Order\nadd-ons create a new Order)]
-  PayLater -.-> PLData[(Cart.checkoutMode = pay_later\nsubmitted cart creates an open unpaid Order\nadd-ons append new batches until payment)]
+  PayFirst -.-> PFData[(Cart.checkoutMode = pay_first\nsubmitted cart creates one-batch Order\ncart becomes checked_out\nadd-ons create a new Order)]
+  PayLater -.-> PLData[(Cart.checkoutMode = pay_later\nsubmit flushes cart items into a new Order batch\ncart is a reusable draft: cleared but stays active\nadd-on rounds re-use the same cart + submit)]
 
   classDef action fill:#fff7ed,stroke:#f97316,color:#0f172a
   classDef decision fill:#dcfce7,stroke:#16a34a,color:#0f172a
@@ -86,6 +86,14 @@ Pay-later currently applies to dine-in. Guests may add more before payment.
 Payment locks guest add-ons but does not complete the order; existing batches
 continue until staff marks the service complete.
 
+The cart is a **reusable per-round draft**. Submitting flushes the current cart
+items into a new Order batch and clears those items, but keeps the cart `active`
+while the order is still guest-extendable; add-on rounds add to that same cart
+and submit again. The cart only becomes `checked_out` once add-on is no longer
+allowed. Order access is **decoupled from the cart** (resolved by participant
+membership), so any participant can read the order even after the cart is gone,
+and expired carts auto-delete via a TTL index.
+
 ```mermaid
 sequenceDiagram
   participant Guest
@@ -100,11 +108,11 @@ sequenceDiagram
   Note over System: Cart.participants/items updated<br/>cart totals recalculated
 
   Guest->>System: Submit first batch
-  Note over System: Cart.status = checked_out<br/>Order created<br/>paymentStatus = unpaid<br/>Order.status = pending_confirmation<br/>first Batch.status = pending_confirmation<br/>Order deadline = orderingClosesAt or expiresAt fallback<br/>Join Code routes to order
+  Note over System: Order created<br/>cart items flushed into first batch, then cleared<br/>Cart.status stays active (reusable draft) while extendable<br/>paymentStatus = unpaid<br/>Order.status = pending_confirmation<br/>first Batch.status = pending_confirmation<br/>Order deadline = orderingClosesAt or expiresAt fallback<br/>Join Code routes to order
 
   opt Group ordering remains open
-    Guest->>System: Join by code or submit add-on items
-    Note over System: Allowed while unpaid and not completed/cancelled<br/>and before Order.orderingClosesAt<br/>add-ons append a pending batch and Order.items
+    Guest->>System: Join by code, or add items to the cart and submit again
+    Note over System: Allowed while unpaid and not completed/cancelled<br/>and before Order.orderingClosesAt (canAddOn)<br/>submit flushes the cart into a new pending batch (same endpoint)<br/>flush + batch append run in one transaction
   end
 
   opt Staff takes payment before service
