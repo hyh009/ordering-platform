@@ -935,6 +935,43 @@ describe('submit and order', () => {
     expect(session.body.data.session.cart).toBeUndefined();
   });
 
+  // Cart TTL auto-deletion is a Mongo runtime behavior (the `{ expiresAt: 1 }`
+  // `expireAfterSeconds: 0` index on `carts`), so it is verified at the DB layer,
+  // not in these mocked-repo unit tests. What we DO unit-test here is the
+  // resilience: a deleted cart must not break order reads or the session.
+  it('returns the order from getGuestOrder even after the cart is deleted', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+
+    // Simulate the cart TTL index having auto-deleted the (expired) cart.
+    mocks.carts.delete(owner.cart.id);
+
+    const order = await request(app)
+      .get('/api/v1/public/guest/order')
+      .set(auth(owner.guestToken));
+
+    expect(order.status).toBe(200);
+    expect(order.body.data.order.id).toBe(orderId);
+  });
+
+  it('returns an order-only session when the cart is deleted but the order exists', async () => {
+    const { owner, submitResponse } = await submitOrder();
+    const orderId = submitResponse.body.data.order.id as string;
+
+    // Cart gone (TTL-deleted): the session must still resolve and return the
+    // order, with no cart and no joinCode, and must not throw.
+    mocks.carts.delete(owner.cart.id);
+
+    const session = await request(app)
+      .get('/api/v1/public/guest/session')
+      .set(auth(owner.guestToken));
+
+    expect(session.status).toBe(200);
+    expect(session.body.data.session.order.id).toBe(orderId);
+    expect(session.body.data.session.cart).toBeUndefined();
+    expect(session.body.data.session.joinCode).toBeUndefined();
+  });
+
   it('rejects an order read for a token whose participant is not in any order', async () => {
     await submitOrder();
 

@@ -245,6 +245,12 @@ cartSchema.index(
     partialFilterExpression: { joinCode: { $exists: true } },
   },
 );
+// TTL index: `expiresAt` holds the exact expiry instant, so `expireAfterSeconds:
+// 0` lets Mongo auto-delete the cart once that instant passes — no expiry worker.
+// Safe because order access is decoupled from the cart (orders resolve by
+// participant membership), so a deleted expired cart never breaks order reads;
+// by ~12h the add-on window is already closed and the order remains for history.
+cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const CartMongoModel =
   (models.Cart as Model<CartEntity> | undefined) ??

@@ -636,35 +636,45 @@ export async function getGuestSession(
   claims: GuestTokenClaims,
 ): Promise<GuestSessionDto> {
   const requestTime = new Date();
-  const cart = await loadCartForClaims(claims);
+
+  // The cart can be gone (e.g. its TTL index auto-deleted an expired cart) while
+  // a still-valid order remains. Load it leniently so a missing cart does NOT
+  // throw before the order is resolved.
+  const cart = await cartRepository.findById(claims.cartId);
 
   // Resolve the order by participant membership (decoupled from cart status), so
   // every participant sees the order once one exists for them — even while the
-  // shared cart is still `active`.
+  // shared cart is still `active`, and even after the cart has been deleted.
   const order = await orderRepository.findByStoreAndParticipant(
     claims.storeId,
     claims.participantId,
   );
 
   // A live draft cart is the next-round buffer. It is only includable while the
-  // cart is still an active/usable draft; a terminal (`checked_out`) cart is not
-  // a draft and is omitted. When there is no order yet, the token holder must be
-  // a cart member for the session to resolve at all.
+  // cart still exists, belongs to this store, is an active/usable draft, and the
+  // token holder is a member; a terminal (`checked_out`) or deleted cart is not a
+  // draft and is omitted.
   const hasDraftCart =
+    cart !== null &&
+    cart.storeId === claims.storeId &&
     isActiveCartUsable(cart, requestTime) &&
     findParticipant(cart.participants, claims.participantId) !== undefined;
 
   if (!order && !hasDraftCart) {
-    // No order for this participant and no usable draft cart: the same failure
-    // the cart-only path produced before (expired/terminal cart, or a token that
-    // does not belong to this cart).
+    // No order for this participant and no usable draft cart. Reproduce the
+    // cart-only failures: a missing/foreign cart is an invalid token; an existing
+    // but expired/terminal cart is `CART_NOT_ACTIVE`; otherwise an invalid token.
+    if (!cart || cart.storeId !== claims.storeId) {
+      throw invalidGuestTokenError();
+    }
     assertActiveCartUsable(cart, requestTime);
     throw invalidGuestTokenError();
   }
 
   return {
     participantId: claims.participantId,
-    ...(isGuestJoinCodeUsable(cart, order ?? undefined, requestTime)
+    ...(cart !== null &&
+    isGuestJoinCodeUsable(cart, order ?? undefined, requestTime)
       ? { joinCode: cart.joinCode }
       : {}),
     ...(hasDraftCart ? { cart: toCartDto(cart) } : {}),
