@@ -55,8 +55,26 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
             : ('landing' as const),
         };
       }
+      const result = await loadActiveOrder(storeId, orderId);
+      if (result.status === 'loaded') {
+        // The participant's own browser just observed their order via its active
+        // session. Record it into this device's local history so they can find
+        // it later from "View recent orders" even if they never pressed submit
+        // or joined a submitted order. This is the single chokepoint covering
+        // both resume-from-landing (which navigates here) and direct open;
+        // recordOrder dedups, so repeat visits are safe.
+        const loadedOrder = runtime.stores.order.getState().order;
+        const guestToken = runtime.stores.session.getState().guestToken;
+        if (loadedOrder?.id === orderId && guestToken) {
+          runtime.commands.orderHistory.recordOrder(
+            storeId,
+            loadedOrder,
+            guestToken,
+          );
+        }
+      }
       return {
-        ...(await loadActiveOrder(storeId, orderId)),
+        ...result,
         access: 'active' as const,
       };
     },

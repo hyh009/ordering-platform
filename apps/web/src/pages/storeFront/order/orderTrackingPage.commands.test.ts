@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStoreFrontRuntime } from '@/features/storeFront/runtime';
+import { loadStoreFrontOrderHistory } from '@/features/storeFront/orderHistory/storage';
+import { saveStoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
 import type { Order } from '@/models/order';
 import { storeFrontOrderService } from '@/services/storeFrontOrder.service';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
@@ -53,11 +55,101 @@ describe('order tracking page commands', () => {
     );
 
     expect(result).toEqual({ status: 'loaded', access: 'history' });
-    expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith('history-token');
+    expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith(
+      'history-token',
+    );
     expect(runtime.stores.session.getState()).toEqual({
       guestToken: 'active-token',
       participantId: 'active-participant',
       storeId: 'store-a',
     });
+  });
+
+  it('records the order into local history when loaded via the active session', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    saveStoredGuestSession({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    vi.mocked(storeFrontOrderService.getOrder).mockResolvedValue({
+      id: 'active-order',
+      storeId: 'store-a',
+      createdAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof storeFrontOrderService.getOrder>>);
+
+    expect(runtime.commands.orderHistory.hasHistory('store-a')).toBe(false);
+
+    const result = await createOrderTrackingPageCommands(runtime).initialize(
+      'store-a',
+      'active-order',
+    );
+
+    expect(result).toMatchObject({ status: 'loaded', access: 'active' });
+    const entry = runtime.commands.orderHistory.findEntry(
+      'store-a',
+      'active-order',
+    );
+    expect(entry).toMatchObject({
+      orderId: 'active-order',
+      guestToken: 'active-token',
+    });
+  });
+
+  it('does not double-record an order already loaded via a history entry', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    runtime.stores.session.setState({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    runtime.commands.orderHistory.recordOrder(
+      'store-a',
+      {
+        id: 'history-order',
+        storeId: 'store-a',
+        createdAt: new Date().toISOString(),
+      } as Order,
+      'history-token',
+    );
+    vi.mocked(storeFrontOrderService.getOrder).mockResolvedValue({
+      id: 'history-order',
+      storeId: 'store-a',
+    } as Awaited<ReturnType<typeof storeFrontOrderService.getOrder>>);
+
+    const result = await createOrderTrackingPageCommands(runtime).initialize(
+      'store-a',
+      'history-order',
+    );
+
+    expect(result).toEqual({ status: 'loaded', access: 'history' });
+    // The history entry retains its original token; the active path never ran,
+    // so it was not overwritten with the active session token.
+    expect(
+      runtime.commands.orderHistory.findEntry('store-a', 'history-order'),
+    ).toMatchObject({ guestToken: 'history-token' });
+  });
+
+  it('dedups history entries across repeated active loads', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    saveStoredGuestSession({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    vi.mocked(storeFrontOrderService.getOrder).mockResolvedValue({
+      id: 'active-order',
+      storeId: 'store-a',
+      createdAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof storeFrontOrderService.getOrder>>);
+
+    const commands = createOrderTrackingPageCommands(runtime);
+    await commands.initialize('store-a', 'active-order');
+    await commands.initialize('store-a', 'active-order');
+
+    expect(loadStoreFrontOrderHistory('store-a')).toHaveLength(1);
   });
 });
