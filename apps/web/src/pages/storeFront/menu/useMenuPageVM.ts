@@ -178,9 +178,15 @@ export function useMenuPageVM() {
     void navigate(PATHS.STOREFRONT.INVITE_BUILD(storeId));
   }, [navigate, storeId]);
 
-  const goToLanding = useCallback(() => {
+  // Back goes to the order being added to during add-on mode (the menu is then a
+  // sub-flow of that order), otherwise to the landing chooser.
+  const goBack = useCallback(() => {
+    if (order && order.canAddOn) {
+      void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, order.id));
+      return;
+    }
     void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId));
-  }, [navigate, storeId]);
+  }, [navigate, order, storeId]);
 
   return {
     store,
@@ -200,6 +206,6 @@ export function useMenuPageVM() {
     addItem,
     goToCart,
     goToInvite,
-    goToLanding,
+    goBack,
   };
 }

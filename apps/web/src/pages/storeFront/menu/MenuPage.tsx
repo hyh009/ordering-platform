@@ -73,7 +73,7 @@ export function MenuPage() {
           middle={StorefrontPageHeader.Middle.Title}
           right={StorefrontPageHeader.Right.Logo}
           title={vm.store ? localize(vm.store.displayName) : undefined}
-          onBack={vm.goToLanding}
+          onBack={vm.goBack}
           logoUrl={vm.store?.logoUrl}
           logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
         />
@@ -98,7 +98,11 @@ export function MenuPage() {
             ) : (
               <MenuStatusBanner
                 mode="invite"
-                joinCode={vm.orderBanner.mode === 'invite' ? vm.orderBanner.joinCode : ''}
+                joinCode={
+                  vm.orderBanner.mode === 'invite'
+                    ? vm.orderBanner.joinCode
+                    : ''
+                }
                 onInvite={vm.goToInvite}
               />
             )}
