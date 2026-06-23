@@ -659,6 +659,36 @@ describe('cart lifecycle', () => {
     expect(response.body.code).toBe('STORE_NOT_OPEN');
   });
 
+  it('rejects submitting a round once the store has closed', async () => {
+    const product = seedProduct();
+    const owner = await createDineInCart();
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 })
+      .expect(200);
+
+    // The store closes after the cart was built; the requireOpenStore middleware
+    // must block the submit.
+    seedStore({
+      operation: {
+        businessHours: alwaysClosedHours(),
+        serviceFeeRate: 0.1,
+        orderModes: [
+          { type: 'dine_in', isEnabled: true, checkoutMode: 'pay_later' },
+        ],
+      },
+    });
+
+    const submit = await request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(owner.guestToken))
+      .send({});
+
+    expect(submit.status).toBe(409);
+    expect(submit.body.code).toBe('STORE_NOT_OPEN');
+  });
+
   it('adds an item with modifier selection and computes totals', async () => {
     const modifier = seedModifier();
     const product = seedProduct({ modifierIds: [modifier.id] });
