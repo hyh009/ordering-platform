@@ -5,28 +5,38 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
   return {
     async initialize(storeId: string) {
       await runtime.commands.tenant.activateStore(storeId);
-      const session = await runtime.commands.session.restoreSession(storeId);
-      if (session.status === 'none') return session;
-      const result = await runtime.commands.cart.loadCart(storeId);
-      if (
-        result.status === 'failed' &&
-        (result.reason === 'session-expired' ||
-          result.reason === 'session-store-mismatch')
-      ) {
-        return { status: 'none' as const };
-      }
-      // No live draft cart (it is terminal, or an order already exists). Instead
-      // of dead-ending on the cart, resolve the combined session and hand the
-      // participant to order tracking when an order exists. This removes the
-      // post-checkout CART_NOT_ACTIVE dead-end.
-      if (result.status === 'failed' && result.reason === 'cart-not-active') {
-        const resumed = await runtime.commands.session.resumeSession(storeId);
-        if (resumed.status === 'order') {
-          return { status: 'order' as const, orderId: resumed.orderId };
+      // Resolve the combined session in one request: it hydrates the live draft
+      // cart AND any submitted order. The cart page needs the order so it can
+      // surface a link back to it during an add-on round, not just the cart.
+      const resumed = await runtime.commands.session.resumeSession(storeId);
+
+      switch (resumed.status) {
+        case 'cart':
+          // Live draft cart, no order yet (first round).
+          return { status: 'loaded' as const };
+        case 'order': {
+          // A submitted order exists. When a live draft cart still coexists
+          // (add-on round), stay on the cart so the participant can keep adding
+          // and see the order via a banner. Only when no live cart remains do we
+          // hand off to order tracking, to avoid dead-ending on an empty cart.
+          const hasLiveCart =
+            runtime.stores.cart.getState().cart?.status === 'active';
+          return hasLiveCart
+            ? { status: 'loaded' as const }
+            : { status: 'order' as const, orderId: resumed.orderId };
         }
-        return { status: 'none' as const };
+        case 'none':
+        case 'ended':
+          // Nothing usable to show here (no session, or it has ended/expired):
+          // send the participant back to the start.
+          return { status: 'none' as const };
+        case 'failed':
+          // A transient failure (network/server) or a benign store-mismatch
+          // race. Hand the typed failure to the VM so it can surface feedback
+          // and stay put, instead of masquerading a blip as a gone session and
+          // bouncing to landing.
+          return resumed;
       }
-      return result;
     },
 
     removeItem(storeId: string, itemId: string) {

@@ -66,7 +66,7 @@ export function MenuPage() {
     <div className="flex flex-1 flex-col">
       <header
         ref={bindHeader}
-        className="sticky top-0 z-20 border-b border-storefront-border bg-storefront-bg"
+        className="sticky top-0 z-sticky border-b border-storefront-border bg-storefront-bg"
       >
         <StorefrontPageHeader
           left={StorefrontPageHeader.Left.Back}
@@ -113,7 +113,7 @@ export function MenuPage() {
           <div
             ref={bindTabs}
             style={{ top: headerHeight }}
-            className="sticky z-10 border-b border-storefront-border bg-storefront-bg"
+            className="sticky z-raised border-b border-storefront-border bg-storefront-bg"
           >
             <MenuCategoryTabs
               tabs={tabs}
@@ -171,7 +171,7 @@ export function MenuPage() {
       </div>
 
       {vm.cartItemCount > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
+        <div className="fixed inset-x-0 bottom-0 z-sticky bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
           <button
             type="button"
             onClick={vm.goToCart}

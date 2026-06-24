@@ -74,7 +74,7 @@ export const organizationService = {
         {
           limit: input.limit,
           offset: input.offset,
-          total: response.data.pagination.total,
+          total: 0,
         },
       ),
     };
@@ -136,7 +136,7 @@ export const organizationService = {
         {
           limit: input.limit,
           offset: input.offset,
-          total: response.data.pagination.total,
+          total: 0,
         },
       ),
     };
@@ -190,7 +190,7 @@ export const organizationService = {
       pagination: toPaginationPage<StoreListPage>(response.data.pagination, {
         limit: input.limit,
         offset: input.offset,
-        total: response.data.pagination.total,
+        total: 0,
       }),
     };
   },

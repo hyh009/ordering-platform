@@ -49,7 +49,7 @@ export function LandingPage() {
           {/* Content */}
           <div className="flex flex-1 flex-col items-center bg-storefront-bg px-4 pb-10 md:px-8">
             {/* Store icon — overlaps hero bottom */}
-            <div className="relative -mt-10 z-10 flex h-20 w-20 items-center justify-center rounded-full border-4 border-storefront-bg bg-storefront-bg shadow-lg">
+            <div className="relative -mt-10 z-raised flex h-20 w-20 items-center justify-center rounded-full border-4 border-storefront-bg bg-storefront-bg shadow-lg">
               <Store className="h-9 w-9 text-storefront-primary" />
             </div>
 

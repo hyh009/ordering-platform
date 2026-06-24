@@ -3,10 +3,14 @@ import {
   toOrderingParticipantDto,
 } from '@src/models/cart/mapper';
 
-import { canGuestExtendOrder } from './model';
+import { allocateServiceFee, canGuestExtendOrder } from './model';
 
 import type { OrderBatchSnapshot, OrderEntity } from './model';
-import type { OrderBatchDto, OrderDto } from '@repo/shared';
+import type {
+  OrderBatchDto,
+  OrderDto,
+  OrderParticipantAmountDto,
+} from '@repo/shared';
 
 function toOrderBatchDto(batch: OrderBatchSnapshot): OrderBatchDto {
   const dto: OrderBatchDto = {
@@ -37,6 +41,84 @@ function toOrderBatchDto(batch: OrderBatchSnapshot): OrderBatchDto {
   return dto;
 }
 
+/**
+ * Build the per-participant amount breakdown for an order.
+ *
+ * Item-subtotal attribution rule (each item is attributed to exactly one
+ * participant present in `order.participants`):
+ *   1. Resolve the owner as `item.addedByParticipantId ?? batch.submittedByParticipantId`.
+ *   2. If the resolved owner is not a current order participant, fall back to
+ *      `batch.submittedByParticipantId`.
+ *   3. If the submitter is also absent or not a current participant, fall back
+ *      to the first participant as a last resort.
+ * This guarantees every item's value lands on some participant, so the
+ * per-participant `itemSubtotal` values sum exactly to `order.subtotal`. The
+ * service fee is then split across those subtotals with largest-remainder
+ * rounding, so `serviceFeeAmount` reconciles to `order.serviceFeeAmount` and
+ * `totalAmount` reconciles to `order.totalAmount`.
+ *
+ * Orders with no participants produce an empty breakdown; any item value is
+ * left out of the per-person weights, which is harmless because the
+ * order-level totals are unchanged.
+ */
+export function toParticipantAmountDtos(
+  order: OrderEntity,
+): OrderParticipantAmountDto[] {
+  const participantIds = new Set(order.participants.map((p) => p.id));
+  const fallbackParticipantId = order.participants[0]?.id;
+
+  const itemSubtotals = new Map<string, number>(
+    order.participants.map((p) => [p.id, 0]),
+  );
+
+  if (fallbackParticipantId !== undefined) {
+    for (const batch of order.batches) {
+      for (const item of batch.items) {
+        const resolvedOwner =
+          item.addedByParticipantId ?? batch.submittedByParticipantId;
+
+        let ownerId: string;
+        if (resolvedOwner !== undefined && participantIds.has(resolvedOwner)) {
+          ownerId = resolvedOwner;
+        } else if (
+          batch.submittedByParticipantId !== undefined &&
+          participantIds.has(batch.submittedByParticipantId)
+        ) {
+          ownerId = batch.submittedByParticipantId;
+        } else {
+          ownerId = fallbackParticipantId;
+        }
+
+        itemSubtotals.set(
+          ownerId,
+          (itemSubtotals.get(ownerId) ?? 0) + item.totalItemPrice,
+        );
+      }
+    }
+  }
+
+  const weights = order.participants.map((p) => ({
+    participantId: p.id,
+    weight: itemSubtotals.get(p.id) ?? 0,
+  }));
+
+  const feeAllocations = allocateServiceFee(weights, order.serviceFeeAmount);
+  const feeByParticipant = new Map(
+    feeAllocations.map((a) => [a.participantId, a.amount]),
+  );
+
+  return order.participants.map((p) => {
+    const itemSubtotal = itemSubtotals.get(p.id) ?? 0;
+    const serviceFeeAmount = feeByParticipant.get(p.id) ?? 0;
+    return {
+      participantId: p.id,
+      itemSubtotal,
+      serviceFeeAmount,
+      totalAmount: itemSubtotal + serviceFeeAmount,
+    };
+  });
+}
+
 export function toOrderDto(
   order: OrderEntity,
   now: Date = new Date(),
@@ -54,6 +136,7 @@ export function toOrderDto(
     participants: order.participants.map(toOrderingParticipantDto),
     items: order.items.map(toCartItemDto),
     batches: order.batches.map(toOrderBatchDto),
+    participantAmounts: toParticipantAmountDtos(order),
     subtotal: order.subtotal,
     serviceFeeRate: order.serviceFeeRate,
     serviceFeeAmount: order.serviceFeeAmount,

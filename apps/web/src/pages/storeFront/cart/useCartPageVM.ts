@@ -35,10 +35,14 @@ export function useCartPageVM() {
     runtime.stores.session,
     (state) => state.participantId,
   );
+  const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const cart = isActiveStore ? rawCart : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const isMutating = isActiveStore && rawIsMutating;
   const participantId = isActiveStore ? rawParticipantId : null;
+  // The already-submitted order that this draft cart is adding on to. Surfaced
+  // as a banner/link so the round's earlier items and total are not hidden.
+  const submittedOrder = isActiveStore ? rawOrder : null;
 
   useEffect(() => {
     let active = true;
@@ -49,6 +53,16 @@ export function useCartPageVM() {
         void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
           replace: true,
         });
+        return;
+      }
+      if (result.status === 'failed') {
+        // A benign race: the active store changed while the resume was in
+        // flight; another navigation is taking over, so there is nothing to do.
+        if (result.reason === 'session-store-mismatch') return;
+        // A transient failure (network/server). Keep the participant on the
+        // cart and surface the error instead of bouncing to landing as if the
+        // session were gone — they can retry (reload, later SSE resync).
+        handleStoreFrontFailure(result);
         return;
       }
       // The cart is terminal but an order exists: send the participant to order
@@ -120,6 +134,11 @@ export function useCartPageVM() {
     void navigate(PATHS.STOREFRONT.MENU_BUILD(storeId));
   }, [navigate, storeId]);
 
+  const goToOrder = useCallback(() => {
+    if (!submittedOrder) return;
+    void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, submittedOrder.id));
+  }, [navigate, storeId, submittedOrder]);
+
   const submit = useCallback(async () => {
     const confirmed = await feedbackCommands.confirm({
       title: tDefault('guest.cart.submitConfirmTitle', 'Submit order?'),
@@ -158,6 +177,8 @@ export function useCartPageVM() {
     changeQuantity,
     submit,
     goToMenu,
+    goToOrder,
+    submittedOrder,
     inviteLink,
     joinCode,
   };

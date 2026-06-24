@@ -120,6 +120,13 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
           cartActions.cartUpdated(session.cart);
         }
 
+        // No order in the session: clear any previously-hydrated order so every
+        // consumer (cart-page banner, menu cart bar, order page) reflects the
+        // session truth and never points at a defunct order.
+        if (!session.order) {
+          orderActions.orderCleared();
+        }
+
         if (session.order) {
           orderActions.orderUpdated(session.order);
           // When both a live draft cart and an order are present (add-on mode),

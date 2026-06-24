@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
+import type { OrderParticipantAmountDto } from '@repo/shared';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
-import { isOrderFinished } from '@/models/order';
+import { getParticipantAmount, isOrderFinished } from '@/models/order';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
+
+// React Router records a monotonic `idx` on history state; idx > 0 means the
+// previous entry is an in-app page we can safely return to with navigate(-1).
+function hasInAppHistory(): boolean {
+  const state = window.history.state as { idx?: number } | null;
+  return typeof state?.idx === 'number' && state.idx > 0;
+}
 
 export function useOrderTrackingPageVM() {
   const storeId = useStoreFrontStoreId();
@@ -24,6 +32,8 @@ export function useOrderTrackingPageVM() {
     (state) => state.activeStoreId,
   );
   const isActiveStore = activeStoreId === storeId;
+  const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
+  const store = isActiveStore ? rawStore : null;
   const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const rawIsLoading = useStore(
     runtime.stores.order,
@@ -33,6 +43,31 @@ export function useOrderTrackingPageVM() {
   const order = isActiveStore && rawOrder?.id === orderId ? rawOrder : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const error = isActiveStore ? rawError : null;
+
+  // The guest session participant only matches this order when it is the user's
+  // own live session; for a history order it would point at an unrelated order.
+  const sessionParticipantId = useStore(
+    runtime.stores.session,
+    (state) => state.participantId,
+  );
+  const myParticipantId =
+    access === 'active' && isActiveStore ? sessionParticipantId : null;
+  const myAmount: OrderParticipantAmountDto | undefined =
+    order && myParticipantId
+      ? getParticipantAmount(order, myParticipantId)
+      : undefined;
+
+  // Page-flow state for the per-participant detail (a later phase renders the
+  // overlay from this selection; here we only own the state + handlers).
+  const [selectedParticipantId, setSelectedParticipantId] = useState<
+    string | null
+  >(null);
+  const openParticipantDetail = useCallback((participantId: string) => {
+    setSelectedParticipantId(participantId);
+  }, []);
+  const closeParticipantDetail = useCallback(() => {
+    setSelectedParticipantId(null);
+  }, []);
 
   // Phase 1 loads the order once on entry; live SSE updates land in Phase 3.
   useEffect(() => {
@@ -75,6 +110,21 @@ export function useOrderTrackingPageVM() {
     }
   }, [access, commands, navigate, orderId, storeId]);
 
+  // Back arrow: return to the previous page only when it belongs to this app;
+  // otherwise (deep link / fresh tab) fall back to a safe storefront page.
+  const goBack = useCallback(() => {
+    if (hasInAppHistory()) {
+      void navigate(-1);
+      return;
+    }
+    void navigate(
+      access === 'history'
+        ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
+        : PATHS.STOREFRONT.LANDING_BUILD(storeId),
+      { replace: true },
+    );
+  }, [access, navigate, storeId]);
+
   const goHome = useCallback(() => {
     if (access === 'active') {
       commands.leave(storeId);
@@ -96,13 +146,20 @@ export function useOrderTrackingPageVM() {
 
   return {
     order,
+    store,
     isLoading,
     error,
     refresh,
+    goBack,
     goHome,
     addMore,
     finished: order ? isOrderFinished(order) : false,
     canAddOn,
     isHistoryOrder: access === 'history',
+    myParticipantId,
+    myAmount,
+    selectedParticipantId,
+    openParticipantDetail,
+    closeParticipantDetail,
   };
 }

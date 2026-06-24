@@ -55,6 +55,9 @@
   --storefront-text: #2b221a;
   --storefront-text-muted: #7d7065;
   --storefront-border: #e6e1da;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-dropdown: 40;
   --z-page-modal: 50;
   --z-feedback-modal: 100;
   --z-feedback-toast: 110;
@@ -166,6 +169,18 @@
   gap: 1.5rem;
   padding: var(--admin-page-padding);
   width: 100%;
+}
+
+@utility z-raised {
+  z-index: var(--z-raised);
+}
+
+@utility z-sticky {
+  z-index: var(--z-sticky);
+}
+
+@utility z-dropdown {
+  z-index: var(--z-dropdown);
 }
 
 @utility z-page-modal {

@@ -108,6 +108,32 @@ describe('storefront session workflow', () => {
     });
   });
 
+  it('clears a stale hydrated order when the resumed session has a cart but no order', async () => {
+    saveStoredGuestSession({
+      guestToken: 'token-a',
+      participantId: 'participant-a',
+      storeId: 'store-a',
+    });
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    // Simulate an order left in the store from an earlier round.
+    runtime.stores.order.setState({
+      order: { id: 'stale-order', storeId: 'store-a' } as never,
+      error: null,
+      isLoading: false,
+    });
+
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      cart: { id: 'cart-a', status: 'active' } as never,
+    });
+
+    await expect(
+      runtime.commands.session.resumeSession('store-a'),
+    ).resolves.toEqual({ status: 'cart' });
+    expect(runtime.stores.order.getState().order).toBeNull();
+  });
+
   it('does not clear the active store session when a stale restore runs', async () => {
     saveStoredGuestSession({
       guestToken: 'token-b',

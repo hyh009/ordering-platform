@@ -71,7 +71,7 @@ function LogoMenuButton({
           {/* Backdrop: dark on mobile, transparent click-catcher on desktop */}
           <div
             aria-hidden
-            className="fixed inset-0 z-40 bg-black/40 lg:bg-transparent"
+            className="fixed inset-0 z-dropdown bg-black/40 lg:bg-transparent"
             onClick={() => setMenuOpen(false)}
           />
 
@@ -80,7 +80,7 @@ function LogoMenuButton({
             aria-label={tDefault('guest.header.storeMenu', 'Store menu')}
             aria-modal="true"
             role="dialog"
-            className="fixed inset-0 z-50 flex flex-col bg-storefront-bg lg:absolute lg:inset-auto lg:right-0 lg:top-full lg:mt-1 lg:w-60 lg:rounded-xl lg:border lg:border-storefront-border lg:shadow-lg"
+            className="fixed inset-0 z-page-modal flex flex-col bg-storefront-bg lg:absolute lg:inset-auto lg:right-0 lg:top-full lg:mt-1 lg:w-60 lg:rounded-xl lg:border lg:border-storefront-border lg:shadow-lg"
           >
             {/* Row 1: store name + mobile close button */}
             <div className="flex items-center justify-between border-b border-storefront-border px-4 py-3">
@@ -175,7 +175,7 @@ function StorefrontPageHeaderRoot({
 
   if (sticky) {
     return (
-      <header className="sticky top-0 z-20 border-b border-storefront-border bg-storefront-bg">
+      <header className="sticky top-0 z-sticky border-b border-storefront-border bg-storefront-bg">
         {content}
       </header>
     );

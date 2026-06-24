@@ -1,3 +1,5 @@
+import type { OrderParticipantAmountDto } from '@repo/shared';
+
 import type { AppTranslator } from '@/app/i18n';
 import type {
   Order,
@@ -68,4 +70,13 @@ export function getOrderBatchStatusLabel(
 
 export function isOrderFinished(order: Order): boolean {
   return order.status === 'completed' || order.status === 'cancelled';
+}
+
+export function getParticipantAmount(
+  order: Order,
+  participantId: string,
+): OrderParticipantAmountDto | undefined {
+  return order.participantAmounts.find(
+    (a) => a.participantId === participantId,
+  );
 }

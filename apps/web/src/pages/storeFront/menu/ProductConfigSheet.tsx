@@ -30,7 +30,7 @@ export function ProductConfigSheet({
   const config = useProductConfig(product, modifiers);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center">
+    <div className="fixed inset-0 z-page-modal flex flex-col justify-end lg:items-center lg:justify-center">
       <button
         type="button"
         aria-label={tDefault('common.close', 'Close')}

@@ -41,6 +41,27 @@ export function CartPage() {
       />
 
       <div className="flex-1 bg-storefront-bg pb-28">
+        {vm.submittedOrder ? (
+          <button
+            type="button"
+            onClick={vm.goToOrder}
+            className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-between gap-3 rounded-xl border border-storefront-primary/30 bg-storefront-primary/5 px-4 py-3 text-left transition-colors hover:bg-storefront-primary/10"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-storefront-text">
+                {tDefault('guest.cart.submittedOrder.title', 'Order already sent')}
+              </p>
+              <p className="truncate text-xs text-storefront-text-muted">
+                #{vm.submittedOrder.displayNumber} ·{' '}
+                {formatPrice(vm.submittedOrder.totalAmount)}
+              </p>
+            </div>
+            <span className="shrink-0 text-sm font-medium text-storefront-primary">
+              {tDefault('guest.cart.submittedOrder.view', 'View order')} →
+            </span>
+          </button>
+        ) : null}
+
         <div className="divide-y divide-storefront-border px-4">
           {vm.participantGroups.map((group) => (
             <ParticipantOrderSection
@@ -68,7 +89,7 @@ export function CartPage() {
       </div>
 
       {!isEmpty ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
+        <div className="fixed inset-x-0 bottom-0 z-sticky bg-gradient-to-t from-storefront-bg from-60% to-transparent px-4 pb-4 pt-14">
           <button
             type="button"
             disabled={vm.isMutating}

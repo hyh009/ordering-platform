@@ -16,6 +16,10 @@ export const orderModel = {
       participants: dto.participants,
       items: dto.items,
       batches: dto.batches,
+      // Default to [] so a stale/version-skewed DTO (e.g. an order cached
+      // before this field existed, or a backend not yet serving it) degrades
+      // gracefully instead of crashing consumers that read this array.
+      participantAmounts: dto.participantAmounts ?? [],
       subtotal: dto.subtotal,
       serviceFeeRate: dto.serviceFeeRate,
       serviceFeeAmount: dto.serviceFeeAmount,

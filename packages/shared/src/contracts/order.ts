@@ -45,6 +45,13 @@ export type OrderBatchDto = {
   subtotal: number;
 };
 
+export type OrderParticipantAmountDto = {
+  participantId: string;
+  itemSubtotal: number;
+  serviceFeeAmount: number;
+  totalAmount: number;
+};
+
 export type OrderDto = {
   id: string;
   storeId: string;
@@ -64,6 +71,13 @@ export type OrderDto = {
   participants: OrderingParticipantDto[];
   items: CartItemDto[];
   batches: OrderBatchDto[];
+  /**
+   * Server-computed per-participant amount breakdown (reference amounts only;
+   * this platform does not process payments). The order service fee is split
+   * across participants by item subtotal using largest-remainder rounding, so
+   * the per-participant amounts reconcile exactly to the order totals.
+   */
+  participantAmounts: OrderParticipantAmountDto[];
   notes?: string;
   subtotal: number;
   serviceFeeRate: number;
