@@ -179,6 +179,11 @@ const mocks = vi.hoisted(() => {
         return [];
       },
     },
+    tagRepository: {
+      async listByStore() {
+        return [];
+      },
+    },
     allergenRepository: {
       async list() {
         return [];
@@ -301,6 +306,10 @@ vi.mock('@src/repositories/productModifier/repository', () => ({
 
 vi.mock('@src/repositories/category/repository', () => ({
   categoryRepository: mocks.categoryRepository,
+}));
+
+vi.mock('@src/repositories/tag/repository', () => ({
+  tagRepository: mocks.tagRepository,
 }));
 
 vi.mock('@src/repositories/allergen/repository', () => ({
@@ -781,7 +790,7 @@ describe('group ordering', () => {
   it('rejects an unknown join code', async () => {
     const response = await request(app)
       .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
-      .send({ joinCode: 'NOPE123456', avatarKey: 'dog' });
+      .send({ joinCode: 'ABCDEF', avatarKey: 'dog' });
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('INVALID_JOIN_CODE');
