@@ -41,9 +41,27 @@ A failure's `reason` decides how it is shown, via a `reason → presentation`
 table, so every page surfaces failures the same way and a new reason must
 declare its presentation.
 
+A failure surfaces in one of two contexts, so the table value has two axes. The
+discriminator is whether the page already shows its primary data, not whether the
+trigger was a "refresh":
+
+- `action` — a command result while the page already shows its data and stays
+  usable (a mutation, a refresh, a submit). Kinds: `inline | toast | modal |
+  silent`.
+- `load` — the outcome of a page's primary-resource (route/init) load, before any
+  data is on screen. Kinds: `page | redirect | silent`; see "Page-load failures"
+  below.
+
+```ts
+{ action: 'toast', load: 'page' } // storefront table value
+```
+
+An area whose pages have no primary-resource load may use a bare `action` kind
+instead of the object.
+
 Each frontend area supplies its own table plus a thin `handle<Area>Failure`
-wrapper that routes by the resolved kind, keeping form display and global
-feedback in separate layers:
+wrapper that routes by the resolved `action` kind, keeping form display and
+global feedback in separate layers:
 
 - failures that belong on a form (field errors, or an `inline` reason) go to
   `applyFormFailure` in `apps/web/src/shared/components/form/formFailure.ts`
@@ -58,7 +76,7 @@ area (e.g. `invalid` is inline on a form-heavy area, toast elsewhere).
 Place each area's table + wrapper at
 `apps/web/src/pages/<area>/<area>FailureFeedback.ts`.
 
-The four presentation kinds:
+The four action kinds:
 
 - `inline` — the form-level submit message, shown inline on the form (a per-field
   error is not this kind; field errors are separate and always take precedence)
@@ -66,8 +84,8 @@ The four presentation kinds:
 - `modal` — the user must acknowledge before continuing
 - `silent` — a control-flow signal with no user-facing message
 
-The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to a kind. The
-wrapper resolves in this order:
+The area's table (`<AREA>_FAILURE_PRESENTATION`) maps each reason to its kinds.
+The `handle<Area>Failure` wrapper reads `.action` and resolves in this order:
 
 ```txt
 field errors present (with a form)?  ──▶ put on fields, clear submit error   (applyFormFailure)
@@ -101,6 +119,49 @@ not through the helper.
 
 Pages that need a reason-specific reaction (navigate, clear session) handle that
 reason before delegating to the helper.
+
+## Page-load failures
+
+When a page's primary-resource load (its route/init load) fails before any data
+is on screen, surface it with the `load` axis, not a toast — a transient toast
+over a blank page is the wrong affordance. A `resolve<Area>LoadFailure(failure)`
+helper reads the `.load` kind and returns a directive; the VM acts on it.
+
+The three load kinds:
+
+- `page` — render the area's shared full-page error view with a retry action.
+- `redirect` — the session is unusable here (auth gone, stale route); the page
+  sends the user away. The directive only says "redirect"; the page picks the
+  target (e.g. landing vs history) and any side effect (clear session), because
+  those are page-specific. Do not put navigation in the helper.
+- `silent` — a benign race (another navigation is taking over); do nothing.
+
+The error view and loading view are shared, presentational, and header-less —
+each page composes its own page header around them, so the page title stays the
+page's own (the error view adds no title of its own). For storefront:
+`StorefrontErrorView` (illustration + message + retry) and `StorefrontLoadingView`
+(spinner), in `apps/web/src/features/storeFront/components/`.
+
+Retry re-runs the page's init load (a soft re-run, not `window.location.reload()`)
+so SPA state is preserved.
+
+VM shape (for `result.status === 'failed'` on the init/load path):
+
+```ts
+switch (resolveStorefrontLoadFailure(result)) {
+  case 'redirect':
+    // navigate to this page's own target; clear session if the reason needs it
+    break;
+  case 'page':
+    setLoadError(result.message); // the page then renders StorefrontErrorView
+    break;
+  case 'silent':
+    break;
+}
+```
+
+The page renders, in its content area: loading → `StorefrontLoadingView`; load
+error → `StorefrontErrorView` with `onRetry`; otherwise the page body.
 
 ## Where error state lives
 

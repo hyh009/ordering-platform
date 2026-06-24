@@ -26,7 +26,11 @@ no-code cases  ─┼─→  reason  ─┬─→  one message
 - Split into separate reasons only when the message or behavior must differ
   regardless of which page you are on.
 - When the same reason should behave differently on one page (context, not the
-  error itself), that page handles it — do not add a new reason.
+  error itself), that page handles it — do not add a new reason. The standard
+  action-vs-load contexts (page already shows data vs primary load failing) are
+  expressed as two axes in the presentation table, not a new reason; see
+  `docs/agent/frontend/error-feedback.md`. Only finer, page-specific context
+  stays in the page.
 
 ## Normalize: API response → ApiError
 
@@ -111,7 +115,10 @@ src/
   `403`, `*_NOT_FOUND`, and `*_ALREADY_EXISTS` are not handled by the shared
   helper — list them in the domain's table 1.
 - Reuse an existing reason before adding one. Add a reason only when message or
-  behavior must differ regardless of page.
+  behavior must differ regardless of page. A page handling a known reason
+  differently is page-specific work, not a new reason. Adding a reason is a
+  cross-page contract change: when one seems genuinely unavoidable, discuss it
+  with the user before adding it.
 - Never write `tDefault('<domain>.errors.*', ...)` outside a wording table.
 - Page-specific reactions (navigate, clear session, field error) live in
   the page or command, not the mapper.

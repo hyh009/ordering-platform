@@ -13,29 +13,49 @@ import type {
   StoreFrontCommandFailureReason,
 } from '@/services/utils/storeFrontApiError';
 
+// How a storefront primary-resource (route/init) load failure surfaces, before
+// any data is on screen. A transient toast over a blank page is the wrong
+// affordance, so the load axis chooses between a full-page error, a redirect,
+// or a silent no-op. `FailurePresentation` (the action axis) is global; this
+// load axis is storefront-local.
+export type StorefrontLoadPresentation = 'page' | 'redirect' | 'silent';
+
 // Single source of truth for "what does each storefront failure reason do".
-// Reading this table answers the behavior at a glance, and the exhaustive
-// Record means a new reason cannot be added without declaring its presentation.
+// The table value has two axes: `action` (a failure while the page already
+// shows its data) and `load` (the outcome of the page's primary load). Reading
+// this table answers the behavior at a glance, and the exhaustive Record means
+// a new reason cannot be added without declaring both presentations.
 export const STOREFRONT_FAILURE_PRESENTATION: Record<
   StoreFrontCommandFailureReason,
-  FailurePresentation
+  { action: FailurePresentation; load: StorefrontLoadPresentation }
 > = {
   // Benign race: the active store changed while a request was in flight. The
-  // page is already handing off, so there is nothing to show.
-  'session-store-mismatch': 'silent',
-  // Belongs next to the form that submitted the code, not a transient toast.
-  'invalid-join-code': 'inline',
-  'session-expired': 'toast',
-  'store-closed': 'toast',
-  'order-locked': 'toast',
-  'sold-out': 'toast',
-  'cart-not-active': 'toast',
-  invalid: 'toast',
-  'not-found': 'toast',
-  network: 'toast',
-  server: 'toast',
-  unknown: 'toast',
+  // page is already handing off, so there is nothing to show either way.
+  'session-store-mismatch': { action: 'silent', load: 'silent' },
+  // Belongs next to the form that submitted the code, not a transient toast;
+  // on a load it has no form to land in, so it shows the full-page error.
+  'invalid-join-code': { action: 'inline', load: 'page' },
+  // The session is unusable here, so a load sends the user away.
+  'session-expired': { action: 'toast', load: 'redirect' },
+  'store-closed': { action: 'toast', load: 'page' },
+  'order-locked': { action: 'toast', load: 'page' },
+  'sold-out': { action: 'toast', load: 'page' },
+  'cart-not-active': { action: 'toast', load: 'page' },
+  invalid: { action: 'toast', load: 'page' },
+  'not-found': { action: 'toast', load: 'page' },
+  network: { action: 'toast', load: 'page' },
+  server: { action: 'toast', load: 'page' },
+  unknown: { action: 'toast', load: 'page' },
 };
+
+// Resolve a primary-load failure to its load directive. This only returns the
+// directive; the page acts on it (navigate, render error). It never navigates
+// or touches stores.
+export function resolveStorefrontLoadFailure(
+  failure: StoreFrontCommandFailure,
+): StorefrontLoadPresentation {
+  return STOREFRONT_FAILURE_PRESENTATION[failure.reason].load;
+}
 
 // One entry point for every storefront failure, form or not. Field errors (or an
 // `inline` reason) go on the form; everything else is global feedback. Pages
@@ -46,7 +66,7 @@ export function handleStoreFrontFailure(
   deps: { form?: FormErrorSink } = {},
 ): void {
   const { form } = deps;
-  const kind = STOREFRONT_FAILURE_PRESENTATION[failure.reason];
+  const kind = STOREFRONT_FAILURE_PRESENTATION[failure.reason].action;
 
   if (form && (hasFieldErrors(failure.fieldErrors) || kind === 'inline')) {
     applyFormFailure(form, failure);

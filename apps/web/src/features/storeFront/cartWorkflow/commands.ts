@@ -48,6 +48,8 @@ export type StoreFrontCartWorkflowCommands = {
     expectedStoreId: string,
     request: SubmitCartRequest,
   ): Promise<{ status: 'submitted'; orderId: string } | StoreFrontCommandFailure>;
+  markLoadStarted(): void;
+  reportLoadFailure(message: string): void;
 };
 
 export function createStoreFrontCartWorkflowCommands(deps: {
@@ -79,6 +81,9 @@ export function createStoreFrontCartWorkflowCommands(deps: {
   }
 
   return {
+    markLoadStarted: cartCommands.markLoadStarted,
+    reportLoadFailure: cartCommands.reportLoadFailure,
+
     async createCart(storeId, request) {
       const result = await cartCommands.createCart(storeId, request);
       if (result.status === 'created') {

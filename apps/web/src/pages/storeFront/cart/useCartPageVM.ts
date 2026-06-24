@@ -7,7 +7,10 @@ import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { CartItem, OrderingParticipant } from '@/models/cart';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
-import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
+import {
+  handleStoreFrontFailure,
+  resolveStorefrontLoadFailure,
+} from '../storeFrontFailureFeedback';
 import { createCartPageCommands } from './cartPage.commands';
 
 export function useCartPageVM() {
@@ -36,6 +39,7 @@ export function useCartPageVM() {
     (state) => state.participantId,
   );
   const rawOrder = useStore(runtime.stores.order, (state) => state.order);
+  const rawLoadError = useStore(runtime.stores.cart, (state) => state.error);
   const cart = isActiveStore ? rawCart : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const isMutating = isActiveStore && rawIsMutating;
@@ -43,12 +47,19 @@ export function useCartPageVM() {
   // The already-submitted order that this draft cart is adding on to. Surfaced
   // as a banner/link so the round's earlier items and total are not hidden.
   const submittedOrder = isActiveStore ? rawOrder : null;
+  // The cart's primary-load error lives in the cart store (only this page reads
+  // it), so the page renders its load-error view from store state.
+  const loadError = isActiveStore ? rawLoadError : null;
 
-  useEffect(() => {
-    let active = true;
-    async function init() {
+  // The page's primary-resource load, applied to navigation and load-error
+  // state. Shared by the entry effect and retry so both run the exact same
+  // flow. `isActive` lets the effect ignore a stale resolution after unmount;
+  // retry passes a constant-true gate. The leading await keeps every setState
+  // off the synchronous effect path.
+  const runInitialize = useCallback(
+    async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId);
-      if (!active) return;
+      if (!isActive()) return;
       if (result.status === 'none') {
         void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
           replace: true,
@@ -56,14 +67,21 @@ export function useCartPageVM() {
         return;
       }
       if (result.status === 'failed') {
-        // A benign race: the active store changed while the resume was in
-        // flight; another navigation is taking over, so there is nothing to do.
-        if (result.reason === 'session-store-mismatch') return;
-        // A transient failure (network/server). Keep the participant on the
-        // cart and surface the error instead of bouncing to landing as if the
-        // session were gone — they can retry (reload, later SSE resync).
-        handleStoreFrontFailure(result);
-        return;
+        // Surface a primary-load failure with the load axis, not a toast over a
+        // blank page. The command already maps expired/ended sessions to
+        // 'none', so a redirect here just needs to send the user to landing.
+        switch (resolveStorefrontLoadFailure(result)) {
+          case 'silent':
+            return;
+          case 'redirect':
+            void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+              replace: true,
+            });
+            return;
+          case 'page':
+            commands.reportLoadFailure(result.message);
+            return;
+        }
       }
       // The cart is terminal but an order exists: send the participant to order
       // tracking instead of dead-ending on the cart.
@@ -72,12 +90,24 @@ export function useCartPageVM() {
           replace: true,
         });
       }
+    },
+    [commands, navigate, storeId],
+  );
+
+  useEffect(() => {
+    let active = true;
+    async function init() {
+      await runInitialize(() => active);
     }
     void init();
     return () => {
       active = false;
     };
-  }, [commands, navigate, storeId]);
+  }, [runInitialize]);
+
+  const retry = useCallback(() => {
+    void runInitialize(() => true);
+  }, [runInitialize]);
 
   const participantGroups = useMemo((): Array<{
     participant: OrderingParticipant;
@@ -170,6 +200,8 @@ export function useCartPageVM() {
   return {
     cart,
     isLoading,
+    loadError,
+    retry,
     isMutating,
     participantGroups,
     totalItems,

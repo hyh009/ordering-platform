@@ -14,11 +14,23 @@
 - Keywords: class names, classes, clsx, tailwind, merge
 - File: apps/web/src/shared/utils/cn.ts:9
 
+## DataTable
+
+- Description: Shared data table with search, server-side sort, rows-per-page, and offset or cursor pagination.
+- Keywords: table, data table, list, sort, search, pagination, rows per page
+- File: apps/web/src/shared/components/DataTable/DataTable.tsx:104
+
 ## Field
 
 - Description: Accessible form field wrapper with label, description, and error wiring.
 - Keywords: field, form field, label, error, description, aria
-- File: apps/web/src/shared/components/form/Field.tsx:33
+- File: apps/web/src/shared/components/form/Field.tsx:34
+
+## FilterSelect
+
+- Description: Compact typed select for list filters (status, visibility) in a table toolbar.
+- Keywords: filter, select, dropdown, toolbar, options
+- File: apps/web/src/shared/components/form/FilterSelect.tsx:16
 
 ## getCursorPageInfo
 
@@ -30,6 +42,12 @@
 
 - Description: Compute the next offset for offset pagination.
 - Keywords: pagination, offset, next page, next offset
+- File: apps/web/src/shared/utils/offsetPagination.ts:60
+
+## getOffsetForPage
+
+- Description: Compute the offset for a 1-based page number.
+- Keywords: pagination, offset, go to page, page jump
 - File: apps/web/src/shared/utils/offsetPagination.ts:43
 
 ## getOffsetPageInfo
@@ -38,11 +56,17 @@
 - Keywords: pagination, offset, page info, total pages, has next
 - File: apps/web/src/shared/utils/offsetPagination.ts:21
 
+## getPageNumberWindow
+
+- Description: Build a fixed-size window of page numbers around the current page.
+- Keywords: pagination, page numbers, window, batch, page bar
+- File: apps/web/src/shared/utils/offsetPagination.ts:89
+
 ## getPreviousOffset
 
 - Description: Compute the previous offset for offset pagination.
 - Keywords: pagination, offset, previous page, previous offset
-- File: apps/web/src/shared/utils/offsetPagination.ts:52
+- File: apps/web/src/shared/utils/offsetPagination.ts:69
 
 ## Input
 
@@ -56,11 +80,17 @@
 - Keywords: loading, pending, status, spinner, page state
 - File: apps/web/src/shared/components/LoadingState.tsx:10
 
+## LocalizedStringView
+
+- Description: Read-only display of a localized string, one labelled line per
+- Keywords: localized, multilingual, read-only, view, locale
+- File: apps/web/src/shared/components/LocalizedStringView.tsx:21
+
 ## Modal
 
 - Description: Render a dismissible modal overlay for page flows.
 - Keywords: modal, dialog, overlay, confirmation, close
-- File: apps/web/src/shared/components/Modal.tsx:20
+- File: apps/web/src/shared/components/Modal.tsx:31
 
 ## ModalHost
 
@@ -68,17 +98,35 @@
 - Keywords: modal, confirmation, dialog, feedback, actions
 - File: apps/web/src/shared/components/feedback/ModalHost.tsx:22
 
+## MultiSelect
+
+- Description: Searchable multi-select that renders selected values as removable chips.
+- Keywords: multi select, multiple select, combobox, chips, tags, tokens, picker
+- File: apps/web/src/shared/components/form/MultiSelect.tsx:31
+
 ## OptionsSelect
 
 - Description: Render a shared select control from plain option data.
 - Keywords: select, dropdown, options, form, static list
 - File: apps/web/src/shared/components/form/OptionsSelect.tsx:36
 
+## ReadOnlyField
+
+- Description: Stacked label/value pair for read-only detail views.
+- Keywords: read-only, view, detail, label, value, field
+- File: apps/web/src/shared/components/form/ReadOnlyField.tsx:13
+
 ## SearchableSelect
 
 - Description: Render a searchable select with async load-more support.
 - Keywords: searchable select, combobox, dropdown, search, async, load more
 - File: apps/web/src/shared/components/form/SearchableSelect.tsx:58
+
+## StorefrontErrorView
+
+- Description: Full-page storefront error state with illustration, message, and an optional retry action.
+- Keywords: error, retry, failure, load error, empty state, illustration
+- File: apps/web/src/features/storeFront/components/StorefrontErrorView.tsx:16
 
 ## Textarea
 
@@ -106,9 +154,9 @@
 
 ## useOffsetPaginationControls
 
-- Description: Drive offset pagination navigation with a loadPage callback.
-- Keywords: pagination, offset, page, next, previous
-- File: apps/web/src/shared/hooks/useOffsetPaginationControls.ts:24
+- Description: Drive offset pagination (page numbers, single-step prev/next, rows-per-page) with one loadPage callback.
+- Keywords: pagination, offset, page, go to page, next, previous, rows per page
+- File: apps/web/src/shared/hooks/useOffsetPaginationControls.ts:25
 
 ## useThrottle
 

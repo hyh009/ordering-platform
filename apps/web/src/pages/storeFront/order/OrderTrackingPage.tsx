@@ -1,6 +1,8 @@
 import { useAppTranslation } from '@/app/i18n';
 import { anonymousAvatarImages } from '@/features/storeFront/components/ParticipantIdentitySelector/avatarImages';
 import { OrderTotals } from '@/features/storeFront/components/OrderTotals';
+import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
+import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import { getOrderingParticipantDisplayName } from '@/models/cart';
@@ -39,12 +41,16 @@ export function OrderTrackingPage() {
     return (
       <div className="flex flex-1 flex-col bg-storefront-bg">
         {header}
-        <p className="p-6 text-center text-storefront-text-muted">
-          {vm.isLoading
-            ? tDefault('common.loading', 'Loading…')
-            : (vm.error ??
-              tDefault('guest.order.notFound', 'Order not found.'))}
-        </p>
+        {vm.isLoading ? (
+          <StorefrontLoadingView />
+        ) : (
+          <StorefrontErrorView
+            message={
+              vm.error ?? tDefault('guest.order.notFound', 'Order not found.')
+            }
+            onRetry={vm.error ? vm.retry : undefined}
+          />
+        )}
       </div>
     );
   }

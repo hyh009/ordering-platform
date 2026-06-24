@@ -5,6 +5,9 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
   return {
     async initialize(storeId: string) {
       await runtime.commands.tenant.activateStore(storeId);
+      // Start the cart's load lifecycle in the store: clears any prior load
+      // error and shows loading, so a retry does not flash the stale error.
+      runtime.commands.cart.markLoadStarted();
       // Resolve the combined session in one request: it hydrates the live draft
       // cart AND any submitted order. The cart page needs the order so it can
       // surface a link back to it during an add-on round, not just the cart.
@@ -53,6 +56,12 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
 
     submit(storeId: string, request: SubmitCartRequest) {
       return runtime.commands.cart.submitCart(storeId, request);
+    },
+
+    // Record a primary-load failure into the cart store so the page renders its
+    // load-error view (the VM owns the page-vs-redirect-vs-silent decision).
+    reportLoadFailure(message: string) {
+      runtime.commands.cart.reportLoadFailure(message);
     },
   };
 }

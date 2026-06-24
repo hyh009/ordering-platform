@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
 import {
   handleStoreFrontFailure,
+  resolveStorefrontLoadFailure,
   STOREFRONT_FAILURE_PRESENTATION,
 } from './storeFrontFailureFeedback';
 
@@ -103,7 +104,23 @@ describe('handleStoreFrontFailure', () => {
     expect(toast).not.toHaveBeenCalled();
   });
 
-  it('declares invalid-join-code as an inline presentation', () => {
-    expect(STOREFRONT_FAILURE_PRESENTATION['invalid-join-code']).toBe('inline');
+  it('declares invalid-join-code as an inline action presentation', () => {
+    expect(STOREFRONT_FAILURE_PRESENTATION['invalid-join-code'].action).toBe(
+      'inline',
+    );
+  });
+});
+
+describe('resolveStorefrontLoadFailure', () => {
+  it('resolves a network failure to a full-page load error', () => {
+    expect(resolveStorefrontLoadFailure(failure({ reason: 'network' }))).toBe(
+      'page',
+    );
+  });
+
+  it('resolves a session-store-mismatch race to a silent load', () => {
+    expect(
+      resolveStorefrontLoadFailure(failure({ reason: 'session-store-mismatch' })),
+    ).toBe('silent');
   });
 });

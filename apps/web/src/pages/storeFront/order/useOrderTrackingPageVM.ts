@@ -69,15 +69,17 @@ export function useOrderTrackingPageVM() {
     setSelectedParticipantId(null);
   }, []);
 
-  // Phase 1 loads the order once on entry; live SSE updates land in Phase 3.
-  useEffect(() => {
-    let active = true;
-    async function init() {
+  // The page's primary-resource load. Shared by the entry effect and retry so
+  // both run the exact same flow. `isActive` lets the effect ignore a stale
+  // resolution after unmount; retry passes a constant-true gate. On a failure
+  // the order store holds the error, which the page surfaces via `error`.
+  const runInitialize = useCallback(
+    async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId, orderId);
-      if (active && 'access' in result) {
+      if (isActive() && 'access' in result) {
         setAccess(result.access);
       }
-      if (active && result.status === 'none') {
+      if (isActive() && result.status === 'none') {
         void navigate(
           result.target === 'history'
             ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
@@ -87,12 +89,25 @@ export function useOrderTrackingPageVM() {
           },
         );
       }
+    },
+    [commands, navigate, orderId, storeId],
+  );
+
+  // Phase 1 loads the order once on entry; live SSE updates land in Phase 3.
+  useEffect(() => {
+    let active = true;
+    async function init() {
+      await runInitialize(() => active);
     }
     void init();
     return () => {
       active = false;
     };
-  }, [commands, navigate, orderId, storeId]);
+  }, [runInitialize]);
+
+  const retry = useCallback(() => {
+    void runInitialize(() => true);
+  }, [runInitialize]);
 
   const refresh = useCallback(async () => {
     const result = await commands.refresh(storeId, orderId, access);
@@ -150,6 +165,7 @@ export function useOrderTrackingPageVM() {
     isLoading,
     error,
     refresh,
+    retry,
     goBack,
     goHome,
     addMore,

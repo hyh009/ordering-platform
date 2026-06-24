@@ -76,6 +76,12 @@ export type StoreFrontCartCommands = {
       }
     | StoreFrontCommandFailure
   >;
+  /** Mark the cart's primary load as started: clears any prior load error and
+   * shows the loading state. Used by the cart page's init/retry. */
+  markLoadStarted(): void;
+  /** Record a cart primary-load failure into the store so the page can render
+   * its load-error view. */
+  reportLoadFailure(message: string): void;
 };
 
 export function createStoreFrontCartCommands(deps: {
@@ -143,6 +149,14 @@ export function createStoreFrontCartCommands(deps: {
   }
 
   return {
+    markLoadStarted() {
+      cartActions.loadStarted();
+    },
+
+    reportLoadFailure(message) {
+      cartActions.loadFailed(message);
+    },
+
     async createCart(storeId, request) {
       if (!isActiveStore(storeId)) return mismatchedSession;
       const validation = createCartSchema.safeParse(request);

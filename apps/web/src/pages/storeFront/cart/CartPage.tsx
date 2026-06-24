@@ -1,6 +1,8 @@
 import { useAppTranslation } from '@/app/i18n';
 import { OrderTotals } from '@/features/storeFront/components/OrderTotals';
 import { ParticipantOrderSection } from '@/features/storeFront/components/ParticipantOrderSection';
+import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
+import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { formatPrice } from '@/shared/utils/money';
 import { useCartPageVM } from './useCartPageVM';
@@ -9,7 +11,7 @@ export function CartPage() {
   const vm = useCartPageVM();
   const { tDefault } = useAppTranslation();
 
-  if (!vm.cart) {
+  if (vm.loadError || vm.isLoading || !vm.cart) {
     return (
       <div className="flex flex-1 flex-col">
         <StorefrontPageHeader
@@ -19,11 +21,15 @@ export function CartPage() {
           title={tDefault('guest.cart.title', '購物車')}
           onBack={vm.goToMenu}
         />
-        <p className="p-6 text-center text-storefront-text-muted">
-          {vm.isLoading
-            ? tDefault('common.loading', 'Loading…')
-            : tDefault('guest.cart.empty', 'Your cart is empty.')}
-        </p>
+        {vm.loadError ? (
+          <StorefrontErrorView message={vm.loadError} onRetry={vm.retry} />
+        ) : vm.isLoading ? (
+          <StorefrontLoadingView />
+        ) : (
+          <p className="p-6 text-center text-storefront-text-muted">
+            {tDefault('guest.cart.empty', 'Your cart is empty.')}
+          </p>
+        )}
       </div>
     );
   }
