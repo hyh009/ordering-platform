@@ -9,6 +9,7 @@ import { createCategoryListCommands } from '@/features/merchant/menu/categories/
 import { createCategoryListRuntime } from '@/features/merchant/menu/categories/list/runtime';
 import { createProductListRuntime } from '@/features/merchant/menu/products/list/runtime';
 import type { Product, ProductActiveFilter } from '@/models/product';
+import { handleMerchantFailure } from '../merchantFailureFeedback';
 import { createProductListPageCommands } from './productListPage.commands';
 
 const ALL_CATEGORIES = 'all';
@@ -99,6 +100,10 @@ export function useProductListPageVM() {
     void loadProducts();
   }, [loadProducts]);
 
+  const retry = useCallback(() => {
+    void loadProducts();
+  }, [loadProducts]);
+
   useEffect(() => {
     if (!storeId) return;
 
@@ -122,7 +127,14 @@ export function useProductListPageVM() {
     async (product: Product) => {
       if (!storeId) return;
 
-      await commands.toggleSoldOut(storeId, product.id, !product.isSoldOut);
+      const result = await commands.toggleSoldOut(
+        storeId,
+        product.id,
+        !product.isSoldOut,
+      );
+      if (result.status === 'failed') {
+        handleMerchantFailure(result);
+      }
     },
     [commands, storeId],
   );
@@ -137,6 +149,7 @@ export function useProductListPageVM() {
     openCreate,
     openProduct,
     products,
+    retry,
     setCategoryFilter,
     setFilter,
     toggleSoldOut,

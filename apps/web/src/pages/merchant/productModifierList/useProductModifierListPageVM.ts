@@ -43,6 +43,10 @@ export function useProductModifierListPageVM() {
     void loadProductModifiers();
   }, [loadProductModifiers]);
 
+  const retry = useCallback(() => {
+    void loadProductModifiers();
+  }, [loadProductModifiers]);
+
   const openModifier = useCallback(
     (modifier: ProductModifier) => {
       void navigate(PATHS.MERCHANT.MODIFIER_DETAIL_BUILD(modifier.id));
@@ -62,6 +66,7 @@ export function useProductModifierListPageVM() {
     openCreate,
     openModifier,
     productModifiers,
+    retry,
     setFilter,
   };
 }

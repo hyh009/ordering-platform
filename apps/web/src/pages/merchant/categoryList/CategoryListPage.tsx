@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { Field } from '@/shared/components/form/Field';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
@@ -185,28 +186,26 @@ export function CategoryListPage() {
         ) : null}
       </div>
 
-      {vm.error ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error}
-        </p>
-      ) : null}
-
       {vm.reorderError ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {vm.reorderError}
         </p>
       ) : null}
 
-      <DataTable
-        columns={vm.isReorderMode ? reorderColumns : normalColumns}
-        data={vm.categories}
-        isLoading={vm.isLoading}
-        labels={{
-          empty: tDefault('merchant.categories.empty', 'No categories found.'),
-        }}
-        rowKey={(category) => category.id}
-        toolbar={toolbar}
-      />
+      {vm.error && vm.categories.length === 0 ? (
+        <ErrorState message={vm.error} onRetry={vm.retry} />
+      ) : (
+        <DataTable
+          columns={vm.isReorderMode ? reorderColumns : normalColumns}
+          data={vm.categories}
+          isLoading={vm.isLoading}
+          labels={{
+            empty: tDefault('merchant.categories.empty', 'No categories found.'),
+          }}
+          rowKey={(category) => category.id}
+          toolbar={toolbar}
+        />
+      )}
 
       <Modal
         footer={

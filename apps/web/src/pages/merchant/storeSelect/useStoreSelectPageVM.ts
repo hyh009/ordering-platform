@@ -36,6 +36,10 @@ export function useStoreSelectPageVM() {
     void commands.loadStores(organizationId);
   }, [organizationId, commands, navigate]);
 
+  const retry = useCallback(() => {
+    if (organizationId) void commands.loadStores(organizationId);
+  }, [organizationId, commands]);
+
   const selectStore = useCallback(
     (storeId: string) => {
       if (!organizationId) return;
@@ -60,6 +64,7 @@ export function useStoreSelectPageVM() {
     isLoading,
     error,
     activeStoreId,
+    retry,
     selectStore,
   };
 }

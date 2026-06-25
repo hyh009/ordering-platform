@@ -70,6 +70,10 @@ export function useCategoryListPageVM() {
     void loadCategories();
   }, [loadCategories]);
 
+  const retry = useCallback(() => {
+    void loadCategories();
+  }, [loadCategories]);
+
   // Only update filter state; the load effect (keyed on filter via
   // loadCategories) issues the single resulting request. Loading here too would
   // double-fetch.
@@ -227,6 +231,7 @@ export function useCategoryListPageVM() {
     openEditModal,
     openViewModal,
     reorderError,
+    retry,
     viewedCategory: modalMode?.type === 'view' ? modalMode.category : null,
     saveReorder,
     setFilter,

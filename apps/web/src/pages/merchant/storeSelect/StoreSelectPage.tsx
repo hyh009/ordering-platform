@@ -1,3 +1,5 @@
+import { ErrorState } from '@/shared/components/ErrorState';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { useStoreSelectPageVM } from './useStoreSelectPageVM';
 
 export function StoreSelectPage() {
@@ -12,9 +14,11 @@ export function StoreSelectPage() {
         </p>
       )}
 
-      {vm.isLoading && <p className="text-muted-foreground">Loading stores…</p>}
+      {vm.isLoading && <LoadingState label="Loading stores" />}
 
-      {vm.error && <p className="text-destructive">{vm.error}</p>}
+      {!vm.isLoading && vm.error && (
+        <ErrorState message={vm.error} onRetry={vm.retry} />
+      )}
 
       {!vm.isLoading && !vm.error && vm.stores.length === 0 && (
         <p className="text-muted-foreground">

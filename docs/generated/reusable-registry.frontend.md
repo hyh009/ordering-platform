@@ -20,6 +20,12 @@
 - Keywords: table, data table, list, sort, search, pagination, rows per page
 - File: apps/web/src/shared/components/DataTable/DataTable.tsx:104
 
+## ErrorState
+
+- Description: Full-page dashboard error state with message and an optional retry action.
+- Keywords: error, retry, failure, load error, page state
+- File: apps/web/src/shared/components/ErrorState.tsx:17
+
 ## Field
 
 - Description: Accessible form field wrapper with label, description, and error wiring.
@@ -76,9 +82,9 @@
 
 ## LoadingState
 
-- Description: Render a simple centered loading state.
+- Description: Render a simple centered loading state with a spinner.
 - Keywords: loading, pending, status, spinner, page state
-- File: apps/web/src/shared/components/LoadingState.tsx:10
+- File: apps/web/src/shared/components/LoadingState.tsx:12
 
 ## LocalizedStringView
 

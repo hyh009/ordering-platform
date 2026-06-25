@@ -8,6 +8,7 @@ import type { ProductModifier } from '@/models/productModifier';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
 import { LocalizedStringView } from '@/shared/components/LocalizedStringView';
 import { Field } from '@/shared/components/form/Field';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { useProductModifierDetailPageVM } from './useProductModifierDetailPageVM';
@@ -219,9 +220,7 @@ export function ProductModifierDetailPage() {
       </div>
 
       {vm.error && !vm.modifier ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error}
-        </p>
+        <ErrorState message={vm.error} onRetry={vm.retry} />
       ) : null}
 
       {vm.modifier && !vm.isEditMode ? (

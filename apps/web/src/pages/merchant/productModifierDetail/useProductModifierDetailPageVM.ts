@@ -48,6 +48,10 @@ export function useProductModifierDetailPageVM() {
     void load();
   }, [load]);
 
+  const retry = useCallback(() => {
+    void load();
+  }, [load]);
+
   const enterEditMode = useCallback(() => {
     if (modifier) form.reset(valuesFromProductModifier(modifier));
     setIsEditMode(true);
@@ -103,6 +107,7 @@ export function useProductModifierDetailPageVM() {
     locale,
     modifier,
     pageTitle,
+    retry,
     saveModifier,
   };
 }

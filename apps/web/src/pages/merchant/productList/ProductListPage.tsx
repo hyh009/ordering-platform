@@ -7,6 +7,7 @@ import { ProductCategoryBadges } from '@/features/merchant/menu/products/compone
 import { ProductStatusBadge } from '@/features/merchant/menu/products/components/ProductStatusBadge';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { useProductListPageVM } from './useProductListPageVM';
@@ -162,35 +163,33 @@ export function ProductListPage() {
         ) : null}
       </div>
 
-      {vm.error ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error}
-        </p>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={vm.products}
-        isLoading={vm.isLoading}
-        labels={{
-          empty: tDefault('merchant.products.empty', 'No products found.'),
-        }}
-        rowKey={(product) => product.id}
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect
-              onChange={vm.setCategoryFilter}
-              options={categoryOptions}
-              value={vm.categoryFilter}
-            />
-            <FilterSelect
-              onChange={vm.setFilter}
-              options={visibilityOptions}
-              value={vm.filter}
-            />
-          </div>
-        }
-      />
+      {vm.error && vm.products.length === 0 ? (
+        <ErrorState message={vm.error} onRetry={vm.retry} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={vm.products}
+          isLoading={vm.isLoading}
+          labels={{
+            empty: tDefault('merchant.products.empty', 'No products found.'),
+          }}
+          rowKey={(product) => product.id}
+          toolbar={
+            <div className="flex flex-wrap items-center gap-2">
+              <FilterSelect
+                onChange={vm.setCategoryFilter}
+                options={categoryOptions}
+                value={vm.categoryFilter}
+              />
+              <FilterSelect
+                onChange={vm.setFilter}
+                options={visibilityOptions}
+                value={vm.filter}
+              />
+            </div>
+          }
+        />
+      )}
     </section>
   );
 }

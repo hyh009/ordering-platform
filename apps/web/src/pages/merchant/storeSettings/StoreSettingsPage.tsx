@@ -4,6 +4,8 @@ import { StoreDetailsView } from '@/features/components/store/StoreDetailsView';
 import { StoreImageUploadField } from '@/features/components/store/StoreImageUploadField';
 import { StoreForm } from '@/features/components/store/storeForm/StoreForm';
 import { StoreStatusBadge } from '@/features/components/store/StoreStatusBadge';
+import { ErrorState } from '@/shared/components/ErrorState';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { useStoreSettingsPageVM } from './useStoreSettingsPageVM';
 
@@ -39,15 +41,13 @@ export function StoreSettingsPage() {
       </div>
 
       {vm.isLoading && (
-        <p className="text-muted-foreground">
-          {tDefault('common.loading', 'Loading…')}
-        </p>
+        <LoadingState
+          label={tDefault('merchant.storeSettings.loading', 'Loading store')}
+        />
       )}
 
       {!vm.isLoading && vm.loadError && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.loadError}
-        </p>
+        <ErrorState message={vm.loadError} onRetry={vm.retry} />
       )}
 
       {!vm.isLoading && vm.store && (

@@ -82,6 +82,10 @@ export function useProductDetailPageVM() {
     void load();
   }, [load]);
 
+  const retry = useCallback(() => {
+    void load();
+  }, [load]);
+
   const save = useCallback(
     async (status: ProductStatus) => {
       if (!storeId || !productId) return;
@@ -138,7 +142,14 @@ export function useProductDetailPageVM() {
   const toggleSoldOut = useCallback(async () => {
     if (!storeId || !productId || !product) return;
 
-    await commands.toggleSoldOut(storeId, productId, !product.isSoldOut);
+    const result = await commands.toggleSoldOut(
+      storeId,
+      productId,
+      !product.isSoldOut,
+    );
+    if (result.status === 'failed') {
+      handleMerchantFailure(result);
+    }
   }, [commands, product, productId, storeId]);
 
   const goBack = useCallback(() => {
@@ -164,6 +175,7 @@ export function useProductDetailPageVM() {
     pageTitle,
     product,
     publish,
+    retry,
     formOptions,
     saveCurrent,
     saveDraft,

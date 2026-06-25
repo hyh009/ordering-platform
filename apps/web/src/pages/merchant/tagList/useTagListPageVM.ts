@@ -62,6 +62,10 @@ export function useTagListPageVM() {
     void loadTags();
   }, [loadTags]);
 
+  const retry = useCallback(() => {
+    void loadTags();
+  }, [loadTags]);
+
   // Only update filter state; the load effect (keyed on filter via loadTags)
   // issues the single resulting request. Loading here too would double-fetch.
   const setFilter = useCallback(function setFilter(
@@ -161,6 +165,7 @@ export function useTagListPageVM() {
     openCreateModal,
     openEditModal,
     openViewModal,
+    retry,
     setFilter,
     submitTag,
     tags,

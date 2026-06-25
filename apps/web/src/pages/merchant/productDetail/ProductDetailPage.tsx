@@ -7,6 +7,7 @@ import { ProductMetadataFields } from '@/features/merchant/menu/products/compone
 import { ProductModifiersField } from '@/features/merchant/menu/products/components/productForm/ProductModifiersField';
 import { ProductPreviewCard } from '@/features/merchant/menu/products/components/productForm/ProductPreviewCard';
 import { ProductSummaryCard } from '@/features/merchant/menu/products/components/productForm/ProductSummaryCard';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { useProductDetailPageVM } from './useProductDetailPageVM';
@@ -31,10 +32,13 @@ export function ProductDetailPage() {
           <ChevronLeft className="size-4" />
           {tDefault('merchant.products.title', 'Menu')}
         </Button>
-        <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error ??
-            tDefault('merchant.errors.notFound', 'This record was not found.')}
-        </p>
+        <ErrorState
+          message={
+            vm.error ??
+            tDefault('merchant.errors.notFound', 'This record was not found.')
+          }
+          onRetry={vm.error ? vm.retry : undefined}
+        />
       </section>
     );
   }

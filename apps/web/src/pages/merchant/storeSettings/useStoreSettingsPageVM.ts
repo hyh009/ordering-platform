@@ -59,6 +59,10 @@ export function useStoreSettingsPageVM() {
     void commands.loadStore(storeId);
   }, [storeId, commands]);
 
+  const retry = useCallback(() => {
+    if (storeId) void commands.loadStore(storeId);
+  }, [storeId, commands]);
+
   useEffect(() => {
     if (savedValues) resetForm(savedValues);
   }, [savedValues, resetForm]);
@@ -193,6 +197,7 @@ export function useStoreSettingsPageVM() {
     isStatusUpdating,
     loadError,
     removeImage,
+    retry,
     setImage,
     startEdit,
     store,

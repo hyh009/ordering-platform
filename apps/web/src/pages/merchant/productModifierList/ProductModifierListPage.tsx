@@ -6,6 +6,7 @@ import type {
 import { getLocalizedText } from '@/models/metadata';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { useProductModifierListPageVM } from './useProductModifierListPageVM';
@@ -129,31 +130,29 @@ export function ProductModifierListPage() {
         ) : null}
       </div>
 
-      {vm.error ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error}
-        </p>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={vm.productModifiers}
-        isLoading={vm.isLoading}
-        labels={{
-          empty: tDefault(
-            'merchant.productModifiers.empty',
-            'No modifiers found.',
-          ),
-        }}
-        rowKey={(modifier) => modifier.id}
-        toolbar={
-          <FilterSelect
-            onChange={vm.setFilter}
-            options={visibilityOptions}
-            value={vm.filter}
-          />
-        }
-      />
+      {vm.error && vm.productModifiers.length === 0 ? (
+        <ErrorState message={vm.error} onRetry={vm.retry} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={vm.productModifiers}
+          isLoading={vm.isLoading}
+          labels={{
+            empty: tDefault(
+              'merchant.productModifiers.empty',
+              'No modifiers found.',
+            ),
+          }}
+          rowKey={(modifier) => modifier.id}
+          toolbar={
+            <FilterSelect
+              onChange={vm.setFilter}
+              options={visibilityOptions}
+              value={vm.filter}
+            />
+          }
+        />
+      )}
     </section>
   );
 }
