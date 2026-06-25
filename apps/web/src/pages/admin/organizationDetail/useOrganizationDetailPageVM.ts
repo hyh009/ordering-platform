@@ -54,6 +54,10 @@ export function useOrganizationDetailPageVM(organizationId: string) {
     void commands.loadOwner(organizationId);
   }, [commands, loadOrganization, organizationId]);
 
+  const retry = useCallback(() => {
+    void loadOrganization();
+  }, [loadOrganization]);
+
   const openEditModal = useCallback(() => {
     if (!organization) return;
     form.reset(valuesFromOrganization(organization));
@@ -149,6 +153,7 @@ export function useOrganizationDetailPageVM(organizationId: string) {
     organization,
     owner,
     ownerLoading,
+    retry,
     reviewOrganization,
     stores,
     storesLoading,

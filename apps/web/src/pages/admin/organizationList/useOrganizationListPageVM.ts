@@ -96,6 +96,13 @@ export function useOrganizationListPageVM() {
     sort.sortDirection,
   ]);
 
+  const retry = useCallback(() => {
+    void loadCurrentQueryPage({
+      limit: pagination.limit,
+      offset: pagination.offset,
+    });
+  }, [loadCurrentQueryPage, pagination.limit, pagination.offset]);
+
   const setFilter = useCallback(
     (filter: OrganizationReviewStatusFilter) => {
       actions.filterChanged(filter);
@@ -184,6 +191,7 @@ export function useOrganizationListPageVM() {
     closeCreateModal,
     page,
     pagination,
+    retry,
     reviewStatusFilter,
     setFilter,
     setKeyword,

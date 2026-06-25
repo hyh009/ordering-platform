@@ -43,6 +43,10 @@ export function useStoreListPageVM(organizationId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPage]);
 
+  const retry = useCallback(() => {
+    void loadPage({ limit: pagination.limit, offset: pagination.offset });
+  }, [loadPage, pagination.limit, pagination.offset]);
+
   const goToCreate = useCallback(() => {
     void navigate(PATHS.SUPER_ADMIN.STORE_CREATE_BUILD(organizationId));
   }, [navigate, organizationId]);
@@ -55,6 +59,7 @@ export function useStoreListPageVM(organizationId: string) {
     isLoading,
     page,
     pagination,
+    retry,
     stores,
     totalPages,
   };

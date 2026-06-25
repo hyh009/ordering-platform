@@ -54,6 +54,10 @@ export function useDietaryMarkerListPageVM() {
     void loadDietaryMarkers();
   }, [loadDietaryMarkers]);
 
+  const retry = useCallback(() => {
+    void loadDietaryMarkers();
+  }, [loadDietaryMarkers]);
+
   // Only update filter state; the load effect (keyed on filter via
   // loadDietaryMarkers) issues the single resulting request. Loading here too
   // would double-fetch the same data on every filter change.
@@ -141,6 +145,7 @@ export function useDietaryMarkerListPageVM() {
     modalTitle,
     openCreateModal,
     openEditModal,
+    retry,
     setFilter,
     submitDietaryMarker,
   };

@@ -12,6 +12,7 @@ import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { OrganizationForm } from '@/features/components/organization/organizationForm/OrganizationForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
@@ -263,10 +264,13 @@ export function OrganizationDetailPage() {
     return (
       <section className="admin-page-content">
         <Breadcrumb items={breadcrumbItems} />
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error ||
-            tDefault('admin.organizations.notFound', 'Organization not found.')}
-        </p>
+        <ErrorState
+          message={
+            vm.error ||
+            tDefault('admin.organizations.notFound', 'Organization not found.')
+          }
+          onRetry={vm.error ? vm.retry : undefined}
+        />
       </section>
     );
   }

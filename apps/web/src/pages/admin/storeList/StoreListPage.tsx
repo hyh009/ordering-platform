@@ -5,6 +5,7 @@ import { PATHS } from '@/app/routing/paths';
 import type { StoreListItem as StoreModel } from '@/models/store';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Button } from '@/shared/components/ui/button';
 import { StoreStatusBadge } from '@/features/components/store/StoreStatusBadge';
@@ -133,28 +134,26 @@ export function StoreListPage() {
         </Button>
       </div>
 
-      {vm.error ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-          {vm.error}
-        </p>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={vm.stores}
-        isLoading={vm.isLoading}
-        labels={{ empty: tDefault('admin.stores.empty', 'No stores yet.') }}
-        limit={vm.pagination.limit}
-        limitOptions={[10, 20, 50]}
-        onLimitChange={(limit) => void vm.changeLimit(limit)}
-        pagination={{
-          type: 'offset',
-          page: vm.page,
-          totalPages: vm.totalPages,
-          onPageChange: (page) => void vm.goToPage(page),
-        }}
-        rowKey={(store) => store.id}
-      />
+      {vm.error && vm.stores.length === 0 ? (
+        <ErrorState message={vm.error} onRetry={vm.retry} />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={vm.stores}
+          isLoading={vm.isLoading}
+          labels={{ empty: tDefault('admin.stores.empty', 'No stores yet.') }}
+          limit={vm.pagination.limit}
+          limitOptions={[10, 20, 50]}
+          onLimitChange={(limit) => void vm.changeLimit(limit)}
+          pagination={{
+            type: 'offset',
+            page: vm.page,
+            totalPages: vm.totalPages,
+            onPageChange: (page) => void vm.goToPage(page),
+          }}
+          rowKey={(store) => store.id}
+        />
+      )}
     </section>
   );
 }

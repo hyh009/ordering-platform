@@ -5,6 +5,7 @@ import { PATHS } from '@/app/routing/paths';
 import { AddMemberForm } from '@/features/admin/organization/membership/components/addMemberForm/AddMemberForm';
 import { Breadcrumb } from '@/shared/components/Breadcrumb';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { Field } from '@/shared/components/form/Field';
 import { OptionsSelect } from '@/shared/components/form/OptionsSelect';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -197,31 +198,29 @@ export function OrganizationMembershipsPage() {
           </Button>
         </div>
 
-        {vm.error ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-            {vm.error}
-          </p>
-        ) : null}
-
         {/* Membership table */}
-        <DataTable
-          columns={columns}
-          data={vm.memberships}
-          isLoading={vm.isLoading}
-          labels={{
-            empty: tDefault('admin.memberships.empty', 'No members yet.'),
-          }}
-          limit={vm.pagination.limit}
-          limitOptions={ROWS_PER_PAGE_OPTIONS}
-          onLimitChange={(limit) => void vm.changeLimit(limit)}
-          pagination={{
-            type: 'offset',
-            page: vm.page,
-            totalPages: vm.totalPages,
-            onPageChange: (page) => void vm.goToPage(page),
-          }}
-          rowKey={(membership) => membership.id}
-        />
+        {vm.error && vm.memberships.length === 0 ? (
+          <ErrorState message={vm.error} onRetry={vm.retry} />
+        ) : (
+          <DataTable
+            columns={columns}
+            data={vm.memberships}
+            isLoading={vm.isLoading}
+            labels={{
+              empty: tDefault('admin.memberships.empty', 'No members yet.'),
+            }}
+            limit={vm.pagination.limit}
+            limitOptions={ROWS_PER_PAGE_OPTIONS}
+            onLimitChange={(limit) => void vm.changeLimit(limit)}
+            pagination={{
+              type: 'offset',
+              page: vm.page,
+              totalPages: vm.totalPages,
+              onPageChange: (page) => void vm.goToPage(page),
+            }}
+            rowKey={(membership) => membership.id}
+          />
+        )}
       </section>
 
       {/* Add member modal */}

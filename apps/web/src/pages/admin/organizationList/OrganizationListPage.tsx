@@ -14,6 +14,7 @@ import {
 } from '@/models/organization';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { FilterSelect } from '@/shared/components/form/FilterSelect';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { Modal } from '@/shared/components/Modal';
 import { Button } from '@/shared/components/ui/button';
@@ -142,55 +143,53 @@ export function OrganizationListPage() {
           </Button>
         </div>
 
-        {vm.error ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-            {vm.error}
-          </p>
-        ) : null}
-
-        <DataTable
-          columns={columns}
-          data={vm.organizations}
-          isLoading={vm.isLoading}
-          labels={{
-            search: tDefault(
-              'admin.organizations.searchPlaceholder',
-              'Search organizations',
-            ),
-            empty: tDefault(
-              'admin.organizations.empty',
-              'No organizations have been created yet.',
-            ),
-          }}
-          limit={vm.pagination.limit}
-          limitOptions={[10, 20, 50]}
-          onLimitChange={(limit) => void vm.changeLimit(limit)}
-          onSearchChange={vm.setKeyword}
-          onSortChange={vm.setSort}
-          pagination={{
-            type: 'offset',
-            page: vm.page,
-            totalPages: vm.totalPages,
-            onPageChange: (page) => void vm.goToPage(page),
-          }}
-          rowKey={(organization) => organization.id}
-          search={vm.keyword}
-          sort={{ key: vm.sort.sortBy, direction: vm.sort.sortDirection }}
-          toolbar={
-            <>
-              <FilterSelect
-                onChange={vm.setStatusFilter}
-                options={statusOptions}
-                value={vm.statusFilter}
-              />
-              <FilterSelect
-                onChange={vm.setFilter}
-                options={reviewStatusOptions}
-                value={vm.reviewStatusFilter}
-              />
-            </>
-          }
-        />
+        {vm.error && vm.organizations.length === 0 ? (
+          <ErrorState message={vm.error} onRetry={vm.retry} />
+        ) : (
+          <DataTable
+            columns={columns}
+            data={vm.organizations}
+            isLoading={vm.isLoading}
+            labels={{
+              search: tDefault(
+                'admin.organizations.searchPlaceholder',
+                'Search organizations',
+              ),
+              empty: tDefault(
+                'admin.organizations.empty',
+                'No organizations have been created yet.',
+              ),
+            }}
+            limit={vm.pagination.limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(limit) => void vm.changeLimit(limit)}
+            onSearchChange={vm.setKeyword}
+            onSortChange={vm.setSort}
+            pagination={{
+              type: 'offset',
+              page: vm.page,
+              totalPages: vm.totalPages,
+              onPageChange: (page) => void vm.goToPage(page),
+            }}
+            rowKey={(organization) => organization.id}
+            search={vm.keyword}
+            sort={{ key: vm.sort.sortBy, direction: vm.sort.sortDirection }}
+            toolbar={
+              <>
+                <FilterSelect
+                  onChange={vm.setStatusFilter}
+                  options={statusOptions}
+                  value={vm.statusFilter}
+                />
+                <FilterSelect
+                  onChange={vm.setFilter}
+                  options={reviewStatusOptions}
+                  value={vm.reviewStatusFilter}
+                />
+              </>
+            }
+          />
+        )}
       </section>
 
       <Modal

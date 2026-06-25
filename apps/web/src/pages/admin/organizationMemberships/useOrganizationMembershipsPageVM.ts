@@ -65,6 +65,10 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadPage]);
 
+  const retry = useCallback(() => {
+    void loadPage({ limit: pagination.limit, offset: pagination.offset });
+  }, [loadPage, pagination.limit, pagination.offset]);
+
   // Add member modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -224,6 +228,7 @@ export function useOrganizationMembershipsPageVM(organizationId: string) {
     openEditModal,
     page,
     pagination,
+    retry,
     setEditRole,
     submitAdd,
     submitDisable,

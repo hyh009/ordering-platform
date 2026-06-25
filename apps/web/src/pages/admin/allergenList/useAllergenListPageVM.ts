@@ -52,6 +52,10 @@ export function useAllergenListPageVM() {
     void loadAllergens();
   }, [loadAllergens]);
 
+  const retry = useCallback(() => {
+    void loadAllergens();
+  }, [loadAllergens]);
+
   // Only update filter state; the load effect (keyed on filter via
   // loadAllergens) issues the single resulting request. Loading here too would
   // double-fetch the same data on every filter change.
@@ -139,6 +143,7 @@ export function useAllergenListPageVM() {
     modalTitle,
     openCreateModal,
     openEditModal,
+    retry,
     setFilter,
     submitAllergen,
   };
