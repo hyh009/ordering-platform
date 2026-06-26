@@ -18,5 +18,11 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
     addItem(storeId: string, request: AddCartItemRequest) {
       return runtime.commands.cart.addItem(storeId, request);
     },
+
+    // Open the live session stream so a teammate's cart changes keep the menu's
+    // cart bar and banner current without a refresh. Returns a disposer.
+    connectSessionStream(storeId: string) {
+      return runtime.commands.sessionStream.connectSessionStream(storeId);
+    },
   };
 }
