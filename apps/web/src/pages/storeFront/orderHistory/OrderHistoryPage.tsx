@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
+import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { getOrderStatusLabel } from '@/models/order';
 import { getStoreOrderTypeLabel } from '@/models/store';
 import { Button } from '@/shared/components/ui/button';
@@ -30,9 +31,7 @@ export function OrderHistoryPage() {
       </header>
 
       {vm.isLoading ? (
-        <p className="mt-8 text-center text-storefront-text-muted">
-          {tDefault('common.loading', 'Loading…')}
-        </p>
+        <StorefrontLoadingView />
       ) : vm.error ? (
         <p className="mt-8 text-center text-storefront-text-muted">
           {vm.error}

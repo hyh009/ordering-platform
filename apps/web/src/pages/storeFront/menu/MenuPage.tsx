@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
 import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
+import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { PublicModifier } from '@/models/storeFrontMenu';
@@ -42,9 +43,19 @@ export function MenuPage() {
 
   if (vm.isLoading && vm.categoryGroups.length === 0) {
     return (
-      <p className="p-6 text-center text-muted-foreground">
-        {tDefault('common.loading', 'Loading…')}
-      </p>
+      <div className="flex flex-1 flex-col">
+        <StorefrontPageHeader
+          sticky
+          left={StorefrontPageHeader.Left.Back}
+          middle={StorefrontPageHeader.Middle.Title}
+          right={StorefrontPageHeader.Right.Logo}
+          title={vm.store ? localize(vm.store.displayName) : undefined}
+          onBack={vm.goBack}
+          logoUrl={vm.store?.logoUrl}
+          logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
+        />
+        <StorefrontLoadingView />
+      </div>
     );
   }
 

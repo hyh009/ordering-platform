@@ -1,6 +1,7 @@
 import QRCode from 'react-qr-code';
 import joinCodeIllustration from '@/assets/storeFront/img_join_code.png';
 import { useAppTranslation } from '@/app/i18n';
+import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import { Button } from '@/shared/components/ui/button';
@@ -75,9 +76,7 @@ export function InvitePage() {
           </section>
         </div>
       ) : (
-        <p className="p-6 text-center text-muted-foreground">
-          {tDefault('common.loading', 'Loading…')}
-        </p>
+        <StorefrontLoadingView />
       )}
     </div>
   );
