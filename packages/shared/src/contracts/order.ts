@@ -1,5 +1,5 @@
 import type { ApiSuccessResponse } from './api.js';
-import type { CartItemDto, OrderingParticipantDto } from './cart.js';
+import type { CartDto, CartItemDto, OrderingParticipantDto } from './cart.js';
 import type { StoreCheckoutMode, StoreOrderType } from './store.js';
 
 export const orderStatuses = [
@@ -101,10 +101,11 @@ export type GetGuestOrderSuccessResponse = ApiSuccessResponse<{
 // ── SSE stream events ──────────────────────────────────────────────────────────
 
 /**
- * Event payload pushed on the guest order SSE stream. The full order DTO is
- * pushed on every change; clients replace their local copy.
+ * Event payload pushed on the guest session SSE stream. One connection spans a
+ * guest session's whole lifecycle: `cart_updated` while a draft cart is live,
+ * `order_updated` once a round has been submitted. Both carry the full DTO, so
+ * clients replace their local copy and a reconnect resyncs from the snapshot.
  */
-export type OrderStreamEventDto = {
-  type: 'order_updated';
-  order: OrderDto;
-};
+export type GuestStreamEventDto =
+  | { type: 'cart_updated'; cart: CartDto }
+  | { type: 'order_updated'; order: OrderDto };

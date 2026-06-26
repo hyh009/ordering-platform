@@ -1,5 +1,5 @@
 import { requireGuest } from '@src/middlewares/guestAuth';
-import { getGuestSession } from '@src/services/guestOrdering.service';
+import { getGuestSession } from '@src/services/guestOrdering';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';
 import { Router } from 'express';

@@ -14,10 +14,6 @@ import { orderRepository } from '@src/repositories/order/repository';
 import { productRepository } from '@src/repositories/product/repository';
 import { productModifierRepository } from '@src/repositories/productModifier/repository';
 import { signGuestToken } from '@src/services/guestToken.service';
-import {
-  emitOrderUpdated,
-  subscribeToOrderUpdates,
-} from '@src/services/orderEvents.service';
 import { getActivePublicStore } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import {
@@ -36,7 +32,6 @@ import type {
   GuestSessionDto,
   JoinCartRequest,
   OrderDto,
-  OrderStreamEventDto,
   SubmitCartRequest,
   UpdateCartItemRequest,
 } from '@repo/shared';
@@ -532,15 +527,21 @@ export async function createCart(
   };
 }
 
-export type JoinCartResult = {
+/**
+ * Join result enriched with the session's stable `cartId`. The orchestrator
+ * uses `cartId` as the SSE channel key (and to decide which events to emit),
+ * then strips it before returning the public {@link JoinCartResult} to routes.
+ */
+export type JoinCartData = {
   session: GuestSessionDto;
   guestToken: string;
+  cartId: string;
 };
 
 export async function joinCart(
   storeId: string,
   request: JoinCartRequest,
-): Promise<JoinCartResult> {
+): Promise<JoinCartData> {
   const requestTime = new Date();
   const cart = await cartRepository.findByJoinCode(request.joinCode);
   if (!cart || cart.storeId !== storeId || cart.status === 'abandoned') {
@@ -575,8 +576,6 @@ export async function joinCart(
         participants: [...fresh.participants, participant],
       }));
 
-      emitOrderUpdated(order);
-
       return {
         session: {
           participantId: participant.id,
@@ -585,6 +584,7 @@ export async function joinCart(
           order: toOrderDto(order),
         },
         guestToken,
+        cartId: cart.id,
       };
     }
 
@@ -595,6 +595,7 @@ export async function joinCart(
         cart: toCartDto(updated),
       },
       guestToken,
+      cartId: cart.id,
     };
   }
 
@@ -610,8 +611,6 @@ export async function joinCart(
     return { participants: [...fresh.participants, participant] };
   });
 
-  emitOrderUpdated(order);
-
   return {
     session: {
       participantId: participant.id,
@@ -619,6 +618,7 @@ export async function joinCart(
       order: toOrderDto(order),
     },
     guestToken,
+    cartId: cart.id,
   };
 }
 
@@ -820,7 +820,7 @@ export async function removeCartItem(
   return toCartDto(updated);
 }
 
-export async function leaveCart(claims: GuestTokenClaims): Promise<string> {
+export async function leaveCart(claims: GuestTokenClaims): Promise<CartDto> {
   const requestTime = new Date();
   const updated = await updateCartWithRetry(claims.cartId, (cart) => {
     assertActiveCartMembership(cart, claims.participantId, requestTime);
@@ -840,7 +840,7 @@ export async function leaveCart(claims: GuestTokenClaims): Promise<string> {
     };
   });
 
-  return updated.id;
+  return toCartDto(updated);
 }
 
 // ── Submit / order ─────────────────────────────────────────────────────────────
@@ -877,6 +877,16 @@ function unionParticipants(
 }
 
 /**
+ * Result of a submitted round: the resulting order and the cart after the round
+ * was flushed. `cart` is null when nothing changed on the cart (a double-submit
+ * no-op), so the orchestrator only emits a `cart_updated` when there is one.
+ */
+export type SubmitCartData = {
+  order: OrderDto;
+  cart: CartDto | null;
+};
+
+/**
  * Submit the current cart round: flush the cart's items into a new order batch
  * (creating the order on round 1, appending on round N), then clear only the
  * flushed items from the cart so concurrent adds survive into the next round.
@@ -890,12 +900,12 @@ function unionParticipants(
 export async function submitCart(
   claims: GuestTokenClaims,
   request: SubmitCartRequest,
-): Promise<OrderDto> {
+): Promise<SubmitCartData> {
   const requestTime = new Date();
   const session = await mongoose.connection.startSession();
 
   try {
-    const order = await session.withTransaction(async () => {
+    const result = await session.withTransaction(async () => {
       const cart = await cartRepository.findById(claims.cartId, session);
       if (!cart) {
         throw new NotFoundError('Cart not found', ERROR_CODES.CART_NOT_FOUND);
@@ -930,7 +940,7 @@ export async function submitCart(
       // empty submit. Never create a second batch from an empty round.
       if (flushed.length === 0) {
         if (existingOrder) {
-          return existingOrder;
+          return { order: existingOrder, cart: null };
         }
         throw new BadRequestError('Cart is empty', ERROR_CODES.BAD_REQUEST);
       }
@@ -1067,12 +1077,13 @@ export async function submitCart(
         throw new ConflictError('Cart no longer exists', ERROR_CODES.CONFLICT);
       }
 
-      return resultOrder;
+      return { order: resultOrder, cart: cartUpdated };
     });
 
-    // emitOrderUpdated must run after the transaction commits.
-    emitOrderUpdated(order);
-    return toOrderDto(order);
+    return {
+      order: toOrderDto(result.order),
+      cart: result.cart === null ? null : toCartDto(result.cart),
+    };
   } finally {
     await session.endSession();
   }
@@ -1100,25 +1111,4 @@ export async function getGuestOrder(
 ): Promise<OrderDto> {
   const order = await loadOrderForClaims(claims);
   return toOrderDto(order);
-}
-
-export type GuestOrderSubscription = {
-  initial: OrderStreamEventDto;
-  unsubscribe: () => void;
-};
-
-export async function subscribeToGuestOrder(
-  claims: GuestTokenClaims,
-  listener: (event: OrderStreamEventDto) => void,
-): Promise<GuestOrderSubscription> {
-  const order = await loadOrderForClaims(claims);
-
-  const unsubscribe = subscribeToOrderUpdates(order.id, (entity) => {
-    listener({ type: 'order_updated', order: toOrderDto(entity) });
-  });
-
-  return {
-    initial: { type: 'order_updated', order: toOrderDto(order) },
-    unsubscribe,
-  };
 }

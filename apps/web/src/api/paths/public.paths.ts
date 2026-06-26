@@ -37,7 +37,7 @@ export const publicPaths = {
   storeFrontOrder() {
     return '/v1/public/guest/order';
   },
-  storeFrontOrderStream() {
-    return '/v1/public/guest/order/stream';
+  storeFrontGuestStream() {
+    return '/v1/public/guest/stream';
   },
 } as const;

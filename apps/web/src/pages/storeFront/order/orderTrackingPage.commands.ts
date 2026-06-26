@@ -107,5 +107,11 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
     leave(storeId: string) {
       runtime.commands.session.clearSession(storeId);
     },
+
+    // Open the live session stream so order changes (new batches, status moves)
+    // land in the order store without a refresh. Returns a disposer.
+    connectSessionStream(storeId: string) {
+      return runtime.commands.sessionStream.connectSessionStream(storeId);
+    },
   };
 }

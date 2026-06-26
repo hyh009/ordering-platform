@@ -1,4 +1,4 @@
-import { requireStoreOpen } from '@src/services/guestOrdering.service';
+import { requireStoreOpen } from '@src/services/guestOrdering';
 import { getActivePublicStore } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';

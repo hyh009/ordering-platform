@@ -1,19 +1,19 @@
 import type {
   GetGuestOrderSuccessResponse,
+  GuestStreamEventDto,
   OrderBatchDto,
   OrderBatchStatus,
   OrderDto,
   OrderPaymentStatus,
   OrderStatus,
-  OrderStreamEventDto,
 } from '@repo/shared';
 
 export type {
   GetGuestOrderSuccessResponse,
+  GuestStreamEventDto,
   OrderBatchStatus,
   OrderPaymentStatus,
   OrderStatus,
-  OrderStreamEventDto,
 };
 
 export type Order = OrderDto;

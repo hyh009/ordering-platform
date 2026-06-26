@@ -11,6 +11,7 @@ import { createStoreFrontOrderStore } from './order/store';
 import { createStoreFrontOrderHistoryActions } from './orderHistory/actions';
 import { createStoreFrontOrderHistoryCommands } from './orderHistory/commands';
 import { createStoreFrontOrderHistoryStore } from './orderHistory/store';
+import { createStoreFrontSessionStreamCommands } from './sessionStream/commands';
 import { createStoreFrontSessionWorkflowCommands } from './sessionWorkflow/commands';
 import { createStorefrontActions } from './storefront/actions';
 import { createStorefrontCommands } from './storefront/commands';
@@ -61,6 +62,12 @@ export function createStoreFrontRuntime() {
     actions: orderHistoryActions,
     tenantStore,
   });
+  const sessionStreamCommands = createStoreFrontSessionStreamCommands({
+    cartActions,
+    orderActions,
+    sessionStore,
+    tenantStore,
+  });
 
   return {
     stores: {
@@ -92,6 +99,7 @@ export function createStoreFrontRuntime() {
         tenantStore,
       }),
       orderHistory: orderHistoryCommands,
+      sessionStream: sessionStreamCommands,
     },
   };
 }

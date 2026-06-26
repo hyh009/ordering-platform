@@ -93,7 +93,8 @@ export function useOrderTrackingPageVM() {
     [commands, navigate, orderId, storeId],
   );
 
-  // Phase 1 loads the order once on entry; live SSE updates land in Phase 3.
+  // Loads the order snapshot on entry; the session stream below then keeps it
+  // live (new batches, status moves) without a refresh.
   useEffect(() => {
     let active = true;
     async function init() {
@@ -108,6 +109,20 @@ export function useOrderTrackingPageVM() {
   const retry = useCallback(() => {
     void runInitialize(() => true);
   }, [runInitialize]);
+
+  // Stream live order updates for the participant's own session. History orders
+  // are scoped to a different (stored) token, not the active session, so they
+  // stay a static snapshot and never open a stream. Keyed on the token so a new
+  // session reconnects; cleanup disconnects on unmount or token change.
+  const guestToken = useStore(
+    runtime.stores.session,
+    (state) => state.guestToken,
+  );
+  useEffect(() => {
+    if (access !== 'active' || !isActiveStore || !guestToken) return;
+    const disconnect = commands.connectSessionStream(storeId);
+    return disconnect;
+  }, [access, commands, storeId, isActiveStore, guestToken]);
 
   const refresh = useCallback(async () => {
     const result = await commands.refresh(storeId, orderId, access);

@@ -109,6 +109,21 @@ export function useCartPageVM() {
     void runInitialize(() => true);
   }, [runInitialize]);
 
+  // Once a guest session is live for this store, stream cart/order updates from
+  // other devices into the shared stores: a teammate's add lands in the draft
+  // cart, and another device's submit surfaces the order banner — all without a
+  // refresh. Keyed on the token so a new session reconnects; cleanup disconnects
+  // on unmount or token change.
+  const guestToken = useStore(
+    runtime.stores.session,
+    (state) => state.guestToken,
+  );
+  useEffect(() => {
+    if (!isActiveStore || !guestToken) return;
+    const disconnect = commands.connectSessionStream(storeId);
+    return disconnect;
+  }, [commands, storeId, isActiveStore, guestToken]);
+
   const participantGroups = useMemo((): Array<{
     participant: OrderingParticipant;
     items: CartItem[];

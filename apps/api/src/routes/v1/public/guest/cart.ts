@@ -14,7 +14,7 @@ import {
   removeCartItem,
   submitCart,
   updateCartItem,
-} from '@src/services/guestOrdering.service';
+} from '@src/services/guestOrdering';
 import { Router } from 'express';
 
 import { guestClaims } from './session';
