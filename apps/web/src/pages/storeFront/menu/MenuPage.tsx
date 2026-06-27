@@ -42,7 +42,10 @@ export function MenuPage() {
     pinnedHeight,
   } = useScrollSpyTabs(tabs.map((tab) => tab.key));
 
-  if (vm.categoryGroups.length === 0 && (vm.error || vm.isLoading)) {
+  // A load error blocks the page outright (store+menu failed, or — when open —
+  // the session resume failed, since ordering needs a session). Otherwise the
+  // first load shows the spinner until the menu arrives.
+  if (vm.error || (vm.isLoading && vm.categoryGroups.length === 0)) {
     return (
       <div className="flex flex-1 flex-col">
         <StorefrontPageHeader

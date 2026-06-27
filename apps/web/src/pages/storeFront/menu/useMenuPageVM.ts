@@ -13,7 +13,10 @@ import {
 } from '@/models/storeFrontMenu';
 import type { PublicProduct } from '@/models/storeFrontMenu';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
-import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
+import {
+  handleStoreFrontFailure,
+  handleStorefrontLoadFailure,
+} from '../storeFrontFailureFeedback';
 import { createMenuPageCommands } from './menuPage.commands';
 
 export function useMenuPageVM() {
@@ -46,10 +49,17 @@ export function useMenuPageVM() {
   const order = isActiveStore ? rawOrder : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const isMutating = isActiveStore && rawIsMutating;
-  // The store+menu load failure (network/server). Captured by loadStoreWithMenu
-  // into the storefront store; the view renders the page error when there is no
-  // menu to show. Session-resume failures stay a toast (see runInitialize).
-  const error = isActiveStore ? rawError : null;
+
+  // A session-resume failure that blocks the page (store open, no usable
+  // session). It lives here, not in a feature store, because it is not part of
+  // any store's load triple: the storefront store's {store+menu, isLoading,
+  // error} is owned by loadStoreWithMenu, and resumeSession is store-agnostic.
+  // So this is page-flow state the VM owns. See runInitialize.
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // The page-blocking load error: the store+menu failure (owned by the
+  // storefront store) takes precedence, else the open-no-session failure above.
+  const error = isActiveStore ? (rawError ?? sessionError) : null;
 
   const [openProductState, setOpenProductState] = useState<{
     product: PublicProduct;
@@ -89,10 +99,27 @@ export function useMenuPageVM() {
         // flight. The isActiveStore guard already nulls this page's data and
         // another navigation is taking over, so there is nothing to do.
         if (session.reason === 'session-store-mismatch') return;
-        // A transient failure (network/server). The stored session is left
-        // intact, so surface the error and stay put — the guest can keep
-        // browsing and retry (reload, and later SSE will resync).
-        handleStoreFrontFailure(session);
+        // The store+menu loaded in parallel; read its fresh open state to
+        // decide. When the store is OPEN the menu is only useful with a session
+        // (every add needs a scoped token), so a resume failure blocks the page
+        // with a retryable load error reported into the storefront store. When
+        // CLOSED, ordering is impossible anyway, so leave the menu browseable.
+        // A genuinely lost session never lands here — it returns 'ended' and
+        // redirects above; 'failed' is only an unreachable server.
+        const loadedStore = runtime.stores.storefront.getState().store;
+        const open = loadedStore
+          ? isStoreOpenNow(loadedStore.businessHours)
+          : false;
+        if (open) {
+          handleStorefrontLoadFailure(session, {
+            onRedirect: () => {
+              void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+                replace: true,
+              });
+            },
+            onPageError: setSessionError,
+          });
+        }
         return;
       }
 
@@ -104,7 +131,7 @@ export function useMenuPageVM() {
         });
       }
     },
-    [commands, navigate, storeId],
+    [commands, navigate, runtime, storeId],
   );
 
   useEffect(() => {
@@ -116,6 +143,9 @@ export function useMenuPageVM() {
   }, [runInitialize]);
 
   const retry = useCallback(() => {
+    // Clear the prior page-blocking session error so the retry shows progress
+    // instead of flashing the stale error while the re-fetch is in flight.
+    setSessionError(null);
     void runInitialize();
   }, [runInitialize]);
 
