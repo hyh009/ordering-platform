@@ -98,6 +98,15 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
     clearSession,
     restoreSession,
 
+    // Resolve the current session in one getSession snapshot and hydrate the
+    // stores it spans (cart + order). As shared cross-feature infra, this is
+    // deliberately store-agnostic about failures: it hydrates resource stores on
+    // success, but on failure it only RETURNS the typed failure — it never
+    // writes any page's load-error store. A page whose primary resource lives in
+    // the session (cart, invite) must route that failure into its own store via
+    // its `reportLoadFailure`; pages with a dedicated load command (menu/order/
+    // history) get their store error written by that command instead. See
+    // pages/storeFront/storeFrontFailureFeedback.ts (handleStorefrontLoadFailure).
     async resumeSession(expectedStoreId) {
       const restored = await restoreSession(expectedStoreId);
       if (restored.status === 'none') return { status: 'none' };
@@ -163,6 +172,8 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
           return { status: 'ended' };
         }
 
+        // Transient failure (network/server): return it for the caller to place
+        // into its own load-error store; we intentionally do not write one here.
         return failure;
       }
     },
