@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
 import {
   handleStoreFrontFailure,
+  handleStorefrontLoadFailure,
   resolveStorefrontLoadFailure,
   STOREFRONT_FAILURE_PRESENTATION,
 } from './storeFrontFailureFeedback';
@@ -122,5 +123,57 @@ describe('resolveStorefrontLoadFailure', () => {
     expect(
       resolveStorefrontLoadFailure(failure({ reason: 'session-store-mismatch' })),
     ).toBe('silent');
+  });
+});
+
+describe('handleStorefrontLoadFailure', () => {
+  it('routes a page directive to onPageError with the message', () => {
+    const onRedirect = vi.fn();
+    const onPageError = vi.fn();
+
+    handleStorefrontLoadFailure(
+      failure({ reason: 'network', message: 'Offline' }),
+      { onRedirect, onPageError },
+    );
+
+    expect(onPageError).toHaveBeenCalledWith('Offline');
+    expect(onRedirect).not.toHaveBeenCalled();
+  });
+
+  it('routes a redirect directive to onRedirect, not onPageError', () => {
+    const onRedirect = vi.fn();
+    const onPageError = vi.fn();
+
+    handleStorefrontLoadFailure(failure({ reason: 'session-expired' }), {
+      onRedirect,
+      onPageError,
+    });
+
+    expect(onRedirect).toHaveBeenCalledTimes(1);
+    expect(onPageError).not.toHaveBeenCalled();
+  });
+
+  it('does nothing for a silent directive', () => {
+    const onRedirect = vi.fn();
+    const onPageError = vi.fn();
+
+    handleStorefrontLoadFailure(
+      failure({ reason: 'session-store-mismatch', message: '' }),
+      { onRedirect, onPageError },
+    );
+
+    expect(onRedirect).not.toHaveBeenCalled();
+    expect(onPageError).not.toHaveBeenCalled();
+  });
+
+  it('omitting onPageError on a page directive is a no-op (store already wrote it)', () => {
+    const onRedirect = vi.fn();
+
+    expect(() =>
+      handleStorefrontLoadFailure(failure({ reason: 'network' }), {
+        onRedirect,
+      }),
+    ).not.toThrow();
+    expect(onRedirect).not.toHaveBeenCalled();
   });
 });
