@@ -33,6 +33,7 @@ export function useMenuPageVM() {
     runtime.stores.storefront,
     (state) => state.isLoading,
   );
+  const rawError = useStore(runtime.stores.storefront, (state) => state.error);
   const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
   const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const rawIsMutating = useStore(
@@ -45,6 +46,10 @@ export function useMenuPageVM() {
   const order = isActiveStore ? rawOrder : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const isMutating = isActiveStore && rawIsMutating;
+  // The store+menu load failure (network/server). Captured by loadStoreWithMenu
+  // into the storefront store; the view renders the page error when there is no
+  // menu to show. Session-resume failures stay a toast (see runInitialize).
+  const error = isActiveStore ? rawError : null;
 
   const [openProductState, setOpenProductState] = useState<{
     product: PublicProduct;
@@ -61,13 +66,16 @@ export function useMenuPageVM() {
     [storeId],
   );
 
-  useEffect(() => {
-    if (!storeId) return;
+  // Loads the store+menu and resumes the session, then reacts to the session
+  // outcome (navigate or toast). The store+menu load failure is left in the
+  // storefront store's `error` for the view to render; `isActive` guards
+  // navigation against an unmount mid-flight.
+  const runInitialize = useCallback(
+    async (isActive: () => boolean = () => true) => {
+      if (!storeId) return;
 
-    let active = true;
-    async function init() {
       const { session } = await commands.initialize(storeId);
-      if (!active) return;
+      if (!isActive()) return;
 
       if (session.status === 'none' || session.status === 'ended') {
         void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
@@ -95,12 +103,21 @@ export function useMenuPageVM() {
           replace: true,
         });
       }
-    }
-    void init();
+    },
+    [commands, navigate, storeId],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void runInitialize(() => active);
     return () => {
       active = false;
     };
-  }, [commands, navigate, storeId]);
+  }, [runInitialize]);
+
+  const retry = useCallback(() => {
+    void runInitialize();
+  }, [runInitialize]);
 
   // Stream live cart/order updates while browsing the menu so the cart bar and
   // add-on banner reflect a teammate's changes without a refresh. Keyed on the
@@ -204,6 +221,8 @@ export function useMenuPageVM() {
   return {
     store,
     isLoading,
+    error,
+    retry,
     isOpen,
     categoryGroups,
     categoryTabs,

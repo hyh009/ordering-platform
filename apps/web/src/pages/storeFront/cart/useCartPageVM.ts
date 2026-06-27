@@ -9,7 +9,7 @@ import type { CartItem, OrderingParticipant } from '@/models/cart';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import {
   handleStoreFrontFailure,
-  resolveStorefrontLoadFailure,
+  handleStorefrontLoadFailure,
 } from '../storeFrontFailureFeedback';
 import { createCartPageCommands } from './cartPage.commands';
 
@@ -70,18 +70,17 @@ export function useCartPageVM() {
         // Surface a primary-load failure with the load axis, not a toast over a
         // blank page. The command already maps expired/ended sessions to
         // 'none', so a redirect here just needs to send the user to landing.
-        switch (resolveStorefrontLoadFailure(result)) {
-          case 'silent':
-            return;
-          case 'redirect':
+        // resumeSession is store-agnostic, so the 'page' case reports into the
+        // cart store explicitly.
+        handleStorefrontLoadFailure(result, {
+          onRedirect: () => {
             void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
               replace: true,
             });
-            return;
-          case 'page':
-            commands.reportLoadFailure(result.message);
-            return;
-        }
+          },
+          onPageError: commands.reportLoadFailure,
+        });
+        return;
       }
       // The cart is terminal but an order exists: send the participant to order
       // tracking instead of dead-ending on the cart.

@@ -7,6 +7,7 @@ import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useCopyToClipboard } from '@/shared/hooks/useCopyToClipboard';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { handleStorefrontLoadFailure } from '../storeFrontFailureFeedback';
 import { createInvitePageCommands } from './invitePage.commands';
 
 export function useInvitePageVM() {
@@ -22,8 +23,12 @@ export function useInvitePageVM() {
   const isActiveStore = activeStoreId === storeId;
   const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
   const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
+  const rawError = useStore(runtime.stores.cart, (state) => state.error);
   const store = isActiveStore ? rawStore : null;
   const joinCode = isActiveStore ? (rawCart?.joinCode ?? null) : null;
+  // The invite's primary resource is the cart's Join Code, so its load error
+  // lives in the cart store (same source as the cart page).
+  const error = isActiveStore ? rawError : null;
 
   // The invite link intentionally carries only the public Join Code route. No
   // guest token, cart, order, participant, name, avatar, or table number.
@@ -38,14 +43,33 @@ export function useInvitePageVM() {
   const { copied: codeCopied, copy: copyCode } = useCopyToClipboard();
   const { copied: linkCopied, copy: copyLink } = useCopyToClipboard();
 
-  useEffect(() => {
-    if (!storeId) return;
-
-    let active = true;
-    async function init() {
+  // The page's primary load, shared by the entry effect and retry. A transient
+  // failure surfaces on the load axis (page error + retry) and stays put; only a
+  // genuine "unavailable" alerts and bounces to landing. `isActive` lets the
+  // effect ignore a stale resolution after unmount.
+  const runInitialize = useCallback(
+    async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId);
-      if (!active || result.status === 'invitable') return;
+      if (!isActive()) return;
 
+      if (result.status === 'invitable') return;
+
+      if (result.status === 'failed') {
+        // resumeSession is store-agnostic, so the 'page' case reports into the
+        // cart store (the invite's primary resource) explicitly.
+        handleStorefrontLoadFailure(result, {
+          onRedirect: () => {
+            void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+              replace: true,
+            });
+          },
+          onPageError: commands.reportLoadFailure,
+        });
+        return;
+      }
+
+      // status === 'unavailable': the order genuinely can no longer be shared
+      // (ended, checked out, takeaway). Tell the host and send them back.
       await feedbackCommands.alert({
         title: tDefault('guest.invite.unavailableTitle', 'Invite unavailable'),
         message: tDefault(
@@ -54,17 +78,28 @@ export function useInvitePageVM() {
         ),
         confirmLabel: tDefault('common.ok', 'OK'),
       });
-      if (active) {
+      if (isActive()) {
         void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
           replace: true,
         });
       }
-    }
-    void init();
+    },
+    [commands, navigate, storeId],
+  );
+
+  useEffect(() => {
+    if (!storeId) return;
+
+    let active = true;
+    void runInitialize(() => active);
     return () => {
       active = false;
     };
-  }, [commands, navigate, storeId]);
+  }, [storeId, runInitialize]);
+
+  const retry = useCallback(() => {
+    void runInitialize(() => true);
+  }, [runInitialize]);
 
   const copyJoinCode = useCallback(() => {
     void copyCode(joinCode ?? '');
@@ -84,6 +119,8 @@ export function useInvitePageVM() {
     inviteLink,
     codeCopied,
     linkCopied,
+    error,
+    retry,
     copyJoinCode,
     copyInviteLink,
     goToMenu,

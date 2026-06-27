@@ -57,6 +57,29 @@ export function resolveStorefrontLoadFailure(
   return STOREFRONT_FAILURE_PRESENTATION[failure.reason].load;
 }
 
+// The load-axis sibling of `handleStoreFrontFailure`: applies a primary-load
+// failure to its directive so pages stop hand-rolling the same silent/redirect/
+// page switch. The module still never navigates or touches stores — the page
+// injects those as callbacks. `onPageError` is optional: a page whose load
+// command already writes the error into its own store (e.g. order history) omits
+// it; a page fed by the store-agnostic `resumeSession` (cart, invite) passes its
+// `reportLoadFailure` so the error lands in the right store.
+export function handleStorefrontLoadFailure(
+  failure: StoreFrontCommandFailure,
+  deps: { onRedirect: () => void; onPageError?: (message: string) => void },
+): void {
+  switch (resolveStorefrontLoadFailure(failure)) {
+    case 'silent':
+      return;
+    case 'redirect':
+      deps.onRedirect();
+      return;
+    case 'page':
+      deps.onPageError?.(failure.message);
+      return;
+  }
+}
+
 // One entry point for every storefront failure, form or not. Field errors (or an
 // `inline` reason) go on the form; everything else is global feedback. Pages
 // that need a reason-specific reaction (navigate, clear session) handle that

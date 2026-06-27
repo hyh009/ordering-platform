@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
 import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
+import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
@@ -41,7 +42,7 @@ export function MenuPage() {
     pinnedHeight,
   } = useScrollSpyTabs(tabs.map((tab) => tab.key));
 
-  if (vm.isLoading && vm.categoryGroups.length === 0) {
+  if (vm.categoryGroups.length === 0 && (vm.error || vm.isLoading)) {
     return (
       <div className="flex flex-1 flex-col">
         <StorefrontPageHeader
@@ -54,7 +55,11 @@ export function MenuPage() {
           logoUrl={vm.store?.logoUrl}
           logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
         />
-        <StorefrontLoadingView />
+        {vm.error ? (
+          <StorefrontErrorView message={vm.error} onRetry={vm.retry} />
+        ) : (
+          <StorefrontLoadingView />
+        )}
       </div>
     );
   }

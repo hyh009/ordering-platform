@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
+import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { getOrderStatusLabel } from '@/models/order';
 import { getStoreOrderTypeLabel } from '@/models/store';
@@ -33,9 +34,7 @@ export function OrderHistoryPage() {
       {vm.isLoading ? (
         <StorefrontLoadingView />
       ) : vm.error ? (
-        <p className="mt-8 text-center text-storefront-text-muted">
-          {vm.error}
-        </p>
+        <StorefrontErrorView message={vm.error} onRetry={vm.retry} />
       ) : vm.items.length === 0 ? (
         <p className="mt-8 text-center text-storefront-text-muted">
           {tDefault('guest.orderHistory.empty', 'No recent orders found.')}

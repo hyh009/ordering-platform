@@ -1,6 +1,7 @@
 import QRCode from 'react-qr-code';
 import joinCodeIllustration from '@/assets/storeFront/img_join_code.png';
 import { useAppTranslation } from '@/app/i18n';
+import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
@@ -25,7 +26,9 @@ export function InvitePage() {
         logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
       />
 
-      {vm.joinCode ? (
+      {vm.error ? (
+        <StorefrontErrorView message={vm.error} onRetry={vm.retry} />
+      ) : vm.joinCode ? (
         <div className="flex flex-1 flex-col gap-6 p-5">
           <section className="flex flex-col items-center gap-5 rounded-3xl border border-storefront-border bg-white p-6 text-center shadow-sm">
             <img

@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
-import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
+import { handleStorefrontLoadFailure } from '../storeFrontFailureFeedback';
 import { createOrderHistoryPageCommands } from './orderHistoryPage.commands';
 
 export function useOrderHistoryPageVM() {
@@ -42,19 +42,40 @@ export function useOrderHistoryPageVM() {
   const isLoading = !isCurrentStore || rawIsLoading;
   const error = isCurrentStore ? rawError : null;
 
+  // The page's primary load, shared by the entry effect and retry. On a total
+  // failure loadOrders has already written the error into the store, so the
+  // 'page' case just lets the view render it; a redirect sends the user away.
+  // `isActive` lets the effect ignore a stale resolution after unmount.
+  const runInitialize = useCallback(
+    async (isActive: () => boolean) => {
+      const result = await commands.initialize(storeId);
+      if (!isActive()) return;
+      if (result.status === 'failed') {
+        // loadOrders already wrote the error into the order-history store, so the
+        // 'page' case needs no onPageError; only a redirect is acted on here.
+        handleStorefrontLoadFailure(result, {
+          onRedirect: () => {
+            void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+              replace: true,
+            });
+          },
+        });
+      }
+    },
+    [commands, navigate, storeId],
+  );
+
   useEffect(() => {
     let active = true;
-    async function init() {
-      const result = await commands.initialize(storeId);
-      if (active && result.status === 'failed') {
-        handleStoreFrontFailure(result);
-      }
-    }
-    void init();
+    void runInitialize(() => active);
     return () => {
       active = false;
     };
-  }, [commands, storeId]);
+  }, [runInitialize]);
+
+  const retry = useCallback(() => {
+    void runInitialize(() => true);
+  }, [runInitialize]);
 
   const goBack = useCallback(() => {
     void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId));
@@ -67,5 +88,5 @@ export function useOrderHistoryPageVM() {
     [navigate, storeId],
   );
 
-  return { items, isLoading, error, goBack, openOrder };
+  return { items, isLoading, error, retry, goBack, openOrder };
 }
