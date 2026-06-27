@@ -58,12 +58,6 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
       return runtime.commands.cart.submitCart(storeId, request);
     },
 
-    // Open the live session stream so cart/order changes from other devices
-    // land in the shared stores without a refresh. Returns a disposer.
-    connectSessionStream(storeId: string) {
-      return runtime.commands.sessionStream.connectSessionStream(storeId);
-    },
-
     // Record a primary-load failure into the cart store so the page renders its
     // load-error view (the VM owns the page-vs-redirect-vs-silent decision).
     reportLoadFailure(message: string) {

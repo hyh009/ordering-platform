@@ -149,19 +149,6 @@ export function useMenuPageVM() {
     void runInitialize();
   }, [runInitialize]);
 
-  // Stream live cart/order updates while browsing the menu so the cart bar and
-  // add-on banner reflect a teammate's changes without a refresh. Keyed on the
-  // token so a new session reconnects; cleanup disconnects on unmount.
-  const guestToken = useStore(
-    runtime.stores.session,
-    (state) => state.guestToken,
-  );
-  useEffect(() => {
-    if (!isActiveStore || !guestToken) return;
-    const disconnect = commands.connectSessionStream(storeId);
-    return disconnect;
-  }, [commands, storeId, isActiveStore, guestToken]);
-
   const categoryGroups = useMemo(
     () => (menu ? groupMenuByCategory(menu) : []),
     [menu],

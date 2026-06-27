@@ -6,6 +6,7 @@ import { StorefrontLanguageDialog } from '@/features/storeFront/components/Store
 import { useStorefrontLanguagePrompt } from '@/features/storeFront/components/useStorefrontLanguagePrompt';
 import { ModalHost } from '@/shared/components/feedback/ModalHost';
 import { ToastHost } from '@/shared/components/feedback/ToastHost';
+import { useStoreFrontLayoutVM } from './useStoreFrontLayoutVM';
 
 /**
  * Mobile-first shell for the public storefront ordering flow. Unlike the merchant
@@ -16,6 +17,9 @@ export function StoreFrontLayout() {
   const feedback = useFeedbackVM();
   const { tDefault } = useAppTranslation();
   const lang = useStorefrontLanguagePrompt();
+  // Connect the guest SSE stream once at the layout level so it persists across
+  // menu/cart/order navigation without reconnect churn.
+  useStoreFrontLayoutVM();
 
   return (
     <div className="h-dvh w-full overflow-y-auto bg-storefront-bg">
