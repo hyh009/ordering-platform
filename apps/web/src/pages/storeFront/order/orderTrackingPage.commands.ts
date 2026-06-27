@@ -1,4 +1,18 @@
+import type { Order } from '@/models/order';
 import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
+import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
+
+export type OrderTrackingInitResult =
+  | { status: 'loaded'; access: 'active' }
+  | { status: 'loaded'; access: 'history'; order: Order }
+  | (StoreFrontCommandFailure & { access: 'active' | 'history' })
+  | { status: 'none'; target: 'history' | 'landing' };
+
+export type OrderTrackingRefreshResult =
+  | { status: 'loaded'; order: Order }
+  | { status: 'loaded' }
+  | StoreFrontCommandFailure
+  | { status: 'none' };
 
 export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
   async function loadActiveOrder(storeId: string, orderId: string) {
@@ -15,7 +29,10 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
   }
 
   return {
-    async initialize(storeId: string, orderId: string) {
+    async initialize(
+      storeId: string,
+      orderId: string,
+    ): Promise<OrderTrackingInitResult> {
       await runtime.commands.tenant.activateStore(storeId);
       const historyEntry = runtime.commands.orderHistory.findEntry(
         storeId,
@@ -23,7 +40,33 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
       );
       let invalidHistoryEntry = false;
       if (historyEntry) {
-        const historyResult = await runtime.commands.order.loadOrderWithToken(
+        const activeSession = runtime.stores.session.getState();
+        const isOwnActiveSession =
+          activeSession.storeId === storeId &&
+          activeSession.guestToken === historyEntry.guestToken;
+
+        if (isOwnActiveSession) {
+          // The history entry's token matches the live session — treat as active.
+          const result = await loadActiveOrder(storeId, orderId);
+          if (result.status === 'loaded') {
+            const loadedOrder = runtime.stores.order.getState().order;
+            const guestToken = runtime.stores.session.getState().guestToken;
+            if (loadedOrder?.id === orderId && guestToken) {
+              runtime.commands.orderHistory.recordOrder(
+                storeId,
+                loadedOrder,
+                guestToken,
+              );
+            }
+          }
+          if (result.status === 'none') {
+            return { status: 'none', target: 'landing' };
+          }
+          return { ...result, access: 'active' };
+        }
+
+        // Foreign/past order: fetch without writing the shared store.
+        const historyResult = await runtime.commands.order.fetchOrderWithToken(
           storeId,
           orderId,
           historyEntry.guestToken,
@@ -33,16 +76,18 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
           (historyResult.reason === 'session-expired' ||
             historyResult.reason === 'not-found')
         ) {
+          // Expired or gone: remove and fall through to active-session path.
           runtime.commands.orderHistory.removeEntry(storeId, orderId);
           invalidHistoryEntry = true;
+        } else if (historyResult.status === 'loaded') {
+          return {
+            status: 'loaded',
+            access: 'history',
+            order: historyResult.order,
+          };
         } else {
-          const activeSession = runtime.stores.session.getState();
-          const access =
-            activeSession.storeId === storeId &&
-            activeSession.guestToken === historyEntry.guestToken
-              ? ('active' as const)
-              : ('history' as const);
-          return { ...historyResult, access };
+          // Transient failure (network/server): surface it as history failure.
+          return { ...historyResult, access: 'history' };
         }
       }
 
@@ -73,6 +118,9 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
           );
         }
       }
+      if (result.status === 'none') {
+        return { status: 'none', target: 'landing' };
+      }
       return {
         ...result,
         access: 'active' as const,
@@ -83,11 +131,11 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
       storeId: string,
       orderId: string,
       access: 'active' | 'history',
-    ) {
+    ): Promise<OrderTrackingRefreshResult> {
       if (access === 'history') {
         const entry = runtime.commands.orderHistory.findEntry(storeId, orderId);
         if (!entry) return { status: 'none' as const };
-        const result = await runtime.commands.order.loadOrderWithToken(
+        const result = await runtime.commands.order.fetchOrderWithToken(
           storeId,
           orderId,
           entry.guestToken,
@@ -108,10 +156,10 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
       runtime.commands.session.clearSession(storeId);
     },
 
-    // Open the live session stream so order changes (new batches, status moves)
-    // land in the order store without a refresh. Returns a disposer.
-    connectSessionStream(storeId: string) {
-      return runtime.commands.sessionStream.connectSessionStream(storeId);
+    // Record a primary-load failure into the active order store so the page
+    // renders its load-error view (mirrors cart's reportLoadFailure).
+    reportActiveLoadFailure(message: string) {
+      runtime.commands.order.reportLoadFailure(message);
     },
   };
 }

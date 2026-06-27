@@ -1,5 +1,6 @@
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
 import { tDefault } from '@/app/i18n';
+import type { Order } from '@/models/order';
 import { storeFrontOrderService } from '@/services/storeFrontOrder.service';
 import {
   mapStoreFrontApiError,
@@ -9,15 +10,33 @@ import type { StoreFrontOrderActions } from './actions';
 import type { TenantStore } from '../tenant/store';
 
 export type StoreFrontOrderCommands = {
+  /**
+   * Loads the order owned by the active guest session into the shared order
+   * store (SSE then keeps it live). Returns a typed failure WITHOUT writing
+   * the store — the page VM routes failures through
+   * `handleStorefrontLoadFailure` and writes the store itself via
+   * `reportActiveLoadFailure`.
+   */
   loadOrder(
     expectedStoreId: string,
     expectedOrderId: string,
   ): Promise<{ status: 'loaded' } | StoreFrontCommandFailure>;
-  loadOrderWithToken(
+  /**
+   * Fetches an order by its stored guest token WITHOUT writing any store.
+   * Used for history-order viewing (different session's token). Returns the
+   * order on success so the page VM can hold it in page-local state.
+   */
+  fetchOrderWithToken(
     expectedStoreId: string,
     expectedOrderId: string,
     guestToken: string,
-  ): Promise<{ status: 'loaded' } | StoreFrontCommandFailure>;
+  ): Promise<{ status: 'loaded'; order: Order } | StoreFrontCommandFailure>;
+  /**
+   * Records a primary-load failure into the shared order store so the page
+   * can render its load-error view. Used by `reportActiveLoadFailure` in the
+   * page command when the VM's `onPageError` fires for the active path.
+   */
+  reportLoadFailure(message: string): void;
 };
 
 export function createStoreFrontOrderCommands(deps: {
@@ -66,7 +85,7 @@ export function createStoreFrontOrderCommands(deps: {
           };
         }
         if (order.id !== expectedOrderId || order.storeId !== expectedStoreId) {
-          const failure: StoreFrontCommandFailure = {
+          return {
             status: 'failed',
             message: tDefault(
               'guest.errors.orderNotFound',
@@ -74,28 +93,20 @@ export function createStoreFrontOrderCommands(deps: {
             ),
             reason: 'not-found',
           };
-          orderActions.loadFailed(failure.message);
-          return failure;
         }
 
         orderActions.orderUpdated(order);
         return { status: 'loaded' };
       } catch (error) {
-        const failure = mapStoreFrontApiError(error);
-
-        const currentSession = sessionStore.getState();
-        if (
-          currentSession.storeId === expectedStoreId &&
-          currentSession.guestToken === token &&
-          tenantStore.getState().activeStoreId === expectedStoreId
-        ) {
-          orderActions.loadFailed(failure.message);
-        }
-        return failure;
+        return mapStoreFrontApiError(error);
       }
     },
 
-    async loadOrderWithToken(expectedStoreId, expectedOrderId, guestToken) {
+    reportLoadFailure(message: string) {
+      orderActions.loadFailed(message);
+    },
+
+    async fetchOrderWithToken(expectedStoreId, expectedOrderId, guestToken) {
       if (tenantStore.getState().activeStoreId !== expectedStoreId) {
         return {
           status: 'failed',
@@ -104,7 +115,6 @@ export function createStoreFrontOrderCommands(deps: {
         };
       }
 
-      orderActions.loadStarted();
       try {
         const order = await storeFrontOrderService.getOrder(guestToken);
         if (tenantStore.getState().activeStoreId !== expectedStoreId) {
@@ -115,7 +125,7 @@ export function createStoreFrontOrderCommands(deps: {
           };
         }
         if (order.id !== expectedOrderId || order.storeId !== expectedStoreId) {
-          const failure: StoreFrontCommandFailure = {
+          return {
             status: 'failed',
             message: tDefault(
               'guest.errors.orderNotFound',
@@ -123,17 +133,10 @@ export function createStoreFrontOrderCommands(deps: {
             ),
             reason: 'not-found',
           };
-          orderActions.loadFailed(failure.message);
-          return failure;
         }
-        orderActions.orderUpdated(order);
-        return { status: 'loaded' };
+        return { status: 'loaded', order };
       } catch (error) {
-        const failure = mapStoreFrontApiError(error);
-        if (tenantStore.getState().activeStoreId === expectedStoreId) {
-          orderActions.loadFailed(failure.message);
-        }
-        return failure;
+        return mapStoreFrontApiError(error);
       }
     },
   };

@@ -4,9 +4,13 @@ import { useStore } from 'zustand';
 import type { OrderParticipantAmountDto } from '@repo/shared';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
+import type { Order } from '@/models/order';
 import { getParticipantAmount, isOrderFinished } from '@/models/order';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
-import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
+import {
+  handleStoreFrontFailure,
+  handleStorefrontLoadFailure,
+} from '../storeFrontFailureFeedback';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
 
 // React Router records a monotonic `idx` on history state; idx > 0 means the
@@ -15,6 +19,18 @@ function hasInAppHistory(): boolean {
   const state = window.history.state as { idx?: number } | null;
   return typeof state?.idx === 'number' && state.idx > 0;
 }
+
+type HistoryView = {
+  order: Order | null;
+  isLoading: boolean;
+  error: string | null;
+};
+
+const HISTORY_VIEW_LOADING: HistoryView = {
+  order: null,
+  isLoading: true,
+  error: null,
+};
 
 export function useOrderTrackingPageVM() {
   const storeId = useStoreFrontStoreId();
@@ -27,6 +43,12 @@ export function useOrderTrackingPageVM() {
   );
   const [access, setAccess] = useState<'active' | 'history'>('active');
 
+  // History-order view: the whole { order, isLoading, error } triple lives here
+  // in page-local state because a history order is NOT part of the shared order
+  // store's load state machine — it is read-only, page-scoped, and never live.
+  const [historyView, setHistoryView] =
+    useState<HistoryView>(HISTORY_VIEW_LOADING);
+
   const activeStoreId = useStore(
     runtime.stores.tenant,
     (state) => state.activeStoreId,
@@ -34,15 +56,35 @@ export function useOrderTrackingPageVM() {
   const isActiveStore = activeStoreId === storeId;
   const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
   const store = isActiveStore ? rawStore : null;
-  const rawOrder = useStore(runtime.stores.order, (state) => state.order);
-  const rawIsLoading = useStore(
+
+  // Active-path triple comes from the shared order store.
+  const activeStoreOrder = useStore(
+    runtime.stores.order,
+    (state) => state.order,
+  );
+  const activeIsLoading = useStore(
     runtime.stores.order,
     (state) => state.isLoading,
   );
-  const rawError = useStore(runtime.stores.order, (state) => state.error);
-  const order = isActiveStore && rawOrder?.id === orderId ? rawOrder : null;
-  const isLoading = !isActiveStore || rawIsLoading;
-  const error = isActiveStore ? rawError : null;
+  const activeError = useStore(runtime.stores.order, (state) => state.error);
+
+  // Select display source by access mode.
+  const order =
+    access === 'history'
+      ? historyView.order
+      : isActiveStore && activeStoreOrder?.id === orderId
+        ? activeStoreOrder
+        : null;
+  const isLoading =
+    access === 'history'
+      ? historyView.isLoading
+      : !isActiveStore || activeIsLoading;
+  const error =
+    access === 'history'
+      ? historyView.error
+      : isActiveStore
+        ? activeError
+        : null;
 
   // The guest session participant only matches this order when it is the user's
   // own live session; for a history order it would point at an unrelated order.
@@ -71,33 +113,74 @@ export function useOrderTrackingPageVM() {
 
   // The page's primary-resource load. Shared by the entry effect and retry so
   // both run the exact same flow. `isActive` lets the effect ignore a stale
-  // resolution after unmount; retry passes a constant-true gate. On a failure
-  // the order store holds the error, which the page surfaces via `error`.
+  // resolution after unmount; retry passes a constant-true gate.
   const runInitialize = useCallback(
     async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId, orderId);
-      if (isActive() && 'access' in result) {
+
+      if (!isActive()) return;
+
+      // The result always carries `access` on loaded/failed branches.
+      if ('access' in result) {
         setAccess(result.access);
       }
-      if (isActive() && result.status === 'none') {
+
+      if (result.status === 'none') {
         void navigate(
           result.target === 'history'
             ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
             : PATHS.STOREFRONT.LANDING_BUILD(storeId),
-          {
-            replace: true,
-          },
+          { replace: true },
         );
+        return;
+      }
+
+      if (result.status === 'loaded') {
+        if (result.access === 'history') {
+          setHistoryView({
+            order: result.order,
+            isLoading: false,
+            error: null,
+          });
+        }
+        // Active path: shared order store is already written by loadOrder.
+        return;
+      }
+
+      if (result.status === 'failed') {
+        // Align with the refactored rail used by cart/menu: the load axis
+        // decides between page-error, redirect, or silent. onPageError
+        // dispatches by access mode so error lands in the right owner.
+        // `result.access` is always present on a failed init result.
+        const failedAccess = result.access;
+        handleStorefrontLoadFailure(result, {
+          onRedirect: () => {
+            void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+              replace: true,
+            });
+          },
+          onPageError: (message) => {
+            if (failedAccess === 'history') {
+              setHistoryView({ order: null, isLoading: false, error: message });
+            } else {
+              commands.reportActiveLoadFailure(message);
+            }
+          },
+        });
       }
     },
     [commands, navigate, orderId, storeId],
   );
 
-  // Loads the order snapshot on entry; the session stream below then keeps it
-  // live (new batches, status moves) without a refresh.
+  // Loads the order snapshot on entry; the layout-level SSE connection keeps
+  // the active order live (new batches, status moves) without a refresh.
   useEffect(() => {
     let active = true;
     async function init() {
+      // Reset to loading before the async call so a stale result from a prior
+      // orderId doesn't flash while the new one loads. Done inside the async
+      // function to avoid synchronous setState in the effect body.
+      if (active) setHistoryView(HISTORY_VIEW_LOADING);
       await runInitialize(() => active);
     }
     void init();
@@ -107,22 +190,9 @@ export function useOrderTrackingPageVM() {
   }, [runInitialize]);
 
   const retry = useCallback(() => {
+    setHistoryView(HISTORY_VIEW_LOADING);
     void runInitialize(() => true);
   }, [runInitialize]);
-
-  // Stream live order updates for the participant's own session. History orders
-  // are scoped to a different (stored) token, not the active session, so they
-  // stay a static snapshot and never open a stream. Keyed on the token so a new
-  // session reconnects; cleanup disconnects on unmount or token change.
-  const guestToken = useStore(
-    runtime.stores.session,
-    (state) => state.guestToken,
-  );
-  useEffect(() => {
-    if (access !== 'active' || !isActiveStore || !guestToken) return;
-    const disconnect = commands.connectSessionStream(storeId);
-    return disconnect;
-  }, [access, commands, storeId, isActiveStore, guestToken]);
 
   const refresh = useCallback(async () => {
     const result = await commands.refresh(storeId, orderId, access);
@@ -137,6 +207,17 @@ export function useOrderTrackingPageVM() {
     }
     if (result.status === 'failed') {
       handleStoreFrontFailure(result);
+      return;
+    }
+    // History refresh: update the page-local view with the refreshed order.
+    // When access === 'history', the refresh command uses fetchOrderWithToken
+    // which returns `{ status: 'loaded'; order: Order }`.
+    if (
+      result.status === 'loaded' &&
+      access === 'history' &&
+      'order' in result
+    ) {
+      setHistoryView({ order: result.order, isLoading: false, error: null });
     }
   }, [access, commands, navigate, orderId, storeId]);
 

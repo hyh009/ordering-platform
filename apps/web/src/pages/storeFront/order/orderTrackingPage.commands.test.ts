@@ -54,7 +54,10 @@ describe('order tracking page commands', () => {
       'history-order',
     );
 
-    expect(result).toEqual({ status: 'loaded', access: 'history' });
+    // The result now includes the fetched order so the VM can hold it in
+    // page-local historyView state (no shared store write).
+    expect(result).toMatchObject({ status: 'loaded', access: 'history' });
+    expect(result).toHaveProperty('order');
     expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith(
       'history-token',
     );
@@ -124,7 +127,10 @@ describe('order tracking page commands', () => {
       'history-order',
     );
 
-    expect(result).toEqual({ status: 'loaded', access: 'history' });
+    // The result now includes the fetched order (returned to the VM for
+    // page-local historyView, not written to the shared order store).
+    expect(result).toMatchObject({ status: 'loaded', access: 'history' });
+    expect(result).toHaveProperty('order');
     // The history entry retains its original token; the active path never ran,
     // so it was not overwritten with the active session token.
     expect(

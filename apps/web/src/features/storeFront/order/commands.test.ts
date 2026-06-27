@@ -42,11 +42,13 @@ describe('storefront order commands', () => {
       status: 'failed',
       reason: 'not-found',
     });
+    // `loadOrder` does not write `loadFailed` — the page VM does that via
+    // `reportActiveLoadFailure` after routing through `handleStorefrontLoadFailure`.
+    // The store's `order` slot is never polluted with a mismatched order.
     expect(orderStore.getState().order).toBeNull();
-    expect(orderStore.getState().isLoading).toBe(false);
   });
 
-  it('loads a history order with its token without reading or changing session state', async () => {
+  it('fetches a history order with its token without reading or changing session state', async () => {
     const orderStore = createStoreFrontOrderStore();
     const sessionStore = createGuestSessionStore();
     const tenantStore = createTenantStore();
@@ -66,18 +68,29 @@ describe('storefront order commands', () => {
       tenantStore,
     });
 
-    await expect(
-      commands.loadOrderWithToken('store-a', 'history-order', 'history-token'),
-    ).resolves.toEqual({ status: 'loaded' });
-    expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith('history-token');
+    // fetchOrderWithToken returns the order in the result (not via the store)
+    // so the page VM can hold it in page-local state.
+    const result = await commands.fetchOrderWithToken(
+      'store-a',
+      'history-order',
+      'history-token',
+    );
+    expect(result).toMatchObject({ status: 'loaded' });
+    expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith(
+      'history-token',
+    );
+    // Session state is untouched.
     expect(sessionStore.getState()).toEqual({
       guestToken: 'active-token',
       participantId: 'active-participant',
       storeId: 'store-a',
     });
+    // The shared order store is never written — the returned order goes into
+    // page-local historyView in the VM.
+    expect(orderStore.getState().order).toBeNull();
   });
 
-  it('finishes loading when a history token resolves to another order', async () => {
+  it('returns not-found when a history token resolves to another order', async () => {
     const orderStore = createStoreFrontOrderStore();
     const sessionStore = createGuestSessionStore();
     const tenantStore = createTenantStore();
@@ -93,11 +106,12 @@ describe('storefront order commands', () => {
     });
 
     await expect(
-      commands.loadOrderWithToken('store-a', 'route-order', 'history-token'),
+      commands.fetchOrderWithToken('store-a', 'route-order', 'history-token'),
     ).resolves.toMatchObject({
       status: 'failed',
       reason: 'not-found',
     });
+    // fetchOrderWithToken never touches the store, so isLoading stays false.
     expect(orderStore.getState().isLoading).toBe(false);
   });
 });
