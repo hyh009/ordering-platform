@@ -28,6 +28,11 @@ Do not move state into global, feature, or shared stores based on speculation.
      list data.
    - List state belongs in a `list` slice. Full resource state belongs in a
      `detail` slice.
+   - A load error is part of this `{ data, isLoading, error }` state, so it lives
+     in the same store — unless the failure is not part of any store's loadable
+     state, in which case it is page-flow (step 3). See "An error lives with the
+     `{ data, isLoading }` it belongs to" in
+     `docs/agent/frontend/error-feedback.md`.
 
 3. Is this state only for one page's process or UI flow?
    - Put it in the page VM hook or a page-local form hook.

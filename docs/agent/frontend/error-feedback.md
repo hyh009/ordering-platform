@@ -124,8 +124,19 @@ reason before delegating to the helper.
 
 When a page's primary-resource load (its route/init load) fails before any data
 is on screen, surface it with the `load` axis, not a toast — a transient toast
-over a blank page is the wrong affordance. A `resolve<Area>LoadFailure(failure)`
-helper reads the `.load` kind and returns a directive; the VM acts on it.
+over a blank page is the wrong affordance. Two helpers consume the `load` axis:
+
+- `handle<Area>LoadFailure(failure, { onRedirect, onPageError })` — the load-axis
+  sibling of `handle<Area>Failure`. It reads the directive and applies it through
+  page-injected callbacks, so VMs do not hand-roll the `redirect`/`page`/`silent`
+  switch. `onPageError` is optional: omit it when the page's load command already
+  wrote the error into its store; pass it when the page must place the error
+  itself (see "Where error state lives").
+- `resolve<Area>LoadFailure(failure)` — the lower-level form that only returns the
+  directive, for a page that needs custom branching.
+
+Both only return or route the directive; neither navigates nor touches stores —
+the page injects those, because the target and the error's home are page-specific.
 
 The three load kinds:
 
@@ -148,16 +159,15 @@ so SPA state is preserved.
 VM shape (for `result.status === 'failed'` on the init/load path):
 
 ```ts
-switch (resolveStorefrontLoadFailure(result)) {
-  case 'redirect':
-    // navigate to this page's own target; clear session if the reason needs it
-    break;
-  case 'page':
-    setLoadError(result.message); // the page then renders StorefrontErrorView
-    break;
-  case 'silent':
-    break;
-}
+handleStorefrontLoadFailure(result, {
+  // navigate to this page's own target; clear session if the reason needs it
+  onRedirect: () =>
+    navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), { replace: true }),
+  // place the message where this page reads its load error (store or VM — see
+  // "Where error state lives"); omit entirely when the load command already wrote
+  // the store error
+  onPageError: reportLoadFailure,
+});
 ```
 
 The page renders, in its content area: loading → `StorefrontLoadingView`; load
@@ -174,6 +184,34 @@ data:
 - list load failed
 - detail item not found
 - save failed while the form stays open
+
+### An error lives with the `{ data, isLoading }` it belongs to
+
+`{ data, isLoading, error }` is one load state machine, and the load command
+transitions all three together. So a load error belongs wherever its `data` and
+`isLoading` already live:
+
+- If this page renders a feature store's load state as its content, the error
+  belongs in **that store** — the default. The load command writes
+  `data`/`isLoading`/`error` atomically; splitting `error` into the VM would
+  fragment one state machine across two owners.
+- A load failure that is **not part of any store's loadable state** is page-flow:
+  keep it in the **page VM**. This is the escape hatch, not the default — if
+  several errors drift into VMs, the usual cause is a store that should have
+  owned them.
+
+"Belongs to" is relative to what *this* page is doing: the same failure can be a
+store error on one page and page-flow on another. Example: the storefront menu
+loads store+menu into the storefront store, so that load error lives in the
+store; a parallel `resumeSession` failure that only gates the open menu is not
+part of that store's triple (and `resumeSession` is store-agnostic — it writes no
+store), so it lives in the menu VM. Meanwhile the cart page *does* render the
+cart store's load state, so the same `resumeSession` failure is a cart-store
+error there.
+
+This governs only *where the error string is held*. The decision of what to do
+about it (navigate / block / render) is always the VM's, via the `load`
+directive — independent of where the string lives.
 
 Feature-owned store error state may start simple:
 
