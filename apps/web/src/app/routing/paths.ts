@@ -49,6 +49,8 @@ export const PATHS = {
     MENU_DETAIL: '/merchant/menu/:productId',
     MENU_DETAIL_BUILD: (id: string) => `/merchant/menu/${id}`,
     ORDERS: '/merchant/orders',
+    ORDER_DETAIL: '/merchant/orders/:orderId',
+    ORDER_DETAIL_BUILD: (orderId: string) => `/merchant/orders/${orderId}`,
     STORE_SETTINGS: '/merchant/store-settings',
     CATEGORIES: '/merchant/categories',
     MODIFIERS: '/merchant/modifiers',

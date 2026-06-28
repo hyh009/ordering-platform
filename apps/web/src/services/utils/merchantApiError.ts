@@ -26,11 +26,14 @@ export type UploadImageResult =
 
 // Table 1: backend code -> reason. Each code is classified exactly once here.
 // Codes not listed fall back to shared infrastructure classification.
-const MERCHANT_CODE_REASON: Partial<Record<ErrorCode, MerchantCommandFailureReason>> = {
+const MERCHANT_CODE_REASON: Partial<
+  Record<ErrorCode, MerchantCommandFailureReason>
+> = {
   STORE_NOT_FOUND: 'not-found',
   CATEGORY_NOT_FOUND: 'not-found',
   PRODUCT_MODIFIER_NOT_FOUND: 'not-found',
   PRODUCT_NOT_FOUND: 'not-found',
+  ORDER_NOT_FOUND: 'not-found',
   TAG_NOT_FOUND: 'not-found',
   VALIDATION_ERROR: 'invalid',
   INVALID_FIELD_VALUE: 'invalid',
@@ -40,7 +43,10 @@ const MERCHANT_CODE_REASON: Partial<Record<ErrorCode, MerchantCommandFailureReas
 
 // Table 2: reason -> message. Exhaustive over every reason the mapper can
 // produce, so one reason resolves to exactly one message.
-const MERCHANT_MESSAGES: Record<MerchantCommandFailureReason, { key: string; fallback: string }> = {
+const MERCHANT_MESSAGES: Record<
+  MerchantCommandFailureReason,
+  { key: string; fallback: string }
+> = {
   'not-found': {
     key: 'merchant.errors.notFound',
     fallback: 'This record was not found.',
@@ -51,7 +57,8 @@ const MERCHANT_MESSAGES: Record<MerchantCommandFailureReason, { key: string; fal
   },
   conflict: {
     key: 'merchant.errors.conflict',
-    fallback: 'This record already exists or has been changed. Please refresh and try again.',
+    fallback:
+      'This record already exists or has been changed. Please refresh and try again.',
   },
   forbidden: {
     key: 'merchant.errors.forbidden',
@@ -72,7 +79,10 @@ const MERCHANT_MESSAGES: Record<MerchantCommandFailureReason, { key: string; fal
 };
 
 export function mapMerchantApiError(error: unknown): MerchantCommandFailure {
-  let reason: MerchantCommandFailureReason = classifyApiError(error, MERCHANT_CODE_REASON);
+  let reason: MerchantCommandFailureReason = classifyApiError(
+    error,
+    MERCHANT_CODE_REASON,
+  );
 
   // Preserve prior behavior: 403 status without a mapped code is still forbidden.
   if (reason === 'unknown' && isApiError(error) && error.statusCode === 403) {

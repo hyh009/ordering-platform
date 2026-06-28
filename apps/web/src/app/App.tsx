@@ -37,6 +37,7 @@ import { ProductListPage } from '@/pages/merchant/productList/ProductListPage';
 import { ProductModifierCreatePage } from '@/pages/merchant/productModifierCreate/ProductModifierCreatePage';
 import { ProductModifierDetailPage } from '@/pages/merchant/productModifierDetail/ProductModifierDetailPage';
 import { ProductModifierListPage } from '@/pages/merchant/productModifierList/ProductModifierListPage';
+import { OrderDetailPage } from '@/pages/merchant/orderDetail/OrderDetailPage';
 import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
 import { OrgSelectPage } from '@/pages/merchant/orgSelect/OrgSelectPage';
 import { StoreSelectPage } from '@/pages/merchant/storeSelect/StoreSelectPage';
@@ -67,7 +68,10 @@ export function App() {
           {/* Public storefront ordering never initializes management auth. */}
           <Route element={<StoreFrontLayout />}>
             <Route element={<LandingPage />} path={PATHS.STOREFRONT.LANDING} />
-            <Route element={<JoinEntryPage />} path={PATHS.STOREFRONT.JOIN_ENTRY} />
+            <Route
+              element={<JoinEntryPage />}
+              path={PATHS.STOREFRONT.JOIN_ENTRY}
+            />
             <Route element={<JoinPage />} path={PATHS.STOREFRONT.JOIN} />
             <Route element={<MenuPage />} path={PATHS.STOREFRONT.MENU} />
             <Route element={<InvitePage />} path={PATHS.STOREFRONT.INVITE} />
@@ -76,7 +80,10 @@ export function App() {
               element={<OrderHistoryPage />}
               path={PATHS.STOREFRONT.ORDER_HISTORY}
             />
-            <Route element={<OrderTrackingPage />} path={PATHS.STOREFRONT.ORDER} />
+            <Route
+              element={<OrderTrackingPage />}
+              path={PATHS.STOREFRONT.ORDER}
+            />
             <Route element={<NotFoundPage embedded />} path="/s/*" />
           </Route>
 
@@ -177,6 +184,10 @@ export function App() {
                 <Route
                   element={<OrderListPage />}
                   path={PATHS.MERCHANT.ORDERS}
+                />
+                <Route
+                  element={<OrderDetailPage />}
+                  path={PATHS.MERCHANT.ORDER_DETAIL}
                 />
                 <Route
                   element={<StoreSettingsPage />}
