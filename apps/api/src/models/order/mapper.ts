@@ -10,6 +10,7 @@ import type {
   OrderBatchDto,
   OrderDto,
   OrderParticipantAmountDto,
+  OrderSummaryDto,
 } from '@repo/shared';
 
 function toOrderBatchDto(batch: OrderBatchSnapshot): OrderBatchDto {
@@ -117,6 +118,28 @@ export function toParticipantAmountDtos(
       totalAmount: itemSubtotal + serviceFeeAmount,
     };
   });
+}
+
+export function toOrderSummaryDto(order: OrderEntity): OrderSummaryDto {
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const dto: OrderSummaryDto = {
+    id: order.id,
+    displayNumber: order.displayNumber,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    orderType: order.orderType,
+    checkoutMode: order.checkoutMode,
+    businessDate: order.businessDate,
+    participantCount: order.participants.length,
+    itemCount,
+    totalAmount: order.totalAmount,
+    createdAt: order.createdAt.toISOString(),
+  };
+
+  if (order.tableNumber !== undefined) dto.tableNumber = order.tableNumber;
+
+  return dto;
 }
 
 export function toOrderDto(

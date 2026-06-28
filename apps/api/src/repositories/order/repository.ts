@@ -16,6 +16,16 @@ import type {
 } from '@src/models/store/model';
 import type { ClientSession } from 'mongoose';
 
+export type ListOrdersByStoreInput = {
+  storeId: string;
+  status?: OrderStatus | undefined;
+  paymentStatus?: OrderPaymentStatus | undefined;
+  businessDate?: string | undefined;
+  q?: string | undefined;
+  skip: number;
+  limit: number;
+};
+
 export type CreateOrderInput = {
   organizationId: string;
   storeId: string;
@@ -78,6 +88,10 @@ export type OrderRepository = {
     input: UpdateOrderInput,
     options?: UpdateOrderOptions,
   ): Promise<OrderEntity | null>;
+  listByStore(input: ListOrdersByStoreInput): Promise<OrderEntity[]>;
+  countByStore(
+    input: Omit<ListOrdersByStoreInput, 'skip' | 'limit'>,
+  ): Promise<number>;
 };
 
 export const orderRepository: OrderRepository = orderMongoRepository;

@@ -5,6 +5,7 @@ import { OrderMongoModel } from '@src/models/order/mongo';
 import type { OrderEntity } from '@src/models/order/model';
 import type {
   CreateOrderInput,
+  ListOrdersByStoreInput,
   UpdateOrderInput,
   UpdateOrderOptions,
 } from '@src/repositories/order/repository';
@@ -51,6 +52,25 @@ function toOrderEntity(doc: OrderEntity): OrderEntity {
   return Object.fromEntries(
     orderEntityKeys.map((key) => [key, doc[key]]),
   ) as OrderEntity;
+}
+
+function buildOrderStoreFilter(
+  input: Omit<ListOrdersByStoreInput, 'skip' | 'limit'>,
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = { storeId: input.storeId };
+
+  if (input.status !== undefined) filter.status = input.status;
+  if (input.paymentStatus !== undefined)
+    filter.paymentStatus = input.paymentStatus;
+  if (input.businessDate !== undefined)
+    filter.businessDate = input.businessDate;
+
+  if (input.q !== undefined && input.q.trim().length > 0) {
+    const regex = { $regex: input.q.trim(), $options: 'i' };
+    filter.$or = [{ displayNumber: regex }, { tableNumber: regex }];
+  }
+
+  return filter;
 }
 
 export const orderMongoRepository = {
@@ -103,6 +123,25 @@ export const orderMongoRepository = {
       .exec();
 
     return doc ? toOrderEntity(doc) : null;
+  },
+
+  async listByStore(input: ListOrdersByStoreInput) {
+    const filter = buildOrderStoreFilter(input);
+
+    const docs = await OrderMongoModel.find(filter)
+      .sort({ createdAt: -1, id: 1 })
+      .skip(input.skip)
+      .limit(input.limit)
+      .lean<OrderEntity[]>()
+      .exec();
+
+    return docs.map(toOrderEntity);
+  },
+
+  async countByStore(input: Omit<ListOrdersByStoreInput, 'skip' | 'limit'>) {
+    const filter = buildOrderStoreFilter(input);
+
+    return OrderMongoModel.countDocuments(filter).exec();
   },
 
   async update(
