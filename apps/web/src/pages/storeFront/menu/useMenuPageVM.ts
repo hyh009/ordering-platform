@@ -142,6 +142,20 @@ export function useMenuPageVM() {
     };
   }, [runInitialize]);
 
+  // Reactive guard for a live order ending while the guest browses the menu in
+  // add-on mode: an SSE update (merchant completes/cancels/marks paid, or the
+  // ordering window closes) flips `canAddOn` to false. A finished order has no
+  // business on the menu, so mirror the entry-time rule in runInitialize and
+  // send the guest to order tracking. runInitialize covers mount; this covers a
+  // mid-browse change.
+  useEffect(() => {
+    if (isActiveStore && order && !order.canAddOn) {
+      void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, order.id), {
+        replace: true,
+      });
+    }
+  }, [isActiveStore, order, navigate, storeId]);
+
   const retry = useCallback(() => {
     // Clear the prior page-blocking session error so the retry shows progress
     // instead of flashing the stale error while the re-fetch is in flight.
