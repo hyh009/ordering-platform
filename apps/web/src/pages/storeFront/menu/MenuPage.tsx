@@ -107,24 +107,22 @@ export function MenuPage() {
       </header>
 
       <div className="flex-1 bg-storefront-bg pb-20">
-        {vm.orderBanner.mode !== 'none' ? (
-          <div className="p-4 pb-2">
-            {vm.orderBanner.mode === 'adding' ? (
+        {vm.addOnBanner || vm.inviteBanner ? (
+          <div className="flex flex-col gap-2 p-4 pb-2">
+            {vm.addOnBanner ? (
               <MenuStatusBanner
                 mode="adding"
-                orderNumber={vm.orderBanner.orderNumber}
+                orderNumber={vm.addOnBanner.orderNumber}
+                onViewOrder={vm.goToOrder}
               />
-            ) : (
+            ) : null}
+            {vm.inviteBanner ? (
               <MenuStatusBanner
                 mode="invite"
-                joinCode={
-                  vm.orderBanner.mode === 'invite'
-                    ? vm.orderBanner.joinCode
-                    : ''
-                }
+                joinCode={vm.inviteBanner.joinCode}
                 onInvite={vm.goToInvite}
               />
-            )}
+            ) : null}
           </div>
         ) : null}
 

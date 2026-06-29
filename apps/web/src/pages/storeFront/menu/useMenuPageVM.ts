@@ -187,21 +187,23 @@ export function useMenuPageVM() {
     [cart],
   );
 
-  // Header banner: adding on to a live pay-later order takes priority; with no
-  // order, a dine-in group cart (one with a Join Code) shows the invite prompt.
-  const orderBanner = useMemo<
-    | { mode: 'adding'; orderNumber: string }
-    | { mode: 'invite'; joinCode: string }
-    | { mode: 'none' }
-  >(() => {
-    if (order && order.canAddOn) {
-      return { mode: 'adding', orderNumber: order.displayNumber };
-    }
-    if (!order && cart?.joinCode) {
-      return { mode: 'invite', joinCode: cart.joinCode };
-    }
-    return { mode: 'none' };
-  }, [cart, order]);
+  // Header banners shown independently and stacked. A live pay-later add-on
+  // order shows an "adding to #N" indicator. A dine-in group cart (one with a
+  // Join Code) keeps the invite prompt available while the order can still be
+  // added to — so guests can keep inviting friends after the first round is
+  // sent, not only before the first order.
+  const addOnBanner = useMemo<{ orderNumber: string } | null>(
+    () =>
+      order && order.canAddOn ? { orderNumber: order.displayNumber } : null,
+    [order],
+  );
+  const inviteBanner = useMemo<{ joinCode: string } | null>(
+    () =>
+      cart?.joinCode && (!order || order.canAddOn)
+        ? { joinCode: cart.joinCode }
+        : null,
+    [cart, order],
+  );
 
   const addItem = useCallback(
     async (request: AddCartItemRequest) => {
@@ -224,6 +226,10 @@ export function useMenuPageVM() {
   const goToInvite = useCallback(() => {
     void navigate(PATHS.STOREFRONT.INVITE_BUILD(storeId));
   }, [navigate, storeId]);
+
+  const goToOrder = useCallback(() => {
+    if (order) void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, order.id));
+  }, [navigate, order, storeId]);
 
   // Back goes to the order being added to during add-on mode (the menu is then a
   // sub-flow of that order), otherwise to the landing chooser.
@@ -249,12 +255,14 @@ export function useMenuPageVM() {
     cartItemCount,
     cartTotal: cart?.totalAmount ?? 0,
     isMutating,
-    orderBanner,
+    addOnBanner,
+    inviteBanner,
     openProduct,
     setOpenProduct,
     addItem,
     goToCart,
     goToInvite,
+    goToOrder,
     goBack,
   };
 }

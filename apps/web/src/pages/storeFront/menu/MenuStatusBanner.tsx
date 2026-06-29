@@ -3,7 +3,7 @@ import joinCodeImg from '@/assets/storeFront/img_join_code.png';
 import { Button } from '@/shared/components/ui/button';
 
 type MenuStatusBannerProps =
-  | { mode: 'adding'; orderNumber: string }
+  | { mode: 'adding'; orderNumber: string; onViewOrder: () => void }
   | { mode: 'invite'; joinCode: string; onInvite: () => void };
 
 /**
@@ -16,7 +16,11 @@ export function MenuStatusBanner(props: MenuStatusBannerProps) {
 
   if (props.mode === 'adding') {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-storefront-primary/40 bg-storefront-primary/15 px-4 py-3">
+      <button
+        type="button"
+        onClick={props.onViewOrder}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-storefront-primary/40 bg-storefront-primary/15 px-4 py-3 text-left transition-colors hover:bg-storefront-primary/25"
+      >
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-storefront-text">
             {tDefault('guest.menu.addingToOrder', 'Adding to your order')}
@@ -25,10 +29,15 @@ export function MenuStatusBanner(props: MenuStatusBannerProps) {
             {tDefault('guest.menu.payLaterBadge', 'Pay Later')}
           </span>
         </div>
-        <span className="font-mono text-lg font-bold text-storefront-text">
-          #{props.orderNumber}
-        </span>
-      </div>
+        <div className="flex flex-col items-end">
+          <span className="font-mono text-lg font-bold text-storefront-text">
+            #{props.orderNumber}
+          </span>
+          <span className="text-xs font-medium text-storefront-primary">
+            {tDefault('guest.menu.viewOrder', 'View order')} →
+          </span>
+        </div>
+      </button>
     );
   }
 
