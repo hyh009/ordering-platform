@@ -24,7 +24,9 @@ export function useInvitePageVM() {
   const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
   const rawCart = useStore(runtime.stores.cart, (state) => state.cart);
   const rawError = useStore(runtime.stores.cart, (state) => state.error);
+  const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const store = isActiveStore ? rawStore : null;
+  const order = isActiveStore ? rawOrder : null;
   const joinCode = isActiveStore ? (rawCart?.joinCode ?? null) : null;
   // The invite's primary resource is the cart's Join Code, so its load error
   // lives in the cart store (same source as the cart page).
@@ -53,6 +55,18 @@ export function useInvitePageVM() {
       if (!isActive()) return;
 
       if (result.status === 'invitable') return;
+
+      if (result.status === 'closed') {
+        // The placed order can no longer be added to; order tracking is the
+        // useful destination (the reactive guard below covers a mid-view close).
+        const closedOrder = runtime.stores.order.getState().order;
+        if (closedOrder) {
+          void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, closedOrder.id), {
+            replace: true,
+          });
+        }
+        return;
+      }
 
       if (result.status === 'failed') {
         // resumeSession is store-agnostic, so the 'page' case reports into the
@@ -84,7 +98,7 @@ export function useInvitePageVM() {
         });
       }
     },
-    [commands, navigate, storeId],
+    [commands, navigate, runtime, storeId],
   );
 
   useEffect(() => {
@@ -96,6 +110,18 @@ export function useInvitePageVM() {
       active = false;
     };
   }, [storeId, runInitialize]);
+
+  // A live order can close while the host sits on the invite page (SSE: payment,
+  // completion, cancellation, or the ordering deadline). Mirror the entry rule
+  // and send them to order tracking. runInitialize covers entry; this covers a
+  // mid-view change.
+  useEffect(() => {
+    if (order && !order.canAddOn) {
+      void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, order.id), {
+        replace: true,
+      });
+    }
+  }, [order, navigate, storeId]);
 
   const retry = useCallback(() => {
     void runInitialize(() => true);

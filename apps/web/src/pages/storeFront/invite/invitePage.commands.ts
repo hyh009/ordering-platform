@@ -1,12 +1,18 @@
+import { tDefault } from '@/app/i18n';
 import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
 
 export type InviteInitResult =
-  /** An active cart still carries a usable Join Code; the invite can be shared. */
+  /** The group session is open and a Join Code is available; share it. */
   | { status: 'invitable' }
-  /** No shareable Join Code: ended, checked out, takeaway, or no session. */
+  /** Pre-order with no group cart (takeaway / no session): redirect to landing. */
   | { status: 'unavailable' }
-  /** A transient load failure (network/server); the VM surfaces it and stays put. */
+  /** A placed order can no longer be added to: redirect to order tracking. */
+  | { status: 'closed' }
+  /**
+   * A transient load failure, OR an addable order whose reusable cart did not
+   * hydrate its Join Code: surface a retryable page error and stay put.
+   */
   | StoreFrontCommandFailure;
 
 export function createInvitePageCommands(runtime: StoreFrontRuntime) {
@@ -30,13 +36,38 @@ export function createInvitePageCommands(runtime: StoreFrontRuntime) {
         if (session.status === 'failed') return session;
       }
 
-      // Only an active cart that still exposes its Join Code can be shared. The
-      // backend gates whether the code is returned; the frontend never invents
-      // availability.
       const { cart } = runtime.stores.cart.getState();
-      return cart?.joinCode
-        ? { status: 'invitable' }
-        : { status: 'unavailable' };
+      const { order } = runtime.stores.order.getState();
+
+      // After the first order, the order's `canAddOn` is the authority on whether
+      // the group session is still open: payment, completion, cancellation, and
+      // the ordering deadline all close it. A closed order has nothing to share —
+      // send the host to order tracking (even if a stale Join Code lingers on the
+      // reusable cart).
+      if (order && !order.canAddOn) {
+        return { status: 'closed' };
+      }
+
+      // A Join Code identifies a usable dine-in group session (takeaway carts
+      // carry none): shareable both before the first order and during add-on.
+      if (cart?.joinCode) {
+        return { status: 'invitable' };
+      }
+
+      // No code: for an addable order this is an inconsistent/transient load (the
+      // reusable cart did not hydrate) — a retryable page error, not a dead end.
+      // Before any order it means a non-group (takeaway) or absent session.
+      if (order) {
+        return {
+          status: 'failed',
+          reason: 'unknown',
+          message: tDefault(
+            'common.errors.tryAgainLater',
+            'Try again in a moment.',
+          ),
+        };
+      }
+      return { status: 'unavailable' };
     },
 
     // Record a primary-load failure into the cart store so the page renders its
