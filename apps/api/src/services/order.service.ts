@@ -108,6 +108,13 @@ export class OrderService {
         cancelNote: input.note,
         cancelledBy: input.cancelledBy,
         paymentStatus,
+        // A cancelled order contributes nothing to revenue: zero the order-level
+        // totals (and active item list). The batches keep their own items and
+        // subtotals as a record of what was cancelled.
+        items: [],
+        subtotal: 0,
+        serviceFeeAmount: 0,
+        totalAmount: 0,
       },
       { expectedUpdatedAt: input.expectedUpdatedAt },
     );

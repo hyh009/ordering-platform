@@ -678,6 +678,32 @@ describe('merchant orders API', () => {
       expect(returned.cancelledAt).toBeDefined();
     });
 
+    it('zeroes the order totals on cancel (a cancelled order is no revenue)', async () => {
+      seedMember();
+      const order = mocks.addOrder({
+        status: 'preparing',
+        paymentStatus: 'unpaid',
+        subtotal: 195,
+        serviceFeeAmount: 20,
+        totalAmount: 215,
+      });
+      const app = createApp();
+      const token = createAccessToken('user-1');
+
+      const response = await request(app)
+        .patch(`/api/v1/merchant/stores/store-1/orders/${order.id}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ reasons: ['customer_request'] })
+        .expect(200);
+
+      const returned = response.body.data.order;
+      expect(returned.status).toBe('cancelled');
+      expect(returned.subtotal).toBe(0);
+      expect(returned.serviceFeeAmount).toBe(0);
+      expect(returned.totalAmount).toBe(0);
+      expect(returned.items).toEqual([]);
+    });
+
     it('accepts note-only cancel (no reasons)', async () => {
       seedMember();
       const order = mocks.addOrder({ status: 'preparing', paymentStatus: 'unpaid' });
