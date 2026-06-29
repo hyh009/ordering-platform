@@ -87,7 +87,11 @@ export function useOrderDetailPageVM() {
   // ── Derived predicates ──────────────────────────────────────────────────────
   const canCancel = order != null && canCancelOrder(order);
   const canCheckout = order != null && canCheckoutOrder(order);
-  const canComplete = order != null && canCompleteOrder(order);
+  // Complete is only exposed for pay_first orders (pay_later auto-completes on checkout).
+  const canComplete =
+    order != null &&
+    order.checkoutMode === 'pay_first' &&
+    canCompleteOrder(order);
 
   // ── Cancel modal helpers ────────────────────────────────────────────────────
   const openOrderCancel = useCallback(() => {
@@ -239,9 +243,9 @@ export function useOrderDetailPageVM() {
       const next = getNextBatchStatus(batch.status, tDefault);
       if (!next) return;
 
-      // `getNextBatchStatus` only returns 'preparing' | 'ready' | 'served'
+      // `getNextBatchStatus` only returns 'preparing' | 'ready'
       // (never 'pending_confirmation' or 'cancelled'), matching AdvanceBatchStatusRequest.
-      const targetStatus = next.status as 'preparing' | 'ready' | 'served';
+      const targetStatus = next.status as 'preparing' | 'ready';
 
       setMutating(true);
       const result = await commands.advanceBatchStatus(

@@ -151,9 +151,8 @@ describe('ordering runtime Mongo models', () => {
     expect(order.batches[0]?.submittedAt).toBeInstanceOf(Date);
   });
 
-  it('accepts manual payment, service, and completion timestamps', () => {
+  it('accepts manual payment and completion timestamps', () => {
     const paidAt = new Date('2026-05-16T12:30:00.000Z');
-    const servedAt = new Date('2026-05-16T12:40:00.000Z');
     const completedAt = new Date('2026-05-16T12:45:00.000Z');
     const order = new OrderMongoModel({
       id: 'order-1',
@@ -168,18 +167,15 @@ describe('ordering runtime Mongo models', () => {
       paymentStatus: 'paid',
       orderingClosesAt,
       paidAt,
-      servedAt,
       completedAt,
     });
 
     expect(order.validateSync()).toBeUndefined();
     expect(order.paidAt).toEqual(paidAt);
-    expect(order.servedAt).toEqual(servedAt);
     expect(order.completedAt).toEqual(completedAt);
   });
 
-  it('accepts a served unpaid pay-later order', () => {
-    const servedAt = new Date('2026-05-16T12:40:00.000Z');
+  it('accepts a ready unpaid pay-later order (food prepared, awaiting payment)', () => {
     const order = new OrderMongoModel({
       id: 'order-1',
       organizationId: 'org-1',
@@ -189,14 +185,13 @@ describe('ordering runtime Mongo models', () => {
       businessDate: '2026-05-16',
       dailySequence: 23,
       displayNumber: 'A023',
-      status: 'served',
+      status: 'ready',
       paymentStatus: 'unpaid',
       orderingClosesAt,
-      servedAt,
     });
 
     expect(order.validateSync()).toBeUndefined();
-    expect(order.servedAt).toEqual(servedAt);
+    expect(order.status).toBe('ready');
   });
 
   it('requires every order to have an ordering deadline', () => {

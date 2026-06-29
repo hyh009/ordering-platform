@@ -32,7 +32,6 @@ export const orderModel = {
     if (dto.tableNumber !== undefined) order.tableNumber = dto.tableNumber;
     if (dto.notes !== undefined) order.notes = dto.notes;
     if (dto.paidAt !== undefined) order.paidAt = dto.paidAt;
-    if (dto.servedAt !== undefined) order.servedAt = dto.servedAt;
     if (dto.completedAt !== undefined) order.completedAt = dto.completedAt;
     if (dto.cancelledAt !== undefined) order.cancelledAt = dto.cancelledAt;
     if (dto.cancelReasons !== undefined) order.cancelReasons = dto.cancelReasons;

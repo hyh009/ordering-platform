@@ -34,7 +34,6 @@ const orderEntityKeys = [
   'totalAmount',
   'orderingClosesAt',
   'paidAt',
-  'servedAt',
   'completedAt',
   'cancelledAt',
   'cancelReasons',
@@ -168,7 +167,6 @@ export const orderMongoRepository = {
     set('serviceFeeAmount', input.serviceFeeAmount);
     set('totalAmount', input.totalAmount);
     set('paidAt', input.paidAt);
-    set('servedAt', input.servedAt);
     set('completedAt', input.completedAt);
     set('cancelledAt', input.cancelledAt);
     set('cancelReasons', input.cancelReasons);

@@ -252,7 +252,6 @@ classDiagram
     number serviceFeeAmount
     number totalAmount
     Date? paidAt
-    Date? servedAt
     Date? completedAt
     Date? cancelledAt
     Date createdAt
@@ -436,7 +435,6 @@ Order status:
 - `pending_confirmation`
 - `preparing`
 - `ready`
-- `served`
 - `completed`
 - `cancelled`
 

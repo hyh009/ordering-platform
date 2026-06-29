@@ -25,8 +25,6 @@ export function getOrderStatusLabel(
       return tDefault('order.status.preparing', 'Preparing');
     case 'ready':
       return tDefault('order.status.ready', 'Ready for pickup');
-    case 'served':
-      return tDefault('order.status.served', 'Served');
     case 'completed':
       return tDefault('order.status.completed', 'Completed');
     case 'cancelled':
@@ -64,8 +62,6 @@ export function getOrderBatchStatusLabel(
       return tDefault('order.batchStatus.preparing', 'Preparing');
     case 'ready':
       return tDefault('order.batchStatus.ready', 'Ready');
-    case 'served':
-      return tDefault('order.batchStatus.served', 'Served');
     case 'cancelled':
       return tDefault('order.batchStatus.cancelled', 'Cancelled');
   }
@@ -73,8 +69,8 @@ export function getOrderBatchStatusLabel(
 
 /**
  * The next status for a batch, and the action-button label for advancing to it.
- * Returns null when the batch is in a terminal state (served or cancelled).
- * Mirrors the forward-only lifecycle: pending_confirmation → preparing → ready → served.
+ * Returns null when the batch is in a terminal state (ready or cancelled).
+ * Mirrors the forward-only lifecycle: pending_confirmation → preparing → ready.
  */
 export function getNextBatchStatus(
   status: OrderBatchStatus,
@@ -92,11 +88,6 @@ export function getNextBatchStatus(
         label: tDefault('order.batchAction.markReady', 'Mark ready'),
       };
     case 'ready':
-      return {
-        status: 'served',
-        label: tDefault('order.batchAction.markServed', 'Mark served'),
-      };
-    case 'served':
     case 'cancelled':
       return null;
   }
@@ -105,15 +96,15 @@ export function getNextBatchStatus(
 /**
  * Whether the merchant may complete this order.
  * Mirrors the backend `canCompleteOrder` predicate in api/src/models/order/model.ts.
- * Requires: every batch ∈ {served, cancelled}, and at least one not cancelled.
+ * Requires: every batch ∈ {ready, cancelled}, and at least one not cancelled.
  */
 export function canCompleteOrder(order: Pick<Order, 'status' | 'batches'>): boolean {
   if (order.status === 'completed' || order.status === 'cancelled') return false;
   if (order.batches.length === 0) return false;
-  const hasActiveServed = order.batches.some((b) => b.status === 'served');
-  if (!hasActiveServed) return false;
+  const hasActiveReady = order.batches.some((b) => b.status === 'ready');
+  if (!hasActiveReady) return false;
   return order.batches.every(
-    (b) => b.status === 'served' || b.status === 'cancelled',
+    (b) => b.status === 'ready' || b.status === 'cancelled',
   );
 }
 

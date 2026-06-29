@@ -150,7 +150,7 @@ optimistic concurrency retry.
    becomes unusable at checkout. Takeaway has no group ordering.
 3. Tracking page shows the display number + "please pay at the counter".
 4. Staff confirms payment → preparing → ready (prominent pickup prompt) →
-   served/completed.
+   completed.
 5. Add-ons always "start another order" with a fresh cart; the original order is
    not mutated.
 

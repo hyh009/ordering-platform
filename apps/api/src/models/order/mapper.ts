@@ -192,10 +192,6 @@ export function toOrderDto(
     dto.paidAt = order.paidAt.toISOString();
   }
 
-  if (order.servedAt !== undefined) {
-    dto.servedAt = order.servedAt.toISOString();
-  }
-
   if (order.completedAt !== undefined) {
     dto.completedAt = order.completedAt.toISOString();
   }

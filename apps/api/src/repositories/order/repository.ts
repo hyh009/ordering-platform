@@ -61,7 +61,6 @@ export type UpdateOrderInput = {
   serviceFeeAmount?: number | undefined;
   totalAmount?: number | undefined;
   paidAt?: Date | undefined;
-  servedAt?: Date | undefined;
   completedAt?: Date | undefined;
   cancelledAt?: Date | undefined;
   cancelReasons?: OrderCancelReason[] | undefined;

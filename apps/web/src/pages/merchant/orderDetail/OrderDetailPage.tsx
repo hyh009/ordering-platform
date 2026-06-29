@@ -189,8 +189,10 @@ export function OrderDetailPage() {
               </Button>
             ) : null}
 
-            {/* Complete button — always rendered when order not terminal; disabled with tooltip when not ready */}
-            {order.status !== 'completed' && order.status !== 'cancelled' ? (
+            {/* Complete button — only for pay_first orders; pay_later auto-completes on checkout */}
+            {order.checkoutMode === 'pay_first' &&
+            order.status !== 'completed' &&
+            order.status !== 'cancelled' ? (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger
@@ -213,7 +215,7 @@ export function OrderDetailPage() {
                     <TooltipContent>
                       {tDefault(
                         'merchant.orders.complete.tooltip',
-                        'All rounds must be served before completing',
+                        'All rounds must be ready before completing',
                       )}
                     </TooltipContent>
                   ) : null}
@@ -344,16 +346,16 @@ export function OrderDetailPage() {
               ? participantById.get(batch.submittedByParticipantId)
               : undefined;
 
-            const isServed = batch.status === 'served';
             const isCancelled = batch.status === 'cancelled';
+            const isReady = batch.status === 'ready';
             const nextBatch = getNextBatchStatus(batch.status, tDefault);
-            const isTerminal = isServed || isCancelled;
+            const isTerminal = isReady || isCancelled;
 
             return (
               <div
                 key={batch.id}
                 className={
-                  isServed
+                  isReady
                     ? 'rounded-lg border bg-card p-4 opacity-60'
                     : isCancelled
                       ? 'rounded-lg border bg-card p-4 opacity-40 grayscale'
@@ -364,7 +366,7 @@ export function OrderDetailPage() {
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium">
-                      {isServed ? '✓ ' : ''}
+                      {isReady ? '✓ ' : ''}
                       {tDefault('merchant.orders.round', 'Round')}{' '}
                       {batch.batchNumber}
                     </p>
@@ -380,11 +382,9 @@ export function OrderDetailPage() {
                   </div>
                   <span
                     className={
-                      isCancelled
+                      isCancelled || isReady
                         ? 'text-sm text-muted-foreground'
-                        : isServed
-                          ? 'text-sm text-muted-foreground'
-                          : 'text-sm font-medium'
+                        : 'text-sm font-medium'
                     }
                   >
                     {getOrderBatchStatusLabel(batch.status, tDefault)}

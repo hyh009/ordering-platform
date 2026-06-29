@@ -52,7 +52,6 @@ type TestOrder = {
     submittedByParticipantId?: string;
     confirmedAt?: Date;
     readyAt?: Date;
-    servedAt?: Date;
     cancelledAt?: Date;
     cancelReasons?: string[];
     cancelNote?: string;
@@ -67,7 +66,6 @@ type TestOrder = {
   totalAmount: number;
   orderingClosesAt: Date;
   paidAt?: Date;
-  servedAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
   cancelReasons?: string[];
@@ -713,7 +711,6 @@ describe('merchant orders API', () => {
       'pending_confirmation',
       'preparing',
       'ready',
-      'served',
     ] as const)('cancels an order in status "%s"', async (status) => {
       seedMember();
       const order = mocks.addOrder({ status, paymentStatus: 'unpaid' });
@@ -761,7 +758,7 @@ describe('merchant orders API', () => {
 
     it('sets paymentStatus to voided when cancelling a paid order', async () => {
       seedMember();
-      const order = mocks.addOrder({ status: 'served', paymentStatus: 'paid' });
+      const order = mocks.addOrder({ status: 'ready', paymentStatus: 'paid' });
       const app = createApp();
       const token = createAccessToken('user-1');
 
@@ -886,9 +883,9 @@ describe('merchant orders API', () => {
         ).toBe('pending_confirmation');
       });
 
-      it('returns served when all active batches are served', () => {
-        expect(rollupOrderStatus([batch('served'), batch('served')])).toBe(
-          'served',
+      it('returns ready when all active batches are ready', () => {
+        expect(rollupOrderStatus([batch('ready'), batch('ready')])).toBe(
+          'ready',
         );
       });
 
@@ -902,15 +899,15 @@ describe('merchant orders API', () => {
       });
 
       it('ignores cancelled batches in slowest-stage calculation', () => {
-        // mixed: one cancelled, one served → served (only active)
-        expect(rollupOrderStatus([batch('cancelled'), batch('served')])).toBe(
-          'served',
+        // mixed: one cancelled, one ready → ready (only active)
+        expect(rollupOrderStatus([batch('cancelled'), batch('ready')])).toBe(
+          'ready',
         );
       });
 
-      it('returns ready when mixed ready+served', () => {
-        expect(rollupOrderStatus([batch('ready'), batch('served')])).toBe(
-          'ready',
+      it('returns preparing when mixed ready+preparing', () => {
+        expect(rollupOrderStatus([batch('ready'), batch('preparing')])).toBe(
+          'preparing',
         );
       });
     });
@@ -919,11 +916,10 @@ describe('merchant orders API', () => {
       it('allows forward advancement', () => {
         expect(canAdvanceBatch('pending_confirmation', 'preparing')).toBe(true);
         expect(canAdvanceBatch('preparing', 'ready')).toBe(true);
-        expect(canAdvanceBatch('ready', 'served')).toBe(true);
       });
 
-      it('allows skipping multiple stages (forward)', () => {
-        expect(canAdvanceBatch('pending_confirmation', 'served')).toBe(true);
+      it('allows skipping a stage (pending_confirmation → ready)', () => {
+        expect(canAdvanceBatch('pending_confirmation', 'ready')).toBe(true);
       });
 
       it('rejects same-stage', () => {
@@ -938,8 +934,8 @@ describe('merchant orders API', () => {
         expect(canAdvanceBatch('cancelled', 'preparing')).toBe(false);
       });
 
-      it('rejects from served (terminal)', () => {
-        expect(canAdvanceBatch('served', 'served')).toBe(false);
+      it('rejects from ready (terminal prep stage)', () => {
+        expect(canAdvanceBatch('ready', 'ready')).toBe(false);
       });
     });
 
@@ -949,11 +945,11 @@ describe('merchant orders API', () => {
         organizationId: 'org-1',
         storeId: 'store-1',
         orderType: 'dine_in' as const,
-        checkoutMode: 'pay_later' as const,
+        checkoutMode: 'pay_first' as const,
         businessDate: '2026-06-28',
         dailySequence: 1,
         displayNumber: '0001',
-        status: 'served' as const,
+        status: 'ready' as const,
         paymentStatus: 'paid' as const,
         participants: [],
         items: [],
@@ -974,30 +970,29 @@ describe('merchant orders API', () => {
         updatedAt: new Date(),
       });
 
-      it('allows completion when all batches served', () => {
-        expect(canCompleteOrder(makeOrder(['served', 'served']))).toBe(true);
+      it('allows completion when all batches ready', () => {
+        expect(canCompleteOrder(makeOrder(['ready', 'ready']))).toBe(true);
       });
 
-      it('allows completion when all batches served or cancelled (some cancelled)', () => {
-        expect(canCompleteOrder(makeOrder(['served', 'cancelled']))).toBe(true);
+      it('allows completion when all batches ready or cancelled (some cancelled)', () => {
+        expect(canCompleteOrder(makeOrder(['ready', 'cancelled']))).toBe(true);
       });
 
-      it('rejects when any active batch is not served', () => {
-        expect(canCompleteOrder(makeOrder(['served', 'ready']))).toBe(false);
-        expect(canCompleteOrder(makeOrder(['served', 'preparing']))).toBe(false);
+      it('rejects when any active batch is not ready', () => {
+        expect(canCompleteOrder(makeOrder(['ready', 'preparing']))).toBe(false);
         expect(
-          canCompleteOrder(makeOrder(['served', 'pending_confirmation'])),
+          canCompleteOrder(makeOrder(['ready', 'pending_confirmation'])),
         ).toBe(false);
       });
 
-      it('rejects when all batches are cancelled (no active served)', () => {
+      it('rejects when all batches are cancelled (no active ready)', () => {
         expect(canCompleteOrder(makeOrder(['cancelled', 'cancelled']))).toBe(
           false,
         );
       });
 
       it('rejects when order is already completed', () => {
-        const order = { ...makeOrder(['served']), status: 'completed' as const };
+        const order = { ...makeOrder(['ready']), status: 'completed' as const };
         expect(canCompleteOrder(order)).toBe(false);
       });
 
@@ -1028,7 +1023,7 @@ describe('merchant orders API', () => {
       it('excludes cancelled batches from items and totals', () => {
         const totals = computeActiveOrderTotals(
           [
-            batch('b1', 'served', [20]),
+            batch('b1', 'ready', [20]),
             batch('b2', 'cancelled', [15]),
           ] as never,
           0.1,
@@ -1042,7 +1037,7 @@ describe('merchant orders API', () => {
 
       it('sums all batches when none cancelled', () => {
         const totals = computeActiveOrderTotals(
-          [batch('b1', 'served', [20]), batch('b2', 'preparing', [15])] as never,
+          [batch('b1', 'ready', [20]), batch('b2', 'preparing', [15])] as never,
           0.1,
         );
 
@@ -1084,7 +1079,37 @@ describe('merchant orders API', () => {
       expect(response.body.data.order.status).toBe('preparing');
     });
 
-    it('advances batch to served and order status becomes served', async () => {
+    it('advances batch from preparing to ready and order status becomes ready', async () => {
+      seedMember();
+      const order = mocks.addOrder({
+        status: 'preparing',
+        batches: [
+          {
+            id: 'batch-1',
+            batchNumber: 1,
+            status: 'preparing',
+            submittedAt: new Date(),
+            items: [],
+            subtotal: 0,
+          },
+        ],
+      });
+      const app = createApp();
+      const token = createAccessToken('user-1');
+
+      const response = await request(app)
+        .patch(
+          `/api/v1/merchant/stores/store-1/orders/${order.id}/batches/batch-1/status`,
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'ready' })
+        .expect(200);
+
+      expect(response.body.data.order.batches[0].status).toBe('ready');
+      expect(response.body.data.order.status).toBe('ready');
+    });
+
+    it('rejects advancing a ready batch (terminal prep stage)', async () => {
       seedMember();
       const order = mocks.addOrder({
         status: 'ready',
@@ -1107,11 +1132,10 @@ describe('merchant orders API', () => {
           `/api/v1/merchant/stores/store-1/orders/${order.id}/batches/batch-1/status`,
         )
         .set('Authorization', `Bearer ${token}`)
-        .send({ status: 'served' })
-        .expect(200);
+        .send({ status: 'ready' })
+        .expect(409);
 
-      expect(response.body.data.order.batches[0].status).toBe('served');
-      expect(response.body.data.order.status).toBe('served');
+      expect(response.body.code).toBe('ORDER_LOCKED');
     });
 
     it('emits SSE on batch advance when cartId present', async () => {
@@ -1359,15 +1383,15 @@ describe('merchant orders API', () => {
       expect(response.body.code).toBe('ORDER_LOCKED');
     });
 
-    it('returns 409 ORDER_LOCKED when batch already served', async () => {
+    it('allows cancelling a ready batch (ready is not terminal for cancel)', async () => {
       seedMember();
       const order = mocks.addOrder({
-        status: 'served',
+        status: 'ready',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'served',
+            status: 'ready',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1383,9 +1407,9 @@ describe('merchant orders API', () => {
         )
         .set('Authorization', `Bearer ${token}`)
         .send({ reasons: ['other'] })
-        .expect(409);
+        .expect(200);
 
-      expect(response.body.code).toBe('ORDER_LOCKED');
+      expect(response.body.data.order.batches[0].status).toBe('cancelled');
     });
 
     it('returns 403 when staff tries to cancel batch', async () => {
@@ -1416,15 +1440,16 @@ describe('merchant orders API', () => {
   });
 
   describe('PATCH /api/v1/merchant/stores/:storeId/orders/:orderId/complete', () => {
-    it('completes an order when all batches are served', async () => {
+    it('completes an order when all batches are ready', async () => {
       seedMember();
       const order = mocks.addOrder({
-        status: 'served',
+        status: 'ready',
+        checkoutMode: 'pay_first',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'served',
+            status: 'ready',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1444,15 +1469,16 @@ describe('merchant orders API', () => {
       expect(response.body.data.order.completedAt).toBeDefined();
     });
 
-    it('completes when some batches are cancelled and at least one served', async () => {
+    it('completes when some batches are cancelled and at least one ready', async () => {
       seedMember();
       const order = mocks.addOrder({
-        status: 'served',
+        status: 'ready',
+        checkoutMode: 'pay_first',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'served',
+            status: 'ready',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1479,15 +1505,16 @@ describe('merchant orders API', () => {
       expect(response.body.data.order.status).toBe('completed');
     });
 
-    it('returns 409 ORDER_LOCKED when not all batches served/cancelled', async () => {
+    it('returns 409 ORDER_LOCKED when any batch is still preparing (not all ready/cancelled)', async () => {
       seedMember();
       const order = mocks.addOrder({
-        status: 'ready',
+        status: 'preparing',
+        checkoutMode: 'pay_first',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'ready',
+            status: 'preparing',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1509,12 +1536,13 @@ describe('merchant orders API', () => {
     it('returns 403 when staff tries to complete', async () => {
       seedMember('staff');
       const order = mocks.addOrder({
-        status: 'served',
+        status: 'ready',
+        checkoutMode: 'pay_first',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'served',
+            status: 'ready',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1534,12 +1562,13 @@ describe('merchant orders API', () => {
     it('returns 409 when expectedUpdatedAt is stale', async () => {
       seedMember();
       const order = mocks.addOrder({
-        status: 'served',
+        status: 'ready',
+        checkoutMode: 'pay_first',
         batches: [
           {
             id: 'batch-1',
             batchNumber: 1,
-            status: 'served',
+            status: 'ready',
             submittedAt: new Date(),
             items: [],
             subtotal: 0,
@@ -1563,11 +1592,12 @@ describe('merchant orders API', () => {
   });
 
   describe('PATCH /api/v1/merchant/stores/:storeId/orders/:orderId/checkout', () => {
-    it('marks an unpaid order as paid and sets paidAt', async () => {
+    it('marks a pay_later unpaid order as paid and auto-completes it', async () => {
       seedMember();
       const order = mocks.addOrder({
         status: 'preparing',
         paymentStatus: 'unpaid',
+        checkoutMode: 'pay_later',
       });
       const app = createApp();
       const token = createAccessToken('user-1');
@@ -1580,14 +1610,40 @@ describe('merchant orders API', () => {
 
       expect(response.body.data.order.paymentStatus).toBe('paid');
       expect(response.body.data.order.paidAt).toBeDefined();
-      expect(response.body.data.order.status).toBe('preparing'); // unchanged
+      // pay_later: payment auto-completes the order
+      expect(response.body.data.order.status).toBe('completed');
+      expect(response.body.data.order.completedAt).toBeDefined();
     });
 
-    it('advances status from pending_payment to pending_confirmation on checkout', async () => {
+    it('marks a pay_first unpaid order as paid but does NOT auto-complete', async () => {
+      seedMember();
+      const order = mocks.addOrder({
+        status: 'preparing',
+        paymentStatus: 'unpaid',
+        checkoutMode: 'pay_first',
+      });
+      const app = createApp();
+      const token = createAccessToken('user-1');
+
+      const response = await request(app)
+        .patch(`/api/v1/merchant/stores/store-1/orders/${order.id}/checkout`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(200);
+
+      expect(response.body.data.order.paymentStatus).toBe('paid');
+      expect(response.body.data.order.paidAt).toBeDefined();
+      // pay_first: status unchanged — completed requires explicit Complete action
+      expect(response.body.data.order.status).toBe('preparing');
+      expect(response.body.data.order.completedAt).toBeUndefined();
+    });
+
+    it('advances status from pending_payment to pending_confirmation on checkout for pay_first', async () => {
       seedMember();
       const order = mocks.addOrder({
         status: 'pending_payment',
         paymentStatus: 'unpaid',
+        checkoutMode: 'pay_first',
       });
       const app = createApp();
       const token = createAccessToken('user-1');

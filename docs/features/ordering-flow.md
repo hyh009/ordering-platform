@@ -67,10 +67,7 @@ sequenceDiagram
   Kitchen->>System: Mark order ready
   Note over System: Batch.status = ready<br/>Order.status = ready
 
-  Guest->>Staff: Receive order
-  Staff->>System: Mark order served
-  Note over System: Order.status = served<br/>servedAt = now
-
+  Guest->>Staff: Receive order (order is already ready)
   Staff->>System: Complete order
   Note over System: Order.status = completed<br/>completedAt = now
 
@@ -83,8 +80,8 @@ sequenceDiagram
 ## Pay Later
 
 Pay-later currently applies to dine-in. Guests may add more before payment.
-Payment locks guest add-ons but does not complete the order; existing batches
-continue until staff marks the service complete.
+Payment is the finisher for pay-later: marking the order paid also auto-completes
+it. There is no separate "Complete" step for pay-later.
 
 The cart is a **reusable per-round draft**. Submitting flushes the current cart
 items into a new Order batch and clears those items, but keeps the cart `active`
@@ -115,11 +112,6 @@ sequenceDiagram
     Note over System: Allowed while unpaid and not completed/cancelled<br/>and before Order.orderingClosesAt (canAddOn)<br/>submit flushes the cart into a new pending batch (same endpoint)<br/>flush + batch append run in one transaction
   end
 
-  opt Staff takes payment before service
-    Staff->>System: Confirm payment
-    Note over System: paymentStatus = paid<br/>paidAt = now<br/>joinCode invalid<br/>no more guest add-ons
-  end
-
   loop While order has active pending/preparing batches
     Staff->>System: Confirm a pending batch
     Note over System: Batch.status = preparing<br/>confirmedAt = now<br/>Order.status = preparing unless another batch is pending
@@ -131,16 +123,6 @@ sequenceDiagram
     Note over System: Batch.status = ready<br/>readyAt = now<br/>Order.status = ready when all active batches are ready
   end
 
-  Staff->>System: Mark order served
-  Note over System: Order.status = served<br/>servedAt = now
-
-  alt paymentStatus = unpaid after service
-    Staff->>System: Confirm payment
-    Note over System: paymentStatus = paid<br/>paidAt = now<br/>joinCode invalid<br/>no more guest add-ons
-  else payment already confirmed
-    Note over System: Continue with paymentStatus = paid
-  end
-
-  Staff->>System: Complete order
-  Note over System: Order.status = completed<br/>completedAt = now
+  Staff->>System: Confirm payment (checkout)
+  Note over System: paymentStatus = paid<br/>paidAt = now<br/>Order.status = completed (auto-complete)<br/>completedAt = now<br/>joinCode invalid<br/>no more guest add-ons
 ```

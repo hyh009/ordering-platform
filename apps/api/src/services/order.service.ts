@@ -164,8 +164,6 @@ export class OrderService {
       nextBatch.confirmedAt = now;
     } else if (targetStatus === 'ready') {
       nextBatch.readyAt = now;
-    } else if (targetStatus === 'served') {
-      nextBatch.servedAt = now;
     }
 
     const nextBatches = order.batches.map((b, i) =>
@@ -221,7 +219,7 @@ export class OrderService {
 
     const batch = order.batches[batchIndex]!;
 
-    if (batch.status === 'cancelled' || batch.status === 'served') {
+    if (batch.status === 'cancelled') {
       throw new ConflictError(
         'Batch is in a terminal state and cannot be cancelled',
         ERROR_CODES.ORDER_LOCKED,
@@ -340,11 +338,23 @@ export class OrderService {
       );
     }
 
-    const nextStatus =
-      order.status === 'pending_payment'
-        ? 'pending_confirmation'
-        : order.status;
     const now = new Date();
+
+    // pay_later: payment is the finisher — auto-complete the order.
+    // pay_first: payment is upfront; `completed` stays the explicit terminal.
+    let nextStatus: typeof order.status;
+    let completedAt: Date | undefined;
+
+    if (order.checkoutMode === 'pay_later') {
+      nextStatus = 'completed';
+      completedAt = now;
+    } else {
+      // pay_first — advance pending_payment to pending_confirmation; otherwise keep current status.
+      nextStatus =
+        order.status === 'pending_payment'
+          ? 'pending_confirmation'
+          : order.status;
+    }
 
     const updated = await orderRepository.update(
       orderId,
@@ -352,6 +362,7 @@ export class OrderService {
         paymentStatus: 'paid',
         paidAt: now,
         status: nextStatus,
+        ...(completedAt !== undefined ? { completedAt } : {}),
       },
       { expectedUpdatedAt: input.expectedUpdatedAt },
     );

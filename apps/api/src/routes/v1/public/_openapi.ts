@@ -425,7 +425,6 @@
  *             - pending_confirmation
  *             - preparing
  *             - ready
- *             - served
  *             - completed
  *             - cancelled
  *         paymentStatus:
@@ -468,9 +467,6 @@
  *           type: string
  *           format: date-time
  *         paidAt:
- *           type: string
- *           format: date-time
- *         servedAt:
  *           type: string
  *           format: date-time
  *         completedAt:

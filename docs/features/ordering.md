@@ -160,20 +160,13 @@ Kitchen marks a batch ready:
 - batch `readyAt = now`
 - order `status = ready` when all non-cancelled batches are ready
 
-Staff marks the order served:
-
-- use `served` after food has been delivered to the table or the takeaway order
-  has been picked up
-- `Order.status = served`
-- `Order.servedAt = now`
-
 Guest adds more before payment:
 
 - allowed only when `orderType = dine_in`, `checkoutMode = pay_later`,
   `paymentStatus = unpaid`, and `Order.status` is not `completed` or
   `cancelled`, and optional `orderingClosesAt` has not passed
-- this includes already `ready` or `served` dine-in orders that have not been
-  paid, completed, cancelled, or closed by the optional ordering deadline
+- this includes already `ready` dine-in orders that have not been paid,
+  completed, cancelled, or closed by the optional ordering deadline
 - payment confirmation, order completion, and order cancellation all stop guest
   add-ons
 - guests continue from the original `joinCode` or order session after the cart
@@ -187,21 +180,15 @@ Guest adds more before payment:
 Staff takes payment:
 
 - staff can take payment while the order is still `pending_confirmation`,
-  `preparing`, `ready`, or `served`, as long as `paymentStatus = unpaid` and
-  the order is not `completed` or `cancelled`
+  `preparing`, or `ready`, as long as `paymentStatus = unpaid` and the order is
+  not `completed` or `cancelled`
 - `Order.paymentStatus = paid`
 - `Order.paidAt = now`
+- `Order.status = completed` (pay_later: payment is the finisher — the order
+  auto-completes)
+- `Order.completedAt = now` (pay_later only)
 - the join code becomes invalid
 - no more guest add-ons are allowed
-- payment does not complete the order; existing batches continue through
-  confirmation, preparation, ready, and served states
-
-Operational completion:
-
-- staff marks the order complete after the order is served, payment is handled,
-  and there are no pending restaurant actions
-- `Order.status = completed`
-- `Order.completedAt = now`
 
 ## Pay First Orders
 
@@ -231,8 +218,6 @@ Staff confirms payment:
 Kitchen and pickup:
 
 - when food is ready, batch `status = ready` and `Order.status = ready`
-- when the guest takes the order, `Order.status = served` and
-  `Order.servedAt = now`
 - staff marks the order complete after pickup has no remaining operational work
 - `Order.status = completed`
 - set `Order.completedAt = now`
@@ -273,11 +258,16 @@ Cancellation behavior:
 ## Notes
 
 - `Order.status` is the order-level operational summary.
-- `ready` means food is prepared and waiting for delivery or pickup.
-- `served` means food has been delivered to the table or picked up.
-- `completed` means the order is served, payment is handled, and no restaurant
-  action remains.
+- `ready` means food is prepared and waiting for delivery or pickup. For
+  pay_later orders, `ready` is the terminal prep stage; payment completes the
+  order. For pay_first orders, `completed` is reached via the explicit Complete
+  action after all rounds are ready.
+- `completed` means the order is finished: for pay_later this is set
+  automatically when payment is collected; for pay_first it is set explicitly
+  by staff after all rounds are ready.
 - `OrderBatch.status` is the source of truth for individual submitted kitchen
   batches.
+- Batch lifecycle: `pending_confirmation → preparing → ready` (+ `cancelled`).
+  `ready` is the terminal prep stage.
 - Staff views should prioritize `pending_confirmation` batches.
 - Customer views can show the order-level summary plus each user's item list.

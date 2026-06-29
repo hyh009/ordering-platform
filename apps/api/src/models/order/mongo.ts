@@ -47,9 +47,6 @@ const orderBatchSnapshotSchema = new Schema<OrderBatchSnapshot>(
     readyAt: {
       type: Date,
     },
-    servedAt: {
-      type: Date,
-    },
     cancelledAt: {
       type: Date,
     },
@@ -185,9 +182,6 @@ const orderSchema = new Schema<OrderEntity>(
       required: true,
     },
     paidAt: {
-      type: Date,
-    },
-    servedAt: {
       type: Date,
     },
     completedAt: {

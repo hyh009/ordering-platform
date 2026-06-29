@@ -18,7 +18,6 @@ export const orderStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
-  'served',
   'completed',
   'cancelled',
 ] as const;
@@ -38,7 +37,6 @@ export const orderBatchStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
-  'served',
   'cancelled',
 ] as const;
 
@@ -100,7 +98,6 @@ export type OrderDto = {
   totalAmount: number;
   orderingClosesAt: string;
   paidAt?: string;
-  servedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
   cancelReasons?: OrderCancelReason[];
@@ -232,7 +229,7 @@ export const cancelBatchSchema = z
   .refine(hasCancelReasonOrNote, { message: CANCEL_REASON_MSG });
 
 export const advanceBatchStatusSchema = z.object({
-  status: z.enum(['preparing', 'ready', 'served'] as const),
+  status: z.enum(['preparing', 'ready'] as const),
   expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 

@@ -61,7 +61,6 @@ const router = Router({ mergeParams: true });
  *             - pending_confirmation
  *             - preparing
  *             - ready
- *             - served
  *             - completed
  *             - cancelled
  *           example: preparing
@@ -195,7 +194,6 @@ const router = Router({ mergeParams: true });
  *             - pending_confirmation
  *             - preparing
  *             - ready
- *             - served
  *             - completed
  *             - cancelled
  *       - in: query
@@ -458,7 +456,7 @@ router.patch<OrderParams, GetMerchantOrderSuccessResponse, CancelOrderRequest>(
  *     summary: Complete an order
  *     description: >-
  *       Marks the order as `completed`. Allowed only when every batch is in
- *       {`served`, `cancelled`} and at least one is not cancelled.
+ *       {`ready`, `cancelled`} and at least one is not cancelled.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -494,7 +492,7 @@ router.patch<OrderParams, GetMerchantOrderSuccessResponse, CancelOrderRequest>(
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       409:
- *         description: Not all rounds are served/cancelled, or stale expectedUpdatedAt
+ *         description: Not all rounds are ready/cancelled, or stale expectedUpdatedAt
  *         content:
  *           application/json:
  *             schema:
@@ -537,7 +535,7 @@ router.patch<OrderParams, GetMerchantOrderSuccessResponse, CompleteOrderRequest>
  *     summary: Advance a batch status
  *     description: >-
  *       Advances a batch forward-only through
- *       `pending_confirmation → preparing → ready → served`.
+ *       `pending_confirmation → preparing → ready`.
  *       Sets the batch timestamp and recomputes the order rollup status.
  *     security:
  *       - bearerAuth: []
@@ -571,7 +569,6 @@ router.patch<OrderParams, GetMerchantOrderSuccessResponse, CompleteOrderRequest>
  *                 enum:
  *                   - preparing
  *                   - ready
- *                   - served
  *               expectedUpdatedAt:
  *                 type: string
  *                 format: date-time

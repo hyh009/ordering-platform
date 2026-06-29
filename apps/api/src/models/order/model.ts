@@ -13,7 +13,6 @@ export const orderStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
-  'served',
   'completed',
   'cancelled',
 ] as const;
@@ -33,7 +32,6 @@ export const orderBatchStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
-  'served',
   'cancelled',
 ] as const;
 
@@ -47,7 +45,6 @@ export type OrderBatchSnapshot = {
   submittedByParticipantId?: string;
   confirmedAt?: Date;
   readyAt?: Date;
-  servedAt?: Date;
   cancelledAt?: Date;
   cancelReasons?: OrderCancelReason[];
   cancelNote?: string;
@@ -79,7 +76,6 @@ export type OrderEntity = {
   totalAmount: number;
   orderingClosesAt: Date;
   paidAt?: Date;
-  servedAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
   cancelReasons?: OrderCancelReason[];
@@ -92,25 +88,25 @@ export type OrderEntity = {
 /**
  * Forward-only stage order for batch status advancement.
  * `cancelled` is excluded — it is a lateral exit, not a stage.
+ * `ready` is the terminal prep stage; there is no further advance beyond it.
  */
 export const BATCH_STAGE_ORDER: readonly OrderBatchStatus[] = [
   'pending_confirmation',
   'preparing',
   'ready',
-  'served',
 ] as const;
 
 /**
  * Whether a batch may be advanced from `from` to `to`.
  * Requires:
- *   - `from` is not a terminal state (`cancelled` or `served`)
+ *   - `from` is not a terminal state (`cancelled` or `ready`)
  *   - `to` is strictly later in BATCH_STAGE_ORDER than `from`
  */
 export function canAdvanceBatch(
   from: OrderBatchStatus,
   to: OrderBatchStatus,
 ): boolean {
-  if (from === 'cancelled' || from === 'served') return false;
+  if (from === 'cancelled' || from === 'ready') return false;
   const fromIndex = BATCH_STAGE_ORDER.indexOf(from);
   const toIndex = BATCH_STAGE_ORDER.indexOf(to);
   if (fromIndex === -1 || toIndex === -1) return false;
@@ -176,15 +172,15 @@ export function computeActiveOrderTotals(
 /**
  * Whether a merchant may mark an order as completed.
  * Requires: order not already `completed` or `cancelled`, every batch is in
- * {`served`, `cancelled`}, and at least one batch is not cancelled.
+ * {`ready`, `cancelled`}, and at least one batch is not cancelled.
  */
 export function canCompleteOrder(order: OrderEntity): boolean {
   if (order.status === 'completed' || order.status === 'cancelled') return false;
   if (order.batches.length === 0) return false;
-  const hasActiveServed = order.batches.some((b) => b.status === 'served');
-  if (!hasActiveServed) return false;
+  const hasActiveReady = order.batches.some((b) => b.status === 'ready');
+  if (!hasActiveReady) return false;
   return order.batches.every(
-    (b) => b.status === 'served' || b.status === 'cancelled',
+    (b) => b.status === 'ready' || b.status === 'cancelled',
   );
 }
 
