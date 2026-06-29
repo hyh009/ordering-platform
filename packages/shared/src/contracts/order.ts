@@ -4,6 +4,15 @@ import type { ApiSuccessResponse } from './api.js';
 import type { CartDto, CartItemDto, OrderingParticipantDto } from './cart.js';
 import type { StoreCheckoutMode, StoreOrderType } from './store.js';
 
+export const orderCancelReasons = [
+  'no_show',
+  'out_of_stock',
+  'customer_request',
+  'other',
+] as const;
+
+export type OrderCancelReason = (typeof orderCancelReasons)[number];
+
 export const orderStatuses = [
   'pending_payment',
   'pending_confirmation',
@@ -29,6 +38,7 @@ export const orderBatchStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
+  'served',
   'cancelled',
 ] as const;
 
@@ -43,6 +53,9 @@ export type OrderBatchDto = {
   confirmedAt?: string;
   readyAt?: string;
   cancelledAt?: string;
+  cancelReasons?: OrderCancelReason[];
+  cancelNote?: string;
+  cancelledBy?: string;
   items: CartItemDto[];
   subtotal: number;
 };
@@ -90,6 +103,9 @@ export type OrderDto = {
   servedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  cancelReasons?: OrderCancelReason[];
+  cancelNote?: string;
+  cancelledBy?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -133,6 +149,12 @@ export type OrderSummaryDto = {
   totalAmount: number;
   createdAt: string; // ISO
 };
+
+export const orderBatchParamsSchema = z.object({
+  storeId: z.string().trim().min(1),
+  orderId: z.string().trim().min(1),
+  batchId: z.string().trim().min(1),
+});
 
 export const orderStoreParamsSchema = z.object({
   storeId: z.string().trim().min(1),
@@ -178,3 +200,53 @@ export type ListOrdersSuccessResponse = ApiSuccessResponse<{
 export type GetMerchantOrderSuccessResponse = ApiSuccessResponse<{
   order: OrderDto;
 }>;
+
+// ── Merchant mutation schemas ──────────────────────────────────────────────────
+
+function hasCancelReasonOrNote(data: {
+  reasons?: OrderCancelReason[] | undefined;
+  note?: string | undefined;
+}): boolean {
+  return (
+    (data.reasons !== undefined && data.reasons.length > 0) ||
+    (data.note !== undefined && data.note.trim().length > 0)
+  );
+}
+
+const CANCEL_REASON_MSG = 'At least one cancel reason or a note is required';
+
+export const cancelOrderSchema = z
+  .object({
+    reasons: z.array(z.enum(orderCancelReasons)).optional(),
+    note: z.string().trim().max(500).optional(),
+    expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .refine(hasCancelReasonOrNote, { message: CANCEL_REASON_MSG });
+
+export const cancelBatchSchema = z
+  .object({
+    reasons: z.array(z.enum(orderCancelReasons)).optional(),
+    note: z.string().trim().max(500).optional(),
+    expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .refine(hasCancelReasonOrNote, { message: CANCEL_REASON_MSG });
+
+export const advanceBatchStatusSchema = z.object({
+  status: z.enum(['preparing', 'ready', 'served'] as const),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+});
+
+export const checkoutOrderSchema = z.object({
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+});
+
+export const completeOrderSchema = z.object({
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+});
+
+export type CancelOrderRequest = z.infer<typeof cancelOrderSchema>;
+export type CancelBatchRequest = z.infer<typeof cancelBatchSchema>;
+export type AdvanceBatchStatusRequest = z.infer<typeof advanceBatchStatusSchema>;
+export type CheckoutOrderRequest = z.infer<typeof checkoutOrderSchema>;
+export type CompleteOrderRequest = z.infer<typeof completeOrderSchema>;
+export type OrderBatchParams = z.infer<typeof orderBatchParamsSchema>;
