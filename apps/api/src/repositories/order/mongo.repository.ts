@@ -37,6 +37,9 @@ const orderEntityKeys = [
   'servedAt',
   'completedAt',
   'cancelledAt',
+  'cancelReasons',
+  'cancelNote',
+  'cancelledBy',
   'createdAt',
   'updatedAt',
 ] as const satisfies readonly (keyof OrderEntity)[];
@@ -168,6 +171,9 @@ export const orderMongoRepository = {
     set('servedAt', input.servedAt);
     set('completedAt', input.completedAt);
     set('cancelledAt', input.cancelledAt);
+    set('cancelReasons', input.cancelReasons);
+    set('cancelNote', input.cancelNote);
+    set('cancelledBy', input.cancelledBy);
 
     if (Object.keys(setUpdate).length === 0) {
       const existing = await OrderMongoModel.findOne({ id: orderId })

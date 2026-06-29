@@ -1,3 +1,4 @@
+import type { OrderCancelReason } from '@repo/shared';
 import type {
   CartItemSnapshot,
   OrderingParticipantSnapshot,
@@ -32,6 +33,7 @@ export const orderBatchStatuses = [
   'pending_confirmation',
   'preparing',
   'ready',
+  'served',
   'cancelled',
 ] as const;
 
@@ -45,7 +47,11 @@ export type OrderBatchSnapshot = {
   submittedByParticipantId?: string;
   confirmedAt?: Date;
   readyAt?: Date;
+  servedAt?: Date;
   cancelledAt?: Date;
+  cancelReasons?: OrderCancelReason[];
+  cancelNote?: string;
+  cancelledBy?: string;
   items: CartItemSnapshot[];
   subtotal: number;
 };
@@ -76,9 +82,111 @@ export type OrderEntity = {
   servedAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
+  cancelReasons?: OrderCancelReason[];
+  cancelNote?: string;
+  cancelledBy?: string;
   createdAt: Date;
   updatedAt: Date;
 };
+
+/**
+ * Forward-only stage order for batch status advancement.
+ * `cancelled` is excluded — it is a lateral exit, not a stage.
+ */
+export const BATCH_STAGE_ORDER: readonly OrderBatchStatus[] = [
+  'pending_confirmation',
+  'preparing',
+  'ready',
+  'served',
+] as const;
+
+/**
+ * Whether a batch may be advanced from `from` to `to`.
+ * Requires:
+ *   - `from` is not a terminal state (`cancelled` or `served`)
+ *   - `to` is strictly later in BATCH_STAGE_ORDER than `from`
+ */
+export function canAdvanceBatch(
+  from: OrderBatchStatus,
+  to: OrderBatchStatus,
+): boolean {
+  if (from === 'cancelled' || from === 'served') return false;
+  const fromIndex = BATCH_STAGE_ORDER.indexOf(from);
+  const toIndex = BATCH_STAGE_ORDER.indexOf(to);
+  if (fromIndex === -1 || toIndex === -1) return false;
+  return toIndex > fromIndex;
+}
+
+/**
+ * Derive the order status from its batches (rollup).
+ * Rules:
+ *   - Ignore cancelled batches.
+ *   - If no active batches remain (every round was cancelled individually) →
+ *     `'pending_confirmation'`. The order stays OPEN so the guest can still add
+ *     another round; cancelling rounds rejects food, it does not end the table.
+ *     The terminal `'cancelled'` is reserved for an explicit order-level cancel.
+ *   - Otherwise return the slowest (earliest-stage) active batch status,
+ *     which maps 1:1 to an OrderStatus of the same name.
+ * Never returns `'cancelled'`, `'completed'`, or `'pending_payment'` — those are
+ * set explicitly.
+ */
+export function rollupOrderStatus(batches: OrderBatchSnapshot[]): OrderStatus {
+  const active = batches.filter((b) => b.status !== 'cancelled');
+  if (active.length === 0) return 'pending_confirmation';
+
+  let slowestIndex = BATCH_STAGE_ORDER.length - 1;
+  for (const batch of active) {
+    const idx = BATCH_STAGE_ORDER.indexOf(batch.status);
+    if (idx !== -1 && idx < slowestIndex) {
+      slowestIndex = idx;
+    }
+  }
+  return BATCH_STAGE_ORDER[slowestIndex] as OrderStatus;
+}
+
+/**
+ * Recompute an order's active item list and money totals from its batches,
+ * excluding cancelled batches. A cancelled round keeps its own items/subtotal
+ * for display, but must not count toward the order subtotal/fee/total.
+ * Mirrors the pricing formula in guestOrdering `computeTotals`.
+ */
+export function computeActiveOrderTotals(
+  batches: OrderBatchSnapshot[],
+  serviceFeeRate: number,
+): {
+  items: CartItemSnapshot[];
+  subtotal: number;
+  serviceFeeAmount: number;
+  totalAmount: number;
+} {
+  const items = batches
+    .filter((b) => b.status !== 'cancelled')
+    .flatMap((b) => b.items);
+  const subtotal = items.reduce((sum, item) => sum + item.totalItemPrice, 0);
+  const serviceFeeAmount = Math.round(subtotal * serviceFeeRate);
+
+  return {
+    items,
+    subtotal,
+    serviceFeeAmount,
+    totalAmount: subtotal + serviceFeeAmount,
+  };
+}
+
+/**
+ * Whether a merchant may mark an order as completed.
+ * Requires: order not already `completed` or `cancelled`, every batch is in
+ * {`served`, `cancelled`}, and at least one batch is not cancelled.
+ */
+export function canCompleteOrder(order: OrderEntity): boolean {
+  if (order.status === 'completed' || order.status === 'cancelled') return false;
+  if (order.batches.length === 0) return false;
+  const hasActiveServed = order.batches.some((b) => b.status === 'served');
+  if (!hasActiveServed) return false;
+  return order.batches.every(
+    (b) => b.status === 'served' || b.status === 'cancelled',
+  );
+}
 
 /**
  * Split a whole-dollar service fee across participants in proportion to their
@@ -154,4 +262,23 @@ export function canGuestExtendOrder(order: OrderEntity, now: Date): boolean {
     order.status !== 'cancelled' &&
     now.getTime() < order.orderingClosesAt.getTime()
   );
+}
+
+/**
+ * Whether a merchant may cancel this order.
+ * Cancellation is allowed on any non-terminal status:
+ * blocks only `completed` and `cancelled`.
+ */
+export function canCancelOrder(status: OrderStatus): boolean {
+  return status !== 'completed' && status !== 'cancelled';
+}
+
+/**
+ * Whether a merchant may mark this order as paid (checkout).
+ * Blocks if already paid/refunded/voided or if cancelled.
+ */
+export function canCheckoutOrder(
+  order: Pick<OrderEntity, 'status' | 'paymentStatus'>,
+): boolean {
+  return order.paymentStatus === 'unpaid' && order.status !== 'cancelled';
 }

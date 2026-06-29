@@ -39,6 +39,18 @@ function toOrderBatchDto(batch: OrderBatchSnapshot): OrderBatchDto {
     dto.cancelledAt = batch.cancelledAt.toISOString();
   }
 
+  if (batch.cancelReasons !== undefined) {
+    dto.cancelReasons = batch.cancelReasons;
+  }
+
+  if (batch.cancelNote !== undefined) {
+    dto.cancelNote = batch.cancelNote;
+  }
+
+  if (batch.cancelledBy !== undefined) {
+    dto.cancelledBy = batch.cancelledBy;
+  }
+
   return dto;
 }
 
@@ -190,6 +202,18 @@ export function toOrderDto(
 
   if (order.cancelledAt !== undefined) {
     dto.cancelledAt = order.cancelledAt.toISOString();
+  }
+
+  if (order.cancelReasons !== undefined) {
+    dto.cancelReasons = order.cancelReasons;
+  }
+
+  if (order.cancelNote !== undefined) {
+    dto.cancelNote = order.cancelNote;
+  }
+
+  if (order.cancelledBy !== undefined) {
+    dto.cancelledBy = order.cancelledBy;
   }
 
   return dto;

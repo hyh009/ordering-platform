@@ -1,5 +1,6 @@
 import { orderMongoRepository } from '@src/repositories/order/mongo.repository';
 
+import type { OrderCancelReason } from '@repo/shared';
 import type {
   CartItemSnapshot,
   OrderingParticipantSnapshot,
@@ -63,6 +64,9 @@ export type UpdateOrderInput = {
   servedAt?: Date | undefined;
   completedAt?: Date | undefined;
   cancelledAt?: Date | undefined;
+  cancelReasons?: OrderCancelReason[] | undefined;
+  cancelNote?: string | undefined;
+  cancelledBy?: string | undefined;
 };
 
 export type UpdateOrderOptions = {

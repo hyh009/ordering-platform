@@ -1,3 +1,4 @@
+import { orderCancelReasons } from '@repo/shared';
 import {
   cartItemSnapshotSchema,
   participantSnapshotSchema,
@@ -46,8 +47,23 @@ const orderBatchSnapshotSchema = new Schema<OrderBatchSnapshot>(
     readyAt: {
       type: Date,
     },
+    servedAt: {
+      type: Date,
+    },
     cancelledAt: {
       type: Date,
+    },
+    cancelReasons: {
+      type: [String],
+      enum: orderCancelReasons,
+    },
+    cancelNote: {
+      type: String,
+      trim: true,
+    },
+    cancelledBy: {
+      type: String,
+      trim: true,
     },
     items: {
       type: [cartItemSnapshotSchema],
@@ -179,6 +195,18 @@ const orderSchema = new Schema<OrderEntity>(
     },
     cancelledAt: {
       type: Date,
+    },
+    cancelReasons: {
+      type: [String],
+      enum: orderCancelReasons,
+    },
+    cancelNote: {
+      type: String,
+      trim: true,
+    },
+    cancelledBy: {
+      type: String,
+      trim: true,
     },
   },
   {
