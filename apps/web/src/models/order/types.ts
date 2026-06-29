@@ -1,4 +1,9 @@
 import type {
+  AdvanceBatchStatusRequest,
+  CancelBatchRequest,
+  CancelOrderRequest,
+  CheckoutOrderRequest,
+  CompleteOrderRequest,
   GetGuestOrderSuccessResponse,
   GetMerchantOrderSuccessResponse,
   GuestStreamEventDto,
@@ -6,6 +11,7 @@ import type {
   ListOrdersSuccessResponse,
   OrderBatchDto,
   OrderBatchStatus,
+  OrderCancelReason,
   OrderDto,
   OrderPaymentStatus,
   OrderStatus,
@@ -13,12 +19,18 @@ import type {
 } from '@repo/shared';
 
 export type {
+  AdvanceBatchStatusRequest,
+  CancelBatchRequest,
+  CancelOrderRequest,
+  CheckoutOrderRequest,
+  CompleteOrderRequest,
   GetGuestOrderSuccessResponse,
   GetMerchantOrderSuccessResponse,
   GuestStreamEventDto,
   ListOrdersQuery,
   ListOrdersSuccessResponse,
   OrderBatchStatus,
+  OrderCancelReason,
   OrderPaymentStatus,
   OrderStatus,
   OrderSummaryDto,

@@ -34,6 +34,7 @@ const MERCHANT_CODE_REASON: Partial<
   PRODUCT_MODIFIER_NOT_FOUND: 'not-found',
   PRODUCT_NOT_FOUND: 'not-found',
   ORDER_NOT_FOUND: 'not-found',
+  ORDER_LOCKED: 'conflict',
   TAG_NOT_FOUND: 'not-found',
   VALIDATION_ERROR: 'invalid',
   INVALID_FIELD_VALUE: 'invalid',

@@ -8,11 +8,15 @@ export function createOrderDetailActions(store: OrderDetailStore) {
     },
 
     loadSucceeded(order: Order) {
-      store.setState({ order, isLoading: false });
+      store.setState({ order, isLoading: false, lastLoadedAt: Date.now() });
     },
 
     loadFailed(error: string) {
       store.setState({ isLoading: false, error });
+    },
+
+    orderUpdated(order: Order) {
+      store.setState({ order, lastLoadedAt: Date.now() });
     },
   };
 }

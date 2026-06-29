@@ -4,6 +4,7 @@ import type { AppTranslator } from '@/app/i18n';
 import type {
   Order,
   OrderBatchStatus,
+  OrderCancelReason,
   OrderPaymentStatus,
   OrderStatus,
 } from './types';
@@ -63,13 +64,97 @@ export function getOrderBatchStatusLabel(
       return tDefault('order.batchStatus.preparing', 'Preparing');
     case 'ready':
       return tDefault('order.batchStatus.ready', 'Ready');
+    case 'served':
+      return tDefault('order.batchStatus.served', 'Served');
     case 'cancelled':
       return tDefault('order.batchStatus.cancelled', 'Cancelled');
   }
 }
 
+/**
+ * The next status for a batch, and the action-button label for advancing to it.
+ * Returns null when the batch is in a terminal state (served or cancelled).
+ * Mirrors the forward-only lifecycle: pending_confirmation → preparing → ready → served.
+ */
+export function getNextBatchStatus(
+  status: OrderBatchStatus,
+  tDefault: AppTranslator,
+): { status: OrderBatchStatus; label: string } | null {
+  switch (status) {
+    case 'pending_confirmation':
+      return {
+        status: 'preparing',
+        label: tDefault('order.batchAction.startPreparing', 'Start preparing'),
+      };
+    case 'preparing':
+      return {
+        status: 'ready',
+        label: tDefault('order.batchAction.markReady', 'Mark ready'),
+      };
+    case 'ready':
+      return {
+        status: 'served',
+        label: tDefault('order.batchAction.markServed', 'Mark served'),
+      };
+    case 'served':
+    case 'cancelled':
+      return null;
+  }
+}
+
+/**
+ * Whether the merchant may complete this order.
+ * Mirrors the backend `canCompleteOrder` predicate in api/src/models/order/model.ts.
+ * Requires: every batch ∈ {served, cancelled}, and at least one not cancelled.
+ */
+export function canCompleteOrder(order: Pick<Order, 'status' | 'batches'>): boolean {
+  if (order.status === 'completed' || order.status === 'cancelled') return false;
+  if (order.batches.length === 0) return false;
+  const hasActiveServed = order.batches.some((b) => b.status === 'served');
+  if (!hasActiveServed) return false;
+  return order.batches.every(
+    (b) => b.status === 'served' || b.status === 'cancelled',
+  );
+}
+
 export function isOrderFinished(order: Order): boolean {
   return order.status === 'completed' || order.status === 'cancelled';
+}
+
+export function getOrderCancelReasonLabel(
+  reason: OrderCancelReason,
+  tDefault: AppTranslator,
+): string {
+  switch (reason) {
+    case 'no_show':
+      return tDefault('order.cancelReason.noShow', 'No show');
+    case 'out_of_stock':
+      return tDefault('order.cancelReason.outOfStock', 'Out of stock');
+    case 'customer_request':
+      return tDefault('order.cancelReason.customerRequest', 'Customer request');
+    case 'other':
+      return tDefault('order.cancelReason.other', 'Other');
+  }
+}
+
+/**
+ * Whether the merchant may cancel this order.
+ * Mirrors the backend `canCancelOrder` predicate in api/src/models/order/model.ts.
+ * Allowed on any non-terminal status (not `completed` or `cancelled`).
+ */
+export function canCancelOrder(order: Pick<Order, 'status'>): boolean {
+  return order.status !== 'completed' && order.status !== 'cancelled';
+}
+
+/**
+ * Whether the merchant may mark this order as paid (checkout).
+ * Mirrors the backend `canCheckoutOrder` predicate in api/src/models/order/model.ts.
+ * Blocked if already paid/refunded/voided or if cancelled.
+ */
+export function canCheckoutOrder(
+  order: Pick<Order, 'status' | 'paymentStatus'>,
+): boolean {
+  return order.paymentStatus === 'unpaid' && order.status !== 'cancelled';
 }
 
 export function getParticipantAmount(

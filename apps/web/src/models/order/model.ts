@@ -35,6 +35,9 @@ export const orderModel = {
     if (dto.servedAt !== undefined) order.servedAt = dto.servedAt;
     if (dto.completedAt !== undefined) order.completedAt = dto.completedAt;
     if (dto.cancelledAt !== undefined) order.cancelledAt = dto.cancelledAt;
+    if (dto.cancelReasons !== undefined) order.cancelReasons = dto.cancelReasons;
+    if (dto.cancelNote !== undefined) order.cancelNote = dto.cancelNote;
+    if (dto.cancelledBy !== undefined) order.cancelledBy = dto.cancelledBy;
 
     return order;
   },
