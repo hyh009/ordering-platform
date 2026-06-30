@@ -66,8 +66,10 @@ Frontend:
 
 - Order status is derived from the batches by `rollupOrderStatus` — the
   **slowest active (non-cancelled) batch stage** — and persisted on every batch
-  mutation so the list and the guest tracking page stay consistent. `completed`,
-  `cancelled`, and `pending_payment` are set explicitly, never by rollup.
+  mutation so the list and the guest tracking page stay consistent. For
+  `pay_later`, rollup returns `completed` only when payment is `paid` and every
+  active batch is `ready`. `cancelled` and `pending_payment` are set explicitly,
+  never by rollup.
 - Batch lifecycle is forward-only: `pending_confirmation → preparing → ready`
   (`ready` is terminal prep), plus `cancelled`. There is no `served` stage and
   no skip-ahead.
@@ -75,25 +77,32 @@ Frontend:
 ## Actions
 
 ### Advance a round
+
 `PATCH .../batches/:batchId/status` with the next stage. Forward-only
 (`canAdvanceBatch`); stamps `confirmedAt`/`readyAt`; recomputes the order
 rollup.
 
 ### Checkout (mark paid)
+
 `PATCH .../checkout`. Allowed while `unpaid` and not `cancelled`
 (`canCheckoutOrder`). Sets `paymentStatus = paid`, `paidAt`. Branches by mode:
 
-- `pay_later`: **also auto-completes** the order (`status = completed`,
-  `completedAt`) — payment is the pay-later finisher.
+- `pay_later`: locks guest add-ons immediately. If every active batch is already
+  `ready`, also sets `status = completed` and `completedAt`; otherwise the order
+  remains on its batch rollup and auto-completes when the remaining active
+  batches become `ready`.
 - `pay_first`: if `status === 'pending_payment'`, advance to
   `pending_confirmation`; do not auto-complete.
 
 ### Complete
+
 `PATCH .../complete`. **`pay_first` only** — the UI hides Complete for
-`pay_later`. Gated by `canCompleteOrder`: every batch ∈ {`ready`, `cancelled`}
-with at least one not cancelled. Sets `status = completed`, `completedAt`.
+`pay_later`. Gated by `canCompleteOrder`: payment is `paid`, every batch ∈
+{`ready`, `cancelled`}, with at least one not cancelled. Sets
+`status = completed`, `completedAt`.
 
 ### Cancel a round / the whole order
+
 `PATCH .../batches/:batchId/cancel` and `PATCH .../cancel`. Both take one or
 more reasons (`no_show`, `out_of_stock`, `customer_request`, `other`) plus an
 optional free-text note (at least one of reasons/note is required). See

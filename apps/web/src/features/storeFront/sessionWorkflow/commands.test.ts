@@ -108,6 +108,34 @@ describe('storefront session workflow', () => {
     });
   });
 
+  it('treats a finished order session as ended and clears it', async () => {
+    saveStoredGuestSession({
+      guestToken: 'token-a',
+      participantId: 'participant-a',
+      storeId: 'store-a',
+    });
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'completed',
+        canAddOn: false,
+      } as never,
+    });
+
+    await expect(
+      runtime.commands.session.resumeSession('store-a'),
+    ).resolves.toEqual({
+      status: 'ended',
+    });
+    expect(loadStoredGuestSession('store-a')).toBeNull();
+    expect(runtime.stores.order.getState().order).toBeNull();
+  });
+
   it('clears a stale hydrated order when the resumed session has a cart but no order', async () => {
     saveStoredGuestSession({
       guestToken: 'token-a',

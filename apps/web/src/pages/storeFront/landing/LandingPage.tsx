@@ -4,7 +4,6 @@ import { OrderTypeSelector } from '@/features/storeFront/components/OrderTypeSel
 import { ParticipantIdentitySelector } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
-import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import { formatBusinessHours } from '@/models/store';
 import { Button } from '@/shared/components/ui/button';
@@ -24,14 +23,6 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <StorefrontPageHeader
-        sticky
-        right={StorefrontPageHeader.Right.Logo}
-        title={vm.store ? localize(vm.store.displayName) : undefined}
-        logoUrl={vm.store?.logoUrl}
-        logoAlt={vm.store ? localize(vm.store.displayName) : undefined}
-      />
-
       {vm.isLoading && !vm.store ? (
         <StorefrontLoadingView />
       ) : vm.error || !vm.store ? (
@@ -45,7 +36,7 @@ export function LandingPage() {
       ) : (
         <>
           {/* Hero */}
-          <div className="relative h-48 overflow-hidden bg-linear-to-br from-storefront-border via-storefront-bg to-storefront-primary/20 md:h-64">
+          <div className="relative aspect-video overflow-hidden bg-linear-to-br from-storefront-border via-storefront-bg to-storefront-primary/20 lg:aspect-auto lg:h-[32vh] lg:min-h-64 lg:max-h-96">
             {vm.store.bannerUrl ? (
               <img
                 alt=""
@@ -132,17 +123,19 @@ export function LandingPage() {
 
               {vm.entryMode === 'chooser' ? (
                 <>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-8 flex flex-col gap-6 md:flex-row">
                     <Button
-                      className="flex-1"
+                      className="md:flex-1"
                       disabled={!vm.isOpen}
+                      size="lg"
                       variant={vm.canResume ? 'outline' : 'storefront'}
                       onClick={vm.showNewOrder}
                     >
                       {tDefault('guest.landing.startOrder', 'New order')}
                     </Button>
                     <Button
-                      className="flex-1"
+                      className="md:flex-1"
+                      size="lg"
                       variant="outline"
                       onClick={vm.goToJoin}
                     >

@@ -184,9 +184,11 @@ Staff takes payment:
   not `completed` or `cancelled`
 - `Order.paymentStatus = paid`
 - `Order.paidAt = now`
-- `Order.status = completed` (pay_later: payment is the finisher — the order
-  auto-completes)
-- `Order.completedAt = now` (pay_later only)
+- if all active batches are already `ready`, `Order.status = completed` and
+  `Order.completedAt = now`
+- otherwise `Order.status` remains the current batch rollup; a later batch
+  advance/cancel auto-completes the pay-later order once every active batch is
+  `ready` and payment is already collected
 - the join code becomes invalid
 - no more guest add-ons are allowed
 
@@ -219,6 +221,8 @@ Kitchen and pickup:
 
 - when food is ready, batch `status = ready` and `Order.status = ready`
 - staff marks the order complete after pickup has no remaining operational work
+- completion requires `Order.paymentStatus = paid` and every active batch to be
+  `ready`
 - `Order.status = completed`
 - set `Order.completedAt = now`
 

@@ -1,6 +1,7 @@
 import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import type { StoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
+import { isOrderFinished } from '@/models/order';
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
 import {
   mapStoreFrontApiError,
@@ -137,6 +138,11 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
         }
 
         if (session.order) {
+          if (isOrderFinished(session.order)) {
+            clearSession(expectedStoreId);
+            return { status: 'ended' };
+          }
+
           orderActions.orderUpdated(session.order);
           // When both a live draft cart and an order are present (add-on mode),
           // resume into order tracking: the order is the participant's

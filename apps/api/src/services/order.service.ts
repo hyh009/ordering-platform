@@ -176,11 +176,19 @@ export class OrderService {
     const nextBatches = order.batches.map((b, i) =>
       i === batchIndex ? nextBatch : b,
     );
-    const nextStatus = rollupOrderStatus(nextBatches);
+    const nextStatus = rollupOrderStatus(nextBatches, order);
+    const completedAt =
+      nextStatus === 'completed' && order.status !== 'completed'
+        ? now
+        : undefined;
 
     const updated = await orderRepository.update(
       orderId,
-      { batches: nextBatches, status: nextStatus },
+      {
+        batches: nextBatches,
+        status: nextStatus,
+        ...(completedAt !== undefined ? { completedAt } : {}),
+      },
       { expectedUpdatedAt },
     );
 
@@ -246,7 +254,11 @@ export class OrderService {
     const nextBatches = order.batches.map((b, i) =>
       i === batchIndex ? nextBatch : b,
     );
-    const nextStatus = rollupOrderStatus(nextBatches);
+    const nextStatus = rollupOrderStatus(nextBatches, order);
+    const completedAt =
+      nextStatus === 'completed' && order.status !== 'completed'
+        ? now
+        : undefined;
     const totals = computeActiveOrderTotals(nextBatches, order.serviceFeeRate);
 
     const updated = await orderRepository.update(
@@ -254,6 +266,7 @@ export class OrderService {
       {
         batches: nextBatches,
         status: nextStatus,
+        ...(completedAt !== undefined ? { completedAt } : {}),
         items: totals.items,
         subtotal: totals.subtotal,
         serviceFeeAmount: totals.serviceFeeAmount,
@@ -347,14 +360,17 @@ export class OrderService {
 
     const now = new Date();
 
-    // pay_later: payment is the finisher — auto-complete the order.
+    // pay_later: payment locks add-ons; completion waits for all active batches.
     // pay_first: payment is upfront; `completed` stays the explicit terminal.
     let nextStatus: typeof order.status;
     let completedAt: Date | undefined;
 
     if (order.checkoutMode === 'pay_later') {
-      nextStatus = 'completed';
-      completedAt = now;
+      nextStatus = rollupOrderStatus(order.batches, {
+        checkoutMode: order.checkoutMode,
+        paymentStatus: 'paid',
+      });
+      completedAt = nextStatus === 'completed' ? now : undefined;
     } else {
       // pay_first — advance pending_payment to pending_confirmation; otherwise keep current status.
       nextStatus =

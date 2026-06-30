@@ -113,6 +113,13 @@ export function canAdvanceBatch(
   return toIndex > fromIndex;
 }
 
+function hasCompletableBatches(batches: OrderBatchSnapshot[]): boolean {
+  if (batches.length === 0) return false;
+  const hasActiveReady = batches.some((b) => b.status === 'ready');
+  if (!hasActiveReady) return false;
+  return batches.every((b) => b.status === 'ready' || b.status === 'cancelled');
+}
+
 /**
  * Derive the order status from its batches (rollup).
  * Rules:
@@ -121,12 +128,24 @@ export function canAdvanceBatch(
  *     `'pending_confirmation'`. The order stays OPEN so the guest can still add
  *     another round; cancelling rounds rejects food, it does not end the table.
  *     The terminal `'cancelled'` is reserved for an explicit order-level cancel.
+ *   - A pay-later order becomes `'completed'` only once payment is collected and
+ *     every active batch is ready.
  *   - Otherwise return the slowest (earliest-stage) active batch status,
  *     which maps 1:1 to an OrderStatus of the same name.
- * Never returns `'cancelled'`, `'completed'`, or `'pending_payment'` — those are
- * set explicitly.
+ * Never returns `'cancelled'` or `'pending_payment'` — those are set explicitly.
  */
-export function rollupOrderStatus(batches: OrderBatchSnapshot[]): OrderStatus {
+export function rollupOrderStatus(
+  batches: OrderBatchSnapshot[],
+  order?: Pick<OrderEntity, 'checkoutMode' | 'paymentStatus'>,
+): OrderStatus {
+  if (
+    order?.checkoutMode === 'pay_later' &&
+    order.paymentStatus === 'paid' &&
+    hasCompletableBatches(batches)
+  ) {
+    return 'completed';
+  }
+
   const active = batches.filter((b) => b.status !== 'cancelled');
   if (active.length === 0) return 'pending_confirmation';
 
@@ -171,17 +190,14 @@ export function computeActiveOrderTotals(
 
 /**
  * Whether a merchant may mark an order as completed.
- * Requires: order not already `completed` or `cancelled`, every batch is in
- * {`ready`, `cancelled`}, and at least one batch is not cancelled.
+ * Requires: order is paid, not already `completed` or `cancelled`, every batch
+ * is in {`ready`, `cancelled`}, and at least one batch is not cancelled.
  */
 export function canCompleteOrder(order: OrderEntity): boolean {
-  if (order.status === 'completed' || order.status === 'cancelled') return false;
-  if (order.batches.length === 0) return false;
-  const hasActiveReady = order.batches.some((b) => b.status === 'ready');
-  if (!hasActiveReady) return false;
-  return order.batches.every(
-    (b) => b.status === 'ready' || b.status === 'cancelled',
-  );
+  if (order.status === 'completed' || order.status === 'cancelled')
+    return false;
+  if (order.paymentStatus !== 'paid') return false;
+  return hasCompletableBatches(order.batches);
 }
 
 /**

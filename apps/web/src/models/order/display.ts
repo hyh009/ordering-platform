@@ -96,10 +96,15 @@ export function getNextBatchStatus(
 /**
  * Whether the merchant may complete this order.
  * Mirrors the backend `canCompleteOrder` predicate in api/src/models/order/model.ts.
- * Requires: every batch ∈ {ready, cancelled}, and at least one not cancelled.
+ * Requires: payment is collected, every batch ∈ {ready, cancelled}, and at
+ * least one not cancelled.
  */
-export function canCompleteOrder(order: Pick<Order, 'status' | 'batches'>): boolean {
-  if (order.status === 'completed' || order.status === 'cancelled') return false;
+export function canCompleteOrder(
+  order: Pick<Order, 'status' | 'paymentStatus' | 'batches'>,
+): boolean {
+  if (order.status === 'completed' || order.status === 'cancelled')
+    return false;
+  if (order.paymentStatus !== 'paid') return false;
   if (order.batches.length === 0) return false;
   const hasActiveReady = order.batches.some((b) => b.status === 'ready');
   if (!hasActiveReady) return false;

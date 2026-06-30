@@ -3,12 +3,19 @@ import { createStoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { Cart, GuestSession } from '@/models/cart';
 import type { Order } from '@/models/order';
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
+import { storeFrontMenuService } from '@/services/storeFrontMenu.service';
 import { createLandingPageCommands } from './landingPage.commands';
 
 vi.mock('@/services/storeFrontCart.service', () => ({
   storeFrontCartService: {
     getSession: vi.fn(),
     leaveCart: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/storeFrontMenu.service', () => ({
+  storeFrontMenuService: {
+    getStore: vi.fn(),
   },
 }));
 
@@ -36,7 +43,31 @@ describe('landing page commands', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('window', { localStorage: createLocalStorage() });
+    vi.mocked(storeFrontMenuService.getStore).mockResolvedValue({
+      id: 'store-a',
+      orderModes: [],
+    } as never);
     seedSession();
+  });
+
+  it('does not offer resume on initialize when the stored order is finished', async () => {
+    const runtime = createStoreFrontRuntime();
+    vi.mocked(storeFrontCartService.getSession).mockResolvedValue({
+      participantId: 'participant-a',
+      order: {
+        id: 'order-a',
+        storeId: 'store-a',
+        status: 'completed',
+        canAddOn: false,
+      } as Order,
+    } satisfies GuestSession);
+
+    await expect(
+      createLandingPageCommands(runtime).initialize('store-a'),
+    ).resolves.toMatchObject({
+      hasStoredSession: false,
+    });
+    expect(runtime.commands.session.hasStoredSession('store-a')).toBe(false);
   });
 
   it('leaves an active cart before replacing the session', async () => {

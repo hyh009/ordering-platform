@@ -9,6 +9,7 @@ import {
   useParticipantIdentityForm,
 } from '@/features/storeFront/components/ParticipantIdentitySelector';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
+import { isOrderFinished } from '@/models/order';
 import { isStoreOpenNow } from '@/models/store';
 import type { StoreOrderType } from '@/models/store';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
@@ -28,6 +29,10 @@ export function useLandingPageVM() {
     runtime.stores.tenant,
     (state) => state.activeStoreId,
   );
+  const guestToken = useStore(
+    runtime.stores.session,
+    (state) => state.guestToken,
+  );
   const isActiveStore = activeStoreId === storeId;
   const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
   const rawIsLoading = useStore(
@@ -39,10 +44,12 @@ export function useLandingPageVM() {
     runtime.stores.cart,
     (state) => state.isMutating,
   );
+  const rawOrder = useStore(runtime.stores.order, (state) => state.order);
   const store = isActiveStore ? rawStore : null;
   const isLoading = !isActiveStore || rawIsLoading;
   const error = isActiveStore ? rawError : null;
   const isMutating = isActiveStore && rawIsMutating;
+  const order = isActiveStore ? rawOrder : null;
 
   const [canResume, setCanResume] = useState(false);
   const [hasOrderHistory, setHasOrderHistory] = useState(false);
@@ -92,6 +99,12 @@ export function useLandingPageVM() {
     // `tDefault` is a stable module import, not a reactive dependency; keeping
     // it out of the deps prevents the init effect from re-running every render.
   }, [commands, storeId]);
+
+  useEffect(() => {
+    if (!storeId || !order || !isOrderFinished(order)) return;
+
+    commands.clearFinishedSession(storeId);
+  }, [commands, order, storeId]);
 
   const selectOrderType = useCallback(
     (orderType: StoreOrderType) => {
@@ -247,7 +260,7 @@ export function useLandingPageVM() {
     entryMode,
     identityValues,
     setIdentityValues,
-    canResume: resumeStoreId === storeId && canResume,
+    canResume: resumeStoreId === storeId && canResume && guestToken !== null,
     hasOrderHistory: resumeStoreId === storeId && hasOrderHistory,
     selectOrderType,
     createOrder,

@@ -505,7 +505,11 @@ router.patch<OrderParams, GetMerchantOrderSuccessResponse, CancelOrderRequest>(
  *                   code: ORDER_LOCKED
  *                   message: Order cannot be completed in its current state
  */
-router.patch<OrderParams, GetMerchantOrderSuccessResponse, CompleteOrderRequest>(
+router.patch<
+  OrderParams,
+  GetMerchantOrderSuccessResponse,
+  CompleteOrderRequest
+>(
   '/:orderId/complete',
   requireAuth,
   requireOrgRole('org_owner', 'org_admin'),
@@ -741,8 +745,10 @@ router.patch<
  *     description: >-
  *       Advances `paymentStatus` from `unpaid` to `paid` and records `paidAt`.
  *       If `status` is `pending_payment`, it also advances to
- *       `pending_confirmation`. Blocked if already `paid`, `refunded`, `voided`,
- *       or `cancelled`.
+ *       `pending_confirmation`. For pay-later orders, checkout locks guest
+ *       add-ons immediately but completes the order only when every active
+ *       batch is ready. Blocked if already `paid`, `refunded`, `voided`, or
+ *       `cancelled`.
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -2,6 +2,14 @@ import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { CreateCartRequest } from '@/models/cart';
 import { isOrderFinished } from '@/models/order';
 
+function isResumableSession(
+  result: Awaited<
+    ReturnType<StoreFrontRuntime['commands']['session']['resumeSession']>
+  >,
+): boolean {
+  return result.status === 'cart' || result.status === 'order';
+}
+
 export function createLandingPageCommands(runtime: StoreFrontRuntime) {
   async function abandonCurrentSession(storeId: string) {
     await runtime.commands.tenant.activateStore(storeId);
@@ -54,11 +62,19 @@ export function createLandingPageCommands(runtime: StoreFrontRuntime) {
     async initialize(storeId: string) {
       await runtime.commands.tenant.activateStore(storeId);
       const storefront = await runtime.commands.storefront.loadStore(storeId);
+      const session = runtime.commands.session.hasStoredSession(storeId)
+        ? await runtime.commands.session.resumeSession(storeId)
+        : { status: 'none' as const };
+
       return {
         storefront,
-        hasStoredSession: runtime.commands.session.hasStoredSession(storeId),
+        hasStoredSession: isResumableSession(session),
         hasOrderHistory: runtime.commands.orderHistory.hasHistory(storeId),
       };
+    },
+
+    clearFinishedSession(storeId: string) {
+      runtime.commands.session.clearSession(storeId);
     },
 
     async resume(storeId: string) {
