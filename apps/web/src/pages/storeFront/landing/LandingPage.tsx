@@ -6,6 +6,7 @@ import { StorefrontErrorView } from '@/features/storeFront/components/Storefront
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
+import { formatBusinessHours } from '@/models/store';
 import { Button } from '@/shared/components/ui/button';
 import { useLandingPageVM } from './useLandingPageVM';
 
@@ -18,7 +19,7 @@ export function LandingPage() {
   const todayHours = vm.store?.businessHours.find((h) => h.dayOfWeek === today);
   const hoursText =
     todayHours?.isOpen && todayHours.openTime && todayHours.closeTime
-      ? `${todayHours.openTime} - ${todayHours.closeTime}`
+      ? formatBusinessHours(todayHours, tDefault)
       : null;
 
   return (
@@ -88,7 +89,7 @@ export function LandingPage() {
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       {tDefault('guest.landing.open', 'Open')}
                       {hoursText ? (
-                        <span className="font-normal">{hoursText}</span>
+                        <span className="font-normal">( {hoursText} )</span>
                       ) : null}
                     </span>
                   ) : (
