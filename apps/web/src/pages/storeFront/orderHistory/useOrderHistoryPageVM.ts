@@ -20,6 +20,19 @@ export function useOrderHistoryPageVM() {
     runtime.stores.tenant,
     (state) => state.activeStoreId,
   );
+  const isActiveStore = activeStoreId === storeId;
+  const rawStore = useStore(runtime.stores.storefront, (state) => state.store);
+  const rawStoreError = useStore(
+    runtime.stores.storefront,
+    (state) => state.error,
+  );
+  const rawStoreIsLoading = useStore(
+    runtime.stores.storefront,
+    (state) => state.isLoading,
+  );
+  const store = isActiveStore ? rawStore : null;
+  const storeError = isActiveStore ? rawStoreError : null;
+  const storeIsLoading = isActiveStore ? rawStoreIsLoading : false;
   const historyStoreId = useStore(
     runtime.stores.orderHistory,
     (state) => state.storeId,
@@ -36,11 +49,11 @@ export function useOrderHistoryPageVM() {
     runtime.stores.orderHistory,
     (state) => state.error,
   );
-  const isCurrentStore =
-    activeStoreId === storeId && historyStoreId === storeId;
+  const isCurrentStore = isActiveStore && historyStoreId === storeId;
   const items = isCurrentStore ? rawItems : [];
-  const isLoading = !isCurrentStore || rawIsLoading;
-  const error = isCurrentStore ? rawError : null;
+  const error = storeError ?? (isCurrentStore ? rawError : null);
+  const isLoading =
+    !error && (!isCurrentStore || rawIsLoading || storeIsLoading);
 
   // The page's primary load, shared by the entry effect and retry. On a total
   // failure loadOrders has already written the error into the store, so the
@@ -88,5 +101,5 @@ export function useOrderHistoryPageVM() {
     [navigate, storeId],
   );
 
-  return { items, isLoading, error, retry, goBack, openOrder };
+  return { store, items, isLoading, error, retry, goBack, openOrder };
 }
