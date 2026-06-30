@@ -44,13 +44,29 @@ export function LandingPage() {
       ) : (
         <>
           {/* Hero */}
-          <div className="h-48 bg-linear-to-br from-storefront-border via-storefront-bg to-storefront-primary/20 md:h-64" />
+          <div className="relative h-48 overflow-hidden bg-linear-to-br from-storefront-border via-storefront-bg to-storefront-primary/20 md:h-64">
+            {vm.store.bannerUrl ? (
+              <img
+                alt=""
+                className="h-full w-full object-cover"
+                src={vm.store.bannerUrl}
+              />
+            ) : null}
+          </div>
 
           {/* Content */}
           <div className="flex flex-1 flex-col items-center bg-storefront-bg px-4 pb-10 md:px-8">
             {/* Store icon — overlaps hero bottom */}
-            <div className="relative -mt-10 z-raised flex h-20 w-20 items-center justify-center rounded-full border-4 border-storefront-bg bg-storefront-bg shadow-lg">
-              <Store className="h-9 w-9 text-storefront-primary" />
+            <div className="relative -mt-10 z-raised flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-storefront-bg bg-storefront-bg shadow-lg">
+              {vm.store.logoUrl ? (
+                <img
+                  alt={localize(vm.store.displayName)}
+                  className="h-full w-full object-cover"
+                  src={vm.store.logoUrl}
+                />
+              ) : (
+                <Store className="h-9 w-9 text-storefront-primary" />
+              )}
             </div>
 
             {/* Single max-width wrapper — children fill with w-full / flex-1 / grid */}

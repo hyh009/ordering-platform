@@ -20,6 +20,10 @@ export const storeFrontMenuModel = {
       store.logoUrl = dto.logoUrl;
     }
 
+    if (dto.bannerUrl !== undefined) {
+      store.bannerUrl = dto.bannerUrl;
+    }
+
     return store;
   },
 
