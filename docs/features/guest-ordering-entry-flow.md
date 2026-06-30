@@ -148,50 +148,12 @@ The guest must still choose dine-in or takeaway.
 
 ## Recent Orders
 
-Recent orders are a browser-local convenience, not an account-backed history or
-security boundary.
+Recent orders are browser-local and separate from the active guest session. The
+Landing page only uses them to decide whether to show the secondary **Recent
+orders** link; it does not infer Resume behavior from the history list.
 
-- Store entries separately from the active guest session.
-- Partition entries by `storeId`.
-- Add or update an entry when a submitted order is created or joined, and when a
-  participant opens an order they belong to through their active session. This
-  records the order for every participant who has viewed it, not only the
-  submitter or post-submission joiners.
-- Keep the entry when that order becomes completed/cancelled or when another
-  active session replaces it.
-- Keep entries for 24 hours using a frontend TTL.
-- Remove expired entries lazily when history is read.
-- Remove an entry when its order API returns `not-found` or `forbidden`.
-- Clearing browser storage or changing devices loses the list.
-
-Suggested local entry:
-
-```ts
-type GuestOrderHistoryEntry = {
-  orderId: string;
-  token: string;
-  createdAt: string;
-  expiresAt: string;
-};
-```
-
-Suggested store-scoped key:
-
-```txt
-ordering-platform.storeFrontOrderHistory:<storeId>
-```
-
-Each history entry keeps the token that authorizes that participant to read the
-order. Opening a recent order is read-only and must not replace, resume, or clear
-the store's active guest session.
-
-Recent orders may therefore contain both unfinished and ended orders. The
-Landing page still uses **Resume ordering** only for the current active session;
-it does not infer Resume behavior from the history list.
-
-The 24-hour TTL controls whether the frontend offers the order in Recent orders.
-It does not require the backend to reject an otherwise valid order-view request
-after 24 hours.
+See [`order-history.md`](./order-history.md) for storage keys, TTL, write
+sources, and read-only history-order behavior.
 
 ## Route Summary
 
@@ -213,3 +175,6 @@ after 24 hours.
   read-only.
 - The order detail page must use the token belonging to the selected history
   entry rather than assuming the current active-session token.
+- Clearing the cart for a submitted round does not clear the guest session. The
+  session is cleared when the token/session is unusable, the guest leaves an
+  unsubmitted cart, or the active order has finished (`completed`/`cancelled`).

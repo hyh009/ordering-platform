@@ -111,17 +111,39 @@ ordering-platform.guestSession:<storeId>
 
 Operations have store-scoped effects:
 
-| Event | Store A session | Store B session |
-| --- | --- | --- |
-| Open or order from Store B | Unchanged | Created or updated |
-| Navigate one tab from A to B | Remains persisted | Restored when needed |
-| Leave Store A cart | Cleared | Unchanged |
-| Resume Store A after its session expires | Show modal, clear A, then start a new A session | Unchanged |
-| Refresh Store A tab | Restored | Unchanged |
+| Event                                    | Store A session                                 | Store B session      |
+| ---------------------------------------- | ----------------------------------------------- | -------------------- |
+| Open or order from Store B               | Unchanged                                       | Created or updated   |
+| Navigate one tab from A to B             | Remains persisted                               | Restored when needed |
+| Leave Store A cart                       | Cleared                                         | Unchanged            |
+| Resume Store A after its session expires | Show modal, clear A, then start a new A session | Unchanged            |
+| Refresh Store A tab                      | Restored                                        | Unchanged            |
 
 Cart and order commands must reject a guest token when its session `storeId`
 does not match the expected route store. Backend authorization independently
 validates the token's store, cart, and participant scope.
+
+## Session Cleanup
+
+The persisted guest session represents the browser participant's active token
+for one store. It is broader than the current draft cart.
+
+Clear the store-scoped guest session when:
+
+- the guest leaves an unsubmitted cart
+- restore or mutation reports the session has expired or ended
+- the active order is finished (`completed` or `cancelled`)
+- the route/store scope no longer matches the token and the command owns cleanup
+
+Do not clear the guest session only because:
+
+- a cart submit succeeded
+- the draft cart store was cleared for the submitted round
+- an SSE `order_updated` snapshot has `canAddOn = false`
+
+In those cases the cart may be cleared and the guest may be routed to order
+tracking, but the token remains the active identity for tracking and any allowed
+add-on flow.
 
 ## Expired Resume Flow
 

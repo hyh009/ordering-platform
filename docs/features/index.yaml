@@ -20,6 +20,10 @@ feature_docs:
       path: docs/features/ordering-frontend.md
       use_when: Changing the guest-facing storefront ordering experience (entry, menu, cart, order tracking).
 
+    - name: order-history
+      path: docs/features/order-history.md
+      use_when: Changing browser-local storefront recent orders, active-session order history recording, or history-order viewing.
+
     - name: merchant-orders
       path: docs/features/merchant-orders.md
       use_when: Working on the management-platform order screens — list/detail, batch advancement, checkout, complete, cancel (with reasons), status rollup, conflict refresh, or freshness/SSE.

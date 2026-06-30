@@ -11,11 +11,11 @@ session isolation behavior is in
 [`guest-multi-store-sessions.md`](./guest-multi-store-sessions.md). This
 document describes the guest frontend behavior. Landing, Resume, Join, and Recent
 orders behavior is in
-[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md). The guest
+[`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md). Browser-local
+recent-order behavior is in [`order-history.md`](./order-history.md). The guest
 frontend and the guest public API are implemented; the dine-in pay-later
 reusable-cart add-on flow is detailed in [`ordering-flow.md`](./ordering-flow.md).
-Live SSE order sync is not yet wired — order tracking currently refreshes
-manually.
+Guest order status is synchronized through the session SSE stream.
 
 MVP does not integrate online payment. Staff manually confirms payment.
 
@@ -35,15 +35,13 @@ Implemented (frontend, following the frontend architecture conventions):
 - `apps/web/src/features/storeFront/...` (runtime / stores / actions / commands;
   `cartWorkflow`, `sessionWorkflow`, `orderHistory`)
 - `apps/web/src/models/{storeFrontMenu,cart,order}/...`
-- `apps/web/src/services/{storeFrontMenu,storeFrontCart,storeFrontOrder}.service.ts`
+- `apps/web/src/services/{storeFrontMenu,storeFrontCart,storeFrontOrder,storeFrontGuestStream}.service.ts`
 
 Implemented (backend the frontend calls):
 
 - guest public routes `apps/api/src/routes/v1/public/guest/...`
 - `apps/api/src/services/guestOrdering.service.ts`, cart/order/public-menu
   contracts in `packages/shared`, guest token issuance
-
-Not yet wired: live SSE push (order tracking refreshes manually for now).
 
 ## Frontend
 
@@ -77,8 +75,8 @@ The public route tree is mounted at `/s/:storeId`, mobile-first, outside
    "added by", totals, payment status. While the server-computed `canAddOn` is
    true it shows "繼續加點" → menu add-on mode; otherwise it shows "Refresh
    status". A finished order or one opened from local history shows "Start another
-   order" / "Back to recent orders". Status updates via manual refresh today
-   (SSE push is planned).
+   order" / "Back to recent orders". Status updates through the active session
+   SSE stream, with manual refresh still available as a fallback.
 7. **Recent orders** — `/s/:storeId/orders`
    Read-only entry to orders this browser participated in during the last 24
    hours.
@@ -133,12 +131,11 @@ optimistic concurrency retry.
 3. Any participant submits from the cart → an Order is created (first batch
    `pending_confirmation`) and the cart is cleared but stays active → every
    participant can read the order (access is by participant membership, not tied
-   to the submitter's device).
+   to the submitter's device). The guest session remains active for tracking.
 4. While `canAddOn` is true (unpaid, unfinished, before `orderingClosesAt`),
    "繼續加點" → menu add-on mode → add to the still-active shared cart → submit
    flushes a new batch. The same submit serves the first and later rounds, and
-   the same window permits new participants to join. (Status refreshes manually;
-   SSE is planned.)
+   the same window permits new participants to join.
 5. Staff takes payment → the join code is invalidated, add-on disappears; staff
    completes → end screen.
 
@@ -175,8 +172,10 @@ identity). Expected surface:
 - Session: returns the live cart and the order together when both exist (add-on
   mode), so a participant sees the submitted order and the next-round draft.
 - Order: fetch (resolved by participant membership, independent of cart state, so
-  any participant can read it; carries the server-computed `canAddOn`). Live SSE
-  stream of order/batch status is planned, not yet wired.
+  any participant can read it; carries the server-computed `canAddOn`).
+- Session stream: emits cart/order snapshots for the active guest token. The
+  frontend applies pushed order snapshots to the order store so order tracking,
+  menu add-on state, and invite availability react without a page reload.
 
 Request/response shapes and error codes are defined with their contracts during
 the Phase 0 backend work.
@@ -195,6 +194,11 @@ the Phase 0 backend work.
   with a generous fixed `exp`. The token only authenticates "identity + scope";
   **authorization always checks live order state** (after payment, the add-item
   endpoint rejects based on order status; no token revocation needed).
+- **Session cleanup**: submitting a cart clears the draft cart for the current
+  round but keeps the guest token. The token is cleared when the session expires
+  or is unusable, the guest leaves an unsubmitted cart, or the active order is
+  finished (`completed`/`cancelled`). `OrderDto.canAddOn = false` prevents
+  add-ons but does not by itself end the session.
 - **Participant identity**: `participantId` is authoritative. The guest chooses
   an `avatarKey` and may enter a custom `displayName`; when omitted, the UI
   localizes the animal label and appends the uppercase final five characters of
@@ -212,11 +216,8 @@ the Phase 0 backend work.
 
 Decisions (promoted from the plan):
 
-- Real-time push will use **SSE** for order-tracking status updates
-  (one-directional), but it is **not yet wired**: order tracking and group
-  co-ordering currently rely on the join code plus a refetch (manual refresh /
-  reopening the cart) — no live sync yet. AI chat streaming can reuse SSE later;
-  upgrade to WebSocket only if true bidirectional needs arise.
+- Real-time push uses **SSE** for one-directional guest session updates. Upgrade
+  to WebSocket only if true bidirectional needs arise.
 - Dine-in pay-later add-on reuses the cart as a **reusable per-round draft**:
   submit flushes the cart into a new order batch and clears it while keeping it
   active; order access is decoupled from the cart (participant membership), and
