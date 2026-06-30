@@ -229,31 +229,47 @@ They do not need to wait for the previous pay-first order to reach
 
 ## Staff Edits And Cancellation
 
-Guests cannot modify submitted batches.
+Guests cannot modify submitted batches. Staff act on submitted work from the
+merchant order management screens — see `docs/features/merchant-orders.md`.
 
-Staff can:
+Implemented staff actions:
 
-- update submitted items
-- cancel individual submitted items
-- cancel a batch
+- advance a batch through `preparing → ready`
+- cancel a batch (a round)
 - cancel the whole order
-- update or cancel submitted work even after kitchen progress changes, because
-  restaurants may need to handle sold-out items, mistakes, waste, or guest
-  requests
+- mark payment collected (checkout); for `pay_later` this also completes the
+  order
+- complete the order (`pay_first`)
+
+Planned, not yet built: update submitted items and cancel individual items
+within a batch. Until then, item-level corrections are handled by cancelling the
+whole batch.
 
 Cancellation behavior:
 
+- a cancellation captures one or more reasons (`no_show`, `out_of_stock`,
+  `customer_request`, `other`) plus an optional free-text note, at both the
+  order and the batch level.
 - cancelled orders keep their daily number; daily numbers are not reused.
-- unpaid cancellation keeps `paymentStatus = unpaid`.
-- paid cancellation can use `paymentStatus = voided` or `refunded`, depending
-  on whether money was only voided or actually refunded.
-- cancelled orders set `Order.status = cancelled` and `Order.cancelledAt = now`.
-- submitted batches can be cancelled by staff, including ready batches when the
-  restaurant needs an operational exception.
-- cancelled batches set `OrderBatch.status = cancelled` and
-  `OrderBatch.cancelledAt = now`.
-- if a ready batch or paid order is cancelled, staff must also adjust order
-  totals and `paymentStatus` with `voided` or `refunded` as needed.
+- cancelling the whole order sets `Order.status = cancelled`,
+  `Order.cancelledAt = now`, and **zeroes the order totals** (`items = []`,
+  `subtotal = serviceFeeAmount = totalAmount = 0`): a cancelled order is no
+  revenue, and `total` represents revenue (loss is not tracked). Each batch
+  keeps its own items and subtotal as a record.
+- cancelling a single batch sets `OrderBatch.status = cancelled` and
+  `OrderBatch.cancelledAt = now`, and **recomputes the order totals from the
+  remaining non-cancelled batches**. The cancelled round keeps its own
+  items/subtotal for the record but no longer counts toward the order total.
+- submitted batches can be cancelled by staff, including `ready` batches, for
+  operational exceptions (sold-out, mistakes, waste, guest requests). The only
+  terminal batch state is `cancelled`.
+- cancelling rounds individually does NOT end the order: if every round is
+  cancelled, the order stays open (`Order.status` rolls back to
+  `pending_confirmation`) so the guest can still add another round. Only an
+  explicit whole-order cancel sets the terminal `cancelled`.
+- unpaid cancellation keeps `paymentStatus = unpaid`; cancelling a paid order
+  sets `paymentStatus = voided` (the platform does not process payments, so
+  there is no refund flow).
 
 ## Notes
 

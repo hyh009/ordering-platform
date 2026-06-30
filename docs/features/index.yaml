@@ -1,0 +1,64 @@
+# Feature documentation registry.
+#
+# One entry per domain feature doc under docs/features/. Feature docs describe
+# current agreed behavior and architecture (not speculative design — that lives
+# in docs/agent/temp/). Use this index to find the smallest relevant doc before
+# changing a feature; see docs/agent/workflows/feature-docs.md for how to write
+# or update these files.
+
+feature_docs:
+  ordering:
+    - name: ordering
+      path: docs/features/ordering.md
+      use_when: Working on cart/order/batch lifecycle, order modes (dine_in/takeaway, pay_first/pay_later), or group ordering rules.
+
+    - name: ordering-flow
+      path: docs/features/ordering-flow.md
+      use_when: Needing the Mermaid diagrams of the ordering/checkout/kitchen lifecycle.
+
+    - name: ordering-frontend
+      path: docs/features/ordering-frontend.md
+      use_when: Changing the guest-facing storefront ordering experience (entry, menu, cart, order tracking).
+
+    - name: merchant-orders
+      path: docs/features/merchant-orders.md
+      use_when: Working on the management-platform order screens — list/detail, batch advancement, checkout, complete, cancel (with reasons), status rollup, conflict refresh, or freshness/SSE.
+
+    - name: promotions
+      path: docs/features/promotions.md
+      use_when: Working on store-owned discount rules attached to orders.
+
+  guest_session:
+    - name: guest-ordering-entry-flow
+      path: docs/features/guest-ordering-entry-flow.md
+      use_when: Changing how a guest enters, resumes, joins, or reviews an order from a store entry point.
+
+    - name: guest-multi-store-sessions
+      path: docs/features/guest-multi-store-sessions.md
+      use_when: Working on guest sessions that span multiple stores or browser tabs.
+
+  auth_and_access:
+    - name: auth
+      path: docs/features/auth.md
+      use_when: Working on account registration, login, logout, protected routes, or session auth.
+
+    - name: token-refresh
+      path: docs/features/token-refresh.md
+      use_when: Working on access-token refresh or 401 retry handling.
+
+    - name: permissions
+      path: docs/features/permissions.md
+      use_when: Determining who can access which route or capability (roles, scopes, ownership).
+
+    - name: permission-checks
+      path: docs/features/permission-checks.md
+      use_when: Changing when or how permission is checked at runtime and how insufficient permission is handled.
+
+  platform:
+    - name: concurrency-control
+      path: docs/features/concurrency-control.md
+      use_when: Adding or changing a backend write path, or guarding against lost updates (optimistic locking / compare-and-set).
+
+    - name: language-selection
+      path: docs/features/language-selection.md
+      use_when: Working on language/locale selection or switching across the management platform or storefront.
