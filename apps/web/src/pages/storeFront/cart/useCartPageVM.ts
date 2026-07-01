@@ -60,7 +60,7 @@ export function useCartPageVM() {
     async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId);
       if (!isActive()) return;
-      if (result.status === 'none') {
+      if (result.status === 'redirect') {
         void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
           replace: true,
         });
@@ -103,6 +103,13 @@ export function useCartPageVM() {
       active = false;
     };
   }, [runInitialize]);
+
+  useEffect(() => {
+    if (!isActiveStore || isLoading || cart || !submittedOrder) return;
+    void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, submittedOrder.id), {
+      replace: true,
+    });
+  }, [cart, isActiveStore, isLoading, navigate, storeId, submittedOrder]);
 
   const retry = useCallback(() => {
     void runInitialize(() => true);

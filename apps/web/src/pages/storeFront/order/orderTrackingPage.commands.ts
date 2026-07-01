@@ -2,28 +2,35 @@ import type { Order } from '@/models/order';
 import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
 import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
 
+type OrderTrackingRedirectResult = {
+  status: 'redirect';
+  target: 'history' | 'landing';
+};
+
 export type OrderTrackingInitResult =
   | { status: 'loaded'; access: 'active' }
   | { status: 'loaded'; access: 'history'; order: Order }
   | (StoreFrontCommandFailure & { access: 'active' | 'history' })
-  | { status: 'none'; target: 'history' | 'landing' };
+  | OrderTrackingRedirectResult;
 
 export type OrderTrackingRefreshResult =
   | { status: 'loaded'; order: Order }
   | { status: 'loaded' }
   | StoreFrontCommandFailure
-  | { status: 'none' };
+  | OrderTrackingRedirectResult;
 
 export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
   async function loadActiveOrder(storeId: string, orderId: string) {
     const result = await runtime.commands.order.loadOrder(storeId, orderId);
+    if (result.status === 'failed' && result.reason === 'session-expired') {
+      runtime.commands.session.clearSession(storeId);
+      return { status: 'redirect' as const, target: 'landing' as const };
+    }
     if (
       result.status === 'failed' &&
-      (result.reason === 'session-expired' ||
-        result.reason === 'session-store-mismatch')
+      result.reason === 'session-store-mismatch'
     ) {
-      runtime.commands.session.clearSession(storeId);
-      return { status: 'none' as const };
+      return { status: 'redirect' as const, target: 'landing' as const };
     }
     return result;
   }
@@ -59,8 +66,8 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
               );
             }
           }
-          if (result.status === 'none') {
-            return { status: 'none', target: 'landing' };
+          if (result.status === 'redirect') {
+            return result;
           }
           return { ...result, access: 'active' };
         }
@@ -94,7 +101,7 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
       const session = await runtime.commands.session.restoreSession(storeId);
       if (session.status === 'none') {
         return {
-          status: 'none' as const,
+          status: 'redirect' as const,
           target: invalidHistoryEntry
             ? ('history' as const)
             : ('landing' as const),
@@ -118,8 +125,8 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
           );
         }
       }
-      if (result.status === 'none') {
-        return { status: 'none', target: 'landing' };
+      if (result.status === 'redirect') {
+        return result;
       }
       return {
         ...result,
@@ -134,7 +141,9 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
     ): Promise<OrderTrackingRefreshResult> {
       if (access === 'history') {
         const entry = runtime.commands.orderHistory.findEntry(storeId, orderId);
-        if (!entry) return { status: 'none' as const };
+        if (!entry) {
+          return { status: 'redirect' as const, target: 'history' as const };
+        }
         const result = await runtime.commands.order.fetchOrderWithToken(
           storeId,
           orderId,
@@ -145,7 +154,7 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
           (result.reason === 'session-expired' || result.reason === 'not-found')
         ) {
           runtime.commands.orderHistory.removeEntry(storeId, orderId);
-          return { status: 'none' as const };
+          return { status: 'redirect' as const, target: 'history' as const };
         }
         return result;
       }

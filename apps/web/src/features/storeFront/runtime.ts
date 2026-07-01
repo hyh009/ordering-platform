@@ -33,7 +33,8 @@ export function createStoreFrontRuntime() {
   const cartActions = createStoreFrontCartActions(cartStore);
   const orderActions = createStoreFrontOrderActions(orderStore);
   const tenantActions = createTenantActions(tenantStore);
-  const orderHistoryActions = createStoreFrontOrderHistoryActions(orderHistoryStore);
+  const orderHistoryActions =
+    createStoreFrontOrderHistoryActions(orderHistoryStore);
   const guestSessionCommands = createGuestSessionCommands(
     sessionActions,
     sessionStore,
@@ -65,6 +66,7 @@ export function createStoreFrontRuntime() {
   const sessionStreamCommands = createStoreFrontSessionStreamCommands({
     cartActions,
     orderActions,
+    orderHistoryCommands,
     sessionStore,
     tenantStore,
   });

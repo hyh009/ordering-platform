@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
-import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
-import { tDefault } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { useCopyToClipboard } from '@/shared/hooks/useCopyToClipboard';
@@ -47,8 +45,8 @@ export function useInvitePageVM() {
 
   // The page's primary load, shared by the entry effect and retry. A transient
   // failure surfaces on the load axis (page error + retry) and stays put; only a
-  // genuine "unavailable" alerts and bounces to landing. `isActive` lets the
-  // effect ignore a stale resolution after unmount.
+  // genuine "unavailable" session bounces to landing. `isActive` lets the effect
+  // ignore a stale resolution after unmount.
   const runInitialize = useCallback(
     async (isActive: () => boolean) => {
       const result = await commands.initialize(storeId);
@@ -82,21 +80,11 @@ export function useInvitePageVM() {
         return;
       }
 
-      // status === 'unavailable': the order genuinely can no longer be shared
-      // (ended, checked out, takeaway). Tell the host and send them back.
-      await feedbackCommands.alert({
-        title: tDefault('guest.invite.unavailableTitle', 'Invite unavailable'),
-        message: tDefault(
-          'guest.invite.unavailableMessage',
-          'This group order can no longer be shared.',
-        ),
-        confirmLabel: tDefault('common.ok', 'OK'),
+      // status === 'unavailable': no usable group session is available for this
+      // route, so mirror Menu/Cart and return to the store entry.
+      void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+        replace: true,
       });
-      if (isActive()) {
-        void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
-          replace: true,
-        });
-      }
     },
     [commands, navigate, runtime, storeId],
   );

@@ -4,6 +4,7 @@ import type { Cart } from '@/models/cart';
 import type { Order } from '@/models/order';
 import type { StoreFrontCartActions } from '../cart/actions';
 import type { StoreFrontOrderActions } from '../order/actions';
+import type { StoreFrontOrderHistoryCommands } from '../orderHistory/commands';
 import type { TenantStore } from '../tenant/store';
 
 export type StoreFrontSessionStreamCommands = {
@@ -18,10 +19,17 @@ export type StoreFrontSessionStreamCommands = {
 export function createStoreFrontSessionStreamCommands(deps: {
   cartActions: StoreFrontCartActions;
   orderActions: StoreFrontOrderActions;
+  orderHistoryCommands: StoreFrontOrderHistoryCommands;
   sessionStore: GuestSessionStore;
   tenantStore: TenantStore;
 }): StoreFrontSessionStreamCommands {
-  const { cartActions, orderActions, sessionStore, tenantStore } = deps;
+  const {
+    cartActions,
+    orderActions,
+    orderHistoryCommands,
+    sessionStore,
+    tenantStore,
+  } = deps;
 
   // A pushed snapshot may land after the user has switched stores or the
   // session token has been replaced. Mirror the cart command guards so a stale
@@ -29,9 +37,7 @@ export function createStoreFrontSessionStreamCommands(deps: {
   function isScoped(expectedStoreId: string, token: string): boolean {
     if (tenantStore.getState().activeStoreId !== expectedStoreId) return false;
     const session = sessionStore.getState();
-    return (
-      session.guestToken === token && session.storeId === expectedStoreId
-    );
+    return session.guestToken === token && session.storeId === expectedStoreId;
   }
 
   return {
@@ -57,7 +63,12 @@ export function createStoreFrontSessionStreamCommands(deps: {
           },
           onOrderUpdated(order: Order) {
             if (!isScoped(storeId, token)) return;
+            if (order.storeId !== storeId) return;
             orderActions.orderUpdated(order);
+            orderHistoryCommands.recordOrder(storeId, order, token);
+            if (!order.canAddOn) {
+              cartActions.cartCleared();
+            }
           },
         },
       );

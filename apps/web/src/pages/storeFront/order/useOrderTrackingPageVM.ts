@@ -125,7 +125,7 @@ export function useOrderTrackingPageVM() {
         setAccess(result.access);
       }
 
-      if (result.status === 'none') {
+      if (result.status === 'redirect') {
         void navigate(
           result.target === 'history'
             ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
@@ -196,9 +196,9 @@ export function useOrderTrackingPageVM() {
 
   const refresh = useCallback(async () => {
     const result = await commands.refresh(storeId, orderId, access);
-    if (result.status === 'none') {
+    if (result.status === 'redirect') {
       void navigate(
-        access === 'history'
+        result.target === 'history'
           ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
           : PATHS.STOREFRONT.LANDING_BUILD(storeId),
         { replace: true },

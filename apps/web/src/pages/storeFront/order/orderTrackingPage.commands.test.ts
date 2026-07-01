@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/api/apiError';
 import { createStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { loadStoreFrontOrderHistory } from '@/features/storeFront/orderHistory/storage';
-import { saveStoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
+import {
+  loadStoredGuestSession,
+  saveStoredGuestSession,
+} from '@/app/global/guestSession/guestSession.storage';
 import type { Order } from '@/models/order';
 import { storeFrontOrderService } from '@/services/storeFrontOrder.service';
 import { createOrderTrackingPageCommands } from './orderTrackingPage.commands';
@@ -157,5 +161,58 @@ describe('order tracking page commands', () => {
     await commands.initialize('store-a', 'active-order');
 
     expect(loadStoreFrontOrderHistory('store-a')).toHaveLength(1);
+  });
+
+  it('clears the active session and redirects landing when the token is expired', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    saveStoredGuestSession({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    vi.mocked(storeFrontOrderService.getOrder).mockRejectedValue(
+      new ApiError({
+        code: 'INVALID_GUEST_TOKEN',
+        message: 'expired',
+        statusCode: 401,
+      }),
+    );
+
+    await expect(
+      createOrderTrackingPageCommands(runtime).initialize(
+        'store-a',
+        'active-order',
+      ),
+    ).resolves.toEqual({ status: 'redirect', target: 'landing' });
+    expect(loadStoredGuestSession('store-a')).toBeNull();
+  });
+
+  it('redirects landing without clearing the route session on a store mismatch race', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    saveStoredGuestSession({
+      guestToken: 'active-token',
+      participantId: 'active-participant',
+      storeId: 'store-a',
+    });
+    vi.mocked(storeFrontOrderService.getOrder).mockImplementation(async () => {
+      await runtime.commands.tenant.activateStore('store-b');
+      return {
+        id: 'active-order',
+        storeId: 'store-a',
+        createdAt: new Date().toISOString(),
+      } as Awaited<ReturnType<typeof storeFrontOrderService.getOrder>>;
+    });
+
+    await expect(
+      createOrderTrackingPageCommands(runtime).initialize(
+        'store-a',
+        'active-order',
+      ),
+    ).resolves.toEqual({ status: 'redirect', target: 'landing' });
+    expect(loadStoredGuestSession('store-a')).toMatchObject({
+      guestToken: 'active-token',
+    });
   });
 });

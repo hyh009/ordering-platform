@@ -32,7 +32,7 @@ export function createCartPageCommands(runtime: StoreFrontRuntime) {
         case 'ended':
           // Nothing usable to show here (no session, or it has ended/expired):
           // send the participant back to the start.
-          return { status: 'none' as const };
+          return { status: 'redirect' as const, target: 'landing' as const };
         case 'failed':
           // A transient failure (network/server) or a benign store-mismatch
           // race. Hand the typed failure to the VM so it can surface feedback

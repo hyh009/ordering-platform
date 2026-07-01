@@ -80,7 +80,7 @@ describe('cart page commands', () => {
 
     await expect(
       createCartPageCommands(runtime).initialize('store-a'),
-    ).resolves.toEqual({ status: 'none' });
+    ).resolves.toEqual({ status: 'redirect', target: 'landing' });
   });
 
   it('returns the failure on a transient error so the VM can stay put', async () => {

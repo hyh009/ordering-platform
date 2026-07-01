@@ -40,6 +40,8 @@ Current write sources:
   guest token.
 - Joining a cart/order records the order when the join response includes an
   order.
+- SSE `order_updated` records the pushed order with the current scoped guest
+  token.
 - Active order tracking records the order after the page successfully loads it
   with the current active guest session. This is a backfill for participants who
   observe their order outside the submit/join response path.
@@ -47,8 +49,6 @@ Current write sources:
 Live update constraint:
 
 - SSE `order_updated` updates the active order store for the scoped guest token.
-  If the stream path writes order history, it should record the pushed order
-  with that same scoped token.
 - Do not clear the guest session from an SSE `order_updated` only because
   `order.canAddOn` is false. Clear the draft cart if the UI should stop showing
   the current round, then route the guest to order tracking. The guest token

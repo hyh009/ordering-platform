@@ -123,6 +123,34 @@ Cart and order commands must reject a guest token when its session `storeId`
 does not match the expected route store. Backend authorization independently
 validates the token's store, cart, and participant scope.
 
+## No Or Invalid Token Routing
+
+Storefront pages do not share one route guard. Each page command decides whether
+the route needs an active guest session, then the page VM decides the redirect
+or page error.
+
+| Route                         | Missing active token                                                                          | Invalid/expired token                                                                                   | Store-mismatched token                                                                                                                       | Result                                                                                                                                               |
+| ----------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/s/:storeId/join`            | Allowed; the page only needs public Store data and Join Code input.                           | Ignored; the existing token is not restored.                                                            | Old in-memory state is cleared on store activation; persisted sessions for other stores are not used.                                        | Stay on Join Code entry. Back goes to Landing.                                                                                                       |
+| `/s/:storeId/join/:joinCode`  | Allowed; confirming a valid Join Code creates/replaces the active session.                    | Ignored until the guest confirms join; invalid Join Code errors are shown on the form.                  | Old in-memory state is cleared on store activation.                                                                                          | Success opens Menu or Order Tracking.                                                                                                                |
+| `/s/:storeId/menu`            | `resumeSession` returns `none`; redirect to Landing.                                          | Session is cleared as expired/ended; redirect to Landing.                                               | Persisted session for another store is ignored; in-flight mismatch is treated as a silent race.                                              | Landing for unusable session; retryable page error for non-session failures while the store is open.                                                 |
+| `/s/:storeId/cart`            | `resumeSession` returns `none`; redirect to Landing.                                          | Session is cleared as expired/ended; redirect to Landing.                                               | Persisted session for another store is ignored; in-flight mismatch is treated as a silent race.                                              | Landing for unusable session; page error for non-session load failures. If a submitted Order exists without a live Cart, redirect to Order Tracking. |
+| `/s/:storeId/invite`          | No Cart/Order means invite is unavailable.                                                    | Session is cleared as expired/ended, then invite is unavailable.                                        | Persisted session for another store behaves like no session; in-flight mismatch is treated as a silent race.                                 | Landing for unusable session. Closed live Order redirects to Order Tracking.                                                                         |
+| `/s/:storeId/orders`          | Allowed; active guest token is not required.                                                  | Expired/not-found history tokens are pruned when read.                                                  | History entries for other stores are filtered out.                                                                                           | Show current store's Recent Orders or empty state.                                                                                                   |
+| `/s/:storeId/orders/:orderId` | If a matching history entry exists, load read-only history order; otherwise redirect Landing. | Expired history token removes the entry; expired active token clears the session and redirects Landing. | History token resolving to a different order/store is removed; active session mismatch redirects Landing without clearing the route session. | Landing for no active access; Recent Orders for invalid history-only access; page error for non-session failures.                                    |
+
+Known differences to preserve or review deliberately:
+
+- Join entry/confirmation pages are session-optional and should not redirect only
+  because the browser has no valid token.
+- Menu, Cart, and Invite return to Landing for no usable active session.
+- Order Tracking redirects away on active-session mismatch but does not clear the
+  route store session; mismatch is a navigation/session race guard, not token
+  expiry.
+- A silent `session-store-mismatch` assumes another navigation or store
+  activation is taking over. If a page can remain mounted after that result, add
+  an explicit redirect or page state instead of leaving it loading.
+
 ## Session Cleanup
 
 The persisted guest session represents the browser participant's active token
