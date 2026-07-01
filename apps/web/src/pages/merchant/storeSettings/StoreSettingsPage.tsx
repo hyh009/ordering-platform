@@ -88,7 +88,7 @@ export function StoreSettingsPage() {
                 {[
                   {
                     kind: 'logo' as const,
-                    value: vm.store.profile.logoUrl,
+                    aspect: 1,
                     label: tDefault(
                       'merchant.storeSettings.branding.logo',
                       'Logo',
@@ -100,7 +100,7 @@ export function StoreSettingsPage() {
                   },
                   {
                     kind: 'banner' as const,
-                    value: vm.store.profile.bannerUrl,
+                    aspect: 16 / 9,
                     label: tDefault(
                       'merchant.storeSettings.branding.banner',
                       'Banner',
@@ -110,16 +110,16 @@ export function StoreSettingsPage() {
                       'Wide image shown at the top of your store page.',
                     ),
                   },
-                ].map(({ kind, value, label, description }) => (
+                ].map(({ kind, aspect, label, description }) => (
                   <StoreImageUploadField
                     key={kind}
+                    aspect={aspect}
                     description={description}
-                    disabled={vm.imageUpdatingKind !== null}
-                    isBusy={vm.imageUpdatingKind === kind}
+                    disabled={vm.form.isSubmitting}
                     label={label}
-                    onRemove={() => void vm.removeImage(kind)}
-                    onSelect={(file) => void vm.setImage(kind, file)}
-                    value={value}
+                    onRemove={() => vm.removeImage(kind)}
+                    onSelect={(file) => vm.setImage(kind, file)}
+                    value={vm.imageValues[kind]}
                     variant={kind}
                   />
                 ))}

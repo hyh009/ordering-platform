@@ -15,7 +15,7 @@ export function StoreImageFrame({ value, alt, variant }: StoreImageFrameProps) {
     <div
       className={cn(
         'flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30',
-        variant === 'logo' ? 'h-24 w-24' : 'h-24 w-48',
+        variant === 'logo' ? 'h-24 w-24' : 'aspect-video h-24',
       )}
     >
       {value ? (
