@@ -106,6 +106,8 @@ chooser:
   resume it (see [`guest-ordering-entry-flow.md`](./guest-ordering-entry-flow.md)).
 - The order tracking page itself shows an end screen + "Start another order /
   Home" and clears the token when the order ends, so it is never a dead end.
+  If the order ends from an SSE update, the active token is cleared after order
+  history is recorded, and tracking switches to history access.
 
 ### Main edge states
 

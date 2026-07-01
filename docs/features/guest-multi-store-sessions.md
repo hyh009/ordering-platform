@@ -163,6 +163,12 @@ Clear the store-scoped guest session when:
 - the active order is finished (`completed` or `cancelled`)
 - the route/store scope no longer matches the token and the command owns cleanup
 
+For an SSE `order_updated` finished-order snapshot, record order history first,
+then clear the draft cart and the guest session token. Do not use a cleanup path
+that also clears the active order store immediately; the current order tracking
+page uses that terminal snapshot to detect the ended active session, switch to
+history access, and refetch with the stored history token.
+
 Do not clear the guest session only because:
 
 - a cart submit succeeded

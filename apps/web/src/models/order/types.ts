@@ -14,6 +14,7 @@ import type {
   OrderCancelReason,
   OrderDto,
   OrderPaymentStatus,
+  OrderParticipantAmountDto,
   OrderStatus,
   OrderSummaryDto,
 } from '@repo/shared';
@@ -38,6 +39,7 @@ export type {
 
 export type Order = OrderDto;
 export type OrderBatch = OrderBatchDto;
+export type OrderParticipantAmount = OrderParticipantAmountDto;
 
 /**
  * Lightweight order summary used in the merchant order list.

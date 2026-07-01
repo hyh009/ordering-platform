@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
-import type { OrderParticipantAmountDto } from '@repo/shared';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
-import type { Order } from '@/models/order';
+import type { Order, OrderParticipantAmount } from '@/models/order';
 import { getParticipantAmount, isOrderFinished } from '@/models/order';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import {
@@ -62,6 +61,14 @@ export function useOrderTrackingPageVM() {
     runtime.stores.order,
     (state) => state.order,
   );
+  const activeGuestToken = useStore(
+    runtime.stores.session,
+    (state) => state.guestToken,
+  );
+  const activeSessionStoreId = useStore(
+    runtime.stores.session,
+    (state) => state.storeId,
+  );
   const activeIsLoading = useStore(
     runtime.stores.order,
     (state) => state.isLoading,
@@ -94,7 +101,7 @@ export function useOrderTrackingPageVM() {
   );
   const myParticipantId =
     access === 'active' && isActiveStore ? sessionParticipantId : null;
-  const myAmount: OrderParticipantAmountDto | undefined =
+  const myAmount: OrderParticipantAmount | undefined =
     order && myParticipantId
       ? getParticipantAmount(order, myParticipantId)
       : undefined;
@@ -220,6 +227,65 @@ export function useOrderTrackingPageVM() {
       setHistoryView({ order: result.order, isLoading: false, error: null });
     }
   }, [access, commands, navigate, orderId, storeId]);
+
+  useEffect(() => {
+    const hasRouteOrderSnapshot =
+      isActiveStore && activeStoreOrder?.id === orderId;
+    const hasRouteActiveSession =
+      activeSessionStoreId === storeId && !!activeGuestToken;
+    if (access !== 'active' || !hasRouteOrderSnapshot || hasRouteActiveSession)
+      return;
+
+    let active = true;
+    async function switchToHistory() {
+      setAccess('history');
+      setHistoryView(HISTORY_VIEW_LOADING);
+      const result = await commands.refresh(storeId, orderId, 'history');
+      if (!active) return;
+
+      if (result.status === 'redirect') {
+        void navigate(
+          result.target === 'history'
+            ? PATHS.STOREFRONT.ORDER_HISTORY_BUILD(storeId)
+            : PATHS.STOREFRONT.LANDING_BUILD(storeId),
+          { replace: true },
+        );
+        return;
+      }
+
+      if (result.status === 'failed') {
+        handleStorefrontLoadFailure(result, {
+          onRedirect: () => {
+            void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId), {
+              replace: true,
+            });
+          },
+          onPageError: (message) => {
+            setHistoryView({ order: null, isLoading: false, error: message });
+          },
+        });
+        return;
+      }
+
+      if (result.status === 'loaded' && 'order' in result) {
+        setHistoryView({ order: result.order, isLoading: false, error: null });
+      }
+    }
+    void switchToHistory();
+    return () => {
+      active = false;
+    };
+  }, [
+    access,
+    activeGuestToken,
+    activeSessionStoreId,
+    activeStoreOrder,
+    commands,
+    isActiveStore,
+    navigate,
+    orderId,
+    storeId,
+  ]);
 
   // Back arrow: return to the previous page only when it belongs to this app;
   // otherwise (deep link / fresh tab) fall back to a safe storefront page.

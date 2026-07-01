@@ -1,7 +1,8 @@
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
+import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import { storeFrontGuestStreamService } from '@/services/storeFrontGuestStream.service';
 import type { Cart } from '@/models/cart';
-import type { Order } from '@/models/order';
+import { isOrderFinished, type Order } from '@/models/order';
 import type { StoreFrontCartActions } from '../cart/actions';
 import type { StoreFrontOrderActions } from '../order/actions';
 import type { StoreFrontOrderHistoryCommands } from '../orderHistory/commands';
@@ -18,6 +19,7 @@ export type StoreFrontSessionStreamCommands = {
 
 export function createStoreFrontSessionStreamCommands(deps: {
   cartActions: StoreFrontCartActions;
+  guestSessionCommands: GuestSessionCommands;
   orderActions: StoreFrontOrderActions;
   orderHistoryCommands: StoreFrontOrderHistoryCommands;
   sessionStore: GuestSessionStore;
@@ -25,6 +27,7 @@ export function createStoreFrontSessionStreamCommands(deps: {
 }): StoreFrontSessionStreamCommands {
   const {
     cartActions,
+    guestSessionCommands,
     orderActions,
     orderHistoryCommands,
     sessionStore,
@@ -64,10 +67,14 @@ export function createStoreFrontSessionStreamCommands(deps: {
           onOrderUpdated(order: Order) {
             if (!isScoped(storeId, token)) return;
             if (order.storeId !== storeId) return;
+            const finished = isOrderFinished(order);
             orderActions.orderUpdated(order);
             orderHistoryCommands.recordOrder(storeId, order, token);
-            if (!order.canAddOn) {
+            if (!order.canAddOn || finished) {
               cartActions.cartCleared();
+            }
+            if (finished) {
+              guestSessionCommands.clearSession(storeId);
             }
           },
         },

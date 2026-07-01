@@ -163,6 +163,51 @@ describe('order tracking page commands', () => {
     expect(loadStoreFrontOrderHistory('store-a')).toHaveLength(1);
   });
 
+  it('refreshes a history order with the stored history token', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    runtime.commands.orderHistory.recordOrder(
+      'store-a',
+      {
+        id: 'history-order',
+        storeId: 'store-a',
+        createdAt: new Date().toISOString(),
+      } as Order,
+      'history-token',
+    );
+    const order = {
+      id: 'history-order',
+      storeId: 'store-a',
+      createdAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof storeFrontOrderService.getOrder>>;
+    vi.mocked(storeFrontOrderService.getOrder).mockResolvedValue(order);
+
+    await expect(
+      createOrderTrackingPageCommands(runtime).refresh(
+        'store-a',
+        'history-order',
+        'history',
+      ),
+    ).resolves.toEqual({ status: 'loaded', order });
+    expect(storeFrontOrderService.getOrder).toHaveBeenCalledWith(
+      'history-token',
+    );
+  });
+
+  it('redirects to recent orders when refreshing history access without an entry', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+
+    await expect(
+      createOrderTrackingPageCommands(runtime).refresh(
+        'store-a',
+        'missing-order',
+        'history',
+      ),
+    ).resolves.toEqual({ status: 'redirect', target: 'history' });
+    expect(storeFrontOrderService.getOrder).not.toHaveBeenCalled();
+  });
+
   it('clears the active session and redirects landing when the token is expired', async () => {
     const runtime = createStoreFrontRuntime();
     await runtime.commands.tenant.activateStore('store-a');

@@ -1,11 +1,10 @@
-import type { OrderParticipantAmountDto } from '@repo/shared';
-
 import type { AppTranslator } from '@/app/i18n';
 import type {
   Order,
   OrderBatchStatus,
   OrderCancelReason,
   OrderPaymentStatus,
+  OrderParticipantAmount,
   OrderStatus,
 } from './types';
 
@@ -156,7 +155,7 @@ export function canCheckoutOrder(
 export function getParticipantAmount(
   order: Order,
   participantId: string,
-): OrderParticipantAmountDto | undefined {
+): OrderParticipantAmount | undefined {
   return order.participantAmounts.find(
     (a) => a.participantId === participantId,
   );

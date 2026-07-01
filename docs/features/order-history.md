@@ -51,9 +51,13 @@ Live update constraint:
 - SSE `order_updated` updates the active order store for the scoped guest token.
 - Do not clear the guest session from an SSE `order_updated` only because
   `order.canAddOn` is false. Clear the draft cart if the UI should stop showing
-  the current round, then route the guest to order tracking. The guest token
-  remains the active identity for tracking and possible add-on flows until the
-  session actually ends.
+  the current round, then route the guest to order tracking.
+- When an SSE `order_updated` snapshot is finished (`completed` or `cancelled`),
+  record order history before clearing the draft cart and guest session. Clear
+  only the guest identity/token in this path. Keep the pushed order snapshot in
+  the active order store long enough for the current tracking page to detect the
+  ended active session, switch to history access, and refetch with the stored
+  history token.
 
 ## API
 

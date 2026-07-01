@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createGuestSessionActions } from '@/app/global/guestSession/guestSession.actions';
+import { createGuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
+import { loadStoredGuestSession } from '@/app/global/guestSession/guestSession.storage';
 import { createGuestSessionStore } from '@/app/global/guestSession/guestSession.store';
 import { storeFrontGuestStreamService } from '@/services/storeFrontGuestStream.service';
 import type { Cart } from '@/models/cart';
@@ -29,8 +32,18 @@ function setup() {
   const orderHistoryStore = createStoreFrontOrderHistoryStore();
   const sessionStore = createGuestSessionStore();
   const tenantStore = createTenantStore();
+  const guestSessionCommands = createGuestSessionCommands(
+    createGuestSessionActions(sessionStore),
+    sessionStore,
+  );
+  const clearSession = vi.fn(guestSessionCommands.clearSession);
+  const realOrderHistoryCommands = createStoreFrontOrderHistoryCommands({
+    actions: createStoreFrontOrderHistoryActions(orderHistoryStore),
+    tenantStore,
+  });
+  const recordOrder = vi.fn(realOrderHistoryCommands.recordOrder);
 
-  sessionStore.setState({
+  guestSessionCommands.startSession({
     guestToken: 'token-a',
     participantId: 'p-a',
     storeId: 'store-a',
@@ -48,11 +61,15 @@ function setup() {
 
   const commands = createStoreFrontSessionStreamCommands({
     cartActions: createStoreFrontCartActions(cartStore),
+    guestSessionCommands: {
+      ...guestSessionCommands,
+      clearSession,
+    },
     orderActions: createStoreFrontOrderActions(orderStore),
-    orderHistoryCommands: createStoreFrontOrderHistoryCommands({
-      actions: createStoreFrontOrderHistoryActions(orderHistoryStore),
-      tenantStore,
-    }),
+    orderHistoryCommands: {
+      ...realOrderHistoryCommands,
+      recordOrder,
+    },
     sessionStore,
     tenantStore,
   });
@@ -63,11 +80,13 @@ function setup() {
     sessionStore,
     tenantStore,
     close,
+    clearSession,
     commands,
     getHandlers: () => {
       if (!captured) throw new Error('subscribeGuestStream was not called');
       return captured;
     },
+    recordOrder,
   };
 }
 
@@ -142,7 +161,7 @@ describe('storefront session stream commands', () => {
     ]);
   });
 
-  it('clears the draft cart when a streamed order can no longer be added to', () => {
+  it('clears only the draft cart when a streamed order can no longer be added to but is not terminal', () => {
     const ctx = setup();
     ctx.cartStore.setState({
       cart: { id: 'c1', storeId: 'store-a', status: 'active' } as Cart,
@@ -153,11 +172,77 @@ describe('storefront session stream commands', () => {
       id: 'o1',
       storeId: 'store-a',
       createdAt: new Date().toISOString(),
+      status: 'pending_confirmation',
       canAddOn: false,
     } as Order);
 
     expect(ctx.cartStore.getState().cart).toBeNull();
     expect(ctx.sessionStore.getState().guestToken).toBe('token-a');
+    expect(loadStoredGuestSession('store-a')).toMatchObject({
+      guestToken: 'token-a',
+    });
+    expect(ctx.clearSession).not.toHaveBeenCalled();
+  });
+
+  it('records terminal streamed orders before clearing cart and guest token while keeping the order snapshot', () => {
+    const ctx = setup();
+    ctx.cartStore.setState({
+      cart: { id: 'c1', storeId: 'store-a', status: 'active' } as Cart,
+    });
+    ctx.commands.connectSessionStream('store-a');
+
+    const order = {
+      id: 'o1',
+      storeId: 'store-a',
+      createdAt: new Date().toISOString(),
+      status: 'completed',
+      canAddOn: false,
+    } as Order;
+    ctx.getHandlers().onOrderUpdated(order);
+
+    expect(ctx.recordOrder).toHaveBeenCalledWith('store-a', order, 'token-a');
+    expect(ctx.clearSession).toHaveBeenCalledWith('store-a');
+    expect(ctx.recordOrder.mock.invocationCallOrder[0]).toBeLessThan(
+      ctx.clearSession.mock.invocationCallOrder[0],
+    );
+    expect(ctx.cartStore.getState().cart).toBeNull();
+    expect(ctx.sessionStore.getState().guestToken).toBeNull();
+    expect(loadStoredGuestSession('store-a')).toBeNull();
+    expect(ctx.orderStore.getState().order).toBe(order);
+
+    const raw = window.localStorage.getItem(
+      'ordering-platform.storeFrontOrderHistory:store-a',
+    );
+    expect(raw ? JSON.parse(raw) : null).toMatchObject([
+      {
+        storeId: 'store-a',
+        orderId: 'o1',
+        guestToken: 'token-a',
+      },
+    ]);
+  });
+
+  it('clears the guest token when a streamed order is cancelled', () => {
+    const ctx = setup();
+    ctx.cartStore.setState({
+      cart: { id: 'c1', storeId: 'store-a', status: 'active' } as Cart,
+    });
+    ctx.commands.connectSessionStream('store-a');
+
+    const order = {
+      id: 'o1',
+      storeId: 'store-a',
+      createdAt: new Date().toISOString(),
+      status: 'cancelled',
+      canAddOn: false,
+    } as Order;
+    ctx.getHandlers().onOrderUpdated(order);
+
+    expect(ctx.recordOrder).toHaveBeenCalledWith('store-a', order, 'token-a');
+    expect(ctx.clearSession).toHaveBeenCalledWith('store-a');
+    expect(ctx.cartStore.getState().cart).toBeNull();
+    expect(ctx.sessionStore.getState().guestToken).toBeNull();
+    expect(ctx.orderStore.getState().order).toBe(order);
   });
 
   it('drops pushed updates after the active store changes', () => {

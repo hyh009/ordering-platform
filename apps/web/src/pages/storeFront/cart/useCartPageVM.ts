@@ -68,8 +68,8 @@ export function useCartPageVM() {
       }
       if (result.status === 'failed') {
         // Surface a primary-load failure with the load axis, not a toast over a
-        // blank page. The command already maps expired/ended sessions to
-        // 'none', so a redirect here just needs to send the user to landing.
+        // blank page. The command already maps ended sessions to a redirect, so
+        // a load failure redirect here just needs to send the user to landing.
         // resumeSession is store-agnostic, so the 'page' case reports into the
         // cart store explicitly.
         handleStorefrontLoadFailure(result, {
@@ -105,7 +105,8 @@ export function useCartPageVM() {
   }, [runInitialize]);
 
   useEffect(() => {
-    if (!isActiveStore || isLoading || cart || !submittedOrder) return;
+    if (!isActiveStore || isLoading || !submittedOrder) return;
+    if (submittedOrder.canAddOn && cart) return;
     void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, submittedOrder.id), {
       replace: true,
     });

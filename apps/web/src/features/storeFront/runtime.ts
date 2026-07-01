@@ -65,6 +65,7 @@ export function createStoreFrontRuntime() {
   });
   const sessionStreamCommands = createStoreFrontSessionStreamCommands({
     cartActions,
+    guestSessionCommands,
     orderActions,
     orderHistoryCommands,
     sessionStore,
