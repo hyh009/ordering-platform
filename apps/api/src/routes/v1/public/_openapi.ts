@@ -70,62 +70,68 @@
  *     PublicMenu:
  *       type: object
  *       required:
- *         - categories
- *         - products
+ *         - groups
  *         - modifiers
  *         - allergens
  *         - dietaryMarkers
  *       properties:
- *         categories:
+ *         groups:
  *           type: array
  *           items:
  *             type: object
+ *             required:
+ *               - category
+ *               - products
  *             properties:
- *               id:
- *                 type: string
- *               name:
- *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               description:
- *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               imageUrl:
- *                 type: string
- *               displayOrder:
- *                 type: integer
- *         products:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               id:
- *                 type: string
- *               categoryIds:
+ *               category:
+ *                 nullable: true
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     $ref: '#/components/schemas/LocalizedMetadataName'
+ *                   description:
+ *                     $ref: '#/components/schemas/LocalizedMetadataName'
+ *                   imageUrl:
+ *                     type: string
+ *                   displayOrder:
+ *                     type: integer
+ *               products:
  *                 type: array
  *                 items:
- *                   type: string
- *               name:
- *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               description:
- *                 $ref: '#/components/schemas/LocalizedMetadataName'
- *               imageUrls:
- *                 type: array
- *                 items:
- *                   type: string
- *               price:
- *                 type: number
- *               allergenIds:
- *                 type: array
- *                 items:
- *                   type: string
- *               dietaryMarkerIds:
- *                 type: array
- *                 items:
- *                   type: string
- *               modifierIds:
- *                 type: array
- *                 items:
- *                   type: string
- *               isSoldOut:
- *                 type: boolean
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     categoryIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     name:
+ *                       $ref: '#/components/schemas/LocalizedMetadataName'
+ *                     description:
+ *                       $ref: '#/components/schemas/LocalizedMetadataName'
+ *                     imageUrls:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     price:
+ *                       type: number
+ *                     allergenIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     dietaryMarkerIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     modifierIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     isSoldOut:
+ *                       type: boolean
  *         modifiers:
  *           type: array
  *           items:

@@ -14,6 +14,7 @@ type TestCategory = {
   description?: { en?: string; 'zh-TW'?: string };
   imageUrl?: string;
   displayOrder: number;
+  productOrder?: string[];
   isActive: boolean;
   availabilityRules: Array<{
     startDate?: Date;
@@ -21,6 +22,25 @@ type TestCategory = {
     daysOfWeek?: number[];
     timeWindows?: Array<{ start: string; end: string }>;
   }>;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type TestProduct = {
+  id: string;
+  organizationId: string;
+  storeId: string;
+  categoryIds: string[];
+  name: { en?: string; 'zh-TW'?: string };
+  imageUrls: string[];
+  price: number;
+  tagIds: string[];
+  allergenIds: string[];
+  dietaryMarkerIds: string[];
+  modifierIds: string[];
+  status: 'draft' | 'published';
+  isActive: boolean;
+  isSoldOut: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -40,7 +60,9 @@ const mocks = vi.hoisted(() => {
   const stores = new Map<string, { id: string; organizationId: string }>();
   const memberships = new Map<string, { role: TestRole; status: 'active' }>();
   let categories: TestCategory[] = [];
+  let products: TestProduct[] = [];
   let categoryCounter = 1;
+  let productCounter = 1;
 
   function cloneCategory(category: TestCategory): TestCategory {
     return {
@@ -54,8 +76,26 @@ const mocks = vi.hoisted(() => {
           ? { timeWindows: rule.timeWindows.map((window) => ({ ...window })) }
           : {}),
       })),
+      productOrder:
+        category.productOrder !== undefined
+          ? [...category.productOrder]
+          : undefined,
       createdAt: new Date(category.createdAt),
       updatedAt: new Date(category.updatedAt),
+    };
+  }
+
+  function cloneProduct(product: TestProduct): TestProduct {
+    return {
+      ...product,
+      categoryIds: [...product.categoryIds],
+      imageUrls: [...product.imageUrls],
+      tagIds: [...product.tagIds],
+      allergenIds: [...product.allergenIds],
+      dietaryMarkerIds: [...product.dietaryMarkerIds],
+      modifierIds: [...product.modifierIds],
+      createdAt: new Date(product.createdAt),
+      updatedAt: new Date(product.updatedAt),
     };
   }
 
@@ -96,6 +136,7 @@ const mocks = vi.hoisted(() => {
           storeId: input.storeId,
           name: input.name,
           displayOrder: input.displayOrder ?? 0,
+          productOrder: [],
           isActive: input.isActive ?? true,
           availabilityRules: input.availabilityRules ?? [],
           createdAt: now,
@@ -172,13 +213,44 @@ const mocks = vi.hoisted(() => {
         );
         return cloneCategory(updated);
       },
+      async setProductOrder(
+        storeId: string,
+        categoryId: string,
+        orderedIds: string[],
+      ) {
+        let updated: TestCategory | null = null;
+        categories = categories.map((item) =>
+          item.id === categoryId && item.storeId === storeId
+            ? (updated = {
+                ...item,
+                productOrder: [...orderedIds],
+                updatedAt: new Date(),
+              })
+            : item,
+        );
+        return updated ? cloneCategory(updated) : null;
+      },
+    },
+    productRepository: {
+      async listByStore(input: { storeId: string; isActive?: boolean }) {
+        return products
+          .filter(
+            (product) =>
+              product.storeId === input.storeId &&
+              (input.isActive === undefined ||
+                product.isActive === input.isActive),
+          )
+          .map(cloneProduct);
+      },
     },
     reset() {
       users.clear();
       stores.clear();
       memberships.clear();
       categories = [];
+      products = [];
       categoryCounter = 1;
+      productCounter = 1;
     },
     addUser(id: string) {
       users.set(id, {
@@ -199,6 +271,34 @@ const mocks = vi.hoisted(() => {
         status: 'active',
       });
     },
+    addProduct(input: {
+      storeId?: string;
+      categoryIds?: string[];
+      isActive?: boolean;
+    }) {
+      const now = new Date();
+      const product: TestProduct = {
+        id: `product-${productCounter}`,
+        organizationId: 'org-1',
+        storeId: input.storeId ?? 'store-1',
+        categoryIds: input.categoryIds ?? [],
+        name: { 'zh-TW': `商品 ${productCounter}` },
+        imageUrls: [],
+        price: 100,
+        tagIds: [],
+        allergenIds: [],
+        dietaryMarkerIds: [],
+        modifierIds: [],
+        status: 'published',
+        isActive: input.isActive ?? true,
+        isSoldOut: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      productCounter += 1;
+      products = [...products, product];
+      return cloneProduct(product);
+    },
   };
 });
 
@@ -216,6 +316,10 @@ vi.mock('@src/repositories/organizationMembership/repository', () => ({
 
 vi.mock('@src/repositories/category/repository', () => ({
   categoryRepository: mocks.categoryRepository,
+}));
+
+vi.mock('@src/repositories/product/repository', () => ({
+  productRepository: mocks.productRepository,
 }));
 
 function createAccessToken(userId: string) {
@@ -259,6 +363,7 @@ describe('merchant categories API', () => {
           name: { 'zh-TW': '主餐' },
           imageUrl: 'https://example.com/category.jpg',
           displayOrder: 0,
+          productOrder: [],
           isActive: true,
           availabilityRules: [],
           createdAt: expect.any(String),
@@ -391,5 +496,135 @@ describe('merchant categories API', () => {
       status: 'error',
       code: 'VALIDATION_ERROR',
     });
+  });
+
+  it('reorders products within a category and persists the order', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+    await mocks.categoryRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '主餐' },
+    });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+
+    const reorder = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/categories/category-1/products/reorder',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ orderedIds: ['product-2', 'product-1', 'product-3'] });
+
+    expect(reorder.status, JSON.stringify(reorder.body)).toBe(200);
+    expect(reorder.body).toMatchObject({ status: 'success' });
+
+    const list = await request(app)
+      .get('/api/v1/merchant/stores/store-1/categories')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`);
+
+    expect(list.status).toBe(200);
+    expect(list.body.data.categories[0].productOrder).toEqual([
+      'product-2',
+      'product-1',
+      'product-3',
+    ]);
+  });
+
+  it('rejects product reorder for an unknown category', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/categories/category-missing/products/reorder',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ orderedIds: [] });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(404);
+    expect(response.body).toMatchObject({
+      code: 'CATEGORY_NOT_FOUND',
+    });
+  });
+
+  it('rejects product reorder when a product does not belong to the category', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+    await mocks.categoryRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '主餐' },
+    });
+    mocks.addProduct({ categoryIds: [] });
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/categories/category-1/products/reorder',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ orderedIds: ['product-1'] });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      code: 'INVALID_FIELD_VALUE',
+    });
+  });
+
+  it('rejects duplicate product ids in a category reorder', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+    await mocks.categoryRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '主餐' },
+    });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+
+    const response = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/categories/category-1/products/reorder',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ orderedIds: ['product-1', 'product-1'] });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body).toMatchObject({
+      code: 'INVALID_FIELD_VALUE',
+    });
+  });
+
+  it('preserves omitted category products after the requested product order', async () => {
+    const app = createApp();
+    seedMember('org_owner');
+    await mocks.categoryRepository.create({
+      organizationId: 'org-1',
+      storeId: 'store-1',
+      name: { 'zh-TW': '主餐' },
+    });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+    mocks.addProduct({ categoryIds: ['category-1'] });
+
+    const reorder = await request(app)
+      .patch(
+        '/api/v1/merchant/stores/store-1/categories/category-1/products/reorder',
+      )
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`)
+      .send({ orderedIds: ['product-3'] });
+
+    expect(reorder.status, JSON.stringify(reorder.body)).toBe(200);
+
+    const list = await request(app)
+      .get('/api/v1/merchant/stores/store-1/categories')
+      .set('Authorization', `Bearer ${createAccessToken('user-1')}`);
+
+    expect(list.status).toBe(200);
+    expect(list.body.data.categories[0].productOrder).toEqual([
+      'product-3',
+      'product-1',
+      'product-2',
+    ]);
   });
 });

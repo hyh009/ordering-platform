@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
   };
   const categoryRepository = {
     listByStore: vi.fn(),
+    findById: vi.fn(),
   };
   const tagRepository = {
     listByStore: vi.fn(),
@@ -90,10 +91,51 @@ describe('product service', () => {
     mocks.productRepository.listByStore.mockReset();
     mocks.productRepository.update.mockReset();
     mocks.categoryRepository.listByStore.mockReset();
+    mocks.categoryRepository.findById.mockReset();
     mocks.tagRepository.listByStore.mockReset();
     mocks.productModifierRepository.listByStore.mockReset();
     mocks.allergenRepository.list.mockReset();
     mocks.dietaryMarkerRepository.list.mockReset();
+  });
+
+  it('filters and sorts products by category productOrder when categoryId is given', async () => {
+    const service = createProductService();
+
+    mocks.productRepository.listByStore.mockResolvedValue([
+      productEntity({ id: 'product-a', categoryIds: ['category-1'] }),
+      productEntity({ id: 'product-b', categoryIds: ['category-1'] }),
+      productEntity({ id: 'product-c', categoryIds: ['category-1'] }),
+      productEntity({ id: 'product-other', categoryIds: ['category-2'] }),
+    ]);
+    mocks.categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      storeId: 'store-1',
+      productOrder: ['product-c', 'product-a'],
+    });
+
+    const result = await service.listProducts('store-1', 'all', 'category-1');
+
+    expect(result.map((product) => product.id)).toEqual([
+      'product-c',
+      'product-a',
+      'product-b',
+    ]);
+    expect(mocks.categoryRepository.findById).toHaveBeenCalledWith('category-1');
+  });
+
+  it('throws when categoryId does not belong to the store', async () => {
+    const service = createProductService();
+
+    mocks.productRepository.listByStore.mockResolvedValue([]);
+    mocks.categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      storeId: 'store-other',
+      productOrder: [],
+    });
+
+    await expect(
+      service.listProducts('store-1', 'all', 'category-1'),
+    ).rejects.toMatchObject({ code: 'CATEGORY_NOT_FOUND' });
   });
 
   it('rejects unknown store-owned references before creating', async () => {

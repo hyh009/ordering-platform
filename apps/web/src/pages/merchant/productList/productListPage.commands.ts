@@ -13,6 +13,7 @@ export type ProductListPageCommands = {
   loadProducts(
     storeId: string,
     isActive: ProductActiveFilter,
+    categoryId?: string,
   ): Promise<LoadProductsResult>;
   toggleSoldOut(
     storeId: string,

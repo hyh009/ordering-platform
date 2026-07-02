@@ -1,4 +1,7 @@
 export const PATHS = {
+  PUBLIC: {
+    HOME: '/',
+  },
   AUTH: {
     LOGIN: '/login',
   },

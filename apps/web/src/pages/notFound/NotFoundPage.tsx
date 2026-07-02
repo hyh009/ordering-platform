@@ -1,18 +1,34 @@
-import { ArrowLeft, Home, LogIn } from 'lucide-react';
+import { ArrowLeft, Home, LogIn, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAppTranslation } from '@/app/i18n';
 import { buttonVariants } from '@/shared/components/ui/buttonVariants';
 import { cn } from '@/shared/utils/cn';
-import { useNotFoundPageVM } from './useNotFoundPageVM';
+import {
+  useNotFoundPageVM,
+  usePublicNotFoundPageVM,
+} from './useNotFoundPageVM';
 
 type NotFoundPageProps = {
+  destination?: 'auto' | 'home';
   embedded?: boolean;
 };
 
-export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
-  const vm = useNotFoundPageVM();
+type NotFoundPageContentProps = {
+  embedded: boolean;
+  destinationIcon: LucideIcon;
+  vm: {
+    destination: string | null;
+    destinationLabel: string | null;
+    goBack: () => void;
+  };
+};
+
+function NotFoundPageContent({
+  embedded,
+  destinationIcon: DestinationIcon,
+  vm,
+}: NotFoundPageContentProps) {
   const { tDefault } = useAppTranslation();
-  const DestinationIcon = vm.isAuthenticated ? Home : LogIn;
 
   return (
     <section
@@ -62,5 +78,36 @@ export function NotFoundPage({ embedded = false }: NotFoundPageProps) {
         <span className="text-6xl font-bold text-primary">404</span>
       </div>
     </section>
+  );
+}
+
+function PublicNotFoundPage({ embedded = false }: NotFoundPageProps) {
+  const vm = usePublicNotFoundPageVM();
+
+  return (
+    <NotFoundPageContent destinationIcon={Home} embedded={embedded} vm={vm} />
+  );
+}
+
+function AuthAwareNotFoundPage({ embedded = false }: NotFoundPageProps) {
+  const vm = useNotFoundPageVM();
+
+  return (
+    <NotFoundPageContent
+      destinationIcon={vm.isAuthenticated ? Home : LogIn}
+      embedded={embedded}
+      vm={vm}
+    />
+  );
+}
+
+export function NotFoundPage({
+  destination = 'auto',
+  embedded = false,
+}: NotFoundPageProps) {
+  return destination === 'home' ? (
+    <PublicNotFoundPage embedded={embedded} />
+  ) : (
+    <AuthAwareNotFoundPage embedded={embedded} />
   );
 }

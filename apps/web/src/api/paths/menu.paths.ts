@@ -12,6 +12,9 @@ export const menuPaths = {
   categoryReorder(storeId: string) {
     return `${storeBase(storeId)}/categories/reorder`;
   },
+  categoryProductReorder(storeId: string, categoryId: string) {
+    return `${storeBase(storeId)}/categories/${encodeURIComponent(categoryId)}/products/reorder`;
+  },
   productModifiers(storeId: string) {
     return `${storeBase(storeId)}/product-modifiers`;
   },

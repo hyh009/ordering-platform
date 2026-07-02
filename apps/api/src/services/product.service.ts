@@ -1,4 +1,5 @@
 import { toProductDto } from '@src/models/product/mapper';
+import { sortProductsByCategoryOrder } from '@src/models/product/order';
 import { allergenRepository } from '@src/repositories/allergen/repository';
 import { categoryRepository } from '@src/repositories/category/repository';
 import { dietaryMarkerRepository } from '@src/repositories/dietaryMarker/repository';
@@ -141,13 +142,32 @@ export class ProductService {
   public async listProducts(
     storeId: string,
     isActive: ProductActiveFilter,
+    categoryId?: string,
   ): Promise<ProductDto[]> {
     const products = await productRepository.listByStore({
       storeId,
       isActive: toActiveFilter(isActive),
     });
 
-    return products.map(toProductDto);
+    if (categoryId === undefined) {
+      return products.map(toProductDto);
+    }
+
+    const category = await categoryRepository.findById(categoryId);
+    if (!category || category.storeId !== storeId) {
+      throw new NotFoundError(
+        'Category not found',
+        ERROR_CODES.CATEGORY_NOT_FOUND,
+      );
+    }
+
+    const members = products.filter((product) =>
+      product.categoryIds.includes(categoryId),
+    );
+
+    return sortProductsByCategoryOrder(members, category.productOrder).map(
+      toProductDto,
+    );
   }
 
   public async getProduct(

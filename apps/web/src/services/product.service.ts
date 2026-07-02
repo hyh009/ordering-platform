@@ -18,10 +18,17 @@ import type { UploadImageSuccessResponse } from '@repo/shared';
 import { withActiveFilter } from './utils/activeFilter';
 
 export const productService = {
-  async listProducts(storeId: string, isActive: ProductActiveFilter) {
-    const response = await apiJson<ListProductsSuccessResponse>(
-      withActiveFilter(menuPaths.products(storeId), isActive),
-    );
+  async listProducts(
+    storeId: string,
+    isActive: ProductActiveFilter,
+    categoryId?: string,
+  ) {
+    let path = withActiveFilter(menuPaths.products(storeId), isActive);
+    if (categoryId !== undefined) {
+      path += `&categoryId=${encodeURIComponent(categoryId)}`;
+    }
+
+    const response = await apiJson<ListProductsSuccessResponse>(path);
 
     return response.data.products.map(productModel.deserialize);
   },

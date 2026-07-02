@@ -12,6 +12,7 @@ export type ProductListCommands = {
   loadProducts(
     storeId: string,
     isActive: ProductActiveFilter,
+    categoryId?: string,
   ): Promise<LoadProductsResult>;
 };
 
@@ -19,11 +20,15 @@ export function createProductListCommands(
   actions: ProductListActions,
 ): ProductListCommands {
   return {
-    async loadProducts(storeId, isActive) {
+    async loadProducts(storeId, isActive, categoryId) {
       actions.loadStarted();
 
       try {
-        const products = await productService.listProducts(storeId, isActive);
+        const products = await productService.listProducts(
+          storeId,
+          isActive,
+          categoryId,
+        );
 
         actions.loadSucceeded(products);
         return { status: 'loaded' };

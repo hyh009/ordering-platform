@@ -82,9 +82,18 @@ export type PublicTagDto = {
   color?: string;
 };
 
-export type PublicMenuDto = {
-  categories: PublicCategoryDto[];
+/**
+ * A menu section: a category with its products already ordered per the
+ * category's saved product order. `category` is null for the trailing bucket of
+ * products that belong to no category.
+ */
+export type PublicMenuGroupDto = {
+  category: PublicCategoryDto | null;
   products: PublicProductDto[];
+};
+
+export type PublicMenuDto = {
+  groups: PublicMenuGroupDto[];
   modifiers: PublicModifierDto[];
   tags: PublicTagDto[];
   allergens: PublicMetadataItemDto[];

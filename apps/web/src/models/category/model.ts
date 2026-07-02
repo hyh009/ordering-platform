@@ -10,6 +10,7 @@ export const categoryModel = {
       storeId: dto.storeId,
       name: dto.name,
       displayOrder: dto.displayOrder,
+      productOrder: dto.productOrder ?? [],
       isActive: dto.isActive,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,

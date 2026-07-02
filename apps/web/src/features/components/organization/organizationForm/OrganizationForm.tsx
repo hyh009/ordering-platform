@@ -165,7 +165,7 @@ export function OrganizationForm({
       </Field>
 
       <h4 className="border-b border-border pb-2 text-sm font-semibold">
-        {tDefault('admin.organizations.contactTitle', 'Contact')}
+        {tDefault('admin.organizations.contactTitle', 'Contact information')}
       </h4>
 
       <Field

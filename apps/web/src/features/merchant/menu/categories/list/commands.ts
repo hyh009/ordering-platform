@@ -16,6 +16,10 @@ export type ReorderCategoriesResult =
   | { status: 'reordered' }
   | MerchantCommandFailure;
 
+export type ReorderProductsResult =
+  | { status: 'reordered' }
+  | MerchantCommandFailure;
+
 export type CategoryListCommands = {
   loadCategories(
     storeId: string,
@@ -25,6 +29,11 @@ export type CategoryListCommands = {
     storeId: string,
     orderedIds: string[],
   ): Promise<ReorderCategoriesResult>;
+  reorderProducts(
+    storeId: string,
+    categoryId: string,
+    orderedIds: string[],
+  ): Promise<ReorderProductsResult>;
 };
 
 export function createCategoryListCommands(
@@ -56,6 +65,16 @@ export function createCategoryListCommands(
       try {
         await categoryService.reorderCategories(storeId, orderedIds);
         actions.categoriesReordered(orderedIds);
+        return { status: 'reordered' };
+      } catch (error) {
+        return mapMerchantApiError(error);
+      }
+    },
+
+    async reorderProducts(storeId, categoryId, orderedIds) {
+      try {
+        await categoryService.reorderProducts(storeId, categoryId, orderedIds);
+        actions.categoryProductsReordered(categoryId, orderedIds);
         return { status: 'reordered' };
       } catch (error) {
         return mapMerchantApiError(error);

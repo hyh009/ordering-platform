@@ -4,6 +4,7 @@ import {
   createCategorySchema,
   listCategoriesQuerySchema,
   reorderCategoriesSchema,
+  reorderCategoryProductsSchema,
   updateCategorySchema,
 } from '@repo/shared';
 import { requireAuth, requireOrgRole } from '@src/middlewares/auth';
@@ -19,6 +20,8 @@ import type {
   ListCategoriesSuccessResponse,
   ReorderCategoriesRequest,
   ReorderCategoriesSuccessResponse,
+  ReorderCategoryProductsRequest,
+  ReorderCategoryProductsSuccessResponse,
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 } from '@repo/shared';
@@ -36,6 +39,7 @@ const router = Router({ mergeParams: true });
  *         - storeId
  *         - name
  *         - displayOrder
+ *         - productOrder
  *         - isActive
  *         - availabilityRules
  *         - createdAt
@@ -59,6 +63,13 @@ const router = Router({ mergeParams: true });
  *           type: integer
  *           minimum: 0
  *           example: 10
+ *         productOrder:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example:
+ *             - product-1
+ *             - product-2
  *         isActive:
  *           type: boolean
  *           example: true
@@ -305,6 +316,65 @@ router.patch<
   validate(reorderCategoriesSchema),
   async (req, res) => {
     await categoryService.reorderCategories(req.params.storeId, req.body);
+    res.json({ status: 'success', data: {} });
+  },
+);
+
+/**
+ * @openapi
+ * /v1/merchant/stores/{storeId}/categories/{categoryId}/products/reorder:
+ *   patch:
+ *     tags:
+ *       - Merchant / Categories
+ *     summary: Reorder products within a store category
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: storeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: store-123
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: category-123
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderedIds
+ *             properties:
+ *               orderedIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Category products reordered
+ */
+router.patch<
+  CategoryParams,
+  ReorderCategoryProductsSuccessResponse,
+  ReorderCategoryProductsRequest
+>(
+  '/:categoryId/products/reorder',
+  requireAuth,
+  requireOrgRole('org_owner', 'org_admin'),
+  validate(categoryParamsSchema, 'params'),
+  validate(reorderCategoryProductsSchema),
+  async (req, res) => {
+    await categoryService.reorderCategoryProducts(
+      req.params.storeId,
+      req.params.categoryId,
+      req.body,
+    );
     res.json({ status: 'success', data: {} });
   },
 );

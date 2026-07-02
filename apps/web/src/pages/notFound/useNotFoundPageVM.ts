@@ -37,3 +37,22 @@ export function useNotFoundPageVM() {
     isAuthenticated,
   };
 }
+
+export function usePublicNotFoundPageVM() {
+  const navigate = useNavigate();
+  const { tDefault } = useAppTranslation();
+
+  const goBack = useCallback(
+    function goBack() {
+      navigate(-1);
+    },
+    [navigate],
+  );
+
+  return {
+    destination: PATHS.PUBLIC.HOME,
+    destinationLabel: tDefault('notFound.goToHome', 'Go to home'),
+    goBack,
+    isAuthenticated: true,
+  };
+}

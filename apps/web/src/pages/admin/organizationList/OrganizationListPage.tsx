@@ -92,7 +92,7 @@ export function OrganizationListPage() {
     },
     {
       key: 'updatedAt',
-      header: tDefault('common.fields.updatedAt', 'Updated'),
+      header: tDefault('common.fields.updatedAt', 'Last updated'),
       sortable: true,
       cellClassName: 'text-sm text-muted-foreground',
       render: (organization) =>

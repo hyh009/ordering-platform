@@ -39,6 +39,16 @@ export function createCategoryListActions(store: StoreApi<CategoryListState>) {
         return { categories: reordered };
       });
     },
+
+    categoryProductsReordered(categoryId: string, orderedIds: string[]) {
+      store.setState((state) => ({
+        categories: state.categories.map((category) =>
+          category.id === categoryId
+            ? { ...category, productOrder: orderedIds }
+            : category,
+        ),
+      }));
+    },
   };
 }
 

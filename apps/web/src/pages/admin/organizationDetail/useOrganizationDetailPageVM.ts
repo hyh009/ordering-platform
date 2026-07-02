@@ -115,22 +115,28 @@ export function useOrganizationDetailPageVM(organizationId: string) {
   const reviewOrganization = useCallback(
     async (reviewStatus: 'approved' | 'rejected') => {
       const isApprove = reviewStatus === 'approved';
+      const name = organization?.name ?? '';
       const confirmed = await feedbackVM.confirm({
-        title: tDefault(
-          isApprove
-            ? 'admin.organizations.approveConfirmTitle'
-            : 'admin.organizations.rejectConfirmTitle',
-          isApprove ? 'Approve organization?' : 'Reject organization?',
-        ),
-        message: tDefault(
-          isApprove
-            ? 'admin.organizations.approveConfirmMessage'
-            : 'admin.organizations.rejectConfirmMessage',
-          isApprove
-            ? 'This will mark "{{name}}" as approved.'
-            : 'This will mark "{{name}}" as rejected.',
-          { name: organization?.name ?? '' },
-        ),
+        title: isApprove
+          ? tDefault(
+              'admin.organizations.approveConfirmTitle',
+              'Approve organization?',
+            )
+          : tDefault(
+              'admin.organizations.rejectConfirmTitle',
+              'Reject organization?',
+            ),
+        message: isApprove
+          ? tDefault(
+              'admin.organizations.approveConfirmMessage',
+              'This will mark "{{name}}" as approved.',
+              { name },
+            )
+          : tDefault(
+              'admin.organizations.rejectConfirmMessage',
+              'This will mark "{{name}}" as rejected.',
+              { name },
+            ),
       });
 
       if (!confirmed) return;

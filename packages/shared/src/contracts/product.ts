@@ -96,6 +96,9 @@ export const productParamsSchema = z.object({
 export const listProductsQuerySchema = z
   .object({
     isActive: z.enum(['true', 'false', 'all']).optional().default('all'),
+    // When present, return only this category's products, ordered by the
+    // category's saved productOrder.
+    categoryId: z.string().trim().min(1).optional(),
   })
   .optional()
   .default({ isActive: 'all' });

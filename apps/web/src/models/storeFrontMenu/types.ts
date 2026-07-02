@@ -5,6 +5,7 @@ import type {
   LocalizedStringDto,
   PublicCategoryDto,
   PublicMenuDto,
+  PublicMenuGroupDto,
   PublicMetadataItemDto,
   PublicModifierDto,
   PublicModifierOptionDto,
@@ -32,10 +33,7 @@ export type PublicMetadataItem = PublicMetadataItemDto;
 export type PublicTag = PublicTagDto;
 
 /**
- * View grouping of the flat menu. `category` is null for the bucket of
- * products that have no category.
+ * A menu section from the backend. `category` is null for the trailing bucket
+ * of products that have no category.
  */
-export type MenuCategoryGroup = {
-  category: PublicCategory | null;
-  products: PublicProduct[];
-};
+export type MenuCategoryGroup = PublicMenuGroupDto;

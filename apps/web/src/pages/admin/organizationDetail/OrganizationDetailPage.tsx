@@ -74,7 +74,7 @@ function ReviewBadge({
           : 'bg-amber-100 text-amber-700',
       )}
     >
-      {tDefault('admin.organizations.reviewStatus', 'Review')}:{' '}
+      {tDefault('admin.organizations.reviewStatusLabel', 'Review')}:{' '}
       {getOrganizationReviewStatusLabel(reviewStatus, tDefault)}
     </span>
   );
@@ -339,7 +339,7 @@ export function OrganizationDetailPage() {
                     value: org.name,
                   },
                   {
-                    label: tDefault('admin.organizations.slug', 'Domain'),
+                    label: tDefault('admin.organizations.slug', 'Slug'),
                     value: org.slug || 'N/A',
                   },
                   {
@@ -348,8 +348,8 @@ export function OrganizationDetailPage() {
                   },
                   {
                     label: tDefault(
-                      'admin.organizations.reviewStatus',
-                      'Review Status',
+                      'admin.organizations.reviewStatusLabel',
+                      'Review',
                     ),
                     value: <ReviewBadge reviewStatus={org.reviewStatus} />,
                   },
@@ -366,17 +366,11 @@ export function OrganizationDetailPage() {
               <DescriptionList
                 rows={[
                   {
-                    label: tDefault(
-                      'admin.organizations.contactEmail',
-                      'Contact Email',
-                    ),
+                    label: tDefault('admin.organizations.contactEmail', 'Email'),
                     value: org.contactEmail || 'N/A',
                   },
                   {
-                    label: tDefault(
-                      'admin.organizations.contactPhone',
-                      'Contact Phone',
-                    ),
+                    label: tDefault('admin.organizations.contactPhone', 'Phone'),
                     value: vm.displayContactPhone || 'N/A',
                   },
                 ]}
@@ -532,7 +526,7 @@ export function OrganizationDetailPage() {
                 <QuickAction
                   href={PATHS.SUPER_ADMIN.STORE_CREATE_BUILD(organizationId)}
                   icon={Store}
-                  label={tDefault('admin.stores.createAction', '建立門市')}
+                  label={tDefault('admin.stores.createAction', 'Create store')}
                   state={{ organizationName: orgName }}
                 />
                 <QuickAction

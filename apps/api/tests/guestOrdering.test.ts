@@ -528,9 +528,12 @@ describe('public store and menu', () => {
 
     expect(response.status).toBe(200);
     const menu = response.body.data.menu;
-    expect(menu.products).toHaveLength(1);
-    expect(menu.products[0].status).toBeUndefined();
-    expect(menu.products[0].isActive).toBeUndefined();
+    const products = menu.groups.flatMap(
+      (group: { products: unknown[] }) => group.products,
+    );
+    expect(products).toHaveLength(1);
+    expect(products[0].status).toBeUndefined();
+    expect(products[0].isActive).toBeUndefined();
     expect(menu.modifiers).toHaveLength(1);
     expect(menu.modifiers[0].id).toBe(modifier.id);
   });

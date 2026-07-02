@@ -52,6 +52,13 @@ const categorySchema = new Schema<CategoryEntity>(
       required: true,
       default: 0,
     },
+    // Denormalized ordering projection for products inside this category.
+    // Product.categoryIds remains the membership source of truth; services must
+    // validate and normalize this list against current store products.
+    productOrder: {
+      type: [String],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       required: true,

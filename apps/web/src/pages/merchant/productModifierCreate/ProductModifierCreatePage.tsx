@@ -84,7 +84,7 @@ export function ProductModifierCreatePage() {
           {form.values.options.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {tDefault(
-                'merchant.productModifiers.noOptions',
+                'merchant.productModifiers.optionsRequired',
                 'Add at least one option.',
               )}
             </p>

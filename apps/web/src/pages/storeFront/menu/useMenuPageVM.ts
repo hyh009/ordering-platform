@@ -9,7 +9,6 @@ import {
   buildAllergenMap,
   buildModifierMap,
   buildTagMap,
-  groupMenuByCategory,
 } from '@/models/storeFrontMenu';
 import type { PublicProduct } from '@/models/storeFrontMenu';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
@@ -163,10 +162,7 @@ export function useMenuPageVM() {
     void runInitialize();
   }, [runInitialize]);
 
-  const categoryGroups = useMemo(
-    () => (menu ? groupMenuByCategory(menu) : []),
-    [menu],
-  );
+  const categoryGroups = useMemo(() => menu?.groups ?? [], [menu]);
 
   // Tabs and their stable keys, mirroring the section keys the view renders.
   // The view feeds these keys to useScrollSpyTabs for scroll behavior.

@@ -40,6 +40,11 @@ export type CategoryRepository = {
     input: UpdateCategoryInput,
   ): Promise<CategoryEntity | null>;
   bulkSetDisplayOrder(storeId: string, orderedIds: string[]): Promise<void>;
+  setProductOrder(
+    storeId: string,
+    categoryId: string,
+    orderedIds: string[],
+  ): Promise<CategoryEntity | null>;
 };
 
 export const categoryRepository: CategoryRepository = categoryMongoRepository;

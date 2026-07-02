@@ -2,6 +2,7 @@ import { toPublicAllergenDto } from '@src/models/allergen/mapper';
 import { toPublicCategoryDto } from '@src/models/category/mapper';
 import { toPublicDietaryMarkerDto } from '@src/models/dietaryMarker/mapper';
 import { toPublicProductDto } from '@src/models/product/mapper';
+import { sortProductsByCategoryOrder } from '@src/models/product/order';
 import { toPublicModifierDto } from '@src/models/productModifier/mapper';
 import { toPublicStoreDto } from '@src/models/store/mapper';
 import { toPublicTagDto } from '@src/models/tag/mapper';
@@ -59,6 +60,37 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuDto> {
     (product) => product.status === 'published',
   );
 
+  // Group products by category (each product appears under every category it
+  // belongs to), ordered per the category's saved productOrder. Categories are
+  // already displayOrder-sorted by the repository. Empty categories are dropped;
+  // products with no known category go into a trailing null group.
+  const groups: PublicMenuDto['groups'] = [];
+  for (const category of categories) {
+    const members = visibleProducts.filter((product) =>
+      product.categoryIds.includes(category.id),
+    );
+    if (members.length === 0) continue;
+
+    groups.push({
+      category: toPublicCategoryDto(category),
+      products: sortProductsByCategoryOrder(members, category.productOrder).map(
+        toPublicProductDto,
+      ),
+    });
+  }
+
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const uncategorized = visibleProducts.filter(
+    (product) =>
+      !product.categoryIds.some((categoryId) => categoryIds.has(categoryId)),
+  );
+  if (uncategorized.length > 0) {
+    groups.push({
+      category: null,
+      products: uncategorized.map(toPublicProductDto),
+    });
+  }
+
   const referencedModifierIds = new Set(
     visibleProducts.flatMap((product) => product.modifierIds),
   );
@@ -73,8 +105,7 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuDto> {
   );
 
   return {
-    categories: categories.map(toPublicCategoryDto),
-    products: visibleProducts.map(toPublicProductDto),
+    groups,
     modifiers: filterReferenced(modifiers, referencedModifierIds).map(toPublicModifierDto),
     tags: filterReferenced(tags, referencedTagIds).map(toPublicTagDto),
     allergens: filterReferenced(allergens, referencedAllergenIds).map(toPublicAllergenDto),

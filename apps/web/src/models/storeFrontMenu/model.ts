@@ -29,8 +29,7 @@ export const storeFrontMenuModel = {
 
   deserializeMenu(dto: PublicMenuDto): PublicMenu {
     return {
-      categories: dto.categories,
-      products: dto.products,
+      groups: dto.groups,
       modifiers: dto.modifiers,
       tags: dto.tags,
       allergens: dto.allergens,

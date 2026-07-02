@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { RouteErrorBoundary } from '@/app/error/AppErrorBoundary';
-import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import {
   AppLayout,
   MerchantLayout,
@@ -16,6 +15,7 @@ import { RequireAuth } from '@/app/routing/RequireAuth';
 import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
 import { AllergenListPage } from '@/pages/admin/allergenList/AllergenListPage';
 import { DietaryMarkerListPage } from '@/pages/admin/dietaryMarkerList/DietaryMarkerListPage';
+import { HomePage } from '@/pages/home/HomePage';
 import { OrganizationDetailPage } from '@/pages/admin/organizationDetail/OrganizationDetailPage';
 import { OrganizationListPage } from '@/pages/admin/organizationList/OrganizationListPage';
 import { OrganizationMembershipsPage } from '@/pages/admin/organizationMemberships/OrganizationMembershipsPage';
@@ -45,26 +45,15 @@ import { StoreSettingsPage } from '@/pages/merchant/storeSettings/StoreSettingsP
 import { TagListPage } from '@/pages/merchant/tagList/TagListPage';
 import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
 
-function AuthenticatedHomeRedirect() {
-  const auth = useAuthVM();
-
-  return (
-    <Navigate
-      replace
-      to={
-        auth.user?.isSuperAdmin
-          ? PATHS.SUPER_ADMIN.ORGANIZATIONS
-          : PATHS.MERCHANT.SELECT_ORG
-      }
-    />
-  );
-}
-
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<RouteErrorBoundary />}>
+          <Route element={<PublicLayout />}>
+            <Route element={<HomePage />} path={PATHS.PUBLIC.HOME} />
+          </Route>
+
           {/* Public storefront ordering never initializes management auth. */}
           <Route element={<StoreFrontLayout />}>
             <Route element={<LandingPage />} path={PATHS.STOREFRONT.LANDING} />
@@ -84,7 +73,10 @@ export function App() {
               element={<OrderTrackingPage />}
               path={PATHS.STOREFRONT.ORDER}
             />
-            <Route element={<NotFoundPage embedded />} path="/s/*" />
+            <Route
+              element={<NotFoundPage destination="home" embedded />}
+              path="/s/*"
+            />
           </Route>
 
           <Route element={<PublicOnly />}>
@@ -94,8 +86,6 @@ export function App() {
           </Route>
 
           <Route element={<RequireAuth />}>
-            <Route element={<AuthenticatedHomeRedirect />} index />
-
             {/* Super admin platform: /admin/* with sidebar */}
             <Route element={<SuperAdminLayout />}>
               <Route element={<RequireSuperAdmin />}>
@@ -222,11 +212,11 @@ export function App() {
 
               <Route element={<NotFoundPage embedded />} path="/merchant/*" />
             </Route>
+          </Route>
 
-            {/* Catch-all 404 */}
-            <Route element={<AppLayout />}>
-              <Route element={<NotFoundPage embedded />} path="*" />
-            </Route>
+          {/* Public catch-all 404. Keep random URLs out of management auth. */}
+          <Route element={<PublicLayout />}>
+            <Route element={<NotFoundPage destination="home" />} path="*" />
           </Route>
         </Route>
       </Routes>

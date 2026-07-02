@@ -6,6 +6,7 @@ import type {
   ListCategoriesSuccessResponse,
   LocalizedStringDto,
   ReorderCategoriesSuccessResponse,
+  ReorderCategoryProductsSuccessResponse,
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 } from '@repo/shared';
@@ -18,6 +19,7 @@ export type {
   ListCategoriesSuccessResponse,
   LocalizedStringDto,
   ReorderCategoriesSuccessResponse,
+  ReorderCategoryProductsSuccessResponse,
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 };
@@ -29,6 +31,7 @@ export type Category = {
   description?: LocalizedStringDto;
   imageUrl?: string;
   displayOrder: number;
+  productOrder: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

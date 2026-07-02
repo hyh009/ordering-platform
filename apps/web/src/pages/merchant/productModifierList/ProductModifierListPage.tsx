@@ -54,7 +54,7 @@ export function ProductModifierListPage() {
     },
     {
       key: 'select',
-      header: tDefault('merchant.productModifiers.selectRange', 'Select'),
+      header: tDefault('merchant.productModifiers.selectionColumn', 'Select'),
       cellClassName: 'text-sm text-muted-foreground',
       render: (modifier) =>
         modifier.selectionType === 'single_choice'

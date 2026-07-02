@@ -9,6 +9,7 @@ export function toCategoryDto(category: CategoryEntity): CategoryDto {
     storeId: category.storeId,
     name: category.name,
     displayOrder: category.displayOrder,
+    productOrder: category.productOrder ?? [],
     isActive: category.isActive,
     availabilityRules: category.availabilityRules.map(toAvailabilityRuleDto),
     createdAt: category.createdAt.toISOString(),

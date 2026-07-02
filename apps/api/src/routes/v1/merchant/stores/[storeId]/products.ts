@@ -177,6 +177,14 @@ const router = Router({ mergeParams: true });
  *             - "false"
  *             - all
  *           default: all
+ *       - in: query
+ *         name: categoryId
+ *         required: false
+ *         description: >
+ *           When present, returns only this category's products, ordered by the
+ *           category's saved product order.
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Products returned
@@ -191,10 +199,11 @@ router.get<ProductStoreParams, ListProductsSuccessResponse>(
   requireOrgRole('org_owner', 'org_admin', 'staff'),
   validate(productStoreParamsSchema, 'params'),
   async (req, res) => {
-    const { isActive } = listProductsQuerySchema.parse(req.query);
+    const { isActive, categoryId } = listProductsQuerySchema.parse(req.query);
     const products = await productService.listProducts(
       req.params.storeId,
       isActive,
+      categoryId,
     );
 
     res.json({ status: 'success', data: { products } });

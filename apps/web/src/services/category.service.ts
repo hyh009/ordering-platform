@@ -7,6 +7,7 @@ import type {
   CreateCategorySuccessResponse,
   ListCategoriesSuccessResponse,
   ReorderCategoriesSuccessResponse,
+  ReorderCategoryProductsSuccessResponse,
   UpdateCategoryRequest,
   UpdateCategorySuccessResponse,
 } from '@/models/category';
@@ -52,6 +53,20 @@ export const categoryService = {
   async reorderCategories(storeId: string, orderedIds: string[]) {
     await apiJson<ReorderCategoriesSuccessResponse>(
       menuPaths.categoryReorder(storeId),
+      {
+        body: JSON.stringify({ orderedIds }),
+        method: 'PATCH',
+      },
+    );
+  },
+
+  async reorderProducts(
+    storeId: string,
+    categoryId: string,
+    orderedIds: string[],
+  ) {
+    await apiJson<ReorderCategoryProductsSuccessResponse>(
+      menuPaths.categoryProductReorder(storeId, categoryId),
       {
         body: JSON.stringify({ orderedIds }),
         method: 'PATCH',

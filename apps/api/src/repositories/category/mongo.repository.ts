@@ -17,6 +17,7 @@ const categoryEntityKeys = [
   'description',
   'imageUrl',
   'displayOrder',
+  'productOrder',
   'isActive',
   'availabilityRules',
   'createdAt',
@@ -91,6 +92,22 @@ export const categoryMongoRepository = {
     }));
 
     await CategoryMongoModel.bulkWrite(ops);
+  },
+
+  async setProductOrder(
+    storeId: string,
+    categoryId: string,
+    orderedIds: string[],
+  ) {
+    const doc = await CategoryMongoModel.findOneAndUpdate(
+      { id: categoryId, storeId },
+      { $set: { productOrder: orderedIds } },
+      { new: true, runValidators: true },
+    )
+      .lean<CategoryEntity>()
+      .exec();
+
+    return doc ? toCategoryEntity(doc) : null;
   },
 
   async update(categoryId: string, input: UpdateCategoryInput) {

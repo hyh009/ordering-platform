@@ -12,6 +12,12 @@ export type CategoryDto = {
   description?: LocalizedStringDto;
   imageUrl?: string;
   displayOrder: number;
+  /**
+   * Ordering projection for products that already belong to this category.
+   * Product.categoryIds remains the membership source of truth; readers should
+   * ignore ids that are no longer current category members.
+   */
+  productOrder: string[];
   isActive: boolean;
   availabilityRules: AvailabilityRuleDto[];
   createdAt: string;
@@ -86,6 +92,14 @@ export const reorderCategoriesSchema = z.object({
 
 export type ReorderCategoriesRequest = z.infer<typeof reorderCategoriesSchema>;
 
+export const reorderCategoryProductsSchema = z.object({
+  orderedIds: z.array(z.string().trim().min(1)).max(1000),
+});
+
+export type ReorderCategoryProductsRequest = z.infer<
+  typeof reorderCategoryProductsSchema
+>;
+
 export type ListCategoriesSuccessResponse = ApiSuccessResponse<{
   categories: CategoryDto[];
 }>;
@@ -96,5 +110,8 @@ export type UpdateCategorySuccessResponse = ApiSuccessResponse<{
   category: CategoryDto;
 }>;
 export type ReorderCategoriesSuccessResponse = ApiSuccessResponse<
+  Record<string, never>
+>;
+export type ReorderCategoryProductsSuccessResponse = ApiSuccessResponse<
   Record<string, never>
 >;

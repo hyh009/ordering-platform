@@ -6,6 +6,7 @@ import { activeStoreStore } from '@/app/global/activeStore/activeStore.store';
 import { useActiveStoreLocale } from '@/app/global/activeStore/useActiveStoreLocale';
 import { tDefault } from '@/app/i18n';
 import { createCategoryListRuntime } from '@/features/merchant/menu/categories/list/runtime';
+import { useReorder } from '@/shared/hooks/useReorder';
 import type { Category, CategoryActiveFilter } from '@/models/category';
 import { createCategoryListPageCommands } from './categoryListPage.commands';
 import {
@@ -42,10 +43,6 @@ export function useCategoryListPageVM() {
   const form = useCategoryForm();
   const [filter, setFilterState] = useState<CategoryActiveFilter>('all');
   const [modalMode, setModalMode] = useState<CategoryModalMode | null>(null);
-  const [isReorderMode, setIsReorderMode] = useState(false);
-  const [pendingOrder, setPendingOrder] = useState<string[]>([]);
-  const [isReorderSubmitting, setIsReorderSubmitting] = useState(false);
-  const [reorderError, setReorderError] = useState<string | null>(null);
 
   const storeId = useStore(activeStoreStore, (state) => state.storeId);
   const canManage = useCanManageStoreResources();
@@ -83,51 +80,11 @@ export function useCategoryListPageVM() {
     setFilterState(nextFilter);
   }, []);
 
-  const orderedCategories = useMemo<Category[]>(() => {
-    if (!isReorderMode) return categories;
-    const byId = new Map(categories.map((c) => [c.id, c]));
-    return pendingOrder
-      .map((id) => byId.get(id))
-      .filter((c): c is Category => c !== undefined);
-  }, [categories, isReorderMode, pendingOrder]);
-
-  const enterReorderMode = useCallback(() => {
-    setPendingOrder(categories.map((c) => c.id));
-    setReorderError(null);
-    setIsReorderMode(true);
-  }, [categories]);
-
-  const cancelReorder = useCallback(() => {
-    setIsReorderMode(false);
-    setPendingOrder([]);
-    setReorderError(null);
-  }, []);
-
-  const moveCategory = useCallback((id: string, direction: 'up' | 'down') => {
-    setPendingOrder((current) => {
-      const index = current.indexOf(id);
-      if (index === -1) return current;
-      const swapIndex = direction === 'up' ? index - 1 : index + 1;
-      if (swapIndex < 0 || swapIndex >= current.length) return current;
-      const next = [...current];
-      [next[index], next[swapIndex]] = [next[swapIndex]!, next[index]!];
-      return next;
-    });
-  }, []);
-
-  const saveReorder = useCallback(async () => {
-    if (!storeId || isReorderSubmitting) return;
-    setIsReorderSubmitting(true);
-    setReorderError(null);
-    const result = await commands.reorderCategories(storeId, pendingOrder);
-    setIsReorderSubmitting(false);
-    if (result.status === 'reordered') {
-      setIsReorderMode(false);
-      setPendingOrder([]);
-    } else {
-      setReorderError(result.message);
-    }
-  }, [commands, isReorderSubmitting, pendingOrder, storeId]);
+  const reorder = useReorder(categories, (orderedIds) =>
+    storeId
+      ? commands.reorderCategories(storeId, orderedIds)
+      : Promise.resolve({ status: 'failed' as const, message: '' }),
+  );
 
   const openCreateModal = useCallback(() => {
     form.reset();
@@ -212,28 +169,28 @@ export function useCategoryListPageVM() {
 
   return {
     canManage,
-    cancelReorder,
-    categories: orderedCategories,
+    cancelReorder: reorder.cancel,
+    categories: reorder.orderedItems,
     closeModal,
-    enterReorderMode,
+    enterReorderMode: reorder.enter,
     error,
     filter,
     form,
     isLoading,
     isModalOpen: modalMode !== null,
-    isReorderMode,
-    isReorderSubmitting,
+    isReorderMode: reorder.isReorderMode,
+    isReorderSubmitting: reorder.isSubmitting,
     isViewMode: modalMode?.type === 'view',
     locale,
     modalTitle,
-    moveCategory,
+    moveCategory: reorder.move,
     openCreateModal,
     openEditModal,
     openViewModal,
-    reorderError,
+    reorderError: reorder.error,
     retry,
     viewedCategory: modalMode?.type === 'view' ? modalMode.category : null,
-    saveReorder,
+    saveReorder: reorder.save,
     setFilter,
     submitCategory,
   };

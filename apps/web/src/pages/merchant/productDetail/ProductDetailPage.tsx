@@ -20,7 +20,7 @@ export function ProductDetailPage() {
   if (vm.isLoading && !product) {
     return (
       <LoadingState
-        label={tDefault('merchant.products.loading', 'Loading product')}
+        label={tDefault('merchant.products.loadingDetail', 'Loading product')}
       />
     );
   }
