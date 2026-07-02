@@ -136,6 +136,47 @@ function isTDefaultCall(node) {
   );
 }
 
+// A message-table entry pairs a translation key with its English fallback, e.g.
+// `{ key: 'admin.errors.notFound', fallback: 'This record was not found.' }`.
+// These tables back dynamic `tDefault(message.key, message.fallback)` lookups
+// (see the API error mappers), so scanning the tables keeps their keys visible
+// to the translation pipeline even though the call sites are not literal.
+function getMessageTableEntry(node) {
+  let key = null;
+  let fallback = null;
+
+  for (const property of node.properties) {
+    if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) {
+      continue;
+    }
+
+    if (property.name.text === 'key') {
+      key = getStringLiteralValue(property.initializer);
+    } else if (property.name.text === 'fallback') {
+      fallback = getStringLiteralValue(property.initializer);
+    }
+  }
+
+  return key && fallback !== null ? { key, fallback } : null;
+}
+
+// Matches `tDefault(x.key, x.fallback)` — a lookup against a message table whose
+// keys are scanned via getMessageTableEntry. The literal key/default live in the
+// table, not at the call site, so this shape is exempt from the literal-argument
+// requirement. Any other non-literal call is still reported.
+function isMessageTableLookup(node) {
+  const [keyNode, defaultNode] = node.arguments;
+
+  return (
+    keyNode !== undefined &&
+    defaultNode !== undefined &&
+    ts.isPropertyAccessExpression(keyNode) &&
+    keyNode.name.text === 'key' &&
+    ts.isPropertyAccessExpression(defaultNode) &&
+    defaultNode.name.text === 'fallback'
+  );
+}
+
 function getLocation(sourceFile, node, filePath) {
   const position = sourceFile.getLineAndCharacterOfPosition(node.getStart());
   const relativePath = path
@@ -148,6 +189,19 @@ function getLocation(sourceFile, node, filePath) {
 export function scanI18nDefaults({ scope } = {}) {
   const entries = new Map();
   const invalidCalls = [];
+
+  function addEntry(key, defaultValue, location) {
+    const existing = entries.get(key);
+
+    if (existing) {
+      existing.files.push(location);
+      if (existing.defaultValue !== defaultValue) {
+        invalidCalls.push(`${location} uses a different default for "${key}".`);
+      }
+    } else {
+      entries.set(key, { key, defaultValue, files: [location] });
+    }
+  }
 
   for (const filePath of listScopedSourceFiles(scope)) {
     const sourceText = fs.readFileSync(filePath, 'utf8');
@@ -168,25 +222,20 @@ export function scanI18nDefaults({ scope } = {}) {
           : null;
         const location = getLocation(sourceFile, node, filePath);
 
-        if (!key || defaultValue === null) {
+        if (key && defaultValue !== null) {
+          addEntry(key, defaultValue, location);
+        } else if (!isMessageTableLookup(node)) {
           invalidCalls.push(location);
-        } else {
-          const existing = entries.get(key);
+        }
+      } else if (ts.isObjectLiteralExpression(node)) {
+        const tableEntry = getMessageTableEntry(node);
 
-          if (existing) {
-            existing.files.push(location);
-            if (existing.defaultValue !== defaultValue) {
-              invalidCalls.push(
-                `${location} uses a different default for "${key}".`,
-              );
-            }
-          } else {
-            entries.set(key, {
-              key,
-              defaultValue,
-              files: [location],
-            });
-          }
+        if (tableEntry) {
+          addEntry(
+            tableEntry.key,
+            tableEntry.fallback,
+            getLocation(sourceFile, node, filePath),
+          );
         }
       }
 
