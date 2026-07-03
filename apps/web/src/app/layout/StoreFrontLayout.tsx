@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { useAppTranslation } from '@/app/i18n';
 import { StorefrontLanguageDialog } from '@/features/storeFront/components/StorefrontLanguageDialog';
@@ -25,7 +27,11 @@ export function StoreFrontLayout() {
     <div className="h-dvh w-full overflow-y-auto bg-storefront-bg">
       <div className="flex min-h-full w-full flex-col">
         <PageErrorBoundary>
-          <Outlet />
+          <Suspense
+            fallback={<LoadingState label={tDefault('app.loading.page', 'Loading…')} />}
+          >
+            <Outlet />
+          </Suspense>
         </PageErrorBoundary>
         <ToastHost
           dismissLabel={tDefault(

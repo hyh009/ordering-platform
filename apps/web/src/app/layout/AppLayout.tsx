@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
 import { useAuthVM } from '@/app/global/auth/useAuthVM';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
@@ -56,7 +57,11 @@ export function createAuthenticatedLayout(
         username={auth.user?.username}
       >
         <PageErrorBoundary>
-          <Outlet />
+          <Suspense
+            fallback={<LoadingState label={tDefault('app.loading.page', 'Loading…')} />}
+          >
+            <Outlet />
+          </Suspense>
         </PageErrorBoundary>
         <ToastHost
           dismissLabel={tDefault(

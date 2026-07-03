@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 import { PageErrorBoundary } from '@/app/error/AppErrorBoundary';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { useAppContextVM } from '@/app/global/appContext/useAppContextVM';
 import { useFeedbackVM } from '@/app/global/feedback/useFeedbackVM';
 import { useAppTranslation } from '@/app/i18n';
@@ -24,7 +26,11 @@ export function PublicLayout() {
       onLogout={() => {}}
     >
       <PageErrorBoundary>
-        <Outlet />
+        <Suspense
+          fallback={<LoadingState label={tDefault('app.loading.page', 'Loading…')} />}
+        >
+          <Outlet />
+        </Suspense>
       </PageErrorBoundary>
       <ToastHost
         dismissLabel={tDefault(

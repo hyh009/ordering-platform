@@ -1,3 +1,4 @@
+import { lazy, type ComponentType } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { RouteErrorBoundary } from '@/app/error/AppErrorBoundary';
 import {
@@ -13,37 +14,139 @@ import { RequireActiveStore } from '@/app/routing/RequireActiveStore';
 import { RequireStoreManager } from '@/app/routing/RequireStoreManager';
 import { RequireAuth } from '@/app/routing/RequireAuth';
 import { RequireSuperAdmin } from '@/app/routing/RequireSuperAdmin';
-import { AllergenListPage } from '@/pages/admin/allergenList/AllergenListPage';
-import { DietaryMarkerListPage } from '@/pages/admin/dietaryMarkerList/DietaryMarkerListPage';
-import { HomePage } from '@/pages/home/HomePage';
-import { OrganizationDetailPage } from '@/pages/admin/organizationDetail/OrganizationDetailPage';
-import { OrganizationListPage } from '@/pages/admin/organizationList/OrganizationListPage';
-import { OrganizationMembershipsPage } from '@/pages/admin/organizationMemberships/OrganizationMembershipsPage';
-import { StoreCreatePage } from '@/pages/admin/storeCreate/StoreCreatePage';
-import { StoreListPage } from '@/pages/admin/storeList/StoreListPage';
-import { LoginPage } from '@/pages/login/LoginPage';
-import { CartPage } from '@/pages/storeFront/cart/CartPage';
-import { JoinEntryPage } from '@/pages/storeFront/join/JoinEntryPage';
-import { JoinPage } from '@/pages/storeFront/join/JoinPage';
-import { InvitePage } from '@/pages/storeFront/invite/InvitePage';
-import { LandingPage } from '@/pages/storeFront/landing/LandingPage';
-import { MenuPage } from '@/pages/storeFront/menu/MenuPage';
-import { OrderTrackingPage } from '@/pages/storeFront/order/OrderTrackingPage';
-import { OrderHistoryPage } from '@/pages/storeFront/orderHistory/OrderHistoryPage';
-import { CategoryListPage } from '@/pages/merchant/categoryList/CategoryListPage';
-import { ProductCreatePage } from '@/pages/merchant/productCreate/ProductCreatePage';
-import { ProductDetailPage } from '@/pages/merchant/productDetail/ProductDetailPage';
-import { ProductListPage } from '@/pages/merchant/productList/ProductListPage';
-import { ProductModifierCreatePage } from '@/pages/merchant/productModifierCreate/ProductModifierCreatePage';
-import { ProductModifierDetailPage } from '@/pages/merchant/productModifierDetail/ProductModifierDetailPage';
-import { ProductModifierListPage } from '@/pages/merchant/productModifierList/ProductModifierListPage';
-import { OrderDetailPage } from '@/pages/merchant/orderDetail/OrderDetailPage';
-import { OrderListPage } from '@/pages/merchant/orderList/OrderListPage';
-import { OrgSelectPage } from '@/pages/merchant/orgSelect/OrgSelectPage';
-import { StoreSelectPage } from '@/pages/merchant/storeSelect/StoreSelectPage';
-import { StoreSettingsPage } from '@/pages/merchant/storeSettings/StoreSettingsPage';
-import { TagListPage } from '@/pages/merchant/tagList/TagListPage';
+// Keep the 404 page eager so catch-all routes resolve without a chunk fetch.
 import { NotFoundPage } from '@/pages/notFound/NotFoundPage';
+
+/**
+ * Lazily load a page by its named export so each route ships as its own chunk,
+ * keeping the initial bundle small. Preserves the page's prop types at the
+ * call site. The layout Outlets provide the Suspense fallback while a chunk
+ * loads.
+ */
+function lazyPage<M, K extends keyof M>(
+  loader: () => Promise<M>,
+  name: K,
+): M[K] {
+  return lazy(() =>
+    loader().then((m) => ({ default: m[name] as ComponentType })),
+  ) as unknown as M[K];
+}
+
+const AllergenListPage = lazyPage(
+  () => import('@/pages/admin/allergenList/AllergenListPage'),
+  'AllergenListPage',
+);
+const DietaryMarkerListPage = lazyPage(
+  () => import('@/pages/admin/dietaryMarkerList/DietaryMarkerListPage'),
+  'DietaryMarkerListPage',
+);
+const HomePage = lazyPage(() => import('@/pages/home/HomePage'), 'HomePage');
+const OrganizationDetailPage = lazyPage(
+  () => import('@/pages/admin/organizationDetail/OrganizationDetailPage'),
+  'OrganizationDetailPage',
+);
+const OrganizationListPage = lazyPage(
+  () => import('@/pages/admin/organizationList/OrganizationListPage'),
+  'OrganizationListPage',
+);
+const OrganizationMembershipsPage = lazyPage(
+  () =>
+    import('@/pages/admin/organizationMemberships/OrganizationMembershipsPage'),
+  'OrganizationMembershipsPage',
+);
+const StoreCreatePage = lazyPage(
+  () => import('@/pages/admin/storeCreate/StoreCreatePage'),
+  'StoreCreatePage',
+);
+const StoreListPage = lazyPage(
+  () => import('@/pages/admin/storeList/StoreListPage'),
+  'StoreListPage',
+);
+const LoginPage = lazyPage(() => import('@/pages/login/LoginPage'), 'LoginPage');
+const CartPage = lazyPage(
+  () => import('@/pages/storeFront/cart/CartPage'),
+  'CartPage',
+);
+const JoinEntryPage = lazyPage(
+  () => import('@/pages/storeFront/join/JoinEntryPage'),
+  'JoinEntryPage',
+);
+const JoinPage = lazyPage(
+  () => import('@/pages/storeFront/join/JoinPage'),
+  'JoinPage',
+);
+const InvitePage = lazyPage(
+  () => import('@/pages/storeFront/invite/InvitePage'),
+  'InvitePage',
+);
+const LandingPage = lazyPage(
+  () => import('@/pages/storeFront/landing/LandingPage'),
+  'LandingPage',
+);
+const MenuPage = lazyPage(
+  () => import('@/pages/storeFront/menu/MenuPage'),
+  'MenuPage',
+);
+const OrderTrackingPage = lazyPage(
+  () => import('@/pages/storeFront/order/OrderTrackingPage'),
+  'OrderTrackingPage',
+);
+const OrderHistoryPage = lazyPage(
+  () => import('@/pages/storeFront/orderHistory/OrderHistoryPage'),
+  'OrderHistoryPage',
+);
+const CategoryListPage = lazyPage(
+  () => import('@/pages/merchant/categoryList/CategoryListPage'),
+  'CategoryListPage',
+);
+const ProductCreatePage = lazyPage(
+  () => import('@/pages/merchant/productCreate/ProductCreatePage'),
+  'ProductCreatePage',
+);
+const ProductDetailPage = lazyPage(
+  () => import('@/pages/merchant/productDetail/ProductDetailPage'),
+  'ProductDetailPage',
+);
+const ProductListPage = lazyPage(
+  () => import('@/pages/merchant/productList/ProductListPage'),
+  'ProductListPage',
+);
+const ProductModifierCreatePage = lazyPage(
+  () => import('@/pages/merchant/productModifierCreate/ProductModifierCreatePage'),
+  'ProductModifierCreatePage',
+);
+const ProductModifierDetailPage = lazyPage(
+  () => import('@/pages/merchant/productModifierDetail/ProductModifierDetailPage'),
+  'ProductModifierDetailPage',
+);
+const ProductModifierListPage = lazyPage(
+  () => import('@/pages/merchant/productModifierList/ProductModifierListPage'),
+  'ProductModifierListPage',
+);
+const OrderDetailPage = lazyPage(
+  () => import('@/pages/merchant/orderDetail/OrderDetailPage'),
+  'OrderDetailPage',
+);
+const OrderListPage = lazyPage(
+  () => import('@/pages/merchant/orderList/OrderListPage'),
+  'OrderListPage',
+);
+const OrgSelectPage = lazyPage(
+  () => import('@/pages/merchant/orgSelect/OrgSelectPage'),
+  'OrgSelectPage',
+);
+const StoreSelectPage = lazyPage(
+  () => import('@/pages/merchant/storeSelect/StoreSelectPage'),
+  'StoreSelectPage',
+);
+const StoreSettingsPage = lazyPage(
+  () => import('@/pages/merchant/storeSettings/StoreSettingsPage'),
+  'StoreSettingsPage',
+);
+const TagListPage = lazyPage(
+  () => import('@/pages/merchant/tagList/TagListPage'),
+  'TagListPage',
+);
 
 export function App() {
   return (

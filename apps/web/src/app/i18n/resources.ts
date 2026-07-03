@@ -457,6 +457,7 @@ const manualResources: Resource = {
         },
         loading: {
           checkingSession: '正在檢查登入狀態',
+          page: '載入中…',
         },
         navigation: {
           allergens: '過敏原',
