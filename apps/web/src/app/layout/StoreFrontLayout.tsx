@@ -24,8 +24,8 @@ const HEADER_ROUTES = [
 /**
  * Mobile-first shell for the public storefront ordering flow. Unlike the merchant
  * layouts it has no auth, sidebar, or merchant header — storefront pages own their
- * own headers. The layout loads the store record so a matching header shell can
- * stand in while a page chunk loads (see `StorefrontChunkFallback`).
+ * own headers. While a page chunk loads, a header-shaped skeleton fallback stands
+ * in so the shell never fully blanks (see `StorefrontChunkFallback`).
  */
 export function StoreFrontLayout() {
   const feedback = useFeedbackVM();
@@ -34,9 +34,9 @@ export function StoreFrontLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { storeId } = useParams<{ storeId: string }>();
-  // Owns the guest SSE stream (shared across navigation without reconnect churn)
-  // and the store record backing the persistent header.
-  const { store } = useStoreFrontLayoutVM();
+  // Connect the guest SSE stream once at the layout level so it persists across
+  // menu/cart/order navigation without reconnect churn.
+  useStoreFrontLayoutVM();
 
   const showHeaderFallback = HEADER_ROUTES.some((pattern) =>
     matchPath(pattern, location.pathname),
@@ -49,7 +49,6 @@ export function StoreFrontLayout() {
           <Suspense
             fallback={
               <StorefrontChunkFallback
-                store={store}
                 showHeader={showHeaderFallback}
                 onBack={() => {
                   void navigate(PATHS.STOREFRONT.LANDING_BUILD(storeId ?? ''));

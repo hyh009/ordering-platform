@@ -41,6 +41,10 @@ export function createOrderTrackingPageCommands(runtime: StoreFrontRuntime) {
       orderId: string,
     ): Promise<OrderTrackingInitResult> {
       await runtime.commands.tenant.activateStore(storeId);
+      // Load the store record for the header (logo + name). The order flow does
+      // not need it, so this runs alongside without blocking the result; the
+      // header reads the shared storefront store reactively once it lands.
+      void runtime.commands.storefront.loadStore(storeId);
       const historyEntry = runtime.commands.orderHistory.findEntry(
         storeId,
         orderId,
