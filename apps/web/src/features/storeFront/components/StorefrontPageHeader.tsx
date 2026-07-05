@@ -5,6 +5,10 @@ import { useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { cn } from '@/shared/utils/cn';
+import {
+  StorefrontHeaderShell,
+  storefrontHeaderButtonClass,
+} from './StorefrontHeaderShell';
 import { useStorefrontHeaderMenu } from './useStorefrontHeaderMenu';
 
 const Left = {
@@ -142,46 +146,34 @@ function StorefrontPageHeaderRoot({
 }: StorefrontPageHeaderProps) {
   const LeftIcon = left === Left.Close ? X : ArrowLeft;
 
-  const content = (
-    <div className="grid grid-cols-[2rem_1fr_2rem] items-center px-4 py-2 sm:py-3">
-      <div>
-        {left ? (
+  return (
+    <StorefrontHeaderShell
+      sticky={sticky}
+      left={
+        left ? (
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full text-storefront-text hover:bg-storefront-border/60"
+            className={storefrontHeaderButtonClass}
             type="button"
             onClick={onBack}
           >
             <LeftIcon className="h-5 w-5" />
           </button>
-        ) : null}
-      </div>
-
-      <div className="justify-self-center">
-        {middle === Middle.Title && title ? (
+        ) : null
+      }
+      middle={
+        middle === Middle.Title && title ? (
           <h1 className="mb-0 text-center text-base font-semibold text-storefront-text">
             {title}
           </h1>
-        ) : null}
-      </div>
-
-      {/* relative here so the desktop dropdown anchors to this column's right edge */}
-      <div className="relative justify-self-end">
-        {right === Right.Logo && logoUrl ? (
+        ) : null
+      }
+      right={
+        right === Right.Logo && logoUrl ? (
           <LogoMenuButton logoUrl={logoUrl} logoAlt={logoAlt} />
-        ) : null}
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
-
-  if (sticky) {
-    return (
-      <header className="sticky top-0 z-sticky border-b border-storefront-border bg-storefront-bg">
-        {content}
-      </header>
-    );
-  }
-
-  return content;
 }
 
 export const StorefrontPageHeader = Object.assign(StorefrontPageHeaderRoot, {

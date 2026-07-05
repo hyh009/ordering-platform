@@ -1,5 +1,9 @@
 import { ArrowLeft } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
+import {
+  StorefrontHeaderShell,
+  storefrontHeaderButtonClass,
+} from './StorefrontHeaderShell';
 import { StorefrontLoadingView } from './StorefrontLoadingView';
 
 type StorefrontChunkFallbackProps = {
@@ -25,26 +29,25 @@ export function StorefrontChunkFallback({
   return (
     <div className="flex flex-1 flex-col">
       {showHeader ? (
-        <header className="sticky top-0 z-sticky border-b border-storefront-border bg-storefront-bg">
-          <div className="grid grid-cols-[2rem_1fr_2rem] items-center px-4 py-2 sm:py-3">
+        <StorefrontHeaderShell
+          sticky
+          left={
             <button
               aria-label={tDefault('common.back', 'Back')}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-storefront-text hover:bg-storefront-border/60"
+              className={storefrontHeaderButtonClass}
               type="button"
               onClick={onBack}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <div
-              aria-hidden
-              className="mx-auto h-4 w-32 animate-pulse rounded bg-storefront-border"
-            />
-            <div
-              aria-hidden
-              className="h-8 w-8 animate-pulse justify-self-end rounded-full bg-storefront-border"
-            />
-          </div>
-        </header>
+          }
+          middle={
+            <div className="h-4 w-32 animate-pulse rounded bg-storefront-border" />
+          }
+          right={
+            <div className="h-8 w-8 animate-pulse rounded-full bg-storefront-border" />
+          }
+        />
       ) : null}
       <StorefrontLoadingView />
     </div>
