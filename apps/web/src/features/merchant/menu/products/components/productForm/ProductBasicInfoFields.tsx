@@ -57,7 +57,7 @@ export function ProductBasicInfoFields({ form, locale }: Props) {
             disabled={form.isSubmitting}
             min={0}
             onChange={(e) => form.setField('price', Number(e.target.value))}
-            step="0.01"
+            step="1"
             type="number"
             value={form.values.price}
           />
