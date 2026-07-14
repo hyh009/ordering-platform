@@ -4,8 +4,8 @@ import { authConfig } from '@src/config/auth';
 import { env } from '@src/config/env';
 import { toAuthUserDto } from '@src/models/user/mapper';
 import { authSessionRepository } from '@src/repositories/authSession/repository';
-import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
 import { organizationRepository } from '@src/repositories/organization/repository';
+import { organizationMembershipRepository } from '@src/repositories/organizationMembership/repository';
 import { userRepository } from '@src/repositories/user/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import {
@@ -76,7 +76,9 @@ async function fetchActiveUser(userId: string): Promise<UserEntity | null> {
   return user;
 }
 
-async function loadUserMembershipDtos(userId: string): Promise<UserOrgMembershipDto[]> {
+async function loadUserMembershipDtos(
+  userId: string,
+): Promise<UserOrgMembershipDto[]> {
   const memberships = await organizationMembershipRepository.listByUser(userId);
 
   if (memberships.length === 0) return [];
