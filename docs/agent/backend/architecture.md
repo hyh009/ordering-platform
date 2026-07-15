@@ -26,6 +26,7 @@ apps/api/src/
   routes/
     index.ts
     v1/
+  modules/
   services/
   types/
   utils/
@@ -40,7 +41,11 @@ Use these locations:
 - `models/<domain>/mongo.ts` for Mongo/Mongoose schema and model
 - `repositories/<domain>/` for data access contracts and implementations
 - `routes/v1/` for versioned API routes
-- `services/` for business logic and data access orchestration
+- `services/` for API-facing use-case orchestration imported by routes,
+  middleware, and cross-domain services
+- `modules/<domain>/` for optional domain capabilities used by services, such
+  as internal business rules, data workflows, integrations, or realtime helpers;
+  do not move code here only because two files in one feature area use it
 - `utils/` for shared backend utilities such as errors, logging, Swagger, and error mapping
 - `types/` for backend TypeScript declaration files
 - `tests/` for backend tests outside production source
@@ -76,13 +81,17 @@ Use these locations:
 
 ## Service Layer
 
-- Put backend business logic in `src/services`.
+- Put backend API-facing use cases in `src/services`.
 - Define services as classes, export a `createXService()` factory, and export a singleton `xService` for route/config modules.
 - Use factory functions when a service needs testable dependencies.
-- Services may call repositories, Redis clients, external integrations, and utility functions.
+- Services may call repositories, Redis clients, external integrations, utility functions, and domain modules.
 - Services should call domain mappers when returning public resource DTOs instead of raw persistence entities.
 - Simple endpoint action responses can be assembled inline in the service.
 - Services should not start HTTP listeners or depend on Express request/response objects unless the behavior is middleware-specific.
+- Routes, middleware, and cross-domain services should depend on another
+  domain's `src/services/<domain>` public surface, not on `src/modules/<domain>`
+  or deep module paths. Keep `modules/<domain>` as internal capabilities behind
+  the service facade.
 
 ## Model and Contract Naming
 

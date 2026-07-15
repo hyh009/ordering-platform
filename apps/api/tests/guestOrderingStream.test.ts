@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  addCartItem,
-  leaveCart,
-  openGuestSessionStream,
-  submitCart,
-} from '../src/services/guestOrdering/index.js';
+import { guestOrderingService } from '../src/services/guestOrdering/index.js';
 
 import type { GuestTokenClaims } from '../src/services/guestToken.service.js';
 import type { CartDto, GuestStreamEventDto, OrderDto } from '@repo/shared';
@@ -24,13 +19,12 @@ const dataMocks = {
   requireStoreOpen: vi.fn(),
 };
 
-vi.mock('../src/services/guestOrdering/guestOrdering.data.service.js', () => ({
+vi.mock('@src/modules/guestOrdering/guestOrdering.data.service', () => ({
   getGuestSession: (...args: unknown[]) => dataMocks.getGuestSession(...args),
   addCartItem: (...args: unknown[]) => dataMocks.addCartItem(...args),
   leaveCart: (...args: unknown[]) => dataMocks.leaveCart(...args),
   submitCart: (...args: unknown[]) => dataMocks.submitCart(...args),
-  requireStoreOpen: (...args: unknown[]) =>
-    dataMocks.requireStoreOpen(...args),
+  requireStoreOpen: (...args: unknown[]) => dataMocks.requireStoreOpen(...args),
 }));
 
 const CART_ID = 'cart-1';
@@ -54,7 +48,8 @@ describe('guest session stream', () => {
       cart: fakeCart,
     });
 
-    const { initial } = await openGuestSessionStream(claims);
+    const { initial } =
+      await guestOrderingService.openGuestSessionStream(claims);
 
     expect(initial).toEqual([{ type: 'cart_updated', cart: fakeCart }]);
   });
@@ -66,7 +61,8 @@ describe('guest session stream', () => {
       order: fakeOrder,
     });
 
-    const { initial } = await openGuestSessionStream(claims);
+    const { initial } =
+      await guestOrderingService.openGuestSessionStream(claims);
 
     expect(initial).toEqual([
       { type: 'cart_updated', cart: fakeCart },
@@ -82,10 +78,14 @@ describe('guest session stream', () => {
     dataMocks.addCartItem.mockResolvedValue(fakeCart);
 
     const events: GuestStreamEventDto[] = [];
-    const { subscribe } = await openGuestSessionStream(claims);
+    const { subscribe } =
+      await guestOrderingService.openGuestSessionStream(claims);
     const unsubscribe = subscribe((event) => events.push(event));
 
-    await addCartItem(claims, { productId: 'product-1', quantity: 1 });
+    await guestOrderingService.addCartItem(claims, {
+      productId: 'product-1',
+      quantity: 1,
+    });
 
     expect(events).toContainEqual({ type: 'cart_updated', cart: fakeCart });
     unsubscribe();
@@ -96,13 +96,17 @@ describe('guest session stream', () => {
       participantId: claims.participantId,
       cart: fakeCart,
     });
-    dataMocks.submitCart.mockResolvedValue({ order: fakeOrder, cart: fakeCart });
+    dataMocks.submitCart.mockResolvedValue({
+      order: fakeOrder,
+      cart: fakeCart,
+    });
 
     const events: GuestStreamEventDto[] = [];
-    const { subscribe } = await openGuestSessionStream(claims);
+    const { subscribe } =
+      await guestOrderingService.openGuestSessionStream(claims);
     const unsubscribe = subscribe((event) => events.push(event));
 
-    await submitCart(claims, {});
+    await guestOrderingService.submitCart(claims, {});
 
     expect(events).toContainEqual({ type: 'order_updated', order: fakeOrder });
     expect(events).toContainEqual({ type: 'cart_updated', cart: fakeCart });
@@ -117,11 +121,12 @@ describe('guest session stream', () => {
     dataMocks.leaveCart.mockResolvedValue(fakeCart);
 
     const events: GuestStreamEventDto[] = [];
-    const { subscribe } = await openGuestSessionStream(claims);
+    const { subscribe } =
+      await guestOrderingService.openGuestSessionStream(claims);
     const unsubscribe = subscribe((event) => events.push(event));
     unsubscribe();
 
-    await leaveCart(claims);
+    await guestOrderingService.leaveCart(claims);
 
     expect(events).toHaveLength(0);
   });

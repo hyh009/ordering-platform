@@ -1,5 +1,5 @@
-import { requireStoreOpen } from '@src/services/guestOrdering';
-import { getActivePublicStore } from '@src/services/publicStore.service';
+import { guestOrderingService } from '@src/services/guestOrdering';
+import { publicStoreService } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';
 
@@ -25,8 +25,8 @@ export async function requireOpenStore(
       );
     }
 
-    const store = await getActivePublicStore(claims.storeId);
-    requireStoreOpen(store, new Date());
+    const store = await publicStoreService.getActivePublicStore(claims.storeId);
+    guestOrderingService.requireStoreOpen(store, new Date());
     next();
   } catch (error) {
     next(error);

@@ -1,5 +1,5 @@
 import { requireGuest } from '@src/middlewares/guestAuth';
-import { getGuestSession } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';
 import { Router } from 'express';
@@ -76,7 +76,7 @@ export function guestClaims(req: Request): GuestTokenClaims {
  *                   message: Cart is no longer active
  */
 router.get('/', requireGuest, async (req, res) => {
-  const session = await getGuestSession(guestClaims(req));
+  const session = await guestOrderingService.getGuestSession(guestClaims(req));
 
   const response: GetGuestSessionSuccessResponse = {
     status: 'success',

@@ -13,8 +13,8 @@ import { counterRepository } from '@src/repositories/counter/repository';
 import { orderRepository } from '@src/repositories/order/repository';
 import { productRepository } from '@src/repositories/product/repository';
 import { productModifierRepository } from '@src/repositories/productModifier/repository';
-import { signGuestToken } from '@src/services/guestToken.service';
-import { getActivePublicStore } from '@src/services/publicStore.service';
+import { guestTokenService } from '@src/services/guestToken.service';
+import { publicStoreService } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import {
   BadRequestError,
@@ -453,7 +453,7 @@ export async function createCart(
   request: CreateCartRequest,
 ): Promise<CreateCartResult> {
   const requestTime = new Date();
-  const store = await getActivePublicStore(storeId);
+  const store = await publicStoreService.getActivePublicStore(storeId);
   requireStoreOpen(store, requestTime);
 
   const orderMode = store.operation.orderModes.find(
@@ -519,7 +519,7 @@ export async function createCart(
   return {
     cart: toCartDto(cart),
     participantId: participant.id,
-    guestToken: signGuestToken({
+    guestToken: guestTokenService.signGuestToken({
       storeId: store.id,
       cartId: cart.id,
       participantId: participant.id,
@@ -553,7 +553,7 @@ export async function joinCart(
     request.displayName,
     requestTime,
   );
-  const guestToken = signGuestToken({
+  const guestToken = guestTokenService.signGuestToken({
     storeId,
     cartId: cart.id,
     participantId: participant.id,

@@ -1,5 +1,5 @@
 import { requireGuest } from '@src/middlewares/guestAuth';
-import { getGuestOrder } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { Router } from 'express';
 
 import { guestClaims } from './session';
@@ -50,7 +50,7 @@ router.use(requireGuest);
  *                   message: Order not found
  */
 router.get('/', async (req, res) => {
-  const order = await getGuestOrder(guestClaims(req));
+  const order = await guestOrderingService.getGuestOrder(guestClaims(req));
 
   const response: GetGuestOrderSuccessResponse = {
     status: 'success',

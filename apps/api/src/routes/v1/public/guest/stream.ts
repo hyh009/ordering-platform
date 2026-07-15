@@ -1,6 +1,6 @@
 import { requireGuest } from '@src/middlewares/guestAuth';
 import { openSseStream } from '@src/realtime/sse';
-import { openGuestSessionStream } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { Router } from 'express';
 
 import { guestClaims } from './session';
@@ -47,7 +47,8 @@ router.get('/', async (req, res) => {
   // Resolve the session BEFORE opening the stream so token/not-found failures
   // surface as a normal JSON error response instead of after the event-stream
   // headers have been flushed.
-  const { initial, subscribe } = await openGuestSessionStream(claims);
+  const { initial, subscribe } =
+    await guestOrderingService.openGuestSessionStream(claims);
 
   const stream = openSseStream(res, { req });
 

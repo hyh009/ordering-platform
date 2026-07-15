@@ -1,9 +1,6 @@
 import { storeParamsSchema } from '@repo/shared';
 import { validate } from '@src/middlewares/validate';
-import {
-  getPublicMenu,
-  getPublicStore,
-} from '@src/services/publicStore.service';
+import { publicStoreService } from '@src/services/publicStore.service';
 import { Router } from 'express';
 
 import type {
@@ -59,7 +56,7 @@ const router = Router({ mergeParams: true });
  */
 router.get('/', validate(storeParamsSchema, 'params'), async (req, res) => {
   const { storeId } = req.params as StoreParams;
-  const store = await getPublicStore(storeId);
+  const store = await publicStoreService.getPublicStore(storeId);
 
   const response: GetPublicStoreSuccessResponse = {
     status: 'success',
@@ -117,7 +114,7 @@ router.get('/', validate(storeParamsSchema, 'params'), async (req, res) => {
  */
 router.get('/menu', validate(storeParamsSchema, 'params'), async (req, res) => {
   const { storeId } = req.params as StoreParams;
-  const menu = await getPublicMenu(storeId);
+  const menu = await publicStoreService.getPublicMenu(storeId);
 
   const response: GetPublicMenuSuccessResponse = {
     status: 'success',

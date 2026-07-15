@@ -1,4 +1,4 @@
-import { getPublicMenu } from '@src/services/publicStore.service';
+import { publicStoreService } from '@src/services/publicStore.service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -92,7 +92,7 @@ describe('getPublicMenu grouping', () => {
       product({ id: 'p-draft', categoryIds: ['egg'], status: 'draft' }),
     ]);
 
-    const menu = await getPublicMenu('store-1');
+    const menu = await publicStoreService.getPublicMenu('store-1');
 
     expect(
       menu.groups.map((group) => ({

@@ -4,7 +4,7 @@ import {
   storeParamsSchema,
 } from '@repo/shared';
 import { validate } from '@src/middlewares/validate';
-import { createCart, joinCart } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { Router } from 'express';
 
 import type {
@@ -124,7 +124,10 @@ router.post(
   validate(createCartSchema),
   async (req, res) => {
     const { storeId } = req.params as StoreParams;
-    const result = await createCart(storeId, req.body as CreateCartRequest);
+    const result = await guestOrderingService.createCart(
+      storeId,
+      req.body as CreateCartRequest,
+    );
 
     const response: CreateCartSuccessResponse = {
       status: 'success',
@@ -208,7 +211,10 @@ router.post(
   validate(joinCartSchema),
   async (req, res) => {
     const { storeId } = req.params as StoreParams;
-    const result = await joinCart(storeId, req.body as JoinCartRequest);
+    const result = await guestOrderingService.joinCart(
+      storeId,
+      req.body as JoinCartRequest,
+    );
 
     const response: JoinCartSuccessResponse = {
       status: 'success',

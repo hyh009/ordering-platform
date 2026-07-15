@@ -7,14 +7,7 @@ import {
 import { requireGuest } from '@src/middlewares/guestAuth';
 import { requireOpenStore } from '@src/middlewares/requireOpenStore';
 import { validate } from '@src/middlewares/validate';
-import {
-  addCartItem,
-  getGuestCart,
-  leaveCart,
-  removeCartItem,
-  submitCart,
-  updateCartItem,
-} from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { Router } from 'express';
 
 import { guestClaims } from './session';
@@ -87,7 +80,7 @@ router.use(requireGuest);
  *                   message: Cart is no longer active
  */
 router.get('/', async (req, res) => {
-  const cart = await getGuestCart(guestClaims(req));
+  const cart = await guestOrderingService.getGuestCart(guestClaims(req));
 
   const response: GetGuestCartSuccessResponse = {
     status: 'success',
@@ -184,7 +177,7 @@ router.post(
   requireOpenStore,
   validate(cartItemInputSchema),
   async (req, res) => {
-    const cart = await addCartItem(
+    const cart = await guestOrderingService.addCartItem(
       guestClaims(req),
       req.body as AddCartItemRequest,
     );
@@ -351,7 +344,7 @@ router.patch(
   validate(updateCartItemSchema),
   async (req, res) => {
     const { itemId } = req.params as CartItemParams;
-    const cart = await updateCartItem(
+    const cart = await guestOrderingService.updateCartItem(
       guestClaims(req),
       itemId,
       req.body as UpdateCartItemRequest,
@@ -370,7 +363,10 @@ router.delete(
   validate(cartItemParamsSchema, 'params'),
   async (req, res) => {
     const { itemId } = req.params as CartItemParams;
-    const cart = await removeCartItem(guestClaims(req), itemId);
+    const cart = await guestOrderingService.removeCartItem(
+      guestClaims(req),
+      itemId,
+    );
 
     const response: MutateGuestCartSuccessResponse = {
       status: 'success',
@@ -424,7 +420,7 @@ router.delete(
  *                   message: Cart is no longer active
  */
 router.post('/leave', async (req, res) => {
-  const leftCartId = await leaveCart(guestClaims(req));
+  const leftCartId = await guestOrderingService.leaveCart(guestClaims(req));
 
   const response: LeaveCartSuccessResponse = {
     status: 'success',
@@ -508,7 +504,7 @@ router.post(
   requireOpenStore,
   validate(submitCartSchema),
   async (req, res) => {
-    const order = await submitCart(
+    const order = await guestOrderingService.submitCart(
       guestClaims(req),
       req.body as SubmitCartRequest,
     );

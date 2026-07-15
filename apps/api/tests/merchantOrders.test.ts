@@ -339,9 +339,11 @@ vi.mock('@src/repositories/order/repository', () => ({
   orderRepository: mocks.orderRepository,
 }));
 
-vi.mock('@src/services/guestOrdering/guestOrdering.sse.service', () => ({
-  emitOrderUpdated: (cartId: string, order: unknown) => {
-    mocks.sseEmissions.push({ cartId, order });
+vi.mock('@src/services/guestOrdering', () => ({
+  guestOrderingService: {
+    notifyOrderUpdated: (cartId: string, order: unknown) => {
+      mocks.sseEmissions.push({ cartId, order });
+    },
   },
 }));
 

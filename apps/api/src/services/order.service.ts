@@ -7,8 +7,8 @@ import {
   computeActiveOrderTotals,
   rollupOrderStatus,
 } from '@src/models/order/model';
+import { guestOrderingService } from '@src/services/guestOrdering';
 import { orderRepository } from '@src/repositories/order/repository';
-import { emitOrderUpdated } from '@src/services/guestOrdering/guestOrdering.sse.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { ConflictError, NotFoundError } from '@src/utils/errors';
 
@@ -128,7 +128,10 @@ export class OrderService {
 
     if (updated.cartId) {
       try {
-        emitOrderUpdated(updated.cartId, toOrderDto(updated));
+        guestOrderingService.notifyOrderUpdated(
+          updated.cartId,
+          toOrderDto(updated),
+        );
       } catch {
         // best-effort — SSE failure must not block the mutation response
       }
@@ -201,7 +204,10 @@ export class OrderService {
 
     if (updated.cartId) {
       try {
-        emitOrderUpdated(updated.cartId, toOrderDto(updated));
+        guestOrderingService.notifyOrderUpdated(
+          updated.cartId,
+          toOrderDto(updated),
+        );
       } catch {
         // best-effort — SSE failure must not block the mutation response
       }
@@ -284,7 +290,10 @@ export class OrderService {
 
     if (updated.cartId) {
       try {
-        emitOrderUpdated(updated.cartId, toOrderDto(updated));
+        guestOrderingService.notifyOrderUpdated(
+          updated.cartId,
+          toOrderDto(updated),
+        );
       } catch {
         // best-effort — SSE failure must not block the mutation response
       }
@@ -328,7 +337,10 @@ export class OrderService {
 
     if (updated.cartId) {
       try {
-        emitOrderUpdated(updated.cartId, toOrderDto(updated));
+        guestOrderingService.notifyOrderUpdated(
+          updated.cartId,
+          toOrderDto(updated),
+        );
       } catch {
         // best-effort — SSE failure must not block the mutation response
       }
@@ -399,7 +411,10 @@ export class OrderService {
 
     if (updated.cartId) {
       try {
-        emitOrderUpdated(updated.cartId, toOrderDto(updated));
+        guestOrderingService.notifyOrderUpdated(
+          updated.cartId,
+          toOrderDto(updated),
+        );
       } catch {
         // best-effort — SSE failure must not block the mutation response
       }

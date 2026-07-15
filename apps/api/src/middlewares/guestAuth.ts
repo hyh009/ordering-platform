@@ -1,4 +1,4 @@
-import { verifyGuestToken } from '@src/services/guestToken.service';
+import { guestTokenService } from '@src/services/guestToken.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';
 
@@ -15,6 +15,6 @@ export function requireGuest(req: Request, _res: Response, next: NextFunction) {
     );
   }
 
-  req.guest = verifyGuestToken(token);
+  req.guest = guestTokenService.verifyGuestToken(token);
   next();
 }
