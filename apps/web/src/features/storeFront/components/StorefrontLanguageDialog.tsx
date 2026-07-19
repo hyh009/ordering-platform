@@ -24,7 +24,7 @@ export function StorefrontLanguageDialog({
   const { tDefault } = useAppTranslation();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog disablePointerDismissal open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>

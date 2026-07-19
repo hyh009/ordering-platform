@@ -50,9 +50,9 @@ export function useStorefrontLanguagePrompt() {
     setDismissed(true);
   }
 
-  function onOpenChange(nextOpen: boolean) {
-    if (!nextOpen) setDismissed(true);
-  }
+  // A language must be explicitly selected — closing via Escape or a
+  // backdrop click is intentionally not honored here.
+  function onOpenChange() {}
 
   return { open, supportedOptions, handleSelect, onOpenChange };
 }
