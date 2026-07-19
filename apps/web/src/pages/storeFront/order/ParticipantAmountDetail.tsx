@@ -146,8 +146,8 @@ export function ParticipantAmountDetail({
 
           <p className="text-xs text-storefront-text-muted">
             {tDefault(
-              'guest.order.amountReference',
-              'Reference amount only — no payment is processed here.',
+              'guest.order.serviceFeeSplit',
+              'Service fee is split in proportion to what each person ordered; any remainder is assigned by the system.',
             )}
           </p>
         </div>

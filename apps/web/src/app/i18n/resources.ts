@@ -151,7 +151,7 @@ const manualResources: Resource = {
           addMore: 'Add more',
           amountDetailTitle: 'Amount detail',
           amountReference:
-            'Reference amount only. No payment is processed here.',
+            'Reference amount only. Please check out with our staff.',
           backToHistory: 'Back to recent orders',
           batch: 'Round',
           batchSubmittedBy: 'Added by',
@@ -161,6 +161,8 @@ const manualResources: Resource = {
           number: 'Order number',
           participants: 'Participants',
           refresh: 'Refresh status',
+          serviceFeeSplit:
+            'Service fee is split in proportion to what each person ordered; any remainder is assigned by the system.',
           startAnother: 'Start another order',
           table: 'Table',
           totalAmount: 'Total amount',
@@ -708,7 +710,7 @@ const manualResources: Resource = {
         order: {
           addMore: '繼續加點',
           amountDetailTitle: '金額明細',
-          amountReference: '金額僅供參考。此處不會處理付款。',
+          amountReference: '金額僅供參考，結帳請洽店員。',
           backToHistory: '回到近期訂單',
           batch: '回合',
           batchSubmittedBy: '加入者',
@@ -718,6 +720,7 @@ const manualResources: Resource = {
           number: '訂單編號',
           participants: '參與者',
           refresh: '重新整理狀態',
+          serviceFeeSplit: '服務費依點餐金額比例分攤，除不盡的部分由系統分配。',
           startAnother: '再開一份訂單',
           table: '桌號',
           totalAmount: '總金額',

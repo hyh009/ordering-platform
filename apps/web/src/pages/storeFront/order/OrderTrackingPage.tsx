@@ -130,7 +130,7 @@ export function OrderTrackingPage() {
               <p className="mt-2 text-xs text-storefront-text-muted">
                 {tDefault(
                   'guest.order.amountReference',
-                  'Reference amount only — no payment is processed here.',
+                  'Reference amount only. Please check out with our staff.',
                 )}
               </p>
             </button>
