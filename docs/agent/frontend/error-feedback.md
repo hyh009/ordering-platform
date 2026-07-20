@@ -47,7 +47,7 @@ trigger was a "refresh":
 
 - `action` — a command result while the page already shows its data and stays
   usable (a mutation, a refresh, a submit). Kinds: `inline | toast | modal |
-  silent`.
+silent`.
 - `load` — the outcome of a page's primary-resource (route/init) load, before any
   data is on screen. Kinds: `page | redirect | silent`; see "Page-load failures"
   below.
@@ -104,7 +104,10 @@ if (result.status === 'failed') handleAreaFailure(result);
 
 // page with a form — pass the form's error setters (setFieldErrors optional)
 handleAreaFailure(result, {
-  form: { setSubmitError: form.setSubmitError, setFieldErrors: form.setFieldErrors },
+  form: {
+    setSubmitError: form.setSubmitError,
+    setFieldErrors: form.setFieldErrors,
+  },
 });
 ```
 
@@ -126,12 +129,13 @@ When a page's primary-resource load (its route/init load) fails before any data
 is on screen, surface it with the `load` axis, not a toast — a transient toast
 over a blank page is the wrong affordance. Two helpers consume the `load` axis:
 
-- `handle<Area>LoadFailure(failure, { onRedirect, onPageError })` — the load-axis
-  sibling of `handle<Area>Failure`. It reads the directive and applies it through
-  page-injected callbacks, so VMs do not hand-roll the `redirect`/`page`/`silent`
-  switch. `onPageError` is optional: omit it when the page's load command already
-  wrote the error into its store; pass it when the page must place the error
-  itself (see "Where error state lives").
+- `handle<Area>LoadFailure(failure, { onRedirect, onPageError, onSilent })` — the
+  load-axis sibling of `handle<Area>Failure`. It reads the directive and applies it
+  through page-injected callbacks, so VMs do not hand-roll the
+  `redirect`/`page`/`silent` switch. `onPageError` is optional: omit it when the
+  page's load command already wrote the error into its store; pass it when the page
+  must place the error itself (see "Where error state lives"). `onSilent` is
+  optional too — see the `silent` kind below.
 - `resolve<Area>LoadFailure(failure)` — the lower-level form that only returns the
   directive, for a page that needs custom branching.
 
@@ -145,7 +149,10 @@ The three load kinds:
   sends the user away. The directive only says "redirect"; the page picks the
   target (e.g. landing vs history) and any side effect (clear session), because
   those are page-specific. Do not put navigation in the helper.
-- `silent` — a benign race (another navigation is taking over); do nothing.
+- `silent` — a benign race (another navigation is taking over); show nothing.
+  "Nothing to show" is not "nothing to settle": a page holding its own `isLoading`
+  (rather than a store flag the load command writes) must still clear it via
+  `onSilent`, or the race leaves it spinning with no request in flight.
 
 The error view and loading view are shared, presentational, and header-less —
 each page composes its own page header around them, so the page title stays the
@@ -200,16 +207,16 @@ transitions all three together. So a load error belongs wherever its `data` and
   several errors drift into VMs, the usual cause is a store that should have
   owned them.
 
-"Belongs to" is relative to what *this* page is doing: the same failure can be a
+"Belongs to" is relative to what _this_ page is doing: the same failure can be a
 store error on one page and page-flow on another. Example: the storefront menu
 loads store+menu into the storefront store, so that load error lives in the
 store; a parallel `resumeSession` failure that only gates the open menu is not
 part of that store's triple (and `resumeSession` is store-agnostic — it writes no
-store), so it lives in the menu VM. Meanwhile the cart page *does* render the
+store), so it lives in the menu VM. Meanwhile the cart page _does_ render the
 cart store's load state, so the same `resumeSession` failure is a cart-store
 error there.
 
-This governs only *where the error string is held*. The decision of what to do
+This governs only _where the error string is held_. The decision of what to do
 about it (navigate / block / render) is always the VM's, via the `load`
 directive — independent of where the string lives.
 

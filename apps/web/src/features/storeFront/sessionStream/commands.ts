@@ -1,5 +1,4 @@
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
-import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import { storeFrontGuestStreamService } from '@/services/storeFrontGuestStream.service';
 import type { Cart } from '@/models/cart';
 import { isOrderFinished, type Order } from '@/models/order';
@@ -19,7 +18,6 @@ export type StoreFrontSessionStreamCommands = {
 
 export function createStoreFrontSessionStreamCommands(deps: {
   cartActions: StoreFrontCartActions;
-  guestSessionCommands: GuestSessionCommands;
   orderActions: StoreFrontOrderActions;
   orderHistoryCommands: StoreFrontOrderHistoryCommands;
   sessionStore: GuestSessionStore;
@@ -27,7 +25,6 @@ export function createStoreFrontSessionStreamCommands(deps: {
 }): StoreFrontSessionStreamCommands {
   const {
     cartActions,
-    guestSessionCommands,
     orderActions,
     orderHistoryCommands,
     sessionStore,
@@ -67,14 +64,18 @@ export function createStoreFrontSessionStreamCommands(deps: {
           onOrderUpdated(order: Order) {
             if (!isScoped(storeId, token)) return;
             if (order.storeId !== storeId) return;
-            const finished = isOrderFinished(order);
             orderActions.orderUpdated(order);
             orderHistoryCommands.recordOrder(storeId, order, token);
-            if (!order.canAddOn || finished) {
+            // A terminal order can take no further round, so the draft cart goes.
+            // The guest session deliberately stays. The stream pushes the current
+            // cart/order snapshot on every connect, so a client still holding this
+            // token re-learns the terminal state the next time it connects —
+            // clearing the token here would close the very stream that delivers
+            // that correction, and would pull the session out from under the order
+            // page while it is still on screen. The session ends on the user's
+            // explicit exit (`leave`) or when a request rejects the token.
+            if (!order.canAddOn || isOrderFinished(order)) {
               cartActions.cartCleared();
-            }
-            if (finished) {
-              guestSessionCommands.clearSession(storeId);
             }
           },
         },

@@ -36,7 +36,6 @@ function setup() {
     createGuestSessionActions(sessionStore),
     sessionStore,
   );
-  const clearSession = vi.fn(guestSessionCommands.clearSession);
   const realOrderHistoryCommands = createStoreFrontOrderHistoryCommands({
     actions: createStoreFrontOrderHistoryActions(orderHistoryStore),
     tenantStore,
@@ -61,10 +60,6 @@ function setup() {
 
   const commands = createStoreFrontSessionStreamCommands({
     cartActions: createStoreFrontCartActions(cartStore),
-    guestSessionCommands: {
-      ...guestSessionCommands,
-      clearSession,
-    },
     orderActions: createStoreFrontOrderActions(orderStore),
     orderHistoryCommands: {
       ...realOrderHistoryCommands,
@@ -80,7 +75,6 @@ function setup() {
     sessionStore,
     tenantStore,
     close,
-    clearSession,
     commands,
     getHandlers: () => {
       if (!captured) throw new Error('subscribeGuestStream was not called');
@@ -181,10 +175,9 @@ describe('storefront session stream commands', () => {
     expect(loadStoredGuestSession('store-a')).toMatchObject({
       guestToken: 'token-a',
     });
-    expect(ctx.clearSession).not.toHaveBeenCalled();
   });
 
-  it('records terminal streamed orders before clearing cart and guest token while keeping the order snapshot', () => {
+  it('clears the draft cart on a terminal streamed order but keeps the guest session and order snapshot', () => {
     const ctx = setup();
     ctx.cartStore.setState({
       cart: { id: 'c1', storeId: 'store-a', status: 'active' } as Cart,
@@ -201,13 +194,14 @@ describe('storefront session stream commands', () => {
     ctx.getHandlers().onOrderUpdated(order);
 
     expect(ctx.recordOrder).toHaveBeenCalledWith('store-a', order, 'token-a');
-    expect(ctx.clearSession).toHaveBeenCalledWith('store-a');
-    expect(ctx.recordOrder.mock.invocationCallOrder[0]).toBeLessThan(
-      ctx.clearSession.mock.invocationCallOrder[0],
-    );
     expect(ctx.cartStore.getState().cart).toBeNull();
-    expect(ctx.sessionStore.getState().guestToken).toBeNull();
-    expect(loadStoredGuestSession('store-a')).toBeNull();
+    // The session outlives the terminal order on purpose: the token keeps the
+    // stream open, and the stream's connect-time snapshot is how a client
+    // re-learns this terminal state. It ends on an explicit leave instead.
+    expect(ctx.sessionStore.getState().guestToken).toBe('token-a');
+    expect(loadStoredGuestSession('store-a')).toMatchObject({
+      guestToken: 'token-a',
+    });
     expect(ctx.orderStore.getState().order).toBe(order);
 
     const raw = window.localStorage.getItem(
@@ -222,7 +216,7 @@ describe('storefront session stream commands', () => {
     ]);
   });
 
-  it('clears the guest token when a streamed order is cancelled', () => {
+  it('keeps the guest session when a streamed order is cancelled', () => {
     const ctx = setup();
     ctx.cartStore.setState({
       cart: { id: 'c1', storeId: 'store-a', status: 'active' } as Cart,
@@ -239,9 +233,8 @@ describe('storefront session stream commands', () => {
     ctx.getHandlers().onOrderUpdated(order);
 
     expect(ctx.recordOrder).toHaveBeenCalledWith('store-a', order, 'token-a');
-    expect(ctx.clearSession).toHaveBeenCalledWith('store-a');
     expect(ctx.cartStore.getState().cart).toBeNull();
-    expect(ctx.sessionStore.getState().guestToken).toBeNull();
+    expect(ctx.sessionStore.getState().guestToken).toBe('token-a');
     expect(ctx.orderStore.getState().order).toBe(order);
   });
 

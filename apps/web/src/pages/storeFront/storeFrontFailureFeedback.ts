@@ -64,12 +64,22 @@ export function resolveStorefrontLoadFailure(
 // command already writes the error into its own store (e.g. order history) omits
 // it; a page fed by the store-agnostic `resumeSession` (cart, invite) passes its
 // `reportLoadFailure` so the error lands in the right store.
+//
+// `onSilent` is optional too. `silent` means "no message belongs on screen", not
+// "no state to settle": a page that owns its own `isLoading` (rather than reading
+// a store flag the load command writes) must still turn it off here, or a benign
+// race leaves it on its spinner with nothing in flight.
 export function handleStorefrontLoadFailure(
   failure: StoreFrontCommandFailure,
-  deps: { onRedirect: () => void; onPageError?: (message: string) => void },
+  deps: {
+    onRedirect: () => void;
+    onPageError?: (message: string) => void;
+    onSilent?: () => void;
+  },
 ): void {
   switch (resolveStorefrontLoadFailure(failure)) {
     case 'silent':
+      deps.onSilent?.();
       return;
     case 'redirect':
       deps.onRedirect();

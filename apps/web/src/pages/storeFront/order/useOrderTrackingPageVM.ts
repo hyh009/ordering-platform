@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useStore } from 'zustand';
 import { PATHS } from '@/app/routing/paths';
@@ -47,6 +47,20 @@ export function useOrderTrackingPageVM() {
   // store's load state machine — it is read-only, page-scoped, and never live.
   const [historyView, setHistoryView] =
     useState<HistoryView>(HISTORY_VIEW_LOADING);
+
+  // Gate for the live -> history handoff below. It is a ref rather than `access`
+  // because that effect depends on `access`: writing that state mid-flight would
+  // make the effect tear down its own in-flight run. Holds the order id the
+  // handoff has already been started for.
+  const historySwitchOrderIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const activeStoreId = useStore(
     runtime.stores.tenant,
@@ -173,6 +187,16 @@ export function useOrderTrackingPageVM() {
               commands.reportActiveLoadFailure(message);
             }
           },
+          onSilent: () => {
+            // No message belongs on screen, but the history path's `isLoading`
+            // is owned here, so it still has to settle or the page keeps
+            // spinning with nothing in flight. The active path's flag lives in
+            // the order store and is already subsumed by `!isActiveStore` while
+            // the handoff to the newly active store completes.
+            if (failedAccess === 'history') {
+              setHistoryView({ order: null, isLoading: false, error: null });
+            }
+          },
         });
       }
     },
@@ -228,20 +252,40 @@ export function useOrderTrackingPageVM() {
     }
   }, [access, commands, navigate, orderId, storeId]);
 
+  // The live session for this order can disappear while the page is open (an
+  // explicit leave, or a request that rejects the token). The page then re-reads
+  // the same order through its stored history token and becomes read-only.
+  //
+  // `access` flips only once that re-read has resolved, together with the view it
+  // selects. Flipping it up front would change this effect's own dependencies, so
+  // React would run the cleanup and cancel the very request whose result is the
+  // only thing that can clear the loading state.
   useEffect(() => {
     const hasRouteOrderSnapshot =
       isActiveStore && activeStoreOrder?.id === orderId;
     const hasRouteActiveSession =
       activeSessionStoreId === storeId && !!activeGuestToken;
-    if (access !== 'active' || !hasRouteOrderSnapshot || hasRouteActiveSession)
+    if (
+      access !== 'active' ||
+      !hasRouteOrderSnapshot ||
+      hasRouteActiveSession ||
+      historySwitchOrderIdRef.current === orderId
+    ) {
       return;
+    }
+    historySwitchOrderIdRef.current = orderId;
 
-    let active = true;
     async function switchToHistory() {
-      setAccess('history');
-      setHistoryView(HISTORY_VIEW_LOADING);
       const result = await commands.refresh(storeId, orderId, 'history');
-      if (!active) return;
+      // Only an unmount or a move to a different order invalidates this handoff
+      // — deliberately not the effect's own re-run, so unrelated store churn
+      // cannot strand the page on a live view whose session is already gone.
+      if (
+        !isMountedRef.current ||
+        historySwitchOrderIdRef.current !== orderId
+      ) {
+        return;
+      }
 
       if (result.status === 'redirect') {
         void navigate(
@@ -261,20 +305,27 @@ export function useOrderTrackingPageVM() {
             });
           },
           onPageError: (message) => {
+            setAccess('history');
             setHistoryView({ order: null, isLoading: false, error: message });
+          },
+          onSilent: () => {
+            // Benign store-switch race with nothing to show. Release the gate so
+            // the handoff can be retried once the stores settle, rather than
+            // leaving the page on a live view whose session is already gone.
+            historySwitchOrderIdRef.current = null;
           },
         });
         return;
       }
 
       if (result.status === 'loaded' && 'order' in result) {
+        // Both writes land in one commit, so the page never renders `history`
+        // access against a history view that has not been filled in yet.
+        setAccess('history');
         setHistoryView({ order: result.order, isLoading: false, error: null });
       }
     }
     void switchToHistory();
-    return () => {
-      active = false;
-    };
   }, [
     access,
     activeGuestToken,
