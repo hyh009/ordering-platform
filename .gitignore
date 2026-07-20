@@ -89,3 +89,11 @@ docs/agent/temp/
 
 
 references/
+
+# Skill reference docs are part of the skill, not reference artifacts.
+!.claude/skills/**/references/
+!.codex/skills/**/references/
+
+# graphify knowledge-graph output: generated, ~25MB, rebuilt with
+# `graphify update .`
+graphify-out/
