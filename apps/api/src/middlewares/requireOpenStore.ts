@@ -1,4 +1,4 @@
-import { guestOrderingService } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering.service';
 import { publicStoreService } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { UnauthorizedError } from '@src/utils/errors';

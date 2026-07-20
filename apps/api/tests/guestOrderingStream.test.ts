@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { guestOrderingService } from '../src/services/guestOrdering/index.js';
+import { guestOrderingService } from '../src/services/guestOrdering.service.js';
 
 import type { GuestTokenClaims } from '../src/services/guestToken.service.js';
 import type { CartDto, GuestStreamEventDto, OrderDto } from '@repo/shared';

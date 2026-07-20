@@ -4,7 +4,7 @@ import {
   storeParamsSchema,
 } from '@repo/shared';
 import { validate } from '@src/middlewares/validate';
-import { guestOrderingService } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering.service';
 import { Router } from 'express';
 
 import type {

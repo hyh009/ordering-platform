@@ -7,7 +7,7 @@ import {
   computeActiveOrderTotals,
   rollupOrderStatus,
 } from '@src/models/order/model';
-import { guestOrderingService } from '@src/services/guestOrdering';
+import { guestOrderingService } from '@src/services/guestOrdering.service';
 import { orderRepository } from '@src/repositories/order/repository';
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { ConflictError, NotFoundError } from '@src/utils/errors';
