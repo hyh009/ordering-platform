@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import type { StoreLocaleDto } from '@/models/store';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
@@ -10,8 +11,21 @@ type Props = {
   locale: StoreLocaleDto;
 };
 
+const DIGITS_ONLY = /^\d*$/;
+
 export function ProductBasicInfoFields({ form, locale }: Props) {
   const { tDefault } = useAppTranslation();
+
+  // A number input bound straight to `form.values.price` can't represent an
+  // empty field: clearing it yields `Number('') === 0`, snapping the value
+  // back to "0" on every keystroke and garbling further typing (e.g. "025").
+  // Buffer the raw digits locally so the field can be blank while editing,
+  // and only commit to form state once the text is a valid whole number.
+  const [priceText, setPriceText] = useState(String(form.values.price));
+
+  useEffect(() => {
+    setPriceText(String(form.values.price));
+  }, [form.values.price]);
 
   return (
     <div className="grid gap-5 rounded-lg border border-border p-4">
@@ -55,11 +69,18 @@ export function ProductBasicInfoFields({ form, locale }: Props) {
         renderControl={
           <Input
             disabled={form.isSubmitting}
-            min={0}
-            onChange={(e) => form.setField('price', Number(e.target.value))}
-            step="1"
-            type="number"
-            value={form.values.price}
+            inputMode="numeric"
+            onBlur={() => {
+              if (priceText === '') setPriceText(String(form.values.price));
+            }}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (!DIGITS_ONLY.test(raw)) return;
+              setPriceText(raw);
+              if (raw !== '') form.setField('price', Number(raw));
+            }}
+            type="text"
+            value={priceText}
           />
         }
       />
