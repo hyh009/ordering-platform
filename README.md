@@ -1,32 +1,111 @@
 # Ordering Platform
 
-Full-stack ordering platform built with React, Vite, Express, TypeScript, and
-pnpm workspaces.
+A full-stack multi-tenant ordering platform for restaurant merchants, platform
+administrators, and guest storefront ordering.
 
-The project was cloned from a starter template, but the starter is only an
-architecture and workflow reference. Starter demo data, copy, and domain shapes
-do not need backward compatibility.
+Project walkthrough slides:
+[Google Slides](https://docs.google.com/presentation/d/1Gx8pIBz0TbGntUpWYqjTap-SVAAS3nmkPmv7rg-Lf5A/edit?usp=sharing)
 
-## Foundation
+No live deployment is currently available. The slides above show the product
+scope, core flows, and screen walkthrough.
 
-- Express API with versioned routes under `/api/v1`
-- React frontend powered by Vite and TypeScript
-- Frontend structure for app composition, pages, feature state, API services, and shared UI
-- Shared API contract package for request/response DTOs, error envelopes, and Zod schemas
-- TypeScript with `NodeNext` module resolution
-- Path alias support with `@src/*`
-- MongoDB and Redis Docker Compose setup
-- Centralized environment validation with Zod
-- Structured logging with Pino
-- Request ID and request completion logging middleware
-- Centralized `AppError` error handling
-- Swagger/OpenAPI documentation
-- Basic API security middleware with Helmet, CORS, cookie parsing, and JSON body limits
-- Auth foundation with register, login, refresh, logout, and `/me`
-- Platform super-admin flag for platform-level management
-- Organization and organization-membership Mongo models for multi-tenant access
-- Soft delete support for user and organization records
-- Vitest and Supertest API test setup
+## Overview
+
+Ordering Platform is a TypeScript monorepo that models the operational flow of
+a restaurant ordering system:
+
+- Platform admins manage organizations, users, stores, allergens, and dietary
+  markers.
+- Merchants manage store settings, categories, tags, products, modifiers, and
+  incoming orders.
+- Guests enter a public storefront, create or join an order, build a cart,
+  submit batches, and track order status.
+
+The project focuses on practical full-stack product architecture: shared API
+contracts, explicit frontend boundaries, backend domain services, optimistic
+concurrency checks, and guest ordering lifecycle rules.
+
+## What This Project Demonstrates
+
+- Full-stack TypeScript development across API, web, and shared packages.
+- Express API design with versioned routes, service/repository boundaries, and
+  OpenAPI documentation.
+- React + Vite frontend architecture with page view-model hooks, page commands,
+  feature stores, services, and domain models.
+- Cross-package API contracts using Zod schemas and shared DTO types.
+- Multi-tenant access modeling with platform users, organizations, memberships,
+  and store ownership.
+- Guest storefront flows for new orders, group ordering, join codes, cart
+  submission, order tracking, and recent orders.
+- MongoDB persistence, Redis-backed runtime support, auth/session handling,
+  structured logging, validation, and automated tests.
+
+## Core Features
+
+### Platform Administration
+
+- Super-admin login and protected management routes.
+- Organization creation and management.
+- Organization membership management.
+- User listing and active-user ownership selection.
+- Allergen and dietary marker administration.
+
+### Merchant Management
+
+- Store creation, selection, and settings.
+- Category, tag, product, and product modifier management.
+- Product availability and menu publishing support.
+- Merchant order list and detail pages.
+- Staff-driven order progression for payment, kitchen status, completion, and
+  cancellation.
+
+### Guest Storefront
+
+- Public store entry at `/s/:storeId`.
+- Dine-in and takeaway ordering modes.
+- Guest identity selection with anonymous participant support.
+- Join Code and Invite QR flows for group ordering.
+- Menu browsing, product configuration, cart review, and order submission.
+- Dine-in pay-later add-on flow while the order remains open.
+- Order tracking with batch-level status and browser-local recent orders.
+
+## Architecture
+
+The workspace is split into three main packages:
+
+- `apps/api`: Express + TypeScript API.
+- `apps/web`: React + Vite frontend.
+- `packages/shared`: shared API contracts, DTOs, error envelopes, and Zod
+  schemas.
+
+Frontend code follows this flow:
+
+```txt
+View -> Page VM Hook -> Page Commands -> Feature Actions -> Feature Store | Service -> API
+```
+
+Backend code keeps HTTP routes thin and moves domain behavior into services,
+repositories, model mappers, and shared boundary contracts.
+
+## Tech Stack
+
+- TypeScript
+- pnpm workspaces
+- React
+- Vite
+- React Router
+- Zustand
+- i18next
+- Tailwind CSS
+- Express
+- MongoDB / Mongoose
+- Redis
+- Zod
+- Passport / JWT
+- Pino
+- Swagger / OpenAPI
+- Vitest
+- Supertest
 
 ## Project Structure
 
@@ -67,7 +146,9 @@ do not need backward compatibility.
 │     ├─ package.json
 │     └─ tsconfig.json
 ├─ docs/
-│  └─ agent/
+│  ├─ agent/
+│  ├─ features/
+│  └─ schema/
 ├─ package.json
 ├─ pnpm-lock.yaml
 ├─ pnpm-workspace.yaml
@@ -100,7 +181,7 @@ Start MongoDB and Redis:
 pnpm --filter api run up
 ```
 
-Create the first super admin account:
+Create the first super-admin account:
 
 ```bash
 INIT_SUPER_ADMIN_EMAIL=admin@example.com \
@@ -109,7 +190,7 @@ INIT_SUPER_ADMIN_PASSWORD='ChangeMe123' \
 pnpm run init:super-admin
 ```
 
-Seed initial data (allergens, dietary markers, and fake organizations):
+Seed initial data:
 
 ```bash
 pnpm run seed
@@ -163,8 +244,9 @@ pnpm --filter api run dev
 pnpm --filter web run dev
 ```
 
-`pnpm run build`, `pnpm --filter api run build`, and `pnpm --filter web run build`
-build `@repo/shared` first so API and web can resolve the shared runtime package.
+`pnpm run build`, `pnpm --filter api run build`, and
+`pnpm --filter web run build` build `@repo/shared` first so API and web can
+resolve the shared runtime package.
 
 ## Shared Contracts
 
@@ -172,14 +254,13 @@ build `@repo/shared` first so API and web can resolve the shared runtime package
 
 Use it for public HTTP contracts:
 
-- request and response DTO types
-- API success/error envelopes
-- stable public unions and error codes
-- Zod schemas used at API boundaries
+- Request and response DTO types.
+- API success and error envelopes.
+- Stable public unions and error codes.
+- Zod schemas used at API boundaries.
 
-Keep app internals in their app folders. For example, backend Mongo/session
-models stay in `apps/api`, and frontend view models or store state stay in
-`apps/web`.
+App internals stay inside their app folders. Backend Mongo/session models stay
+in `apps/api`, and frontend view models or store state stay in `apps/web`.
 
 ## Product Model
 
@@ -189,16 +270,15 @@ The current auth and tenant foundation uses these concepts:
 - `Organization`: tenant boundary for restaurants or merchants.
 - `OrganizationMembership`: links a user to an organization with a role such as
   `org_owner`, `org_admin`, or `staff`.
+- `Store`: merchant-owned ordering location with menu, operation settings, and
+  public storefront configuration.
+- `Cart`: guest-side draft order state for dine-in or takeaway ordering.
+- `Order`: submitted ordering record with payment, kitchen, batch, and
+  completion state.
 
 Super admins create organizations and choose an existing active user as the
 initial owner. Regular users do not self-create organizations in the current
 direction.
-
-See also:
-
-- `docs/features/auth.md`
-- `docs/schema/mongo.md`
-- `docs/development/starter-to-ordering-platform.md`
 
 ## Environment Variables
 
@@ -223,42 +303,38 @@ VITE_API_BASE_URL=http://localhost:9000
 
 ## API Routes
 
-Current routes include auth, organizations, and health.
+Current route groups include auth, admin, merchant, public storefront, and
+health APIs.
 
 ```txt
 /api
 └─ /v1
    ├─ /auth
-   │  ├─ /register
-   │  ├─ /login
-   │  ├─ /refresh
-   │  ├─ /logout
-   │  ├─ /logout-all
-   │  └─ /me
-   ├─ /organizations
-   │  └─ POST /
+   ├─ /admin
+   ├─ /merchant
+   ├─ /public
    └─ /health
 ```
 
-Example:
+Examples:
 
 ```txt
 GET /api/v1/health
-POST /api/v1/organizations
+POST /api/v1/auth/login
+GET /api/v1/public/stores/:storeId
+GET /api/v1/public/guest/session
+GET /api/v1/merchant/stores/:storeId/orders
 ```
 
-## Path Alias
+## Documentation
 
-Use `@src/*` for API source imports:
+Feature and architecture notes are kept in `docs/`:
 
-```ts
-import routes from '@src/routes';
-```
+- `docs/features/ordering.md`
+- `docs/features/ordering-frontend.md`
+- `docs/features/guest-ordering-entry-flow.md`
+- `docs/features/merchant-orders.md`
+- `docs/features/auth.md`
+- `docs/schema/mongo.md`
 
-Configured in `apps/api/tsconfig.json`:
-
-```json
-"paths": {
-  "@src/*": ["src/*"]
-}
-```
+Agent-facing implementation guides live under `docs/agent/`.
