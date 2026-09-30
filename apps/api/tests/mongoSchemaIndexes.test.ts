@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { AiOrderingConversationMongoModel } from '../src/models/aiOrdering/mongo.js';
 import { AllergenMongoModel } from '../src/models/allergen/mongo.js';
 import { AuthSessionMongoModel } from '../src/models/authSession/mongo.js';
 import { CartMongoModel } from '../src/models/cart/mongo.js';
@@ -18,6 +19,7 @@ import { UserMongoModel } from '../src/models/user/mongo.js';
 import type { Model } from 'mongoose';
 
 const modelsWithPublicId = [
+  AiOrderingConversationMongoModel,
   AllergenMongoModel,
   AuthSessionMongoModel,
   CartMongoModel,
@@ -43,6 +45,14 @@ function hasUniqueIndex(model: Model<unknown>, fields: Record<string, 1>) {
   });
 }
 
+function hasIndex(model: Model<unknown>, fields: Record<string, 1 | -1>) {
+  return model.schema
+    .indexes()
+    .some(
+      ([indexFields]) => JSON.stringify(indexFields) === JSON.stringify(fields),
+    );
+}
+
 describe('Mongo schema indexes', () => {
   it('requires unique public ids for top-level documents', () => {
     for (const mongoModel of modelsWithPublicId) {
@@ -55,5 +65,34 @@ describe('Mongo schema indexes', () => {
 
   it('requires unique organization slugs', () => {
     expect(hasUniqueIndex(OrganizationMongoModel, { slug: 1 })).toBe(true);
+  });
+
+  it('requires one AI ordering conversation per cart participant', () => {
+    expect(
+      hasUniqueIndex(AiOrderingConversationMongoModel, {
+        storeId: 1,
+        cartId: 1,
+        participantId: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it('indexes AI ordering conversations for the merchant review listing', () => {
+    expect(
+      hasIndex(AiOrderingConversationMongoModel, {
+        storeId: 1,
+        createdAt: -1,
+      }),
+    ).toBe(true);
+  });
+
+  it('keeps AI ordering conversations free of a TTL index', () => {
+    // A conversation must outlive its cart: the cart self-deletes on a TTL
+    // index, but retention is the whole point of the conversation collection.
+    const hasExpiry = AiOrderingConversationMongoModel.schema
+      .indexes()
+      .some(([, options]) => options?.expireAfterSeconds !== undefined);
+
+    expect(hasExpiry).toBe(false);
   });
 });
