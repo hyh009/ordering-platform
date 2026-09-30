@@ -19,6 +19,7 @@ const storeEntityKeys = [
   'profile',
   'locale',
   'operation',
+  'assistant',
   'status',
   'createdAt',
   'updatedAt',

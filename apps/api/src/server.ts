@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { createApp } from './app.js';
 import { connectMongo, connectRedis } from './config/db.js';
 import { env } from './config/env.js';
+import { setRedisClient } from './config/redis.js';
 import { logger } from './utils/logger.js';
 
 let server: ReturnType<typeof createServer>;
@@ -12,6 +13,10 @@ let server: ReturnType<typeof createServer>;
 async function bootstrap() {
   await connectMongo();
   const redisClient = await connectRedis();
+
+  // Published for module singletons that resolve it lazily, such as the AI
+  // ordering rate limiter.
+  setRedisClient(redisClient);
 
   const app = createApp();
   server = createServer(app);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import guestAiOrderingRouter from './guest/aiOrdering';
 import guestCartRouter from './guest/cart';
 import guestOrderRouter from './guest/order';
 import guestSessionRouter from './guest/session';
@@ -13,6 +14,7 @@ router.use('/stores/:storeId/carts', storeCartsRouter);
 router.use('/stores/:storeId', storeRouter);
 router.use('/guest/session', guestSessionRouter);
 router.use('/guest/stream', guestStreamRouter);
+router.use('/guest/ai-ordering', guestAiOrderingRouter);
 router.use('/guest/cart', guestCartRouter);
 router.use('/guest/order', guestOrderRouter);
 
