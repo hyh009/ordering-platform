@@ -1,3 +1,4 @@
+export * from './contracts/aiOrdering.js';
 export * from './contracts/api.js';
 export * from './contracts/asset.js';
 export * from './contracts/auth.js';
