@@ -13,6 +13,7 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "init:super-admin": "pnpm --filter @repo/shared run build && tsx src/scripts/initSuperAdminCli.ts",
     "seed": "pnpm --filter @repo/shared run build && tsx src/scripts/seedDataCli.ts",
+    "replay": "pnpm --filter @repo/shared run build && tsx src/scripts/aiOrderingReplayCli.ts",
     "up": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml up -d",
     "down": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml down",
     "logs": "docker compose -f docker/docker-compose.mongo.yml -f docker/docker-compose.redis.yml logs -f"
