@@ -217,7 +217,8 @@ exists to protect the guest's experience, not to protect the data.
 
 One file per released version under `modules/aiOrdering/versions/`, never edited
 after release. The active version is selected by env. Every stored turn records
-its `versionId`, the model name, and the raw model output.
+its `versionId`, the provider, the model name, and the raw model output. What a
+version does NOT contain is the provider and the model; see decision 20.
 
 Alternative considered: prompts stored in the database with a backstage editor.
 Rejected because it loses code review and diffs, and invites editing a released
@@ -549,6 +550,45 @@ replayed cheaply and repeatedly. Executing tools make the call count per case
 variable - a worse version costs more to evaluate, which is backwards - and each
 run mutates carts, so the harness needs throwaway state or no-op tools that no
 longer test the real path.
+
+### 20. Provider and model are one choice, and not part of a version.
+
+A provider and a model are selected together and recorded together, because they
+are one choice rather than two: `gemini-3.5-flash-lite` exists only behind Google.
+
+```txt
+  AI_ORDERING_VERSION_ID    which prompt version serves traffic
+  AI_ORDERING_PROVIDER      which provider route        \  selected together,
+  AI_ORDERING_MODEL         which model                 /   recorded together
+  GEMINI_API_KEY            the credential for that route
+```
+
+**Neither belongs to a version.** Replaying an old prompt against a newer model is
+the stated point of versioning the prompt, and a version that pinned its model
+would make exactly that impossible: trying v1 on a new model would require forging
+a v2, and the comparison would then carry two differences - prompt and model -
+where the whole purpose was to isolate one. A run is one cell of
+`(prompt version x provider+model)`, and each stored turn records all three so the
+cell is recoverable afterwards.
+
+The turn records the PROVIDER and not only the model name, because the same model
+reached by two routes is otherwise indistinguishable in the corpus.
+
+A provider id names a route, not a vendor. Reaching Gemini through Vertex rather
+than AI Studio is a second id, since the credential and the construction differ
+even though the model does not. `runtime/providers.ts` is the registry; an id that
+names no provider leaves the assistant off, exactly as an unknown version id does,
+so one mistyped value never stops the API from serving ordering.
+
+Alternative considered: a `provider` field on `AiOrderingVersionConfig`, so a
+version is fully self-describing and a replay needs no second input. Rejected for
+the reason above. A version MAY later record which model it was validated against
+as a note, but a note is not an execution input.
+
+What this leaves unfinished: credentials are still a single key read in one place,
+because with one provider any lookup keyed by provider id would be unverifiable
+guesswork. Adding a second provider therefore touches two places - the registry
+and that key lookup - and the second one is marked in the code.
 
 ## Risks / Trade-offs
 
