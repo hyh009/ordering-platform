@@ -7,6 +7,7 @@
  */
 
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { toGeminiToolSchema } from '@src/modules/aiOrdering/runtime/geminiSchema';
 import { extractText } from '@src/modules/aiOrdering/runtime/model';
 import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
 
@@ -60,10 +61,13 @@ export function createGeminiToolCallingModel(input: {
   model: string;
 }): AiOrderingToolCallingModel {
   const bound = createChat(input).bindTools(
+    // The schema is converted here rather than handed over as zod: LangChain's
+    // own converter emits `const`, which this endpoint rejects. See
+    // `geminiSchema.ts`.
     aiOrderingToolDefinitions.map(({ name, description, schema }) => ({
       name,
       description,
-      schema,
+      schema: toGeminiToolSchema(schema),
     })),
   );
 
