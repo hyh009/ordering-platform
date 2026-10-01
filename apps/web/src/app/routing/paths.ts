@@ -61,5 +61,10 @@ export const PATHS = {
     MODIFIER_DETAIL: '/merchant/modifiers/:modifierId',
     MODIFIER_DETAIL_BUILD: (id: string) => `/merchant/modifiers/${id}`,
     TAGS: '/merchant/tags',
+    AI_CONVERSATIONS: '/merchant/ai-ordering/conversations',
+    AI_CONVERSATION_DETAIL: '/merchant/ai-ordering/conversations/:conversationId',
+    AI_CONVERSATION_DETAIL_BUILD: (conversationId: string) =>
+      `/merchant/ai-ordering/conversations/${conversationId}`,
+    AI_UNANSWERED: '/merchant/ai-ordering/unanswered',
   },
 } as const;
