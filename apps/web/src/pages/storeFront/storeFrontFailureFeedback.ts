@@ -41,6 +41,13 @@ export const STOREFRONT_FAILURE_PRESENTATION: Record<
   'order-locked': { action: 'toast', load: 'page' },
   'sold-out': { action: 'toast', load: 'page' },
   'cart-not-active': { action: 'toast', load: 'page' },
+  // Assistant failures never block the page: ordering works without it. A toast
+  // on the action axis, and on a load the page renders normally with the panel
+  // simply unavailable — so `page` here is about the panel's own error line, not
+  // a full-page takeover, because no storefront page loads via the assistant.
+  'assistant-unavailable': { action: 'toast', load: 'page' },
+  'assistant-conversation-full': { action: 'toast', load: 'page' },
+  'rate-limited': { action: 'toast', load: 'page' },
   invalid: { action: 'toast', load: 'page' },
   'not-found': { action: 'toast', load: 'page' },
   network: { action: 'toast', load: 'page' },

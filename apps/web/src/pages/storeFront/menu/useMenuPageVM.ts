@@ -274,5 +274,8 @@ export function useMenuPageVM() {
     goToInvite,
     goToOrder,
     goBack,
+    // Deployment-level, read off the loaded store. False keeps the entry point
+    // out of the tree entirely rather than rendering a disabled control.
+    isAssistantAvailable: store?.assistantEnabled ?? false,
   };
 }

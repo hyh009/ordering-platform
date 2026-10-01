@@ -105,6 +105,31 @@ describe('handleStoreFrontFailure', () => {
     expect(toast).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'assistant-unavailable',
+    'assistant-conversation-full',
+    'rate-limited',
+  ] as const)('toasts the assistant failure %s', (reason) => {
+    handleStoreFrontFailure(failure({ reason, message: 'Assistant is off' }));
+
+    expect(toast).toHaveBeenCalledWith({
+      tone: 'error',
+      message: 'Assistant is off',
+    });
+  });
+
+  it('keeps every assistant failure off the page-blocking load path', () => {
+    // Ordering works without the assistant, so no assistant failure may redirect
+    // the guest or take over a page that loaded fine.
+    for (const reason of [
+      'assistant-unavailable',
+      'assistant-conversation-full',
+      'rate-limited',
+    ] as const) {
+      expect(STOREFRONT_FAILURE_PRESENTATION[reason].load).not.toBe('redirect');
+    }
+  });
+
   it('declares invalid-join-code as an inline action presentation', () => {
     expect(STOREFRONT_FAILURE_PRESENTATION['invalid-join-code'].action).toBe(
       'inline',

@@ -18,5 +18,24 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
     addItem(storeId: string, request: AddCartItemRequest) {
       return runtime.commands.cart.addItem(storeId, request);
     },
+
+    sendAssistantMessage(
+      storeId: string,
+      input: {
+        message: string;
+        responseToPromptId?: string;
+        selectedOptionId?: string;
+      },
+    ) {
+      return runtime.commands.aiOrdering.sendMessage(storeId, input);
+    },
+
+    applyAssistantProposal(storeId: string) {
+      return runtime.commands.aiOrdering.applyProposal(storeId);
+    },
+
+    dismissAssistantOperation(operationId: string) {
+      runtime.commands.aiOrdering.dismissOperation(operationId);
+    },
   };
 }

@@ -5,12 +5,15 @@ import { classifyApiError } from './classifyApiError';
 import type { ErrorCode } from '@repo/shared';
 
 export type StoreFrontCommandFailureReason =
+  | 'assistant-conversation-full'
+  | 'assistant-unavailable'
   | 'cart-not-active'
   | 'invalid'
   | 'invalid-join-code'
   | 'network'
   | 'not-found'
   | 'order-locked'
+  | 'rate-limited'
   | 'server'
   | 'session-store-mismatch'
   | 'session-expired'
@@ -52,6 +55,17 @@ const STOREFRONT_CODE_REASON: Partial<
   VALIDATION_ERROR: 'invalid',
   ORDER_TYPE_NOT_ENABLED: 'invalid',
   NOT_ITEM_OWNER: 'invalid',
+  // The assistant is optional, so "off for this deployment" and "the provider
+  // could not answer" land on one reason: both mean the panel cannot help right
+  // now, and neither is something the guest can act on differently. Ordering
+  // itself is unaffected either way.
+  AI_ORDERING_DISABLED: 'assistant-unavailable',
+  AI_ORDERING_UNAVAILABLE: 'assistant-unavailable',
+  AI_ORDERING_CONVERSATION_FULL: 'assistant-conversation-full',
+  // A prompt the client answered that the server no longer holds. The guest's
+  // text is fine; the reference to the question is stale.
+  AI_ORDERING_PROMPT_NOT_FOUND: 'invalid',
+  TOO_MANY_REQUESTS: 'rate-limited',
 };
 
 // Table 2: reason -> message. Exhaustive over every reason the mapper can
@@ -88,6 +102,18 @@ const STOREFRONT_MESSAGES: Record<
   'not-found': {
     key: 'guest.errors.notFound',
     fallback: 'This was not found.',
+  },
+  'assistant-unavailable': {
+    key: 'guest.errors.assistantUnavailable',
+    fallback: 'The ordering assistant is unavailable right now.',
+  },
+  'assistant-conversation-full': {
+    key: 'guest.errors.assistantConversationFull',
+    fallback: 'This assistant conversation has reached its limit.',
+  },
+  'rate-limited': {
+    key: 'guest.errors.tooManyRequests',
+    fallback: 'Too many requests. Please wait a moment and try again.',
   },
   invalid: {
     key: 'guest.errors.invalidInput',

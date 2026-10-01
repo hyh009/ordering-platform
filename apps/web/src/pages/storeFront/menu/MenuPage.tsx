@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Sparkles } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
 import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
@@ -8,14 +8,22 @@ import { StorefrontLoadingView } from '@/features/storeFront/components/Storefro
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { PublicModifier } from '@/models/storeFrontMenu';
+import { AssistantPanel } from './AssistantPanel';
 import { MenuCategoryTabs } from './MenuCategoryTabs';
 import { MenuStatusBanner } from './MenuStatusBanner';
+import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import { ProductConfigSheet } from './ProductConfigSheet';
+import { useAssistantPanelVM } from './useAssistantPanelVM';
 import { useMenuPageVM } from './useMenuPageVM';
 import { useScrollSpyTabs } from './useScrollSpyTabs';
 
 export function MenuPage() {
   const vm = useMenuPageVM();
+  const storeId = useStoreFrontStoreId();
+  const assistant = useAssistantPanelVM({
+    storeId,
+    isAvailable: vm.isAssistantAvailable,
+  });
   const { tDefault } = useAppTranslation();
   const localize = useLocalizedText();
 
@@ -205,6 +213,21 @@ export function MenuPage() {
             </span>
           </button>
         </div>
+      ) : null}
+
+      {assistant.isAvailable && !assistant.isOpen ? (
+        <button
+          type="button"
+          onClick={assistant.open}
+          aria-label={tDefault('guest.assistant.open', 'Ask the assistant')}
+          className="fixed bottom-24 right-4 z-sticky flex size-12 items-center justify-center rounded-full bg-storefront-primary text-storefront-text shadow-lg transition-opacity hover:opacity-90 active:opacity-80"
+        >
+          <Sparkles size={20} strokeWidth={2} />
+        </button>
+      ) : null}
+
+      {assistant.isAvailable && assistant.isOpen ? (
+        <AssistantPanel vm={assistant} />
       ) : null}
 
       {vm.openProduct ? (

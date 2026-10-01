@@ -10,6 +10,7 @@ export const storeFrontMenuModel = {
       businessHours: dto.businessHours,
       serviceFeeRate: dto.serviceFeeRate,
       orderModes: dto.orderModes,
+      assistantEnabled: dto.assistantEnabled,
     };
 
     if (dto.description !== undefined) {
