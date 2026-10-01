@@ -1,8 +1,10 @@
 # AI Ordering Assistant
 
-> Status: the backend is implemented end to end — module, persistence, provider
-> runtime, and the guest endpoint. The merchant review surface, the storefront UI,
-> and the replay script are not built yet. This doc describes what exists today.
+> Status: implemented end to end — backend turn pipeline, guest storefront panel,
+> merchant review surface, and the replay script. It has been exercised against a
+> real provider. What remains unproven is visual: the web workspace has no
+> component-test environment, so every UI assertion here is made against VM state
+> (see **Manual Checks**).
 
 ## Purpose
 
@@ -132,6 +134,31 @@ comparison would then carry two differences instead of one. A run is one cell of
 A provider id that names no provider leaves the assistant OFF, exactly as an
 unknown version id does.
 
+### Each Provider Translates The Tool Schemas Into Its Own Dialect
+
+Gemini's `functionDeclarations[].parameters` is an OpenAPI 3.0 subset, not full
+JSON Schema, and three of zod's renderings fall outside it:
+
+```txt
+  z.literal('add_item')   -> {"const": "add_item"}   400: Unknown name "const"
+  z.string().nullable()   -> anyOf [..., type:null]  the subset has no NULL type
+  z.discriminatedUnion    -> {"oneOf": [...]}        the subset documents anyOf
+```
+
+`runtime/geminiSchema.ts` rewrites all three — single-member `enum`,
+`nullable: true`, `anyOf` — and `gemini.ts` binds the converted JSON Schema rather
+than handing the zod schema to LangChain, whose own converter emits the `const`.
+
+The translation sits on the PROVIDER side on purpose. Authoring the model-facing
+schemas in Gemini's subset would shape a backend contract around one vendor's
+parser, and the next provider would want something else. The schemas stay written
+in zod; each adapter says what its own wire format needs.
+
+These failures only appear against a real provider — every unit test stubs the
+model — so `aiOrdering.geminiSchema.test.ts` asserts that no bound tool schema
+emits `const` or names a null type. That guard, not the integration, is what keeps
+the next literal from shipping.
+
 ## Validation: Four Checks, Then At Most One Repair
 
 `validation.ts` checks each proposed operation against data already loaded for
@@ -178,13 +205,43 @@ violations are counted as a version quality signal.
 
 ```txt
   modules/aiOrdering/versions/
-    v1-2026-09-30.ts   <- frozen once released, never edited
+    v1-2026-09-30.ts   <- status: 'draft' — still being shaped
+    fingerprint.ts     <- hash of the prompt and the limits
     index.ts           <- registry + resolver
 ```
 
 A version carries its prompt and its limits. It deliberately carries **no model
 name**: version and model are separate replay axes, since the whole point is
 running an older prompt against a newer model.
+
+### Draft Versus Stable
+
+A version is `draft` or `stable`, and the difference is whether its file may be
+edited:
+
+```txt
+  draft   editable; its stored turns are development data, not a baseline
+  stable  frozen; its versionId is what a replay points at, so editing it
+          would silently redefine what its stored turns refer to
+```
+
+Freezing a stable version is **enforced, not remembered**. Every turn records a
+`versionFingerprint` — a hash of the prompt text and the limits the model is held
+to — and `aiOrdering.versions.test.ts` pins that fingerprint for every stable
+version. Editing a frozen prompt fails the suite. The pin table must also name
+exactly the stable versions, so promoting one without pinning it fails too.
+
+The fingerprint is what makes a draft safe to edit at all. `versionId` says which
+label served a turn; after an edit it no longer says which prompt did. The
+fingerprint does, so a corpus full of `v1-2026-09-30` turns still splits into the
+runs that share a prompt and the ones that do not.
+
+Out of the hash on purpose: `versionId` (renaming is not a behavior change),
+`status` (promotion must not move the pin), and the timeouts (they decide whether
+a turn finishes, not what a finished turn says).
+
+Promotion is one-way. A stable version that turns out to be wrong gets a
+successor, not a demotion.
 
 `resolveAiOrderingVersion` returns `null` for both an unset and an unknown
 version id. `null` means the assistant is off — a misconfigured id never throws
@@ -215,7 +272,8 @@ participant has their own private conversation.
   AiOrderingConversationEntity
     id, organizationId, storeId, cartId, participantId
     summary?, summarizedUpToTurnIndex?
-    turns[]  ->  message, reported outcomes, versionId, provider, modelName,
+    turns[]  ->  message, reported outcomes,
+                 versionId + versionFingerprint, provider, modelName,
                  modelOutput (raw, kept even when rejected),
                  response (what the guest saw),
                  prompt? / proposal? snapshots,
@@ -261,6 +319,10 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `runtime/model.ts` — the provider-agnostic seam: per-turn session, usage
   accounting, per-call timeout clamp
 - `runtime/gemini.ts` — constructing the Gemini chat model, and nothing else
+- `runtime/geminiSchema.ts` — rewriting tool argument schemas into Gemini's
+  OpenAPI subset (`const`, null branches, `oneOf`)
+- `versions/fingerprint.ts` — hashing a version's prompt and limits, so a draft
+  stays readable across edits and a stable one cannot be edited unnoticed
 - `runtime/messages.ts`, `runtime/failures.ts` — block-to-message mapping,
   provider failure mapping
 - `promptResolution.ts` — prior prompt and reported outcomes
@@ -275,8 +337,41 @@ Persistence:
 Tests:
 
 - `apps/api/tests/aiOrdering.*.test.ts`
-- `apps/api/tests/fixtures/aiOrdering.ts` — the frozen menu and cart, also the
-  baseline for version replay
+- `apps/api/tests/fixtures/aiOrdering.ts` — test-only scaffolding; the frozen
+  menu and cart themselves live in `evaluation/fixture.ts` because the shipped
+  replay tool runs against them
+
+Evaluation and replay:
+
+- `evaluation/fixture.ts` — the frozen menu and cart, the one thing held still
+- `evaluation/replay.ts` — replaying stored messages against a version
+- `apps/api/src/scripts/aiOrderingReplayCli.ts` — `pnpm --filter api replay`
+
+Merchant review (backend):
+
+- `apps/api/src/services/aiOrderingReview.service.ts` — read side, deliberately
+  separate from the turn service so review works with the assistant switched off
+- `apps/api/src/models/aiOrdering/mapper.ts` — entity to DTO; `modelOutput`
+  never crosses it
+- `apps/api/src/routes/v1/merchant/stores/[storeId]/aiOrdering.ts`
+
+Storefront (web):
+
+- `apps/web/src/models/aiOrdering/` — DTO boundary and the operation-to-cart
+  request mapper
+- `apps/web/src/services/storeFrontAiOrdering.service.ts`
+- `apps/web/src/features/storeFront/aiOrdering/` — store, actions, commands,
+  outcome mapping
+- `apps/web/src/pages/storeFront/menu/assistantPanelView.ts` — the pure half of
+  the panel VM, which is what the tests can assert on
+- `apps/web/src/pages/storeFront/menu/AssistantPanel.tsx`,
+  `AssistantProposalCard.tsx`
+
+Merchant review (web):
+
+- `apps/web/src/features/merchant/aiOrdering/` — conversations and unanswered
+- `apps/web/src/pages/merchant/aiOrderingConversationList/`,
+  `aiOrderingConversationDetail/`, `aiOrderingUnanswered/`
 
 ## Notes
 
@@ -305,3 +400,30 @@ Known follow-ups, tracked in `openspec/changes/add-ai-ordering-assistant`:
   leak into a test run.
 - Not built: the merchant review surface, the storefront UI, and the replay
   script.
+
+## Manual Checks
+
+The web workspace has no component-test environment, so the assertions below are
+made against VM state and have never been checked on screen. Each is a browser
+check, not a gap in coverage of the logic.
+
+Storefront panel:
+
+- the chat panel renders each of the four response types (`message`, `choices`,
+  `proposal`, `unanswered`)
+- a `choices` answer offers its options AND still accepts typed input
+- the proposal card shows one row per operation with its own dismiss control and
+  a single apply at the bottom
+- after a partial failure, each row shows its own result
+- with automatic application resolved on, no confirmation controls appear
+- the assistant entry point is absent entirely when `assistantEnabled` is false
+- the transcript opens scrolled to the latest exchange
+
+Merchant review:
+
+- the conversation list, its unanswered count, and paging
+- the conversation detail, including a turn whose output was repaired or had
+  operations dropped
+- the unanswered list, its reason filter, and the product reference on entries
+  whose reason identifies one
+- the automatic-application toggle on store settings saves and reloads

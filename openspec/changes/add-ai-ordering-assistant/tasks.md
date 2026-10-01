@@ -52,55 +52,66 @@
 
 ## 6. API Merchant Read
 
-- [ ] 6.1 Add merchant routes under `routes/v1/merchant/` to list and read a store's conversations, scoped to the requesting user's authorization per `docs/features/permissions.md`, and verify a test asserts another store's conversations are refused
-- [ ] 6.2 Add the unanswered-question listing, surfacing the reason and the product it concerned when the reason is missing product information, and verify a test returns entries for a conversation containing an `unanswered` turn
-- [ ] 6.3 Add the conversation mapper in `models/aiOrdering/mapper.ts` so the merchant response exposes DTOs rather than raw entities, and verify no internal field appears in the response test
-- [ ] 6.4 Add the store setting to the existing store update path so a merchant can toggle automatic application, and verify an update test round-trips the field
-- [ ] 6.5 Run the merchant slice verification: `pnpm --filter api run test`, `pnpm --filter api run lint`, `pnpm --filter api run build`
+- [x] 6.1 Add merchant routes under `routes/v1/merchant/` to list and read a store's conversations, scoped to the requesting user's authorization per `docs/features/permissions.md`, and verify a test asserts another store's conversations are refused
+- [x] 6.2 Add the unanswered-question listing, surfacing the reason and the product it concerned when the reason is missing product information, and verify a test returns entries for a conversation containing an `unanswered` turn
+- [x] 6.3 Add the conversation mapper in `models/aiOrdering/mapper.ts` so the merchant response exposes DTOs rather than raw entities, and verify no internal field appears in the response test
+- [x] 6.4 Add the store setting to the existing store update path so a merchant can toggle automatic application, and verify an update test round-trips the field
+- [x] 6.5 Run the merchant slice verification: `pnpm --filter api run test`, `pnpm --filter api run lint`, `pnpm --filter api run build`
 
 ## 7. Web Models And Service
 
-- [ ] 7.1 Add `src/models/aiOrdering/` re-exporting the shared contract types and deserializing responses into frontend models per `docs/agent/frontend/model-dto-boundary.md`, and verify a deserialize test maps every response type
-- [ ] 7.2 Add the assistant service calling the guest endpoint and returning models rather than DTOs, and verify an API error test covers the typed failure path per `docs/agent/frontend/api-error-testing.md`
-- [ ] 7.3 Add a mapper from a proposal operation to the existing cart request shape, and verify a unit test covers all three operation types
-- [ ] 7.4 Run the web model slice verification: `pnpm --filter web run test` and `pnpm --filter web run lint`
+- [x] 7.1 Add `src/models/aiOrdering/` re-exporting the shared contract types and deserializing responses into frontend models per `docs/agent/frontend/model-dto-boundary.md`, and verify a deserialize test maps every response type
+- [x] 7.2 Add the assistant service calling the guest endpoint and returning models rather than DTOs, and verify an API error test covers the typed failure path per `docs/agent/frontend/api-error-testing.md`
+- [x] 7.3 Add a mapper from a proposal operation to the existing cart request shape, and verify a unit test covers all three operation types
+- [x] 7.4 Run the web model slice verification: `pnpm --filter web run test` and `pnpm --filter web run lint`
 
 ## 8. Web Storefront Assistant
 
-- [ ] 8.1 Add the assistant feature store holding conversation turns and pending-proposal state per `docs/agent/frontend/state-ownership.md`, and verify the store holds state only with no async logic
-- [ ] 8.2 Add feature actions mutating that store, and verify action unit tests cover appending a turn and expiring a pending proposal
-- [ ] 8.3 Add the send-message command wiring outcome reporting into the next request, and verify a command test asserts the previous outcome is attached
-- [ ] 8.4 Add the apply command executing remaining operations through the EXISTING cart commands in order, collecting a per-operation result, and verify a test with a stubbed cart service covers all succeeding, and the second of three failing
-- [ ] 8.5 Implement proposal expiry on sending a new message and on a newer assistant response, reporting the operations as `no_action`, and verify a command test distinguishes it from a dismissal
-- [ ] 8.6 Add the page VM hook owning the panel's flow state and command-result reactions per `docs/agent/frontend/state-ownership.md`, and verify no view reads the store or calls commands directly
-- [ ] 8.7 Add the chat panel view rendering the four response types from VM-provided state, with `choices` always allowing free text, and verify a VM test exposes a render-ready shape for each of the four types — assert on VM state, not on rendered output, since the web workspace has no component-test environment; the visual check is listed in 11.4
-- [ ] 8.8 Add the proposal card as a per-operation list with an individual dismiss control per row, a single apply action, and a per-operation result display after applying, and verify a VM test asserts the apply action is reported unavailable once every row has been dismissed
-- [ ] 8.9 Apply validated operations without confirmation controls when the resolved mode allows it, and verify a VM test asserts confirmation controls are reported as not required in that mode only
-- [ ] 8.10 Present command failures through the storefront failure helper per `docs/agent/frontend/error-feedback.md`, and verify the existing failure-routing test covers the new failures
-- [ ] 8.11 Hide the assistant entry point entirely when the assistant is not enabled, and verify a VM test asserts the entry-point flag is false in that case
-- [ ] 8.12 Add English-default i18n keys for all new strings per `docs/agent/frontend/i18n.md`, and verify `pnpm --filter web run lint` passes the i18n key scan
-- [ ] 8.13 Run the storefront slice verification: `pnpm --filter web run test`, `pnpm --filter web run lint`, `pnpm --filter web run build`, and the checklist in `docs/agent/frontend/architecture-validation.md`
+- [x] 8.1 Add the assistant feature store holding conversation turns and pending-proposal state per `docs/agent/frontend/state-ownership.md`, and verify the store holds state only with no async logic
+- [x] 8.2 Add feature actions mutating that store, and verify action unit tests cover appending a turn and expiring a pending proposal
+- [x] 8.3 Add the send-message command wiring outcome reporting into the next request, and verify a command test asserts the previous outcome is attached
+- [x] 8.4 Add the apply command executing remaining operations through the EXISTING cart commands in order, collecting a per-operation result, and verify a test with a stubbed cart service covers all succeeding, and the second of three failing
+- [x] 8.5 Implement proposal expiry on sending a new message and on a newer assistant response, reporting the operations as `no_action`, and verify a command test distinguishes it from a dismissal
+- [x] 8.6 Add the page VM hook owning the panel's flow state and command-result reactions per `docs/agent/frontend/state-ownership.md`, and verify no view reads the store or calls commands directly
+- [x] 8.7 Add the chat panel view rendering the four response types from VM-provided state, with `choices` always allowing free text, and verify a VM test exposes a render-ready shape for each of the four types — assert on VM state, not on rendered output, since the web workspace has no component-test environment; the visual check is listed in 11.4
+- [x] 8.8 Add the proposal card as a per-operation list with an individual dismiss control per row, a single apply action, and a per-operation result display after applying, and verify a VM test asserts the apply action is reported unavailable once every row has been dismissed
+- [x] 8.9 Apply validated operations without confirmation controls when the resolved mode allows it, and verify a VM test asserts confirmation controls are reported as not required in that mode only
+- [x] 8.10 Present command failures through the storefront failure helper per `docs/agent/frontend/error-feedback.md`, and verify the existing failure-routing test covers the new failures
+- [x] 8.11 Hide the assistant entry point entirely when the assistant is not enabled, and verify a VM test asserts the entry-point flag is false in that case
+- [x] 8.12 Add English-default i18n keys for all new strings per `docs/agent/frontend/i18n.md`, and verify `pnpm --filter web run lint` passes the i18n key scan
+- [x] 8.13 Expose assistant enablement to the storefront: add `assistantEnabled` to the public store contract, resolve it from `isAiOrderingEnabled()` in the public store service, and carry it through the web store model, and verify the public store route test asserts the flag is present and false under an unset environment — 8.11 cannot hide the entry point before the first request without it
+- [x] 8.14 Run the storefront slice verification: `pnpm --filter web run test`, `pnpm --filter web run lint`, `pnpm --filter web run build`, and the checklist in `docs/agent/frontend/architecture-validation.md`
+
+- [x] 8.15 Translate the new storefront assistant strings in `apps/web/src/app/i18n/resources.ts` for both `en` and `zh-TW`, and verify the panel renders in the guest's language rather than falling back to the English defaults
+- [x] 8.16 Scroll the assistant transcript to the latest exchange on open and on every new entry, and verify it is component-local scroll measurement per `docs/agent/frontend/state-ownership.md`
 
 ## 9. Web Merchant Review
 
-- [ ] 9.1 Add the merchant conversation list page with its VM and commands following the existing merchant list pages, and verify it paginates per `docs/agent/frontend/pagination.md`
-- [ ] 9.2 Add the conversation detail view showing each turn and its response type, and verify a VM test exposes a turn list that includes a gate-rejected turn (visual check in 11.4)
-- [ ] 9.3 Add the unanswered-question list view, and verify a VM test exposes the product reference on entries whose reason identifies one (visual check in 11.4)
-- [ ] 9.4 Add the automatic-application toggle to the store settings page following `docs/agent/frontend/forms.md`, and verify the form saves and reloads the value
-- [ ] 9.5 Run the merchant web slice verification: `pnpm --filter web run test`, `pnpm --filter web run lint`, `pnpm --filter web run build`, and the checklist in `docs/agent/frontend/architecture-validation.md`
+- [x] 9.1 Add the merchant conversation list page with its VM and commands following the existing merchant list pages, and verify it paginates per `docs/agent/frontend/pagination.md`
+- [x] 9.2 Add the conversation detail view showing each turn and its response type, and verify a VM test exposes a turn list that includes a gate-rejected turn (visual check in 11.4)
+- [x] 9.3 Add the unanswered-question list view, and verify a VM test exposes the product reference on entries whose reason identifies one (visual check in 11.4)
+- [x] 9.4 Add the automatic-application toggle to the store settings page following `docs/agent/frontend/forms.md`, and verify the form saves and reloads the value
+- [x] 9.5 Run the merchant web slice verification: `pnpm --filter web run test`, `pnpm --filter web run lint`, `pnpm --filter web run build`, and the checklist in `docs/agent/frontend/architecture-validation.md`
+
+## 9b. Version Lifecycle
+
+- [x] 9b.1 Add `status: 'draft' | 'stable'` to `AiOrderingVersionConfig`, mark `v1-2026-09-30` as `draft`, and verify a test records that status so promotion is a deliberate edit
+- [x] 9b.2 Add `versions/fingerprint.ts` hashing the prompt and the limits the model is held to, excluding `versionId`, `status` and the operational timeouts, and verify tests cover each inclusion and exclusion
+- [x] 9b.3 Record `versionFingerprint` on every stored turn beside `versionId`, so a draft version's corpus stays readable across edits, and verify the service test asserts it
+- [x] 9b.4 Pin every stable version's fingerprint in `aiOrdering.versions.test.ts` and assert the pin table names exactly the stable versions, so editing a frozen prompt or promoting without pinning fails the suite
 
 ## 10. Replay Tooling
 
-- [ ] 10.1 Add the frozen menu and cart fixture covering a sold-out product, a sold-out modifier option, required and optional modifiers, a product with no modifiers, and several similarly named products, and verify the module tests already written consume it
-- [ ] 10.2 Add the replay script running stored guest messages against a chosen version and model over the frozen fixture, and verify it produces a comparison output for two version ids without writing to the database
-- [ ] 10.3 Run the tooling verification: `pnpm --filter api run test` and `pnpm --filter api run lint`
+- [x] 10.1 Add the frozen menu and cart fixture covering a sold-out product, a sold-out modifier option, required and optional modifiers, a product with no modifiers, and several similarly named products, and verify the module tests already written consume it
+- [x] 10.2 Add the replay script running stored guest messages against a chosen version and model over the frozen fixture, and verify it produces a comparison output for two version ids without writing to the database
+- [x] 10.3 Run the tooling verification: `pnpm --filter api run test` and `pnpm --filter api run lint`
 
 ## 11. Documentation
 
-- [ ] 11.1 Add `docs/features/ai-ordering.md` per `docs/agent/workflows/feature-docs.md` with the code map, turn contract, version and replay workflow, and the responsibility split between backend proposal and frontend execution, and verify it names no file that does not exist
-- [ ] 11.2 Register the feature in `docs/features/index.yaml` and verify the entry resolves to the new file
-- [ ] 11.3 Update `docs/schema/mongo.md` with the conversation model, its relationships, and its two indexes per `docs/agent/backend/mongo-schema.md`, and verify the diagram renders
-- [ ] 11.4 Run the full verification per `docs/agent/workflows/verification.md`: `pnpm run lint`, `pnpm run test`, `pnpm run build`, and list the manual checks that still need a browser, which carry every assertion the web workspace cannot make without a component-test environment: the chat panel rendering each of the four response types, the proposal card's per-row dismiss and single apply, the per-operation result display after a partial failure, automatic-application mode showing no confirmation controls, the assistant entry point being absent when disabled, and the merchant review pages
+- [x] 11.1 Add `docs/features/ai-ordering.md` per `docs/agent/workflows/feature-docs.md` with the code map, turn contract, version and replay workflow, and the responsibility split between backend proposal and frontend execution, and verify it names no file that does not exist
+- [x] 11.2 Register the feature in `docs/features/index.yaml` and verify the entry resolves to the new file
+- [x] 11.3 Update `docs/schema/mongo.md` with the conversation model, its relationships, and its two indexes per `docs/agent/backend/mongo-schema.md`, and verify the diagram renders
+- [x] 11.4 Run the full verification per `docs/agent/workflows/verification.md`: `pnpm run lint`, `pnpm run test`, `pnpm run build`, and list the manual checks that still need a browser, which carry every assertion the web workspace cannot make without a component-test environment: the chat panel rendering each of the four response types, the proposal card's per-row dismiss and single apply, the per-operation result display after a partial failure, automatic-application mode showing no confirmation controls, the assistant entry point being absent when disabled, and the merchant review pages
 
 ## 12. Tool-Call Transport
 
