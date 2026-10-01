@@ -10,6 +10,7 @@ import {
 } from './fixtures/aiOrdering.js';
 import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '../src/models/aiOrdering/model.js';
 import { createInMemoryAiOrderingRateLimiter } from '../src/modules/aiOrdering/rateLimit.js';
+import { aiOrderingVersionFingerprint } from '../src/modules/aiOrdering/versions/fingerprint.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
 import { createAiOrderingService } from '../src/services/aiOrdering.service.js';
 
@@ -64,6 +65,7 @@ function emptyTurn(index: number): AiOrderingTurnSnapshot {
     id: `turn-${index}`,
     message: `訊息 ${index}`,
     versionId: AI_ORDERING_V1_2026_09_30.versionId,
+    versionFingerprint: 'test-fingerprint',
     provider: 'gemini',
     modelName: 'test-model',
     response: { type: 'message', reply: `回覆 ${index}` },
@@ -307,6 +309,11 @@ describe('AiOrderingService', () => {
       const turn = h.appended[0];
 
       expect(turn?.versionId).toBe(AI_ORDERING_V1_2026_09_30.versionId);
+      // v1 is a draft, so its file may be edited between two turns that both
+      // say `v1-2026-09-30`. The fingerprint is what tells those turns apart.
+      expect(turn?.versionFingerprint).toBe(
+        aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30),
+      );
       // Provider and model together: the same model reached through two routes
       // would otherwise be indistinguishable in the corpus.
       expect(turn?.provider).toBe('gemini');

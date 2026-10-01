@@ -15,10 +15,30 @@ export type AiOrderingGuestContext = {
 };
 
 /**
- * One released assistant version: the prompt and the settings that shaped its
- * behavior, frozen. A file per version, never edited after release, so a later
+ * Whether a version may still be edited.
+ *
+ * `draft` is a version still being shaped. Its file may be edited freely, and
+ * its stored turns are development data, not a baseline — two turns carrying the
+ * same draft `versionId` may have been produced by different prompts.
+ *
+ * `stable` is frozen. Its file is never edited again, because its `versionId` is
+ * what a stored turn points at when a later model is replayed against it, and
+ * editing would silently redefine that. A test pins every stable version's
+ * fingerprint, so freezing is enforced rather than remembered.
+ *
+ * Promotion is one-way: draft to stable. A stable version that turns out to be
+ * wrong gets a successor, not a demotion.
+ */
+export type AiOrderingVersionStatus = 'draft' | 'stable';
+
+/**
+ * One assistant version: the prompt and the settings that shaped its behavior.
+ *
+ * A file per version. A `stable` one is never edited after release, so a later
  * model can be replayed against an older prompt and the comparison means
- * something.
+ * something; a `draft` one is still being written. Every turn records the
+ * version's fingerprint alongside its id, so a draft's corpus stays readable
+ * across edits.
  *
  * Deliberately no model name. Version and model are separate replay axes — the
  * entire point is running THIS prompt against a NEWER model — so the model is
@@ -26,6 +46,8 @@ export type AiOrderingGuestContext = {
  */
 export type AiOrderingVersionConfig = {
   versionId: string;
+  /** Whether this version may still be edited. See `AiOrderingVersionStatus`. */
+  status: AiOrderingVersionStatus;
   /** The system prompt for this version. Contains no store-specific text. */
   coreInstructions: string;
   /** Instructions used when rebuilding the rolling summary. Frozen with the version. */

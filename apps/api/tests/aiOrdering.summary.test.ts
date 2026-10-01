@@ -20,6 +20,7 @@ function turn(
     id: `turn-${index}`,
     message: `訊息 ${index}`,
     versionId: config.versionId,
+    versionFingerprint: 'test-fingerprint',
     provider: 'gemini',
     modelName: 'test-model',
     response: { type: 'message', reply: `回覆 ${index}` },

@@ -5,6 +5,7 @@ import {
   AI_ORDERING_FIXTURE_STORE_ID,
 } from './fixtures/aiOrdering.js';
 import { V1_CORE_INSTRUCTIONS } from '../src/modules/aiOrdering/prompts/coreInstructions.js';
+import { aiOrderingVersionFingerprint } from '../src/modules/aiOrdering/versions/fingerprint.js';
 import {
   AI_ORDERING_V1_2026_09_30,
   listAiOrderingVersionIds,
@@ -79,5 +80,112 @@ describe('AI ordering core instructions', () => {
     expect(V1_CORE_INSTRUCTIONS.toLowerCase()).toContain(
       'cannot place, submit',
     );
+  });
+});
+
+/**
+ * The fingerprint of every STABLE version, pinned.
+ *
+ * Add an entry here when, and only when, a version is promoted to `stable`.
+ * After that, any edit to its prompt or limits changes the hash and fails the
+ * assertions below — which is the whole mechanism: freezing a released version
+ * is enforced here rather than remembered by whoever opens the file.
+ *
+ * Draft versions are deliberately absent. They are meant to be edited.
+ */
+const PINNED_STABLE_FINGERPRINTS: Record<string, string> = {};
+
+function allVersions() {
+  return listAiOrderingVersionIds().map((versionId) => {
+    const version = resolveAiOrderingVersion(versionId);
+    if (!version) throw new Error(`registry lost ${versionId}`);
+    return version;
+  });
+}
+
+describe('AI ordering version freezing', () => {
+  it('v1 is still a draft', () => {
+    // Recorded here so promoting it is a deliberate edit to this file, not a
+    // side effect of someone changing the config.
+    expect(AI_ORDERING_V1_2026_09_30.status).toBe('draft');
+  });
+
+  it('pins exactly the stable versions, no more and no fewer', () => {
+    const stableIds = allVersions()
+      .filter((version) => version.status === 'stable')
+      .map((version) => version.versionId)
+      .sort();
+
+    // Promoting a version without pinning its fingerprint would leave it
+    // editable while claiming to be frozen, so that must fail here.
+    expect(Object.keys(PINNED_STABLE_FINGERPRINTS).sort()).toEqual(stableIds);
+  });
+
+  it('every stable version still hashes to its pinned fingerprint', () => {
+    for (const version of allVersions()) {
+      if (version.status !== 'stable') continue;
+
+      expect(
+        aiOrderingVersionFingerprint(version),
+        `${version.versionId} is stable and was edited; add a new version instead`,
+      ).toBe(PINNED_STABLE_FINGERPRINTS[version.versionId]);
+    }
+  });
+});
+
+describe('AI ordering version fingerprint', () => {
+  it('is stable across calls', () => {
+    expect(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30)).toBe(
+      aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30),
+    );
+  });
+
+  it('changes when the prompt changes', () => {
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        coreInstructions: `${V1_CORE_INSTRUCTIONS} One more rule.`,
+      }),
+    ).not.toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
+  });
+
+  it('changes when a limit the model is held to changes', () => {
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        maxOperationsPerProposal: 3,
+      }),
+    ).not.toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
+  });
+
+  it('does not change when the version is renamed', () => {
+    // The label and the content are separate questions. Two ids sharing a
+    // prompt should share a fingerprint.
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        versionId: 'v1-renamed',
+      }),
+    ).toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
+  });
+
+  it('does not change when a draft is promoted to stable', () => {
+    // Otherwise the pinned value could never be recorded before promotion.
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        status: 'stable',
+      }),
+    ).toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
+  });
+
+  it('does not change when an operational timeout is tuned', () => {
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        timeoutMs: 30_000,
+        maxTurnDurationMs: 90_000,
+      }),
+    ).toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
   });
 });

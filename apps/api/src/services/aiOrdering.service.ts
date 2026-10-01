@@ -17,6 +17,7 @@ import { resolveAiOrderingRuntime } from '@src/modules/aiOrdering/runtime';
 import { mapAiOrderingProviderFailure } from '@src/modules/aiOrdering/runtime/failures';
 import { createAiOrderingModelSession } from '@src/modules/aiOrdering/runtime/model';
 import { generateAiOrderingSummary } from '@src/modules/aiOrdering/summary';
+import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 import { aiOrderingRepository } from '@src/repositories/aiOrdering/repository';
 import { storeRepository } from '@src/repositories/store/repository';
 import { guestOrderingService } from '@src/services/guestOrdering.service';
@@ -359,6 +360,7 @@ export class AiOrderingService {
         ? { reportedOutcomes: input.reportedOutcomes }
         : {}),
       versionId: runtime.config.versionId,
+      versionFingerprint: aiOrderingVersionFingerprint(runtime.config),
       provider: runtime.provider,
       modelName: runtime.modelName,
       modelOutput: plan.modelOutput,

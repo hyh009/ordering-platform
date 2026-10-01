@@ -4,12 +4,16 @@ import { V1_SUMMARY_INSTRUCTIONS } from '@src/modules/aiOrdering/prompts/summary
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 
 /**
- * The first released assistant version.
+ * The first assistant version. Still a DRAFT.
  *
- * Frozen: once a version ships, its file is not edited again. Changing prompt
- * text or a limit here would silently redefine what a stored turn's `versionId`
- * refers to and destroy the baseline that version comparison depends on. Add a
- * new version file instead.
+ * Draft means this file may be edited: the prompt is being shaped against real
+ * conversations, and its stored turns are development data rather than a
+ * baseline. Every turn records the version's fingerprint beside its id, so even
+ * across edits the corpus says which prompt text produced which turn.
+ *
+ * Promoting it to `stable` freezes it. From then on, changing prompt text or a
+ * limit here fails `aiOrdering.versions.test.ts`, which pins every stable
+ * version's fingerprint — add a new version file instead.
  *
  * `permitsAutomaticApplication` is false. No store can skip guest confirmation
  * on this version until it has been validated against real conversations, no
@@ -17,6 +21,7 @@ import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
  */
 export const AI_ORDERING_V1_2026_09_30: AiOrderingVersionConfig = {
   versionId: 'v1-2026-09-30',
+  status: 'draft',
   coreInstructions: V1_CORE_INSTRUCTIONS,
   summaryInstructions: V1_SUMMARY_INSTRUCTIONS,
   maxSummaryCharacters: 1000,

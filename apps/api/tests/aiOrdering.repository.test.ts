@@ -86,6 +86,7 @@ function turn(id: string): AiOrderingTurnSnapshot {
     id,
     message: '來一杯珍奶',
     versionId: 'v1-2026-09-30',
+    versionFingerprint: 'test-fingerprint',
     provider: 'gemini',
     modelName: 'test-model',
     response: { type: 'message', reply: 'Sure.' },

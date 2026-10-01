@@ -79,6 +79,15 @@ export type AiOrderingTurnSnapshot = {
   reportedOutcomes?: AiOrderingOperationResult[];
   versionId: string;
   /**
+   * Hash of the prompt and limits that produced this turn.
+   *
+   * `versionId` names the version; this names its CONTENT. A draft version's
+   * file may be edited between two turns that both say `v1-2026-09-30`, and
+   * without this the corpus could not tell them apart. For a stable version it
+   * should never vary, and a test pins it.
+   */
+  versionFingerprint: string;
+  /**
    * The provider route and the model, recorded together because they are one
    * choice and neither is implied by `versionId`.
    *
