@@ -85,6 +85,7 @@ const turnSnapshotSchema = new Schema<AiOrderingTurnSnapshot>(
     selectedOptionId: { type: String, trim: true },
     reportedOutcomes: { type: [operationResultSnapshotSchema] },
     versionId: { type: String, required: true, trim: true },
+    provider: { type: String, required: true, trim: true },
     modelName: { type: String, required: true, trim: true },
     // Raw model output, stored even when validation rejected it: rejected output
     // is the most valuable row in the evaluation corpus. Untyped by definition.

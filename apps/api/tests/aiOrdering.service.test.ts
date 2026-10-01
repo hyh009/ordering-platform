@@ -64,6 +64,7 @@ function emptyTurn(index: number): AiOrderingTurnSnapshot {
     id: `turn-${index}`,
     message: `訊息 ${index}`,
     versionId: AI_ORDERING_V1_2026_09_30.versionId,
+    provider: 'gemini',
     modelName: 'test-model',
     response: { type: 'message', reply: `回覆 ${index}` },
     quality: {
@@ -155,6 +156,7 @@ function harness(
             }
           : {}),
       },
+      provider: 'gemini',
       modelName: 'test-model',
       createModel: () => ({
         invoke: async () => {
@@ -305,6 +307,9 @@ describe('AiOrderingService', () => {
       const turn = h.appended[0];
 
       expect(turn?.versionId).toBe(AI_ORDERING_V1_2026_09_30.versionId);
+      // Provider and model together: the same model reached through two routes
+      // would otherwise be indistinguishable in the corpus.
+      expect(turn?.provider).toBe('gemini');
       expect(turn?.modelName).toBe('test-model');
       // What the model actually said, in the transport's own terms: a replay or a
       // backstage reader needs to see whether it called a tool, not a shape we

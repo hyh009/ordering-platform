@@ -109,6 +109,29 @@ Operation payloads are **derived from the cart's own request schemas**, not
 restated, so the model contract cannot drift from what the cart accepts. A
 contract test asserts reference equality to catch exactly that.
 
+## Provider And Model Are One Choice, And Not Part Of A Version
+
+```txt
+  AI_ORDERING_VERSION_ID    which prompt version serves traffic
+  AI_ORDERING_PROVIDER      which provider route        \  selected together,
+  AI_ORDERING_MODEL         which model                 /   recorded together
+  GEMINI_API_KEY            the credential for that route
+```
+
+A provider and a model are one choice: `gemini-3.5-flash-lite` exists only behind
+Google. `runtime/providers.ts` is the registry, and a provider id names a ROUTE,
+not a vendor — reaching Gemini through Vertex would be a second id, because the
+credential and the construction differ even though the model does not.
+
+Neither belongs to a prompt version. **Replaying an old prompt against a newer
+model is the point of versioning the prompt**, so a version that pinned its model
+would make that impossible: you would have to forge a new version, and the
+comparison would then carry two differences instead of one. A run is one cell of
+`(prompt version x provider+model)`, and every stored turn records all three.
+
+A provider id that names no provider leaves the assistant OFF, exactly as an
+unknown version id does.
+
 ## Validation: Four Checks, Then At Most One Repair
 
 `validation.ts` checks each proposed operation against data already loaded for
@@ -192,7 +215,7 @@ participant has their own private conversation.
   AiOrderingConversationEntity
     id, organizationId, storeId, cartId, participantId
     summary?, summarizedUpToTurnIndex?
-    turns[]  ->  message, reported outcomes, versionId, modelName,
+    turns[]  ->  message, reported outcomes, versionId, provider, modelName,
                  modelOutput (raw, kept even when rejected),
                  response (what the guest saw),
                  prompt? / proposal? snapshots,
@@ -278,7 +301,7 @@ Known follow-ups, tracked in `openspec/changes/add-ai-ordering-assistant`:
   once a conversation is past the window. Move it off the request path only if
   that latency shows up in practice.
 - Blank env values count as unset (`GEMINI_API_KEY=` means no key), and the test
-  suite pins all three AI variables blank so a developer's own configuration
-  cannot leak into a test run.
+  suite pins every AI variable blank so a developer's own configuration cannot
+  leak into a test run.
 - Not built: the merchant review surface, the storefront UI, and the replay
   script.

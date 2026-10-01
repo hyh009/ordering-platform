@@ -23,5 +23,6 @@ process.env.AUTH_REFRESH_TOKEN_TTL_SECONDS = '2592000';
 //
 // Tests that need the runtime stub the model instead of configuring a provider.
 process.env.GEMINI_API_KEY = '';
-process.env.GEMINI_MODEL = '';
+process.env.AI_ORDERING_PROVIDER = '';
+process.env.AI_ORDERING_MODEL = '';
 process.env.AI_ORDERING_VERSION_ID = '';

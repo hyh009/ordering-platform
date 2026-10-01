@@ -25,6 +25,7 @@ function turn(
     id: `turn-${index}`,
     message: `訊息 ${index}`,
     versionId: 'v1-2026-09-30',
+    provider: 'gemini',
     modelName: 'test-model',
     response: { type: 'message', reply: `回覆 ${index}` },
     quality: {

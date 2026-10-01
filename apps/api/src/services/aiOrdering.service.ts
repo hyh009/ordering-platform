@@ -359,6 +359,7 @@ export class AiOrderingService {
         ? { reportedOutcomes: input.reportedOutcomes }
         : {}),
       versionId: runtime.config.versionId,
+      provider: runtime.provider,
       modelName: runtime.modelName,
       modelOutput: plan.modelOutput,
       response,

@@ -52,11 +52,27 @@ const envSchema = z.object({
    */
   GEMINI_API_KEY: optionalEnvString(),
   /**
-   * The model the assistant runs against. Separate from the prompt version on
-   * purpose: replaying an older prompt against a newer model is the whole point
-   * of versioning the prompt, so the two must move independently.
+   * Which provider route the assistant runs against. One of the ids in
+   * `modules/aiOrdering/runtime/providers.ts`.
+   *
+   * Left as a plain string here rather than an enum so this low-level config does
+   * not depend on a feature module. An id that names no provider leaves the
+   * assistant off, exactly as an unknown version id does.
    */
-  GEMINI_MODEL: z.preprocess(
+  AI_ORDERING_PROVIDER: z.preprocess(
+    (value) =>
+      typeof value === 'string' && value.trim() === '' ? undefined : value,
+    z.string().min(1).default('gemini'),
+  ),
+  /**
+   * The model the assistant runs against. A provider and a model are one choice,
+   * so these two move together.
+   *
+   * Both are separate from the prompt version on purpose: replaying an older
+   * prompt against a newer model is the whole point of versioning the prompt, so
+   * the version must not pin either of them.
+   */
+  AI_ORDERING_MODEL: z.preprocess(
     (value) =>
       typeof value === 'string' && value.trim() === '' ? undefined : value,
     z.string().min(1).default('gemini-3.5-flash-lite'),

@@ -78,6 +78,14 @@ export type AiOrderingTurnSnapshot = {
   /** Outcomes of the PREVIOUS proposal as reported by the guest on this turn. */
   reportedOutcomes?: AiOrderingOperationResult[];
   versionId: string;
+  /**
+   * The provider route and the model, recorded together because they are one
+   * choice and neither is implied by `versionId`.
+   *
+   * Without the provider, the same model reached through two routes is
+   * indistinguishable in the corpus.
+   */
+  provider: string;
   modelName: string;
   /** Raw model output before validation, stored even when it was rejected. */
   modelOutput?: unknown;

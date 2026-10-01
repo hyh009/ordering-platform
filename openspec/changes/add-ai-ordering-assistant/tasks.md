@@ -115,3 +115,15 @@ migration from a JSON response schema to bound tools.
 - [x] 12.5 Treat "the model called no tool and returned no usable text" as an explicit gate rejection with its own reason, since a bound tool is not enforced the way a response schema was, and verify a test feeds back a reply with no tool call and asserts the rejection plus the repair attempt
 - [x] 12.6 Update the affected tests (output gate, repair, runtime, service) to the tool-call shape, and verify the assertions that matter are preserved — at most two model calls, degradation to the model's own reply, backend-owned fields never taken from the model
 - [x] 12.7 Run the transport verification: `pnpm --filter api run test`, `pnpm --filter api run lint`, `pnpm --filter api run build`
+
+## 13. Provider Selection
+
+Added mid-implementation per design decision 20. Separates the provider-agnostic
+runtime from the provider itself and makes the provider an explicit, recorded
+choice rather than a hardcoded one.
+
+- [x] 13.1 Split the runtime into `runtime/model.ts` (session, usage accounting, per-call timeout clamp) and `runtime/gemini.ts` (construction only), and verify the suite passes with only import paths changed, since a split that needs test edits is the wrong seam
+- [x] 13.2 Add `runtime/providers.ts` as the registry mapping a provider id to its tool-calling and text model factories, and verify a test asserts an id naming no provider leaves the assistant off rather than throwing
+- [x] 13.3 Select the provider and the model together from env (`AI_ORDERING_PROVIDER`, `AI_ORDERING_MODEL`), keeping both out of the version config, and verify the runtime test covers version, provider and key each being required on their own
+- [x] 13.4 Record `provider` on every stored turn beside `modelName`, and verify a service test asserts it, so the same model reached by two routes stays distinguishable in the corpus
+- [x] 13.5 Run the verification: `pnpm --filter api run test`, `pnpm --filter api run lint`, `pnpm --filter api run build`

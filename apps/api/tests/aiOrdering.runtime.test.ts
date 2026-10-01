@@ -292,21 +292,37 @@ describe('AI ordering runtime resolution', () => {
     ).not.toThrow();
   });
 
-  it('is off under an environment that sets none of the three variables', () => {
-    // The suite boots the API with GEMINI_API_KEY, GEMINI_MODEL and
-    // AI_ORDERING_VERSION_ID all unset, which is the deployment default: the
-    // rest of the API must come up with the assistant simply absent.
+  it('is disabled on a provider id that names no provider', () => {
+    // Same treatment as an unknown version id: the assistant goes off and the
+    // rest of the API keeps serving ordering, rather than the process refusing to
+    // boot over one misconfigured value.
+    expect(
+      resolveAiOrderingRuntime({
+        versionId: config.versionId,
+        provider: 'a-provider-nobody-registered',
+        apiKey: 'a-key-that-exists',
+        modelName: 'gemini-3.5-flash-lite',
+      }),
+    ).toBeNull();
+  });
+
+  it('is off under an environment that sets none of the AI variables', () => {
+    // The suite boots the API with the key, the provider, the model and the
+    // version id all unset, which is the deployment default: the rest of the API
+    // must come up with the assistant simply absent.
     expect(isAiOrderingEnabled()).toBe(false);
   });
 
-  it('is enabled only when both the version and the key are present', () => {
+  it('is enabled only when the version, the provider and the key are all present', () => {
     const runtime = resolveAiOrderingRuntime({
       versionId: config.versionId,
+      provider: 'gemini',
       apiKey: 'a-key-that-exists',
       modelName: 'gemini-3.5-flash-lite',
     });
 
     expect(runtime?.config.versionId).toBe(config.versionId);
+    expect(runtime?.provider).toBe('gemini');
     expect(runtime?.modelName).toBe('gemini-3.5-flash-lite');
   });
 });

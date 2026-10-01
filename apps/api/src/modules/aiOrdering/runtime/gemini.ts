@@ -15,14 +15,25 @@ import type {
   AiOrderingToolCallingModel,
 } from '@src/modules/aiOrdering/runtime/model';
 
+function createChat(input: { apiKey: string; model: string }) {
+  return new ChatGoogleGenerativeAI({
+    apiKey: input.apiKey,
+    model: input.model,
+  });
+}
+
+/**
+ * A plain-text Gemini model, with NO tools bound.
+ *
+ * Leaving the tools off is a capability restriction, not a typing detail: a model
+ * that can call `propose_cart_operations` while it is supposed to be writing a
+ * summary will eventually do it.
+ */
 export function createGeminiTextModel(input: {
   apiKey: string;
   model: string;
 }): AiOrderingTextModel {
-  const chat = new ChatGoogleGenerativeAI({
-    apiKey: input.apiKey,
-    model: input.model,
-  });
+  const chat = createChat(input);
 
   return {
     async invoke(messages, options) {
@@ -48,12 +59,7 @@ export function createGeminiToolCallingModel(input: {
   apiKey: string;
   model: string;
 }): AiOrderingToolCallingModel {
-  const chat = new ChatGoogleGenerativeAI({
-    apiKey: input.apiKey,
-    model: input.model,
-  });
-
-  const bound = chat.bindTools(
+  const bound = createChat(input).bindTools(
     aiOrderingToolDefinitions.map(({ name, description, schema }) => ({
       name,
       description,
