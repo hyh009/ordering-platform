@@ -46,6 +46,9 @@ export type UpdateStoreInput = {
     orderModes?: StoreOrderMode[];
     guestOrderingDurationMinutes?: number | null;
   };
+  assistant?: {
+    autoApplyCartOperations?: boolean;
+  };
   status?: StoreStatus;
 };
 
