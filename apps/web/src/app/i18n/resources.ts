@@ -42,6 +42,22 @@ const manualResources: Resource = {
         },
       },
       guest: {
+        assistant: {
+          applyProposal: 'Add these to my cart',
+          dismissOperation: 'Remove this change',
+          emptyHint: 'Ask about a dish, or describe what you feel like eating.',
+          freeTextHint: 'Or just type what you want instead.',
+          inputPlaceholder: 'Ask or order something…',
+          open: 'Ask the assistant',
+          proposalResultHint: 'Check your cart to review the result.',
+          rowApplied: 'Added',
+          rowDismissed: 'Removed',
+          rowFailed: 'Could not be applied',
+          rowPending: 'Not applied',
+          send: 'Send',
+          thinking: 'Thinking…',
+          title: 'Ordering assistant',
+        },
         cart: {
           currentUserBadge: 'Me',
           empty: 'Your cart is empty.',
@@ -62,9 +78,15 @@ const manualResources: Resource = {
           title: 'Cart',
         },
         errors: {
+          assistantConversationFull:
+            'This assistant conversation has reached its limit.',
+          assistantUnavailable:
+            'The ordering assistant is unavailable right now.',
           invalidInput:
             'Something in the request was invalid. Please try again.',
           orderNotFound: 'This order was not found.',
+          tooManyRequests:
+            'Too many requests. Please wait a moment and try again.',
         },
         header: {
           language: 'Language',
@@ -598,6 +620,22 @@ const manualResources: Resource = {
         yes: '是',
       },
       guest: {
+        assistant: {
+          applyProposal: '加入購物車',
+          dismissOperation: '移除這項變更',
+          emptyHint: '可以問我餐點的事，或是描述你想吃什麼。',
+          freeTextHint: '也可以直接輸入你想要的。',
+          inputPlaceholder: '想問什麼或想點什麼…',
+          open: '問問點餐助理',
+          proposalResultHint: '可以到購物車確認結果。',
+          rowApplied: '已加入',
+          rowDismissed: '已移除',
+          rowFailed: '無法套用',
+          rowPending: '未套用',
+          send: '送出',
+          thinking: '思考中…',
+          title: '點餐助理',
+        },
         cart: {
           currentUserBadge: '我',
           empty: '你的購物車是空的。',
@@ -617,6 +655,8 @@ const manualResources: Resource = {
           title: '購物車',
         },
         errors: {
+          assistantConversationFull: '這段對話已達上限。',
+          assistantUnavailable: '點餐助理目前無法使用。',
           cartNotActive: '此購物車已失效。',
           invalidInput: '請求內容有誤，請再試一次。',
           invalidJoinCode: '此邀請已失效。',
@@ -627,6 +667,7 @@ const manualResources: Resource = {
           orderNotFound: '找不到這筆訂單。',
           sessionExpired: '你的點餐階段已結束。',
           storeClosed: '店家目前已關閉點餐。',
+          tooManyRequests: '請求太頻繁，請稍候再試。',
         },
         header: {
           language: '語言',
@@ -793,6 +834,37 @@ const manualResources: Resource = {
         title: '為現代店家營運打造的線上點餐平台',
       },
       merchant: {
+        aiOrdering: {
+          actionableOnPage: '筆在本頁。',
+          allReasons: '全部原因',
+          askedAt: '詢問時間',
+          conversationEmpty: '這段對話沒有任何紀錄。',
+          conversationsEmpty: '目前還沒有助理對話。',
+          conversationsTitle: '助理對話紀錄',
+          conversationTitle: '對話',
+          degradedTurns: '筆有問題',
+          dropped: '已捨棄',
+          lastTurnAt: '最後訊息',
+          loading: '載入對話中…',
+          ownershipViolations: '越權',
+          participant: '客人',
+          product: '商品',
+          question: '問題',
+          reason: {
+            missingProductInfo: '缺少商品資訊',
+            outOfScope: '超出範圍',
+            unclearRequest: '問題不明確',
+          },
+          reasonColumn: '原因',
+          repaired: '已修正',
+          repairFailed: '修正失敗',
+          turnCount: '訊息數',
+          unansweredCount: '無法回答',
+          unansweredEmpty: '助理回答了所有被問到的問題。',
+          unansweredHint: '有指到商品的項目，代表那個商品的說明值得補強。',
+          unansweredTitle: '助理無法回答的問題',
+          viewUnanswered: '無法回答的問題',
+        },
         categories: {
           active: '顯示',
           activeOnly: '顯示',
@@ -1102,6 +1174,12 @@ const manualResources: Resource = {
         },
       },
       store: {
+        assistant: {
+          autoApplyHint:
+            '只有在目前啟用的助理版本也允許時才會生效。客人之後仍可自行調整購物車。',
+          autoApplyLabel: '助理的變更不經確認直接套用',
+          sectionTitle: '點餐助理',
+        },
         businessHours: {
           allDay: '24 小時營業',
         },
