@@ -18,7 +18,7 @@ import type {
   AiOrderingTurnSnapshot,
 } from '../src/models/aiOrdering/model.js';
 import type { StoreEntity } from '../src/models/store/model.js';
-import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
+import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/model.js';
 
 const claims = {
   storeId: AI_ORDERING_FIXTURE_STORE_ID,

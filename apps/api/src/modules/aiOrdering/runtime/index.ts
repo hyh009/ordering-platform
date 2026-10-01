@@ -1,13 +1,13 @@
 import { env } from '@src/config/env';
 import {
-  createAiOrderingSummaryCaller,
-  createGeminiToolCallingModel,
   createGeminiTextModel,
+  createGeminiToolCallingModel,
 } from '@src/modules/aiOrdering/runtime/gemini';
+import { createAiOrderingSummaryCaller } from '@src/modules/aiOrdering/runtime/model';
 import { resolveAiOrderingVersion } from '@src/modules/aiOrdering/versions';
 import { logger } from '@src/utils/logger';
 
-import type { AiOrderingToolCallingModel } from '@src/modules/aiOrdering/runtime/gemini';
+import type { AiOrderingToolCallingModel } from '@src/modules/aiOrdering/runtime/model';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 

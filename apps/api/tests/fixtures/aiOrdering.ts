@@ -1,4 +1,4 @@
-import type { AiOrderingToolCallingModelResult } from '../../src/modules/aiOrdering/runtime/gemini.js';
+import type { AiOrderingToolCallingModelResult } from '../../src/modules/aiOrdering/runtime/model.js';
 import type { CartDto, PublicMenuDto } from '@repo/shared';
 
 /**

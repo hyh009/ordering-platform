@@ -235,7 +235,11 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `rateLimit.ts` — the limiter interface, plus an in-process implementation used
   by unit tests
 - `rateLimit.redis.ts` — the implementation the service actually uses
-- `runtime/` — LangChain and Gemini wiring, usage accounting, failure mapping
+- `runtime/model.ts` — the provider-agnostic seam: per-turn session, usage
+  accounting, per-call timeout clamp
+- `runtime/gemini.ts` — constructing the Gemini chat model, and nothing else
+- `runtime/messages.ts`, `runtime/failures.ts` — block-to-message mapping,
+  provider failure mapping
 - `promptResolution.ts` — prior prompt and reported outcomes
 
 Persistence:

@@ -11,15 +11,15 @@ import {
   aiOrderingProviderFailureReasons,
   mapAiOrderingProviderFailure,
 } from '../src/modules/aiOrdering/runtime/failures.js';
-import { createAiOrderingModelSession } from '../src/modules/aiOrdering/runtime/gemini.js';
 import {
   isAiOrderingEnabled,
   resolveAiOrderingRuntime,
 } from '../src/modules/aiOrdering/runtime/index.js';
 import { toAiOrderingProviderMessages } from '../src/modules/aiOrdering/runtime/messages.js';
+import { createAiOrderingModelSession } from '../src/modules/aiOrdering/runtime/model.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
 
-import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
+import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/model.js';
 import type { BaseMessage } from '@langchain/core/messages';
 
 const config = AI_ORDERING_V1_2026_09_30;
