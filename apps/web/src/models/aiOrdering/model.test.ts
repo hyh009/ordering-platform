@@ -1,0 +1,124 @@
+import { describe, expect, it } from 'vitest';
+
+import { aiOrderingModel } from './model';
+
+import type { AiOrderingResponseDtoType } from './types';
+
+describe('aiOrderingModel.deserializeResponse', () => {
+  it('maps a message response', () => {
+    expect(
+      aiOrderingModel.deserializeResponse({
+        type: 'message',
+        reply: 'Bubble tea is black tea with milk.',
+      }),
+    ).toEqual({ type: 'message', reply: 'Bubble tea is black tea with milk.' });
+  });
+
+  it('maps a choices response and keeps the free-text flag', () => {
+    const dto: AiOrderingResponseDtoType = {
+      type: 'choices',
+      reply: 'Which size?',
+      promptId: 'prompt-1',
+      question: 'Which size would you like?',
+      inputMode: 'single_choice',
+      options: [
+        { id: 'option-1', label: 'Medium' },
+        { id: 'option-2', label: 'Large', description: 'Plus NT$10' },
+      ],
+      allowFreeText: true,
+    };
+
+    expect(aiOrderingModel.deserializeResponse(dto)).toEqual(dto);
+  });
+
+  it('maps a proposal response across all three operation types', () => {
+    const dto: AiOrderingResponseDtoType = {
+      type: 'proposal',
+      reply: 'Here is what I would change.',
+      proposalId: 'proposal-1',
+      confirmationRequired: true,
+      operations: [
+        {
+          type: 'add_item',
+          operationId: 'op-1',
+          summary: 'Add 1 bubble tea',
+          item: {
+            productId: 'product-1',
+            quantity: 1,
+            selectedOptions: [{ modifierId: 'mod-1', optionId: 'opt-1' }],
+            notes: 'Less ice',
+          },
+        },
+        {
+          type: 'update_own_item',
+          operationId: 'op-2',
+          summary: 'Change to 2 portions',
+          itemId: 'item-1',
+          item: { quantity: 2 },
+        },
+        {
+          type: 'remove_own_item',
+          operationId: 'op-3',
+          summary: 'Remove the rice',
+          itemId: 'item-2',
+        },
+      ],
+    };
+
+    expect(aiOrderingModel.deserializeResponse(dto)).toEqual(dto);
+  });
+
+  it('maps an unanswered response and omits an absent product id', () => {
+    const deserialized = aiOrderingModel.deserializeResponse({
+      type: 'unanswered',
+      reply: 'I cannot tell from the menu.',
+      reason: 'missing_product_info',
+    });
+
+    expect(deserialized).toEqual({
+      type: 'unanswered',
+      reply: 'I cannot tell from the menu.',
+      reason: 'missing_product_info',
+    });
+    // The merchant review surface branches on presence, so an absent id must not
+    // arrive as an explicit `undefined` key.
+    expect(deserialized).not.toHaveProperty('productId');
+  });
+
+  it('keeps the product id when the reason names one', () => {
+    expect(
+      aiOrderingModel.deserializeResponse({
+        type: 'unanswered',
+        reply: 'The menu does not say.',
+        reason: 'missing_product_info',
+        productId: 'product-9',
+      }),
+    ).toMatchObject({ productId: 'product-9' });
+  });
+
+  it('drops a field the contract does not declare', () => {
+    const deserialized = aiOrderingModel.deserializeResponse({
+      type: 'message',
+      reply: 'Sure.',
+      // A server-side addition must not reach the panel until deserialize
+      // allows it through.
+      internalScore: 0.9,
+    } as AiOrderingResponseDtoType);
+
+    expect(deserialized).not.toHaveProperty('internalScore');
+  });
+});
+
+describe('aiOrderingModel.deserializeTurn', () => {
+  it('carries the version id beside the response', () => {
+    expect(
+      aiOrderingModel.deserializeTurn({
+        versionId: 'v1-2026-09-30',
+        response: { type: 'message', reply: 'Sure.' },
+      }),
+    ).toEqual({
+      versionId: 'v1-2026-09-30',
+      response: { type: 'message', reply: 'Sure.' },
+    });
+  });
+});
