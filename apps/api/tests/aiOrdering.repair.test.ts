@@ -4,6 +4,7 @@ import {
   AI_ORDERING_CART_FIXTURE,
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
+  aiOrderingModelReplyFor,
 } from './fixtures/aiOrdering.js';
 import { buildAiOrderingContext } from '../src/modules/aiOrdering/context.js';
 import { planAiOrderingTurn } from '../src/modules/aiOrdering/planner.js';
@@ -39,11 +40,30 @@ function stubModel(outputs: unknown[]) {
   };
 }
 
+/**
+ * The model's answers, as the tool-calling transport delivers them.
+ *
+ * A plain object with a `type` is written as the tool call that carries it; a
+ * reply that is deliberately unusable is passed through untouched.
+ */
+function asModelReplies(answers: unknown[]): unknown[] {
+  return answers.map((answer) =>
+    typeof answer === 'object' &&
+    answer !== null &&
+    'type' in answer &&
+    typeof (answer as { type: unknown }).type === 'string'
+      ? aiOrderingModelReplyFor(
+          answer as Parameters<typeof aiOrderingModelReplyFor>[0],
+        )
+      : answer,
+  );
+}
+
 function planInput(
   outputs: unknown[],
   overrides: Partial<AiOrderingPlanInput> = {},
 ) {
-  const model = stubModel(outputs);
+  const model = stubModel(asModelReplies(outputs));
   let counter = 0;
 
   const input: AiOrderingPlanInput = {
@@ -147,6 +167,22 @@ describe('AI ordering turn planning', () => {
 
       expect(repairNote).toContain('change #2');
       expect(repairNote).toContain('sold out');
+    });
+
+    it('repairs a reply that called no tool and said nothing', async () => {
+      const { input, model } = planInput([
+        { toolCalls: [], text: '' },
+        { type: 'message', reply: '好的。' },
+      ]);
+
+      const result = await planAiOrderingTurn(input);
+
+      // Binding a tool does not force the model to call one, so an empty reply is
+      // a real outcome and gets the same single correction a malformed one does.
+      expect(model.calls).toHaveLength(2);
+      expect(model.calls[1]?.repairNote).toContain('no tool');
+      expect(result.quality.repairAttempted).toBe(true);
+      expect(result.ok && result.response.type).toBe('message');
     });
 
     it('never makes a third call when the repair also fails', async () => {
@@ -260,7 +296,10 @@ describe('AI ordering turn planning', () => {
 
     it('recovers when the first reply did not parse but the repair did', async () => {
       const { input } = planInput([
-        { type: 'not_a_real_type', reply: 'hi' },
+        {
+          toolCalls: [{ name: 'ask_choice', args: { reply: 'hi' } }],
+          text: '',
+        },
         { type: 'message', reply: '好的。' },
       ]);
 

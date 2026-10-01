@@ -4,6 +4,7 @@ import {
   AI_ORDERING_CART_FIXTURE,
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
+  aiOrderingModelReplyFor,
 } from './fixtures/aiOrdering.js';
 import { buildAiOrderingContext } from '../src/modules/aiOrdering/context.js';
 import {
@@ -18,7 +19,7 @@ import {
 import { toAiOrderingProviderMessages } from '../src/modules/aiOrdering/runtime/messages.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
 
-import type { AiOrderingStructuredModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
+import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
 import type { BaseMessage } from '@langchain/core/messages';
 
 const config = AI_ORDERING_V1_2026_09_30;
@@ -34,7 +35,7 @@ const context = buildAiOrderingContext({
   history: [],
 });
 
-function stubModel(results: AiOrderingStructuredModelResult[]) {
+function stubModel(results: AiOrderingToolCallingModelResult[]) {
   const seen: BaseMessage[][] = [];
 
   return {
@@ -42,7 +43,7 @@ function stubModel(results: AiOrderingStructuredModelResult[]) {
     model: {
       invoke: async (messages: BaseMessage[]) => {
         seen.push(messages);
-        return results[seen.length - 1] ?? { parsed: undefined };
+        return results[seen.length - 1] ?? { toolCalls: [], text: '' };
       },
     },
   };
@@ -76,29 +77,52 @@ describe('AI ordering provider messages', () => {
 });
 
 describe('AI ordering model session', () => {
-  it('returns the parsed structured output without touching the network', async () => {
+  it("passes on the model's tool call without touching the network", async () => {
     const { model, seen } = stubModel([
-      { parsed: { type: 'message', reply: '好的。' }, raw: {} },
+      aiOrderingModelReplyFor(
+        {
+          type: 'unanswered',
+          reply: '查不到。',
+          reason: 'missing_product_info',
+        },
+        {},
+      ),
     ]);
 
     const session = createAiOrderingModelSession({ model, config });
     const output = await session.callModel({ context });
 
-    expect(output).toEqual({ type: 'message', reply: '好的。' });
+    expect(output).toEqual({
+      toolCalls: [
+        {
+          name: 'report_unanswerable',
+          args: { reply: '查不到。', reason: 'missing_product_info' },
+        },
+      ],
+      text: '',
+    });
     expect(seen).toHaveLength(1);
   });
 
-  it("falls back to the raw message when the provider's own parse failed", async () => {
+  it('passes on a plain-text reply with no tool call', async () => {
+    const { model } = stubModel([{ toolCalls: [], text: '好的。', raw: {} }]);
+
+    const session = createAiOrderingModelSession({ model, config });
+    const output = await session.callModel({ context });
+
+    expect(output).toEqual({ toolCalls: [], text: '好的。' });
+  });
+
+  it('keeps the provider message out of what the gate and the stored turn see', async () => {
     const { model } = stubModel([
-      { parsed: undefined, raw: 'not json at all' },
+      { toolCalls: [], text: '好的。', raw: { secret: 'provider internals' } },
     ]);
 
     const session = createAiOrderingModelSession({ model, config });
     const output = await session.callModel({ context });
 
-    // Passing it on lets the output gate reject it as malformed, which is more
-    // useful than surfacing a provider error.
-    expect(output).toBe('not json at all');
+    // `raw` exists for usage accounting only. What the model said is the answer.
+    expect(output).not.toHaveProperty('raw');
   });
 
   describe('turn deadline clamps each call', () => {
@@ -113,7 +137,7 @@ describe('AI ordering model session', () => {
             callOptions?: { signal?: AbortSignal },
           ) => {
             options.push(callOptions);
-            return { parsed: { type: 'message', reply: 'ok' }, raw: {} };
+            return { toolCalls: [], text: 'ok', raw: {} };
           },
         },
       };
@@ -156,7 +180,8 @@ describe('AI ordering model session', () => {
     it('records the provider cache-read token count', async () => {
       const { model } = stubModel([
         {
-          parsed: { type: 'message', reply: '好的。' },
+          toolCalls: [],
+          text: '好的。',
           raw: {
             usage_metadata: {
               input_tokens: 4200,
@@ -181,7 +206,8 @@ describe('AI ordering model session', () => {
     it('sums usage across a repair attempt', async () => {
       const { model } = stubModel([
         {
-          parsed: { type: 'message', reply: 'one' },
+          toolCalls: [],
+          text: 'one',
           raw: {
             usage_metadata: {
               input_tokens: 100,
@@ -191,7 +217,8 @@ describe('AI ordering model session', () => {
           },
         },
         {
-          parsed: { type: 'message', reply: 'two' },
+          toolCalls: [],
+          text: 'two',
           raw: {
             usage_metadata: {
               input_tokens: 120,
@@ -214,9 +241,7 @@ describe('AI ordering model session', () => {
     });
 
     it('reports zeros when the provider sent no usage metadata', async () => {
-      const { model } = stubModel([
-        { parsed: { type: 'message', reply: '好的。' }, raw: {} },
-      ]);
+      const { model } = stubModel([{ toolCalls: [], text: '好的。', raw: {} }]);
 
       const session = createAiOrderingModelSession({ model, config });
       await session.callModel({ context });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { aiOrderingModelReplyFor } from './fixtures/aiOrdering.js';
 import { hydrateAiOrderingResponse } from '../src/modules/aiOrdering/modelResponse.js';
 import { inspectAiOrderingModelOutput } from '../src/modules/aiOrdering/outputGate.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
@@ -15,10 +16,18 @@ function gate(output: unknown) {
   return inspectAiOrderingModelOutput(output, config);
 }
 
+/** Gates the answer as the model would have delivered it: as a tool call. */
+function gateAnswer(response: Parameters<typeof aiOrderingModelReplyFor>[0]) {
+  return gate(aiOrderingModelReplyFor(response));
+}
+
 describe('AI ordering output gate', () => {
   describe('rejects hostile or malformed model output', () => {
-    it('rejects output with no type', () => {
-      const result = gate({ reply: 'Sure thing.' });
+    it('rejects a tool call whose arguments are missing the reply', () => {
+      const result = gate({
+        toolCalls: [{ name: 'propose_cart_operations', args: {} }],
+        text: '',
+      });
 
       expect(result.ok).toBe(false);
       expect(result.ok === false && result.rejection.code).toBe(
@@ -26,14 +35,25 @@ describe('AI ordering output gate', () => {
       );
     });
 
-    it('rejects an unknown response type', () => {
-      const result = gate({ type: 'error_fallback', reply: 'oops' });
+    it('rejects a tool nobody bound', () => {
+      const result = gate({
+        toolCalls: [{ name: 'error_fallback', args: { reply: 'oops' } }],
+        text: '',
+      });
 
       expect(result.ok).toBe(false);
+      expect(result.ok === false && result.rejection.code).toBe('no_tool_call');
+    });
+
+    it('rejects provider output that is not a reply at all', () => {
+      // A defect on our side of the boundary rather than a model mistake: the
+      // runtime always produces both fields.
+      expect(gate('not a reply').ok).toBe(false);
+      expect(gate({ nonsense: true }).ok).toBe(false);
     });
 
     it('rejects an operation whose payload has the wrong shape', () => {
-      const result = gate({
+      const result = gateAnswer({
         type: 'proposal',
         reply: 'Adding that now.',
         operations: [
@@ -52,7 +72,7 @@ describe('AI ordering output gate', () => {
     });
 
     it('rejects a reply longer than the version allows', () => {
-      const result = gate({
+      const result = gateAnswer({
         type: 'message',
         reply: 'a'.repeat(config.maxReplyCharacters + 1),
       });
@@ -64,7 +84,7 @@ describe('AI ordering output gate', () => {
     });
 
     it('rejects more operations than the version allows', () => {
-      const result = gate({
+      const result = gateAnswer({
         type: 'proposal',
         reply: 'Quite a lot.',
         operations: Array.from(
@@ -86,7 +106,7 @@ describe('AI ordering output gate', () => {
     it('rejects an operation type that would place an order', () => {
       // Ordering stays a human action. There is no such operation in the model
       // contract, so the attempt cannot even be expressed.
-      const result = gate({
+      const result = gateAnswer({
         type: 'proposal',
         reply: 'Submitting your order.',
         operations: [{ type: 'submit_order', summary: 'Submit' }],
@@ -98,7 +118,7 @@ describe('AI ordering output gate', () => {
 
   describe('accepts well-formed model output', () => {
     it('accepts each of the four response types', () => {
-      const outputs: unknown[] = [
+      const outputs: Parameters<typeof aiOrderingModelReplyFor>[0][] = [
         { type: 'message', reply: '珍珠奶茶是錫蘭紅茶加鮮奶。' },
         {
           type: 'choices',
@@ -126,7 +146,7 @@ describe('AI ordering output gate', () => {
       ];
 
       for (const output of outputs) {
-        expect(gate(output).ok, JSON.stringify(output)).toBe(true);
+        expect(gateAnswer(output).ok, JSON.stringify(output)).toBe(true);
       }
     });
   });
@@ -136,7 +156,7 @@ describe('AI ordering output gate', () => {
       // This is the field that matters most: a model-supplied `false` would skip
       // a store's confirmation step, which only the store setting and the
       // version's own permission may do.
-      const result = gate({
+      const result = gateAnswer({
         type: 'proposal',
         reply: 'Adding that.',
         confirmationRequired: false,
@@ -163,7 +183,7 @@ describe('AI ordering output gate', () => {
     });
 
     it('assigns its own proposal and operation ids', () => {
-      const result = gate({
+      const result = gateAnswer({
         type: 'proposal',
         reply: 'Two things.',
         proposalId: 'proposal-chosen-by-the-model',
@@ -201,7 +221,7 @@ describe('AI ordering output gate', () => {
     });
 
     it('assigns choice option ids and always allows free text', () => {
-      const result = gate({
+      const result = gateAnswer({
         type: 'choices',
         reply: '要什麼甜度？',
         question: '要什麼甜度？',
@@ -233,5 +253,129 @@ describe('AI ordering output gate', () => {
       ]);
       expect(hydrated.options[1]?.description).toBe('完全不加糖');
     });
+  });
+});
+
+describe('AI ordering tool-call transport', () => {
+  it('maps each tool name onto its response type', () => {
+    const cases: [string, unknown, string][] = [
+      [
+        'propose_cart_operations',
+        {
+          reply: '幫你加一份白飯。',
+          operations: [
+            {
+              type: 'add_item',
+              summary: '白飯 x1',
+              item: { productId: 'prod-rice', quantity: 1 },
+            },
+          ],
+        },
+        'proposal',
+      ],
+      [
+        'ask_choice',
+        {
+          reply: '要什麼甜度？',
+          question: '要什麼甜度？',
+          inputMode: 'single_choice',
+          options: [{ label: '半糖' }],
+        },
+        'choices',
+      ],
+      [
+        'report_unanswerable',
+        { reply: '這個我查不到。', reason: 'missing_product_info' },
+        'unanswered',
+      ],
+    ];
+
+    for (const [name, args, expected] of cases) {
+      const result = gate({ toolCalls: [{ name, args }], text: '' });
+
+      expect(result.ok, name).toBe(true);
+      expect(result.ok === true && result.modelResponse.type).toBe(expected);
+    }
+  });
+
+  it('reads a plain-text reply as a message', () => {
+    // The fourth answer is the one the model gives by calling no tool, so there
+    // is no `reply` tool to get wrong.
+    const result = gate({ toolCalls: [], text: '珍珠奶茶是紅茶加鮮奶。' });
+
+    if (!result.ok) {
+      throw new Error('expected a usable message');
+    }
+
+    expect(result.modelResponse).toEqual({
+      type: 'message',
+      reply: '珍珠奶茶是紅茶加鮮奶。',
+    });
+  });
+
+  it('rejects a reply that called no tool and said nothing', () => {
+    // A bound tool is a request, not a guarantee: unlike a response schema,
+    // nothing forces the model to produce one of the four answers.
+    const result = gate({ toolCalls: [], text: '   ' });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.rejection.code).toBe('no_tool_call');
+  });
+
+  it('rejects two tools called at once', () => {
+    const result = gate({
+      toolCalls: [
+        { name: 'ask_choice', args: {} },
+        { name: 'report_unanswerable', args: {} },
+      ],
+      text: '',
+    });
+
+    // A turn has exactly one answer. Picking one of the two would silently drop
+    // an intent the model expressed.
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.rejection.code).toBe(
+      'ambiguous_tool_call',
+    );
+  });
+
+  it('ignores free text that arrives alongside a tool call', () => {
+    const result = gate({
+      toolCalls: [
+        {
+          name: 'report_unanswerable',
+          args: { reply: '這個我查不到。', reason: 'missing_product_info' },
+        },
+      ],
+      text: 'thinking out loud',
+    });
+
+    if (!result.ok) {
+      throw new Error('expected the tool call to be used');
+    }
+
+    // The guest sees the tool's own `reply`, so there is exactly one place it
+    // comes from.
+    expect(result.modelResponse.reply).toBe('這個我查不到。');
+  });
+
+  it('ignores a type the model put in the tool arguments', () => {
+    const result = gate({
+      toolCalls: [
+        {
+          name: 'report_unanswerable',
+          args: {
+            type: 'message',
+            reply: '這個我查不到。',
+            reason: 'missing_product_info',
+          },
+        },
+      ],
+      text: '',
+    });
+
+    // The tool NAME is the discriminator. An argument that contradicts it must
+    // not win, or the model could answer as one type while calling another.
+    expect(result.ok === true && result.modelResponse.type).toBe('unanswered');
   });
 });

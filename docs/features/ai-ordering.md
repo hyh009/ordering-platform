@@ -42,8 +42,9 @@ guest message
   |                                                       |
   |  1st model call                                       |
   v                                                       |
-[ outputGate.ts ]        parse against the MODEL schema    |
-  |                      (shape only, no data access)      |
+[ outputGate.ts ]        read the TOOL CALL, then parse   |
+  |                      against the MODEL schema         |
+  |                      (shape only, no data access)     |
   v                                                       |
 [ validation.ts ]        4 checks against real menu/cart   |
   |                                                       |
@@ -224,6 +225,7 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `prompts/coreInstructions.ts` — the versioned system prompt
 - `context.ts` — block assembly, cart ownership split
 - `modelResponse.ts` — model-facing schema and hydration
+- `tools.ts` — the three bound tools, and reading a tool call as an answer
 - `outputGate.ts` — shape-only gate over untrusted output
 - `validation.ts` — the four data checks
 - `planner.ts` — the turn pipeline and the single repair

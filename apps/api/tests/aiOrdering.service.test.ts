@@ -6,6 +6,7 @@ import {
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_FIXTURE_STORE_ID,
   AI_ORDERING_MENU_FIXTURE,
+  aiOrderingModelReplyFor,
 } from './fixtures/aiOrdering.js';
 import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '../src/models/aiOrdering/model.js';
 import { createInMemoryAiOrderingRateLimiter } from '../src/modules/aiOrdering/rateLimit.js';
@@ -17,7 +18,7 @@ import type {
   AiOrderingTurnSnapshot,
 } from '../src/models/aiOrdering/model.js';
 import type { StoreEntity } from '../src/models/store/model.js';
-import type { AiOrderingStructuredModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
+import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/gemini.js';
 
 const claims = {
   storeId: AI_ORDERING_FIXTURE_STORE_ID,
@@ -78,7 +79,7 @@ type Harness = ReturnType<typeof harness>;
 
 function harness(
   options: {
-    modelResults?: AiOrderingStructuredModelResult[];
+    modelResults?: AiOrderingToolCallingModelResult[];
     existingConversation?: AiOrderingConversationEntity | null;
     storeEntity?: StoreEntity | null;
     versionPermitsAutomaticApplication?: boolean;
@@ -97,16 +98,16 @@ function harness(
   let summaryCalls = 0;
 
   const results = options.modelResults ?? [
-    {
-      parsed: { type: 'message', reply: '珍珠奶茶是紅茶加鮮奶。' },
-      raw: {
+    aiOrderingModelReplyFor(
+      { type: 'message', reply: '珍珠奶茶是紅茶加鮮奶。' },
+      {
         usage_metadata: {
           input_tokens: 4000,
           output_tokens: 40,
           input_token_details: { cache_read: 3500 },
         },
       },
-    },
+    ),
   ];
 
   let counter = 0;
@@ -166,7 +167,7 @@ function harness(
             });
           }
 
-          return results[modelCalls - 1] ?? { parsed: undefined };
+          return results[modelCalls - 1] ?? { toolCalls: [], text: '' };
         },
       }),
       createSummaryCaller: () => async () => {
@@ -227,10 +228,9 @@ describe('AiOrderingService', () => {
   describe('request limits are enforced before the model is called', () => {
     it('refuses past the per-minute rate', async () => {
       const h = harness({
-        modelResults: Array.from({ length: 12 }, () => ({
-          parsed: { type: 'message', reply: 'ok' },
-          raw: {},
-        })),
+        modelResults: Array.from({ length: 12 }, () =>
+          aiOrderingModelReplyFor({ type: 'message', reply: 'ok' }, {}),
+        ),
       });
 
       for (let index = 0; index < 10; index += 1) {
@@ -245,7 +245,9 @@ describe('AiOrderingService', () => {
     it('refuses a second request while one is still in flight', async () => {
       let release: (() => void) | undefined;
       const h = harness({
-        modelResults: [{ parsed: { type: 'message', reply: 'slow' }, raw: {} }],
+        modelResults: [
+          aiOrderingModelReplyFor({ type: 'message', reply: 'slow' }, {}),
+        ],
       });
 
       const gate = new Promise<void>((resolve) => {
@@ -304,9 +306,12 @@ describe('AiOrderingService', () => {
 
       expect(turn?.versionId).toBe(AI_ORDERING_V1_2026_09_30.versionId);
       expect(turn?.modelName).toBe('test-model');
+      // What the model actually said, in the transport's own terms: a replay or a
+      // backstage reader needs to see whether it called a tool, not a shape we
+      // reconstructed from it.
       expect(turn?.modelOutput).toEqual({
-        type: 'message',
-        reply: '珍珠奶茶是紅茶加鮮奶。',
+        toolCalls: [],
+        text: '珍珠奶茶是紅茶加鮮奶。',
       });
     });
 
@@ -328,8 +333,8 @@ describe('AiOrderingService', () => {
     it('stores a turn whose model output was rejected into a degraded reply', async () => {
       const h = harness({
         modelResults: [
-          {
-            parsed: {
+          aiOrderingModelReplyFor(
+            {
               type: 'proposal',
               reply: '這個賣完了。',
               operations: [
@@ -340,10 +345,10 @@ describe('AiOrderingService', () => {
                 },
               ],
             },
-            raw: {},
-          },
-          {
-            parsed: {
+            {},
+          ),
+          aiOrderingModelReplyFor(
+            {
               type: 'proposal',
               reply: '這個賣完了。',
               operations: [
@@ -354,8 +359,8 @@ describe('AiOrderingService', () => {
                 },
               ],
             },
-            raw: {},
-          },
+            {},
+          ),
         ],
       });
 
@@ -372,8 +377,8 @@ describe('AiOrderingService', () => {
     it('snapshots a proposal so the next turn can resolve its outcomes', async () => {
       const h = harness({
         modelResults: [
-          {
-            parsed: {
+          aiOrderingModelReplyFor(
+            {
               type: 'proposal',
               reply: '幫你加白飯。',
               operations: [
@@ -384,8 +389,8 @@ describe('AiOrderingService', () => {
                 },
               ],
             },
-            raw: {},
-          },
+            {},
+          ),
         ],
       });
 
@@ -414,8 +419,8 @@ describe('AiOrderingService', () => {
         versionPermitsAutomaticApplication: false,
         storeEntity: store({ assistant: { autoApplyCartOperations: true } }),
         modelResults: [
-          {
-            parsed: {
+          aiOrderingModelReplyFor(
+            {
               type: 'proposal',
               reply: '幫你加白飯。',
               operations: [
@@ -426,8 +431,8 @@ describe('AiOrderingService', () => {
                 },
               ],
             },
-            raw: {},
-          },
+            {},
+          ),
         ],
       });
 
@@ -444,8 +449,8 @@ describe('AiOrderingService', () => {
         versionPermitsAutomaticApplication: true,
         storeEntity: store({ assistant: { autoApplyCartOperations: true } }),
         modelResults: [
-          {
-            parsed: {
+          aiOrderingModelReplyFor(
+            {
               type: 'proposal',
               reply: '幫你加白飯。',
               operations: [
@@ -456,8 +461,8 @@ describe('AiOrderingService', () => {
                 },
               ],
             },
-            raw: {},
-          },
+            {},
+          ),
         ],
       });
 

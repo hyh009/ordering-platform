@@ -1,7 +1,7 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { aiOrderingModelResponseSchema } from '@src/modules/aiOrdering/modelResponse';
 import { toAiOrderingProviderMessages } from '@src/modules/aiOrdering/runtime/messages';
+import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
 
 import type { BaseMessage } from '@langchain/core/messages';
 import type {
@@ -9,6 +9,7 @@ import type {
   AiOrderingModelCaller,
 } from '@src/modules/aiOrdering/planner';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
+import type { AiOrderingToolCall } from '@src/modules/aiOrdering/tools';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 
 export type AiOrderingProviderUsage = {
@@ -21,9 +22,11 @@ export type AiOrderingProviderUsage = {
   outputTokens: number;
 };
 
-export type AiOrderingStructuredModelResult = {
-  /** The parsed structured output, or undefined when the provider's own parse failed. */
-  parsed?: unknown;
+export type AiOrderingToolCallingModelResult = {
+  /** The tools the model called. Empty when it answered in plain text. */
+  toolCalls: AiOrderingToolCall[];
+  /** Free text the model returned alongside, or instead of, a tool call. */
+  text: string;
   /** The underlying message, carrying usage metadata. */
   raw?: unknown;
 };
@@ -34,11 +37,11 @@ export type AiOrderingStructuredModelResult = {
  * Declared here rather than importing LangChain's types so tests can supply a
  * plain object and never touch the network.
  */
-export type AiOrderingStructuredModel = {
+export type AiOrderingToolCallingModel = {
   invoke(
     messages: BaseMessage[],
     options?: { signal?: AbortSignal },
-  ): Promise<AiOrderingStructuredModelResult>;
+  ): Promise<AiOrderingToolCallingModelResult>;
 };
 
 export type AiOrderingModelSession = {
@@ -111,7 +114,7 @@ function nextCallTimeoutMs(
 }
 
 export function createAiOrderingModelSession(input: {
-  model: AiOrderingStructuredModel;
+  model: AiOrderingToolCallingModel;
   config: AiOrderingVersionConfig;
   /** Epoch milliseconds the whole turn must finish by. */
   deadlineAt?: number;
@@ -140,30 +143,19 @@ export function createAiOrderingModelSession(input: {
     usage.inputTokens += observed.inputTokens ?? 0;
     usage.outputTokens += observed.outputTokens ?? 0;
 
-    // When the provider's own parse failed there is still an answer worth
-    // gating: handing the raw content on lets the output gate reject it as
-    // malformed, which is a far more useful outcome than a provider error.
-    return result.parsed ?? result.raw;
+    // The tool call and any free text are the whole answer; `raw` stays here so
+    // the stored turn carries what the model said rather than a provider message.
+    return { toolCalls: result.toolCalls, text: result.text };
   };
 
   return { callModel, getUsage: () => ({ ...usage }) };
 }
 
 /**
- * Builds the real Gemini-backed structured model.
- *
- * All provider access goes through LangChain rather than the Google SDK, so a
- * later version can compare providers without rewriting this module.
- *
- * `includeRaw` is on because the parsed object alone discards `usage_metadata`,
- * and the cache-read count is the only evidence that prompt ordering is working.
- */
-/**
  * A plain-text call, for work that is not one of the four response types.
  *
- * Summarisation cannot go through the structured model: that model is bound to
- * the response union, so asking it for prose would force the summary into a
- * `message` shape and back out again.
+ * Summarisation gets its own model rather than reusing the assistant's: that one
+ * has the tools bound, and a summary is not one of the things those tools say.
  */
 export type AiOrderingTextModel = {
   invoke(
@@ -230,24 +222,46 @@ export function createGeminiTextModel(input: {
   };
 }
 
-export function createGeminiStructuredModel(input: {
+/**
+ * Builds the real Gemini-backed model, with the assistant's tools bound.
+ *
+ * All provider access goes through LangChain rather than the Google SDK, so a
+ * later version can compare providers without rewriting this module. Only the
+ * binding is LangChain's; the turn loop is ours (design decision 14).
+ *
+ * The whole provider message is passed on as `raw` because it carries
+ * `usage_metadata`, and the cache-read count is the only evidence that the prompt
+ * ordering is working.
+ */
+export function createGeminiToolCallingModel(input: {
   apiKey: string;
   model: string;
-}): AiOrderingStructuredModel {
+}): AiOrderingToolCallingModel {
   const chat = new ChatGoogleGenerativeAI({
     apiKey: input.apiKey,
     model: input.model,
   });
 
-  const structured = chat.withStructuredOutput(aiOrderingModelResponseSchema, {
-    includeRaw: true,
-  });
+  const bound = chat.bindTools(
+    aiOrderingToolDefinitions.map(({ name, description, schema }) => ({
+      name,
+      description,
+      schema,
+    })),
+  );
 
   return {
     async invoke(messages, options) {
-      const result = await structured.invoke(messages, options);
+      const result = await bound.invoke(messages, options);
 
-      return result as AiOrderingStructuredModelResult;
+      return {
+        toolCalls: (result.tool_calls ?? []).map((call) => ({
+          name: call.name,
+          args: call.args,
+        })),
+        text: extractText(result.content),
+        raw: result,
+      };
     },
   };
 }

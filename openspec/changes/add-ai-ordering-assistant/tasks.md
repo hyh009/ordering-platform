@@ -101,3 +101,17 @@
 - [ ] 11.2 Register the feature in `docs/features/index.yaml` and verify the entry resolves to the new file
 - [ ] 11.3 Update `docs/schema/mongo.md` with the conversation model, its relationships, and its two indexes per `docs/agent/backend/mongo-schema.md`, and verify the diagram renders
 - [ ] 11.4 Run the full verification per `docs/agent/workflows/verification.md`: `pnpm run lint`, `pnpm run test`, `pnpm run build`, and list the manual checks that still need a browser, which carry every assertion the web workspace cannot make without a component-test environment: the chat panel rendering each of the four response types, the proposal card's per-row dismiss and single apply, the per-operation result display after a partial failure, automatic-application mode showing no confirmation controls, the assistant entry point being absent when disabled, and the merchant review pages
+
+## 12. Tool-Call Transport
+
+Supersedes the transport chosen in groups 3 and 4 per design decision 2. Those
+tasks were completed as specified and stay checked; this group carries the
+migration from a JSON response schema to bound tools.
+
+- [x] 12.1 Define the assistant's tools (`propose_cart_operations`, `ask_choice`, `report_unanswerable`) with the existing model-facing schemas as their argument schemas, so the narrowed model contract of design decision 18 is preserved rather than rewritten, and verify a test asserts no tool exposes `confirmationRequired` or any backend-generated id
+- [x] 12.2 Switch the runtime from `withStructuredOutput` to `bindTools`, keeping the `AiOrderingStructuredModel` seam so tests still stub a plain object, and verify the runtime test passes with a stub returning `tool_calls` instead of a parsed response
+- [x] 12.3 Read the answer from the model's tool call in the planner, mapping tool name to response type, and verify a test covers one call of each tool plus a plain-text reply mapping to `message`
+- [x] 12.4 Validate tool arguments through the existing gate and the four data checks without restating any rule, and verify the existing output-gate and validation tests still cover the same rejections after the switch
+- [x] 12.5 Treat "the model called no tool and returned no usable text" as an explicit gate rejection with its own reason, since a bound tool is not enforced the way a response schema was, and verify a test feeds back a reply with no tool call and asserts the rejection plus the repair attempt
+- [x] 12.6 Update the affected tests (output gate, repair, runtime, service) to the tool-call shape, and verify the assertions that matter are preserved — at most two model calls, degradation to the model's own reply, backend-owned fields never taken from the model
+- [x] 12.7 Run the transport verification: `pnpm --filter api run test`, `pnpm --filter api run lint`, `pnpm --filter api run build`

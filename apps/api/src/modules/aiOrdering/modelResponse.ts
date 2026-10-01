@@ -12,6 +12,11 @@ import type { AiOrderingResponse } from '@repo/shared';
  * The model-facing response schema — a backend internal, deliberately narrower
  * than the API contract in `packages/shared`.
  *
+ * The model reaches this shape by CALLING A TOOL (see `tools.ts`): the tool name
+ * supplies `type` and the tool arguments supply the rest. The narrowing below is
+ * therefore what the tool argument schemas narrow, and the reasoning is unchanged
+ * by the transport.
+ *
  * The model is asked only for what it alone can decide. Everything the backend
  * can determine is absent here and filled in by `hydrateAiOrderingResponse`,
  * because a field the model cannot emit is a field it cannot get wrong. That is
@@ -63,28 +68,50 @@ const modelOperationSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-export const aiOrderingModelResponseSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('message'),
+/**
+ * The argument schemas for the assistant's tools — one per response type that a
+ * tool carries.
+ *
+ * These are the SAME shapes the response union is built from, minus `type`: the
+ * tool NAME is the discriminator, so repeating it in the arguments would give the
+ * model a second, contradictable way to say what it already said by choosing a
+ * tool. `tools.ts` binds these; the output gate puts `type` back from the tool
+ * name and parses the result through the union below, so there is one schema per
+ * response type and not two.
+ */
+export const aiOrderingModelArgumentSchemas = {
+  message: z.object({
     reply: modelReplySchema,
   }),
-  z.object({
-    type: z.literal('choices'),
+  choices: z.object({
     reply: modelReplySchema,
     question: z.string().trim().min(1).max(500),
     inputMode: z.enum(['single_choice', 'yes_no']),
     options: z.array(modelChoiceSchema).min(1).max(8),
   }),
-  z.object({
-    type: z.literal('proposal'),
+  proposal: z.object({
     reply: modelReplySchema,
     operations: z.array(modelOperationSchema).min(1),
   }),
-  z.object({
-    type: z.literal('unanswered'),
+  unanswered: z.object({
     reply: modelReplySchema,
     reason: z.enum(aiOrderingUnansweredReasons),
     productId: z.string().trim().min(1).max(120).optional(),
+  }),
+} as const;
+
+export const aiOrderingModelResponseSchema = z.discriminatedUnion('type', [
+  aiOrderingModelArgumentSchemas.message.extend({
+    type: z.literal('message'),
+  }),
+  aiOrderingModelArgumentSchemas.choices.extend({
+    type: z.literal('choices'),
+  }),
+  aiOrderingModelArgumentSchemas.proposal.extend({
+    type: z.literal('proposal'),
+  }),
+  aiOrderingModelArgumentSchemas.unanswered.extend({
+    type: z.literal('unanswered'),
   }),
 ]);
 

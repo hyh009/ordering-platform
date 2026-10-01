@@ -122,7 +122,8 @@ function describeProblem(attempt: AiOrderingAttempt): string | null {
  * repair rate and the post-repair failure rate are recorded instead, because
  * they are the sharpest signal for comparing prompt versions.
  *
- * This is not agent tool calling: no result is ever fed back for the model to
+ * The model answers by calling one of the bound tools, but this is not agent
+ * tool calling: nothing executes, and no result is ever fed back for the model to
  * continue reasoning from. It is a single-step correction, and the turn ends
  * either way.
  *

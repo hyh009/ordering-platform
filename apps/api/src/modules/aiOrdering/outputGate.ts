@@ -1,4 +1,8 @@
 import { aiOrderingModelResponseSchema } from '@src/modules/aiOrdering/modelResponse';
+import {
+  readAiOrderingModelReply,
+  readAiOrderingToolAnswer,
+} from '@src/modules/aiOrdering/tools';
 
 import type { AiOrderingModelResponse } from '@src/modules/aiOrdering/modelResponse';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
@@ -6,7 +10,10 @@ import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 export type AiOrderingGateRejectionCode =
   | 'schema_invalid'
   | 'reply_too_long'
-  | 'too_many_operations';
+  | 'too_many_operations'
+  /** Bound tools are not enforced the way a response schema was. */
+  | 'no_tool_call'
+  | 'ambiguous_tool_call';
 
 export type AiOrderingGateRejection = {
   code: AiOrderingGateRejectionCode;
@@ -25,13 +32,40 @@ export type AiOrderingGateResult =
  * needs data this one deliberately does not take, and keeping them apart is what
  * lets this gate stay trivially testable against hand-written hostile output.
  *
+ * It also owns the tool-name-to-response-type mapping. A model that called no
+ * tool, or two at once, is a shape problem like malformed arguments are, so it
+ * belongs in the same rejection set and earns the same one repair attempt.
+ *
  * Treat the input as hostile. It arrived from a language model.
  */
 export function inspectAiOrderingModelOutput(
   output: unknown,
   config: AiOrderingVersionConfig,
 ): AiOrderingGateResult {
-  const parsed = aiOrderingModelResponseSchema.safeParse(output);
+  const reply = readAiOrderingModelReply(output);
+
+  if (!reply) {
+    return {
+      ok: false,
+      rejection: {
+        code: 'schema_invalid',
+        detail: 'provider output was not a model reply',
+      },
+    };
+  }
+
+  const answer = readAiOrderingToolAnswer(reply);
+
+  if (!answer.ok) {
+    return {
+      ok: false,
+      rejection: { code: answer.code, detail: answer.detail },
+    };
+  }
+
+  // The tool name supplied `type`, so the answer goes through the same union the
+  // arguments were narrowed from — one set of rules, stated once.
+  const parsed = aiOrderingModelResponseSchema.safeParse(answer.candidate);
 
   if (!parsed.success) {
     return {

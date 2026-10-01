@@ -1,20 +1,20 @@
 import { env } from '@src/config/env';
 import {
   createAiOrderingSummaryCaller,
-  createGeminiStructuredModel,
+  createGeminiToolCallingModel,
   createGeminiTextModel,
 } from '@src/modules/aiOrdering/runtime/gemini';
 import { resolveAiOrderingVersion } from '@src/modules/aiOrdering/versions';
 import { logger } from '@src/utils/logger';
 
-import type { AiOrderingStructuredModel } from '@src/modules/aiOrdering/runtime/gemini';
+import type { AiOrderingToolCallingModel } from '@src/modules/aiOrdering/runtime/gemini';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 
 export type AiOrderingRuntime = {
   config: AiOrderingVersionConfig;
   modelName: string;
-  createModel(): AiOrderingStructuredModel;
+  createModel(): AiOrderingToolCallingModel;
   /**
    * Plain-text call used to rebuild the rolling summary.
    *
@@ -77,7 +77,7 @@ export function resolveAiOrderingRuntime(
     config,
     modelName: settings.modelName,
     createModel: () =>
-      createGeminiStructuredModel({ apiKey, model: settings.modelName }),
+      createGeminiToolCallingModel({ apiKey, model: settings.modelName }),
     createSummaryCaller: (deadlineAt?: number) =>
       createAiOrderingSummaryCaller({
         model: createGeminiTextModel({ apiKey, model: settings.modelName }),
