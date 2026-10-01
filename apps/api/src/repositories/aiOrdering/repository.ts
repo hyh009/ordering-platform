@@ -18,6 +18,30 @@ export type CreateAiOrderingConversationInput = {
   participantId: string;
 };
 
+export type ListAiOrderingConversationsInput = {
+  storeId: string;
+  skip: number;
+  limit: number;
+};
+
+export type FindAiOrderingConversationByIdInput = {
+  storeId: string;
+  conversationId: string;
+};
+
+export type ListAiOrderingUnansweredInput = {
+  storeId: string;
+  skip: number;
+  limit: number;
+  reason?: string;
+};
+
+export type AiOrderingUnansweredRow = {
+  conversationId: string;
+  participantId: string;
+  turn: AiOrderingTurnSnapshot;
+};
+
 export type AiOrderingRepository = {
   /**
    * The one conversation for this guest's (storeId, cartId, participantId).
@@ -52,6 +76,28 @@ export type AiOrderingRepository = {
   updateSummary(
     input: UpdateAiOrderingSummaryInput,
   ): Promise<AiOrderingConversationEntity | null>;
+  /** Newest first. The merchant list reads this; guests never do. */
+  listByStore(
+    input: ListAiOrderingConversationsInput,
+  ): Promise<AiOrderingConversationEntity[]>;
+  countByStore(storeId: string): Promise<number>;
+  /**
+   * `storeId` is part of the filter, not checked afterwards, so a conversation
+   * id from another store resolves to `null` rather than to a document the
+   * caller then has to remember to reject.
+   */
+  findById(
+    input: FindAiOrderingConversationByIdInput,
+  ): Promise<AiOrderingConversationEntity | null>;
+  /**
+   * Unanswered turns across the store, one row per TURN rather than per
+   * conversation, so the merchant's list paginates over the thing they are
+   * reading. Newest first.
+   */
+  listUnanswered(
+    input: ListAiOrderingUnansweredInput,
+  ): Promise<AiOrderingUnansweredRow[]>;
+  countUnanswered(input: { storeId: string; reason?: string }): Promise<number>;
 };
 
 export type UpdateAiOrderingSummaryInput = {

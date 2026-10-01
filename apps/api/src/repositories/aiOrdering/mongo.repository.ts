@@ -9,8 +9,12 @@ import type {
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
 import type {
+  AiOrderingUnansweredRow,
   CreateAiOrderingConversationInput,
+  FindAiOrderingConversationByIdInput,
   FindAiOrderingConversationInput,
+  ListAiOrderingConversationsInput,
+  ListAiOrderingUnansweredInput,
   UpdateAiOrderingSummaryInput,
 } from '@src/repositories/aiOrdering/repository';
 
@@ -109,6 +113,94 @@ export const aiOrderingMongoRepository = {
     throw new ConflictError(
       `AI ordering conversation "${conversationId}" has reached its limit of ${AI_ORDERING_MAX_TURNS_PER_CONVERSATION} turns.`,
     );
+  },
+
+  async listByStore(input: ListAiOrderingConversationsInput) {
+    // `{ storeId, createdAt: -1 }` is one of the collection's two indexes, and
+    // this is the query it exists for.
+    const docs = await AiOrderingConversationMongoModel.find({
+      storeId: input.storeId,
+    })
+      .sort({ createdAt: -1 })
+      .skip(input.skip)
+      .limit(input.limit)
+      .lean<AiOrderingConversationEntity[]>()
+      .exec();
+
+    return docs.map(toAiOrderingConversationEntity);
+  },
+
+  async countByStore(storeId: string) {
+    return AiOrderingConversationMongoModel.countDocuments({ storeId }).exec();
+  },
+
+  async findById(input: FindAiOrderingConversationByIdInput) {
+    const doc = await AiOrderingConversationMongoModel.findOne({
+      id: input.conversationId,
+      storeId: input.storeId,
+    })
+      .lean<AiOrderingConversationEntity>()
+      .exec();
+
+    return doc ? toAiOrderingConversationEntity(doc) : null;
+  },
+
+  async listUnanswered(
+    input: ListAiOrderingUnansweredInput,
+  ): Promise<AiOrderingUnansweredRow[]> {
+    // Unwound server-side rather than fetching conversations and filtering in
+    // the service: one conversation can hold several unanswered turns, and the
+    // merchant paginates over turns, so the page boundary has to be computed
+    // where the turns are.
+    const rows = await AiOrderingConversationMongoModel.aggregate<{
+      conversationId: string;
+      participantId: string;
+      turn: AiOrderingTurnSnapshot;
+    }>([
+      { $match: { storeId: input.storeId } },
+      { $unwind: '$turns' },
+      {
+        $match: {
+          'turns.response.type': 'unanswered',
+          ...(input.reason !== undefined
+            ? { 'turns.response.reason': input.reason }
+            : {}),
+        },
+      },
+      { $sort: { 'turns.createdAt': -1 } },
+      { $skip: input.skip },
+      { $limit: input.limit },
+      {
+        $project: {
+          _id: 0,
+          conversationId: '$id',
+          participantId: '$participantId',
+          turn: '$turns',
+        },
+      },
+    ]).exec();
+
+    return rows;
+  },
+
+  async countUnanswered(input: { storeId: string; reason?: string }) {
+    const rows = await AiOrderingConversationMongoModel.aggregate<{
+      total: number;
+    }>([
+      { $match: { storeId: input.storeId } },
+      { $unwind: '$turns' },
+      {
+        $match: {
+          'turns.response.type': 'unanswered',
+          ...(input.reason !== undefined
+            ? { 'turns.response.reason': input.reason }
+            : {}),
+        },
+      },
+      { $count: 'total' },
+    ]).exec();
+
+    return rows[0]?.total ?? 0;
   },
 
   async updateSummary(input: UpdateAiOrderingSummaryInput) {
