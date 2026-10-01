@@ -209,3 +209,125 @@ export type AiOrderingTurnResponseData = z.infer<
 
 export type SendAiOrderingMessageSuccessResponse =
   ApiSuccessResponse<AiOrderingTurnResponseData>;
+
+// ── Merchant review ──────────────────────────────────────────────────────────
+// The backstage view of stored conversations. Read-only: nothing here lets a
+// merchant edit a turn, because the corpus is evidence of what the assistant
+// actually said.
+
+export const aiOrderingConversationParamsSchema = z.object({
+  storeId: z.string().trim().min(1),
+  conversationId: aiOrderingIdSchema,
+});
+
+export const listAiOrderingConversationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+
+export const listAiOrderingUnansweredQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+  reason: z.enum(aiOrderingUnansweredReasons).optional(),
+});
+
+/**
+ * A conversation as the list shows it.
+ *
+ * `unansweredCount` is on the summary rather than left to the detail view
+ * because it is what a merchant scans the list FOR: a conversation full of
+ * questions the assistant could not answer is the one worth opening.
+ */
+export type AiOrderingConversationSummaryDto = {
+  id: string;
+  cartId: string;
+  participantId: string;
+  turnCount: number;
+  unansweredCount: number;
+  lastTurnAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One stored turn, as the merchant sees it.
+ *
+ * `versionFingerprint` travels with `versionId` because a draft version's file
+ * may be edited between two turns that share an id.
+ *
+ * Quality signals are exposed rather than kept internal: a turn whose output was
+ * repaired, or whose operations were dropped, is the evidence that a prompt
+ * version needs work, and hiding it would leave the review surface unable to
+ * show why.
+ */
+export type AiOrderingReviewTurnDto = {
+  id: string;
+  message: string;
+  response: AiOrderingResponse;
+  versionId: string;
+  versionFingerprint: string;
+  provider: string;
+  modelName: string;
+  repairAttempted: boolean;
+  repairSucceeded?: boolean;
+  droppedOperationCount: number;
+  ownershipViolationCount: number;
+  createdAt: string;
+};
+
+export type AiOrderingConversationDetailDto = {
+  id: string;
+  storeId: string;
+  cartId: string;
+  participantId: string;
+  summary?: string;
+  turns: AiOrderingReviewTurnDto[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One question the assistant could not answer, flattened out of its turn.
+ *
+ * `productId` is present only when the reason is `missing_product_info` and the
+ * assistant could name the product. Those entries are the actionable ones: they
+ * are a list of products whose description is not good enough.
+ */
+export type AiOrderingUnansweredEntryDto = {
+  conversationId: string;
+  turnId: string;
+  participantId: string;
+  message: string;
+  reply: string;
+  reason: AiOrderingUnansweredReason;
+  productId?: string;
+  createdAt: string;
+};
+
+export type AiOrderingConversationParams = z.infer<
+  typeof aiOrderingConversationParamsSchema
+>;
+export type ListAiOrderingConversationsQuery = z.infer<
+  typeof listAiOrderingConversationsQuerySchema
+>;
+export type ListAiOrderingUnansweredQuery = z.infer<
+  typeof listAiOrderingUnansweredQuerySchema
+>;
+
+export type ListAiOrderingConversationsSuccessResponse = ApiSuccessResponse<{
+  conversations: AiOrderingConversationSummaryDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}>;
+
+export type GetAiOrderingConversationSuccessResponse = ApiSuccessResponse<{
+  conversation: AiOrderingConversationDetailDto;
+}>;
+
+export type ListAiOrderingUnansweredSuccessResponse = ApiSuccessResponse<{
+  entries: AiOrderingUnansweredEntryDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}>;
