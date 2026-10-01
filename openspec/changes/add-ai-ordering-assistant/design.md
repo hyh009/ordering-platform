@@ -87,33 +87,38 @@ change, not a patch to this one.
 Consequence: the cart is mutated by the existing path only, so cart validation,
 optimistic concurrency, and SSE stay authoritative and untouched.
 
-### 2. One model call per turn, whole menu in context. Tool calling deferred.
+### 2. One model call per turn. Tools are the output channel; menu retrieval is deferred.
 
-The menu and the guest's cart are assembled into the prompt. The model returns
-one structured response, and the turn ends.
+The menu and the guest's cart are assembled into the prompt. Tools are bound to
+the model, and the model answers by calling one of them:
 
-Tool calling is **deferred, not rejected**. Once a menu is large, letting the
-model search it is likely the better design, and this decision should be
-revisited then rather than defended. It is out of v1 for two reasons:
+```txt
+  propose_cart_operations   -> a proposal
+  ask_choice                -> a choice question
+  report_unanswerable       -> cannot answer, with a reason
+  plain text reply          -> a message
+```
 
-- Simplicity is the explicit goal for the first version, and a loop brings
-  budgets, deduplication, termination rules, and observation compression with
-  it.
-- The trade-off is not clean even for a large menu. To choose a sensible search
-  the model realistically still needs every product NAME up front, so a
-  retrieval design does not simply remove the menu from the prompt - it removes
-  part of it and adds a loop. Deciding where that line falls needs real menus
-  and real traffic, neither of which exists yet.
+**The tool call IS the turn's final answer.** Nothing executes, no result is
+returned into the model, and the turn ends. The proposal still goes to the
+frontend for the guest to accept, so decisions 1 and 17 are untouched.
 
-When it is time, retrieval becomes a NEW version compared against the old one on
-the same corpus, which is what decision 8 exists to support.
+An earlier version of this decision deferred tool calling as a whole. That was a
+misreading on our side: two separate things were collapsed into one.
 
-Note on transport: the provider's function-calling API may be used as the
-transport for the structured response if it yields better schema adherence than
-plain structured output. That stays a single call - the model's function call IS
-the final answer, so there is no second call for a result to be returned into.
-This is a description of the v1 flow, not a rule against feeding tool results to
-a model; doing exactly that is what a future retrieval version will do.
+- **Menu retrieval tools stay deferred.** The reasoning is that even with
+  retrieval the model realistically needs every product NAME up front to pick a
+  sensible search term, so it does not remove the menu from the prompt - it
+  removes part of it and adds a loop. Where that line falls needs real menus and
+  real traffic, neither of which exists yet.
+- **Cart and choice tools were never the thing being deferred.** They were
+  expected from the start, and expressing them as tools rather than as a JSON
+  response schema is what this decision now settles.
+
+When menu retrieval is designed, it becomes a NEW version compared against the
+old one on the same corpus, which is what decision 8 exists to support. The tool
+argument schemas do not change when that happens - only whether a result is fed
+back - so the two steps are independent.
 
 ### 3. Validate before showing, with at most one repair retry.
 
@@ -291,7 +296,7 @@ first. Both below were reviewed and approved:
 
 No TTL index: carts self-delete, conversations must not (see decision 11).
 
-### 13. Streaming is deferred to a later version, with the schema hook set now.
+### 13. Streaming is deferred to a later version.
 
 A `proposal` or `choices` response cannot be rendered until its payload has
 parsed, so streaming only ever benefits a plain `message` reply - one of the
@@ -307,41 +312,45 @@ One objection turned out not to apply: the repair retry (decision 3) validates
 cart operations, and a plain `message` carries none, so streaming a reply can
 never be followed by a retry that retracts text the guest already read.
 
-**Hook set now:** the response schema declares `type` as its FIRST property with
-explicit property ordering. An incremental parser can then identify the response
-type before the reply text arrives, which is the only thing that makes selective
-streaming possible. Setting the order now means adding streaming later needs no
-contract change.
+**How the type is identified early:** on the tool path this comes for free. The
+tool NAME is the discriminator and it arrives before its arguments, so an
+incremental parser knows the response type without any ordering rule.
+
+The API contract still declares `type` as the first property of every response
+variant, which matters for a client parsing the HTTP response progressively. It
+is no longer what makes the model's own output identifiable early - decision 2
+replaced the JSON response schema with tool calls, and a tool call has no
+property order to rely on.
 
 The existing guest SSE stream carries cart synchronization and is not reused
 here.
 
-### 14. LangChain is the model layer, not an agent framework.
+### 14. LangChain binds the tools; the loop stays ours.
 
-The provider is Gemini, reached through LangChain's `ChatGoogleGenerativeAI`
-with `withStructuredOutput()` for the response schema. `GEMINI_API_KEY` is
-already present in `apps/api/.env`; env validation follows
+The provider is Gemini, reached through LangChain's `ChatGoogleGenerativeAI` with
+`bindTools()` for the tools in decision 2. `GEMINI_API_KEY` is already present in
+`apps/api/.env`; env validation follows
 `docs/agent/backend/architecture.md` - Environment.
 
 All provider access goes through LangChain; the Gemini SDK is not called
-directly. LangChain is used for the provider abstraction and structured-output
-binding only - `createAgent`, LangGraph, and tool binding are not used in v1,
-per decision 2. Adopting LangChain now is about swapping providers cheaply when
-comparing versions, and about giving a future retrieval version somewhere to
-grow into.
+directly. LangChain's role is the provider abstraction and the tool binding -
+nothing more. Adopting it is about swapping providers cheaply when comparing
+versions, and about giving a future retrieval version somewhere to grow into.
 
-Alternative considered: adopting `createAgent` / LangGraph now so the scaffolding
-exists when tools arrive. Rejected for v1. With no tools bound, an agent is a
-single model call wrapped in extra layers, and the framework owns the control
-loop - while this design needs specific control between the model and the guest:
-the repair retry, the four-type response gate, and per-turn persistence of raw
-model output. Adopting a loop framework before knowing what the loop must do
-costs control now and saves little later, because `bindTools()` is available on
-this same chat model whenever it is wanted. Nothing here forbids tool binding;
-v1 simply has nothing to bind. When retrieval is designed (decision 2), the
-budgets, deduplication, and observation compression it needs are exactly the
-knowledge required to choose between a hand-written loop and LangGraph - and
-that knowledge does not exist yet.
+Alternative considered: `createAgent` / LangGraph, so the loop machinery exists
+when executing tools arrive. Rejected, and the reason is testability rather than
+weight.
+
+A framework-owned loop decides for itself when to stop and how to shape the
+result, so tests have to assert on framework behavior. The current suite can
+assert things like "there is never a third model call" only because the loop is
+ours; hand that loop to LangGraph and that assertion becomes a statement about
+LangGraph. Tests would turn integration-shaped and brittle, and the stubbing that
+keeps 500-plus tests free of network and cost would get harder.
+
+This holds even when executing tools do arrive: the loop should stay
+hand-written, because everything inside it is a product decision - tool budgets,
+termination, degradation, the quality signals. LangChain keeps binding the tools.
 
 This is compatible with decision 15: the message array passed to
 `ChatGoogleGenerativeAI` maps onto the provider request in order, with the
@@ -479,12 +488,15 @@ silent workaround.
 
 ### 18. The model is asked for less than the API returns.
 
-A model-facing response schema, internal to the backend, sits inside the output
-gate and is deliberately narrower than the contract in `packages/shared`. The
-gate parses model output against it and then hydrates the result into the API
-response, supplying every backend-owned field.
+The model-facing schemas are the tools' ARGUMENT schemas, internal to the backend
+and deliberately narrower than the contract in `packages/shared`. The gate
+validates a tool call's arguments against them and then hydrates the result into
+the API response, supplying every backend-owned field.
 
-Absent from the model's schema: `confirmationRequired`, `proposalId`,
+The mechanism changed with decision 2 - a response schema became tool arguments -
+but the rule did not: the model is asked only for what it alone can decide.
+
+Absent from what the model can supply: `confirmationRequired`, `proposalId`,
 `promptId`, `operationId`, `allowFreeText`, and choice option ids.
 
 `confirmationRequired` is the one that forces this. If the model could emit it, a
@@ -499,9 +511,44 @@ to prevent rather than detect. Option ids in particular are assigned at hydratio
 and stored with the prompt, so a guest's later `selectedOptionId` always resolves
 against something the backend issued.
 
-The model boundary is not an app boundary, so this schema stays out of
-`packages/shared`. Adding a field to it is a claim that the value cannot be
-computed from config, store data, cart state, or the conversation.
+The model boundary is not an app boundary, so these schemas stay out of
+`packages/shared`. Adding a field is a claim that the value cannot be computed
+from config, store data, cart state, or the conversation.
+
+### 19. Tools do not execute; outcomes reach the model on the next turn.
+
+Decision 2 binds tools but never runs them, so the model does not learn what
+became of its own proposal until the guest's next message carries
+`previousOutcome` (decision 5).
+
+This is a deliberate deferral of something genuinely wanted: the model seeing the
+result of its own action, so it can react when something goes wrong. Two things
+already cover most of that ground - validation rejects an impossible operation
+before the guest ever sees it, and `previousOutcome` reports acceptance,
+dismissal and execution failure on the following turn. What is missing is only
+immediacy: the assistant cannot say "added, that comes to 280, want a side?"
+without the guest typing again.
+
+Two ways forward, recorded so the choice is informed rather than rediscovered:
+
+- **A turn carrying only an outcome.** After the guest accepts, the client sends
+  another turn with `previousOutcome` and no message, and the assistant replies to
+  the result. This needs no execution, no suspended state, and no reversal of any
+  decision - only a contract change, since `message` is currently required. It
+  buys the immediacy without the machinery.
+- **Executing tools.** The backend runs the operation and feeds the result back,
+  which allows multi-step self-correction inside one turn and catches conflicts
+  that only appear at execution time. It reverses decision 1, removes the moment
+  the guest accepts anything, and therefore needs the confirmation flow
+  redesigned - either automatic application or the suspended-run machinery
+  decision 1 already rejected.
+
+Cost of evaluation is part of this choice. With tools that do not execute, an
+eval case is exactly one provider call and touches no state, so a corpus can be
+replayed cheaply and repeatedly. Executing tools make the call count per case
+variable - a worse version costs more to evaluate, which is backwards - and each
+run mutates carts, so the harness needs throwaway state or no-op tools that no
+longer test the real path.
 
 ## Risks / Trade-offs
 
