@@ -16,6 +16,7 @@ export function fromStore(store: Store): StoreFormValues {
       closeTime: h.closeTime ?? '',
     })),
     orderModes: store.operation.orderModes,
+    autoApplyCartOperations: store.assistant?.autoApplyCartOperations ?? false,
   };
 }
 
@@ -62,6 +63,14 @@ export function toUpdateStoreRequest(
     if (businessHoursChanged) operation.businessHours = buildBusinessHours(current.businessHours);
     if (orderModesChanged) operation.orderModes = current.orderModes;
     patch.operation = operation;
+  }
+
+  if (
+    original.autoApplyCartOperations !== current.autoApplyCartOperations
+  ) {
+    patch.assistant = {
+      autoApplyCartOperations: current.autoApplyCartOperations,
+    };
   }
 
   return patch;
