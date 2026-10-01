@@ -502,6 +502,10 @@ describe('public store and menu', () => {
     ]);
     expect(store.organizationId).toBeUndefined();
     expect(store.status).toBeUndefined();
+    // The suite boots with the AI variables unset, which is the deployment
+    // default. The storefront hides the assistant entry point on this flag, so
+    // it has to be present and false rather than absent.
+    expect(store.assistantEnabled).toBe(false);
   });
 
   it('returns 404 for a disabled store', async () => {

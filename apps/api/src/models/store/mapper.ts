@@ -54,7 +54,7 @@ export function toStoreDto(store: StoreEntity): StoreDto {
       store.operation.guestOrderingDurationMinutes;
   }
 
-  return {
+  const dto: StoreDto = {
     id: store.id,
     organizationId: store.organizationId,
     profile,
@@ -67,9 +67,28 @@ export function toStoreDto(store: StoreEntity): StoreDto {
     createdAt: store.createdAt.toISOString(),
     updatedAt: store.updatedAt.toISOString(),
   };
+
+  // Absent on a store that never touched the assistant, so the merchant form can
+  // tell "never configured" from "configured off".
+  if (store.assistant !== undefined) {
+    dto.assistant = {
+      autoApplyCartOperations: store.assistant.autoApplyCartOperations,
+    };
+  }
+
+  return dto;
 }
 
-export function toPublicStoreDto(store: StoreEntity): PublicStoreDto {
+/**
+ * `context` carries the facts that are not the store's. `assistantEnabled` is a
+ * deployment fact, so the mapper is told rather than reaching for it: this file
+ * maps entities and must not learn to read configuration. It is required so a
+ * new caller cannot quietly ship `false`.
+ */
+export function toPublicStoreDto(
+  store: StoreEntity,
+  context: { assistantEnabled: boolean },
+): PublicStoreDto {
   const dto: PublicStoreDto = {
     id: store.id,
     displayName: store.profile.displayName,
@@ -82,6 +101,7 @@ export function toPublicStoreDto(store: StoreEntity): PublicStoreDto {
     orderModes: store.operation.orderModes
       .filter((mode) => mode.isEnabled)
       .map((mode) => ({ type: mode.type, checkoutMode: mode.checkoutMode })),
+    assistantEnabled: context.assistantEnabled,
   };
 
   if (store.profile.description !== undefined) {

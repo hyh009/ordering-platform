@@ -6,6 +6,7 @@ import { sortProductsByCategoryOrder } from '@src/models/product/order';
 import { toPublicModifierDto } from '@src/models/productModifier/mapper';
 import { toPublicStoreDto } from '@src/models/store/mapper';
 import { toPublicTagDto } from '@src/models/tag/mapper';
+import { isAiOrderingEnabled } from '@src/modules/aiOrdering/runtime/index';
 import { allergenRepository } from '@src/repositories/allergen/repository';
 import { categoryRepository } from '@src/repositories/category/repository';
 import { dietaryMarkerRepository } from '@src/repositories/dietaryMarker/repository';
@@ -39,7 +40,9 @@ export class PublicStoreService {
 
   public async getPublicStore(storeId: string): Promise<PublicStoreDto> {
     const store = await this.getActivePublicStore(storeId);
-    return toPublicStoreDto(store);
+    return toPublicStoreDto(store, {
+      assistantEnabled: isAiOrderingEnabled(),
+    });
   }
 
   public async getPublicMenu(storeId: string): Promise<PublicMenuDto> {
