@@ -5,7 +5,8 @@ import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
-import type { CartItem, OrderingParticipant } from '@/models/cart';
+import { groupCartItemsByParticipant } from '@/models/cart';
+import type { CartItem } from '@/models/cart';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
 import {
   handleStoreFrontFailure,
@@ -116,28 +117,10 @@ export function useCartPageVM() {
     void runInitialize(() => true);
   }, [runInitialize]);
 
-  const participantGroups = useMemo((): Array<{
-    participant: OrderingParticipant;
-    items: CartItem[];
-    isCurrentUser: boolean;
-  }> => {
-    if (!cart) return [];
-    const byId = new Map<string, CartItem[]>();
-    for (const item of cart.items) {
-      const key = item.addedByParticipantId ?? 'unknown';
-      const bucket = byId.get(key);
-      if (bucket) {
-        bucket.push(item);
-      } else {
-        byId.set(key, [item]);
-      }
-    }
-    return cart.participants.map((participant) => ({
-      participant,
-      items: byId.get(participant.id) ?? [],
-      isCurrentUser: participant.id === participantId,
-    }));
-  }, [cart, participantId]);
+  const participantGroups = useMemo(
+    () => groupCartItemsByParticipant(cart, participantId),
+    [cart, participantId],
+  );
 
   const totalItems = useMemo(
     () => cart?.items.reduce((sum, i) => sum + i.quantity, 0) ?? 0,
