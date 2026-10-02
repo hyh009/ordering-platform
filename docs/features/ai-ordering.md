@@ -263,6 +263,88 @@ Stability belongs to the version, preference belongs to the store. A version
 experiment can never weaken a store's confirmation step; a store that wants
 confirmation always gets it.
 
+## The Transcript Belongs To The Server, Not The Panel
+
+The panel's transcript is in-memory zustand state in a module-level singleton, so
+it survives collapsing the panel and navigating between storefront pages. It does
+not survive a reload — and the conversation does, because the assistant reads all
+of it on every turn. Without a read endpoint that left the worst possible state:
+a blank panel beside an assistant answering as though mid-conversation.
+
+```txt
+  GET /v1/public/guest/ai-ordering/conversation
+    requireGuest only — no requireOpenStore, no runtime, no rate limiter
+    scoped by (storeId, cartId, participantId) from the token
+```
+
+Three things the read deliberately does not do, all for the same reason — reading
+back what you already said is not a turn:
+
+- **no runtime resolution**, so the transcript survives the assistant being
+  switched off or losing its credentials;
+- **no rate limiter**, so reopening the panel cannot spend the budget for
+  actually talking;
+- **no open-store requirement**, so a guest can read back what they discussed
+  after the store closed.
+
+`AiOrderingGuestTurnDto` is a separate narrowing from `AiOrderingReviewTurnDto`
+over the same stored turn, not a subset of it. The fingerprint, provider, model
+name, and quality signals exist to tell a merchant why a version needs work; a
+storefront response must not carry them.
+
+The panel reads on first open, not with the menu: a guest who never opens it
+should not pay for the request. `loadConversation` is idempotent per conversation,
+so the panel asks on every open and only the first call reaches the network.
+
+### A Restored Proposal Is A Record, Not A Decision
+
+The last stored turn can be a proposal, and the server does not know what became
+of it — an outcome is reported only when the guest sends their **next** message.
+So a proposal that is the last turn is indistinguishable from one the guest
+already applied before reloading, and restoring an Apply button on it would add
+the same items to the cart twice.
+
+Each proposal in the transcript is therefore drawn in one of three states:
+
+| state     | when                                             | drawn as                                             |
+| --------- | ------------------------------------------------ | ---------------------------------------------------- |
+| `live`    | the guest is deciding on it now                  | the full card, with apply, dismiss and retry         |
+| `history` | an earlier proposal, already answered            | its rows, read-only                                  |
+| `stale`   | the latest proposal with no live state behind it | its rows, read-only, plus a line saying to ask again |
+
+Nothing is thrown away: the rows are rendered from the turn itself, so the guest
+reads what was suggested and can ask for it again. Making `stale` actionable
+needs the client to report an outcome when it happens rather than only on the next
+message — a separate change, not a tweak here.
+
+## When Apply Fails, The Row Scope Decides What Happens Next
+
+Applying is one cart call per row, in the proposal's order. A failure is
+classified in `features/storeFront/aiOrdering/commands.ts` as either scope:
+
+| scope     | reasons                                                                                                                             | the loop  | the guest                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------- |
+| `item`    | `sold-out`, `not-found`, `invalid`, `unknown`                                                                                       | continues | that row gets a reason; the others still apply |
+| `session` | `session-expired`, `session-store-mismatch`, `store-closed`, `order-locked`, `cart-not-active`, `rate-limited`, `network`, `server` | stops     | a toast, and the untried rows stay offered     |
+
+The question each reason answers is **does this say anything about the rows after
+it**. A sold-out product says nothing about the next row, so stopping would
+abandon changes that would have worked. A locked cart or a dead connection says
+everything about them, so continuing only produces N copies of one error. The
+table is exhaustive over the reason union, so a new reason cannot be added
+without answering that question.
+
+The reason then reaches the guest. `assistantPanelView.ts` maps it to a
+presentation kind — several reasons collapse where the guest's situation is the
+same — and a retry control appears only on the kinds where a second attempt could
+plausibly succeed. A retry button on a sold-out product would read as the guest's
+fault when it fails again.
+
+A retry re-runs that one operation and replaces the row outright, which is what
+drops a stale reason from a row that now reads as added. Nothing extra reports
+it: the outcome sent to the assistant is read off the rows when the next message
+is sent, so a retried row is reported as `accepted` like any other.
+
 ## Data
 
 One conversation per `(storeId, cartId, participantId)` — in a shared cart each
@@ -415,9 +497,21 @@ Storefront panel:
 - the proposal card shows one row per operation with its own dismiss control and
   a single apply at the bottom
 - after a partial failure, each row shows its own result
+- a failed row shows a reason in the guest's terms, and a retry control only on
+  the reasons where retrying could succeed (`network`, `server`, `rate-limited`,
+  `unknown`)
+- a retry that succeeds replaces the reason rather than leaving it under a row
+  that now reads as added
+- an apply that aborted part-way still offers Apply for the rows it never
+  attempted
 - with automatic application resolved on, no confirmation controls appear
 - the assistant entry point is absent entirely when `assistantEnabled` is false
 - the transcript opens scrolled to the latest exchange
+- the panel shows a spinner on first open, and the empty-state hint only after
+  the read confirms there is nothing stored
+- after a reload the transcript comes back, and a proposal that was the last turn
+  comes back read-only with the ask-again line
+- a restored transcript ending on a `choices` question still answers that question
 
 Merchant review:
 
