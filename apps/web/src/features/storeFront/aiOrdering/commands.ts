@@ -278,9 +278,15 @@ export function createStoreFrontAiOrderingCommands(deps: {
     },
 
     async applyProposal(expectedStoreId) {
-      const proposal = store.getState().proposal;
+      const state = store.getState();
+      const proposal = state.proposal;
 
       if (!proposal) return invalidRequest;
+
+      // The guard, not the disabled button, is what makes this non-repeatable.
+      // Row statuses are written only after the loop, so a second apply would
+      // read the same pending rows and post every operation to the cart again.
+      if (state.isApplying) return invalidRequest;
 
       const pending = proposal.rows.filter((row) => row.status === 'pending');
 
@@ -289,52 +295,62 @@ export function createStoreFrontAiOrderingCommands(deps: {
       const applied: { operationId: string; row: AiOrderingProposalRow }[] = [];
       let aborting: StoreFrontCommandFailure | null = null;
 
-      // In the proposal's own order: the assistant may have written the rows to
-      // read as a sequence, and the guest sees them in that order.
-      for (const row of pending) {
-        if (aborting) break;
+      actions.applyStarted();
 
-        const result = await runCartOperation(expectedStoreId, row.operation);
+      try {
 
-        if (result.status === 'updated') {
+        // In the proposal's own order: the assistant may have written the rows to
+        // read as a sequence, and the guest sees them in that order.
+        for (const row of pending) {
+          if (aborting) break;
+
+          const result = await runCartOperation(expectedStoreId, row.operation);
+
+          if (result.status === 'updated') {
+            applied.push({
+              operationId: row.operation.operationId,
+              row: { operation: row.operation, status: 'applied' },
+            });
+            continue;
+          }
+
           applied.push({
             operationId: row.operation.operationId,
-            row: { operation: row.operation, status: 'applied' },
+            row: {
+              operation: row.operation,
+              status: 'failed',
+              failureCode: result.reason,
+            },
           });
-          continue;
+
+          // An item-specific refusal says nothing about the other rows, so the
+          // loop carries on and the guest gets one complete report instead of a
+          // half-applied proposal they have to re-ask about.
+          if (isSessionFailure(result)) {
+            aborting = result;
+          }
         }
 
-        applied.push({
-          operationId: row.operation.operationId,
-          row: {
-            operation: row.operation,
-            status: 'failed',
-            failureCode: result.reason,
-          },
-        });
+        actions.proposalApplied(applied);
 
-        // An item-specific refusal says nothing about the other rows, so the
-        // loop carries on and the guest gets one complete report instead of a
-        // half-applied proposal they have to re-ask about.
-        if (isSessionFailure(result)) {
-          aborting = result;
-        }
+        if (aborting) return aborting;
+
+        return {
+          status: 'applied',
+          results: applied.map(({ operationId, row }) => ({
+            operationId,
+            outcome: row.status === 'applied' ? 'accepted' : 'failed',
+            ...(row.failureCode !== undefined
+              ? { failureCode: row.failureCode }
+              : {}),
+          })),
+        };
+      } finally {
+        // Every exit clears it: a returned failure, an abort, and a thrown error
+        // from a cart command. An overlay left on screen with nothing in flight
+        // is worse than no overlay at all.
+        actions.applyFinished();
       }
-
-      actions.proposalApplied(applied);
-
-      if (aborting) return aborting;
-
-      return {
-        status: 'applied',
-        results: applied.map(({ operationId, row }) => ({
-          operationId,
-          outcome: row.status === 'applied' ? 'accepted' : 'failed',
-          ...(row.failureCode !== undefined
-            ? { failureCode: row.failureCode }
-            : {}),
-        })),
-      };
     },
 
     async retryOperation(expectedStoreId, operationId) {

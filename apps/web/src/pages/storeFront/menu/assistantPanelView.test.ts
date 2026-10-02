@@ -618,3 +618,25 @@ describe('assistant proposal records in the transcript', () => {
     expect(demoted?.kind === 'proposal' && demoted.record).toBe('history');
   });
 });
+
+describe('assistant panel apply in progress', () => {
+  it('reports applying and sending independently', () => {
+    const { actions, view } = setup();
+
+    expect(view().isApplying).toBe(false);
+    expect(view().isSending).toBe(false);
+
+    actions.applyStarted();
+
+    // The panel blocks on an apply and shows a thinking line on a send, so one
+    // flag must never stand in for the other.
+    expect(view().isApplying).toBe(true);
+    expect(view().isSending).toBe(false);
+
+    actions.applyFinished();
+    actions.sendStarted();
+
+    expect(view().isApplying).toBe(false);
+    expect(view().isSending).toBe(true);
+  });
+});

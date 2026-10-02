@@ -159,6 +159,22 @@ describe('storefront assistant actions', () => {
     expect(rows[1]?.isRetrying).toBeUndefined();
   });
 
+  it('an apply flag is independent of the sending flag', () => {
+    const { store, actions } = setup();
+
+    actions.applyStarted();
+
+    // The transcript auto-scroll effect watches `isSending`. If applying set it,
+    // every apply would scroll the transcript away from what the guest is reading.
+    expect(store.getState().isApplying).toBe(true);
+    expect(store.getState().isSending).toBe(false);
+
+    actions.applyFinished();
+
+    expect(store.getState().isApplying).toBe(false);
+    expect(store.getState().isSending).toBe(false);
+  });
+
   it('expiring a proposal clears it and leaves the transcript alone', () => {
     const { store, actions } = setup();
 

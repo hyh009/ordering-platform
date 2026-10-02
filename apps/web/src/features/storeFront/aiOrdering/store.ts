@@ -71,6 +71,15 @@ export type StoreFrontAiOrderingState = {
   proposal: AiOrderingPendingProposal | null;
   isSending: boolean;
   /**
+   * Whether an apply of the open proposal is in flight.
+   *
+   * Separate from `isSending` because they are different operations with
+   * different readers: the transcript auto-scroll reacts to `isSending`, and an
+   * apply must not scroll the transcript. It is also the guard the apply command
+   * checks, so a second apply cannot post the same operations twice.
+   */
+  isApplying: boolean;
+  /**
    * Whether the stored transcript has been read for this cart.
    *
    * The transcript is the server's, not the client's: it survives a reload, and
@@ -88,6 +97,7 @@ export function createStoreFrontAiOrderingStore() {
     entries: [],
     proposal: null,
     isSending: false,
+    isApplying: false,
     isLoaded: false,
     isLoading: false,
     error: null,

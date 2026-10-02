@@ -395,6 +395,131 @@ describe('storefront assistant apply command', () => {
   );
 });
 
+describe('storefront assistant apply is blocked while it runs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('raises the apply flag for the duration of the loop', async () => {
+    let release: (() => void) | undefined;
+    const addItem = vi.fn().mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          release = () => {
+            resolve({ status: 'updated' });
+          };
+        }),
+    );
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
+    const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
+    const inFlight = commands.applyProposal(STORE_ID);
+
+    expect(store.getState().isApplying).toBe(true);
+
+    release?.();
+    await inFlight;
+
+    // False exactly when the command resolves: every cart call has returned, and
+    // each one wrote the cart the server sent back, so what is on screen is the
+    // confirmed cart rather than a prediction.
+    expect(store.getState().isApplying).toBe(false);
+  });
+
+  it('sends each operation once when apply is activated twice', async () => {
+    let release: (() => void) | undefined;
+    const addItem = vi
+      .fn()
+      .mockImplementationOnce(
+        async () =>
+          new Promise((resolve) => {
+            release = () => {
+              resolve({ status: 'updated' });
+            };
+          }),
+      )
+      .mockResolvedValue({ status: 'updated' });
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
+    const { commands } = setup(cartCommandsStub({ addItem }));
+
+    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
+
+    const first = commands.applyProposal(STORE_ID);
+    const second = await commands.applyProposal(STORE_ID);
+
+    // Without the guard the second apply reads the same pending rows — statuses
+    // are written only after the loop — and the guest ends up with doubles.
+    expect(second.status).toBe('failed');
+
+    release?.();
+    await first;
+
+    expect(addItem).toHaveBeenCalledTimes(2);
+    expect(
+      addItem.mock.calls.map(([, request]) => request.productId),
+    ).toEqual(['product-1', 'product-2']);
+  });
+
+  it('clears the flag after a row failure', async () => {
+    const addItem = vi
+      .fn()
+      .mockResolvedValue({ status: 'failed', reason: 'sold-out', message: '' });
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
+    const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
+    await commands.applyProposal(STORE_ID);
+
+    expect(store.getState().isApplying).toBe(false);
+  });
+
+  it('clears the flag after a session-scoped abort', async () => {
+    const addItem = vi.fn().mockResolvedValue({
+      status: 'failed',
+      reason: 'order-locked',
+      message: 'Locked',
+    });
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
+    const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
+    const result = await commands.applyProposal(STORE_ID);
+
+    expect(result.status).toBe('failed');
+    expect(store.getState().isApplying).toBe(false);
+  });
+
+  it('clears the flag when a cart command throws', async () => {
+    const addItem = vi.fn().mockRejectedValue(new Error('boom'));
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
+    const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
+
+    // The throw is not swallowed — the finally is what matters here, because an
+    // overlay left up with nothing in flight is worse than no overlay.
+    await expect(commands.applyProposal(STORE_ID)).rejects.toThrow('boom');
+    expect(store.getState().isApplying).toBe(false);
+  });
+
+  it('leaves the flag down when there is nothing to apply', async () => {
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
+    const { commands, store } = setup();
+
+    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
+    commands.dismissOperation('op-1');
+    await commands.applyProposal(STORE_ID);
+
+    expect(store.getState().isApplying).toBe(false);
+  });
+});
+
 describe('storefront assistant retry command', () => {
   beforeEach(() => {
     vi.clearAllMocks();

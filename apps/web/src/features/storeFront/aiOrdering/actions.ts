@@ -59,6 +59,14 @@ export function createStoreFrontAiOrderingActions(
       store.setState({ isLoading: false, error });
     },
 
+    applyStarted() {
+      store.setState({ isApplying: true, error: null });
+    },
+
+    applyFinished() {
+      store.setState({ isApplying: false });
+    },
+
     sendStarted() {
       store.setState({ error: null, isSending: true });
     },
@@ -220,6 +228,7 @@ export function createStoreFrontAiOrderingActions(
         entries: [],
         proposal: null,
         isSending: false,
+        isApplying: false,
         // Back to unfetched, not to "fetched and empty": this runs when the cart
         // or session changes, and the next panel open belongs to a different
         // conversation that has not been read yet.

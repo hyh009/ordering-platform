@@ -157,6 +157,14 @@ export type AssistantPanelView = {
   openPrompt: { promptId: string } | null;
   isSending: boolean;
   /**
+   * True while an accepted proposal is being applied to the cart.
+   *
+   * Reported separately from `isSending` because the panel treats them
+   * differently: a turn in flight shows a thinking line inside the transcript,
+   * while an apply blocks the surface until the cart has settled.
+   */
+  isApplying: boolean;
+  /**
    * True while the stored transcript is being read. Distinct from `isSending`:
    * one is the panel filling itself in, the other is a turn in flight.
    */
@@ -296,6 +304,7 @@ export function buildAssistantPanelView(input: {
     proposal: state.proposal ? toProposalView(state.proposal) : null,
     openPrompt,
     isSending: state.isSending,
+    isApplying: state.isApplying,
     isLoadingTranscript: state.isLoading,
     showsEmptyHint: state.isLoaded && entries.length === 0,
     error: state.error,
