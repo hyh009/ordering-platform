@@ -48,13 +48,26 @@ const manualResources: Resource = {
           emptyHint: 'Ask about a dish, or describe what you feel like eating.',
           freeTextHint: 'Or just type what you want instead.',
           inputPlaceholder: 'Ask or order something…',
+          loading: 'Loading your conversation…',
           open: 'Ask the assistant',
           proposalResultHint: 'Check your cart to review the result.',
           rowApplied: 'Added',
           rowDismissed: 'Removed',
           rowFailed: 'Could not be applied',
+          rowFailure: {
+            cartClosed: 'This cart is no longer taking changes.',
+            offMenu: 'No longer on the menu.',
+            optionsChanged: 'The options changed. Please choose them again.',
+            soldOut: 'Sold out. Ask the assistant for something similar.',
+            temporary: 'Could not reach the store. You can try again.',
+            unknown: 'Something went wrong. You can try again.',
+          },
           rowPending: 'Not applied',
+          rowRetry: 'Try again',
+          rowRetrying: 'Trying again…',
           send: 'Send',
+          staleProposalHint:
+            'This suggestion is from before. Ask again if you still want it.',
           thinking: 'Thinking…',
           title: 'Ordering assistant',
         },
@@ -441,8 +454,10 @@ const manualResources: Resource = {
         store: {
           errors: {
             businessHours: '請檢查營業時間中的無效時間值。',
-            businessHourSame: '營業時間的開始時間和結束時間不能相同。全天營業請使用 24 小時選項。',
-            businessHourTimes: '請同時設定開始時間和結束時間，或將此日期設為未營業。',
+            businessHourSame:
+              '營業時間的開始時間和結束時間不能相同。全天營業請使用 24 小時選項。',
+            businessHourTimes:
+              '請同時設定開始時間和結束時間，或將此日期設為未營業。',
             defaultLocale: '請選擇預設語言。',
             displayName: '必須填寫顯示名稱 ({{locale}})。',
             serviceFeeRate: '服務費率必須介於 0 到 1 之間。',
@@ -626,13 +641,25 @@ const manualResources: Resource = {
           emptyHint: '可以問我餐點的事，或是描述你想吃什麼。',
           freeTextHint: '也可以直接輸入你想要的。',
           inputPlaceholder: '想問什麼或想點什麼…',
+          loading: '正在載入你的對話…',
           open: '問問點餐助理',
           proposalResultHint: '可以到購物車確認結果。',
           rowApplied: '已加入',
           rowDismissed: '已移除',
           rowFailed: '無法套用',
+          rowFailure: {
+            cartClosed: '這個購物車已經不能再修改了。',
+            offMenu: '這項已經不在菜單上了。',
+            optionsChanged: '選項有變動，請重新選一次。',
+            soldOut: '這項賣完了，可以問助理有沒有類似的。',
+            temporary: '連不上店家，可以再試一次。',
+            unknown: '發生了一些問題，可以再試一次。',
+          },
           rowPending: '未套用',
+          rowRetry: '再試一次',
+          rowRetrying: '重試中…',
           send: '送出',
+          staleProposalHint: '這是之前的建議。如果還想要，可以再跟我說一次。',
           thinking: '思考中…',
           title: '點餐助理',
         },
@@ -711,7 +738,8 @@ const manualResources: Resource = {
           joinOrder: '加入訂單',
           open: '營業中',
           openOrderBlockConfirm: '確定',
-          openOrderBlockMessage: '你有進行中的訂單。請先恢復訂單付款或完成後，再開始或加入其他訂單。',
+          openOrderBlockMessage:
+            '你有進行中的訂單。請先恢復訂單付款或完成後，再開始或加入其他訂單。',
           openOrderBlockTitle: '請先完成目前的訂單',
           previousOrderEnded: '你先前的訂單已結束。',
           previousOrderPending: '你先前的訂單仍在進行中',
@@ -814,14 +842,18 @@ const manualResources: Resource = {
           learnMore: '查看流程',
           signIn: '登入管理平台',
         },
-        description: '支援店家菜單、顧客共同點餐、商家訂單追蹤與平台管理的多租戶點餐平台。',
+        description:
+          '支援店家菜單、顧客共同點餐、商家訂單追蹤與平台管理的多租戶點餐平台。',
         eyebrow: '點餐平台',
         highlights: {
-          groupDescription: '內用群組可用加入代碼邀請其他人，大家一起加點到同一份訂單。',
+          groupDescription:
+            '內用群組可用加入代碼邀請其他人，大家一起加點到同一份訂單。',
           groupTitle: '共同購物車',
-          qrDescription: '顧客開啟店家連結，選擇點餐方式，直接用自己的手機開始點餐。',
+          qrDescription:
+            '顧客開啟店家連結，選擇點餐方式，直接用自己的手機開始點餐。',
           qrTitle: '每桌都能用 QR Code 點餐',
-          storeDescription: '商家可在平台管理菜單、供應狀態、店家圖片與即時訂單。',
+          storeDescription:
+            '商家可在平台管理菜單、供應狀態、店家圖片與即時訂單。',
           storeTitle: '包含店家營運管理',
         },
         steps: {

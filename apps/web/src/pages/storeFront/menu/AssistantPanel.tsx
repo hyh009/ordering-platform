@@ -7,6 +7,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 
 import { AssistantProposalCard } from './AssistantProposalCard';
+import { AssistantProposalRecord } from './AssistantProposalRecord';
 
 import type { useAssistantPanelVM } from './useAssistantPanelVM';
 
@@ -57,7 +58,20 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
           ref={transcriptRef}
           className="flex-1 space-y-3 overflow-y-auto p-4"
         >
-          {vm.entries.length === 0 ? (
+          {vm.isLoadingTranscript ? (
+            <div
+              className="flex items-center justify-center py-6 text-muted-foreground"
+              role="status"
+              aria-label={tDefault(
+                'guest.assistant.loading',
+                'Loading your conversation…',
+              )}
+            >
+              <Spinner className="size-5" />
+            </div>
+          ) : null}
+
+          {vm.showsEmptyHint ? (
             <p className="text-sm text-muted-foreground">
               {tDefault(
                 'guest.assistant.emptyHint',
@@ -113,15 +127,26 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                   </div>
                 ) : null}
 
-                {entry.kind === 'proposal' &&
-                vm.proposal?.proposalId === entry.proposalId ? (
-                  <AssistantProposalCard
-                    proposal={vm.proposal}
-                    isApplying={vm.isSending}
-                    onDismissOperation={vm.dismissOperation}
-                    onApply={() => {
-                      void vm.applyProposal();
-                    }}
+                {entry.kind === 'proposal' && entry.record === 'live' ? (
+                  vm.proposal ? (
+                    <AssistantProposalCard
+                      proposal={vm.proposal}
+                      isApplying={vm.isSending}
+                      onDismissOperation={vm.dismissOperation}
+                      onRetryOperation={(operationId) => {
+                        void vm.retryOperation(operationId);
+                      }}
+                      onApply={() => {
+                        void vm.applyProposal();
+                      }}
+                    />
+                  ) : null
+                ) : null}
+
+                {entry.kind === 'proposal' && entry.record !== 'live' ? (
+                  <AssistantProposalRecord
+                    operations={entry.operations}
+                    isStale={entry.record === 'stale'}
                   />
                 ) : null}
               </div>

@@ -1,4 +1,7 @@
-import type { AiOrderingTurn } from '@/models/aiOrdering';
+import type {
+  AiOrderingTranscriptTurn,
+  AiOrderingTurn,
+} from '@/models/aiOrdering';
 import type {
   AiOrderingChatEntry,
   AiOrderingProposalRow,
@@ -13,6 +16,49 @@ export function createStoreFrontAiOrderingActions(
   }
 
   return {
+    transcriptLoadStarted() {
+      store.setState({ isLoading: true, error: null });
+    },
+
+    /**
+     * Replaces the transcript with the stored one.
+     *
+     * Both halves of each turn are rebuilt, keyed off the stored turn id, so the
+     * panel shows the conversation rather than a column of replies.
+     *
+     * The open proposal is deliberately NOT restored as actionable. The server
+     * learns what became of a proposal only when the NEXT message carries its
+     * outcome, so a proposal that is the last stored turn is indistinguishable
+     * from one the guest already applied before reloading. Restoring an Apply
+     * button on it would add those items to the cart a second time. The rows are
+     * still shown — read-only, from the turn itself — so nothing is hidden.
+     */
+    transcriptLoaded(turns: AiOrderingTranscriptTurn[]) {
+      const entries = turns.flatMap((turn): AiOrderingChatEntry[] => [
+        { id: `${turn.id}:guest`, role: 'guest', message: turn.message },
+        {
+          id: `${turn.id}:assistant`,
+          role: 'assistant',
+          versionId: turn.versionId,
+          response: turn.response,
+        },
+      ]);
+
+      store.setState({
+        entries,
+        proposal: null,
+        isLoaded: true,
+        isLoading: false,
+        error: null,
+      });
+    },
+
+    transcriptLoadFailed(error: string) {
+      // `isLoaded` stays false: the panel should retry on the next open rather
+      // than show an empty transcript as though the guest had said nothing.
+      store.setState({ isLoading: false, error });
+    },
+
     sendStarted() {
       store.setState({ error: null, isSending: true });
     },
@@ -85,7 +131,9 @@ export function createStoreFrontAiOrderingActions(
      * Rows the flow did not attempt — the dismissed ones — keep their status, so
      * one apply never rewrites a decision the guest already made.
      */
-    proposalApplied(results: { operationId: string; row: AiOrderingProposalRow }[]) {
+    proposalApplied(
+      results: { operationId: string; row: AiOrderingProposalRow }[],
+    ) {
       const byOperationId = new Map(
         results.map((result) => [result.operationId, result.row]),
       );
@@ -98,6 +146,58 @@ export function createStoreFrontAiOrderingActions(
                 isApplied: true,
                 rows: state.proposal.rows.map(
                   (row) => byOperationId.get(row.operation.operationId) ?? row,
+                ),
+              },
+            }
+          : {},
+      );
+    },
+
+    /**
+     * Marks one failed row as being retried.
+     *
+     * The row keeps its `failed` status and its `failureCode` while the retry is
+     * in flight: clearing them first would blank the reason the guest is looking
+     * at, and a retry that fails the same way would read as a new failure.
+     */
+    operationRetryStarted(operationId: string) {
+      store.setState((state) =>
+        state.proposal
+          ? {
+              proposal: {
+                ...state.proposal,
+                rows: state.proposal.rows.map((row) =>
+                  row.operation.operationId === operationId &&
+                  row.status === 'failed'
+                    ? { ...row, isRetrying: true }
+                    : row,
+                ),
+              },
+            }
+          : {},
+      );
+    },
+
+    /**
+     * Writes one retried row's result back, replacing the row outright.
+     *
+     * Replacing rather than merging is what drops `isRetrying` and a stale
+     * `failureCode` on success, so a row that now reads `applied` cannot still
+     * carry the reason it failed the first time.
+     */
+    operationRetried(result: {
+      operationId: string;
+      row: AiOrderingProposalRow;
+    }) {
+      store.setState((state) =>
+        state.proposal
+          ? {
+              proposal: {
+                ...state.proposal,
+                rows: state.proposal.rows.map((row) =>
+                  row.operation.operationId === result.operationId
+                    ? result.row
+                    : row,
                 ),
               },
             }
@@ -120,6 +220,11 @@ export function createStoreFrontAiOrderingActions(
         entries: [],
         proposal: null,
         isSending: false,
+        // Back to unfetched, not to "fetched and empty": this runs when the cart
+        // or session changes, and the next panel open belongs to a different
+        // conversation that has not been read yet.
+        isLoaded: false,
+        isLoading: false,
         error: null,
       });
     },

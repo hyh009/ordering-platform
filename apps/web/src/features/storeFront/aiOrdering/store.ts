@@ -4,6 +4,7 @@ import type {
   AiOrderingOperationModel,
   AiOrderingResponseModel,
 } from '@/models/aiOrdering';
+import type { StoreFrontCommandFailureReason } from '@/services/utils/storeFrontApiError';
 
 /**
  * One line of the transcript. The guest's own message is kept beside the
@@ -37,8 +38,16 @@ export type AiOrderingProposalRowStatus =
 export type AiOrderingProposalRow = {
   operation: AiOrderingOperationModel;
   status: AiOrderingProposalRowStatus;
-  /** Set only when `status` is `failed`; a stable code, never raw error text. */
-  failureCode?: string;
+  /**
+   * Set only when `status` is `failed`; a stable code, never raw error text.
+   *
+   * Typed as the command failure reason rather than a loose string so the
+   * presentation layer can map it exhaustively: a new reason has to declare
+   * what the guest reads, instead of silently falling into a generic line.
+   */
+  failureCode?: StoreFrontCommandFailureReason;
+  /** True only while a retry of this one row is in flight. */
+  isRetrying?: boolean;
 };
 
 /**
@@ -61,6 +70,16 @@ export type StoreFrontAiOrderingState = {
   entries: AiOrderingChatEntry[];
   proposal: AiOrderingPendingProposal | null;
   isSending: boolean;
+  /**
+   * Whether the stored transcript has been read for this cart.
+   *
+   * The transcript is the server's, not the client's: it survives a reload, and
+   * the assistant reads all of it on every turn. This flag is what keeps the
+   * panel from reading it twice, and from treating "nothing said yet" the same
+   * as "not fetched yet" — the empty-state hint belongs only to the first.
+   */
+  isLoaded: boolean;
+  isLoading: boolean;
   error: string | null;
 };
 
@@ -69,6 +88,8 @@ export function createStoreFrontAiOrderingStore() {
     entries: [],
     proposal: null,
     isSending: false,
+    isLoaded: false,
+    isLoading: false,
     error: null,
   }));
 }

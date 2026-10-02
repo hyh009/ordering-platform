@@ -30,8 +30,16 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
       return runtime.commands.aiOrdering.sendMessage(storeId, input);
     },
 
+    loadAssistantConversation(storeId: string) {
+      return runtime.commands.aiOrdering.loadConversation(storeId);
+    },
+
     applyAssistantProposal(storeId: string) {
       return runtime.commands.aiOrdering.applyProposal(storeId);
+    },
+
+    retryAssistantOperation(storeId: string, operationId: string) {
+      return runtime.commands.aiOrdering.retryOperation(storeId, operationId);
     },
 
     dismissAssistantOperation(operationId: string) {

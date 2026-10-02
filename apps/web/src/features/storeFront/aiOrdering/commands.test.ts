@@ -12,10 +12,16 @@ import type { AiOrderingTurn } from '@/models/aiOrdering';
 import type { StoreFrontCartCommands } from '../cart/commands';
 
 vi.mock('@/services/storeFrontAiOrdering.service', () => ({
-  storeFrontAiOrderingService: { sendMessage: vi.fn() },
+  storeFrontAiOrderingService: {
+    sendMessage: vi.fn(),
+    getConversation: vi.fn(),
+  },
 }));
 
 const sendMessageMock = vi.mocked(storeFrontAiOrderingService.sendMessage);
+const getConversationMock = vi.mocked(
+  storeFrontAiOrderingService.getConversation,
+);
 
 const STORE_ID = 'store-a';
 
@@ -46,6 +52,7 @@ function setup(cartCommands: StoreFrontCartCommands = cartCommandsStub()) {
 
   return {
     store,
+    sessionStore,
     cartCommands,
     commands: createStoreFrontAiOrderingCommands({
       actions: createStoreFrontAiOrderingActions(store),
@@ -227,9 +234,9 @@ describe('storefront assistant apply command', () => {
     });
     expect(cartCommands.addItem).toHaveBeenCalledTimes(3);
     expect(
-      vi.mocked(cartCommands.addItem).mock.calls.map(
-        ([, request]) => request.productId,
-      ),
+      vi
+        .mocked(cartCommands.addItem)
+        .mock.calls.map(([, request]) => request.productId),
     ).toEqual(['product-1', 'product-2', 'product-3']);
     expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
       'applied',
@@ -313,9 +320,9 @@ describe('storefront assistant apply command', () => {
     await commands.applyProposal(STORE_ID);
 
     expect(cartCommands.addItem).toHaveBeenCalledTimes(1);
-    expect(
-      vi.mocked(cartCommands.addItem).mock.calls[0]?.[1].productId,
-    ).toBe('product-2');
+    expect(vi.mocked(cartCommands.addItem).mock.calls[0]?.[1].productId).toBe(
+      'product-2',
+    );
   });
 
   it('refuses to apply once every row has been dismissed', async () => {
@@ -329,5 +336,392 @@ describe('storefront assistant apply command', () => {
 
     expect(result.status).toBe('failed');
     expect(cartCommands.addItem).not.toHaveBeenCalled();
+  });
+
+  // The abort set used to be the two session reasons only. A locked cart or a
+  // dead connection is just as much a property of the request rather than the
+  // item, so continuing only produced N copies of the same error.
+  it.each([
+    'order-locked',
+    'cart-not-active',
+    'store-closed',
+    'network',
+    'server',
+    'rate-limited',
+  ])(
+    'stops the loop on %s rather than repeating it per row',
+    async (reason) => {
+      const addItem = vi
+        .fn()
+        .mockResolvedValue({ status: 'failed', reason, message: '' });
+
+      sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2', 'op-3']));
+      const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+      await commands.sendMessage(STORE_ID, { message: 'Add three things' });
+      const result = await commands.applyProposal(STORE_ID);
+
+      expect(result).toEqual({ status: 'failed', reason, message: '' });
+      expect(addItem).toHaveBeenCalledTimes(1);
+      expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+        'failed',
+        'pending',
+        'pending',
+      ]);
+    },
+  );
+
+  it.each(['sold-out', 'not-found', 'invalid', 'unknown'])(
+    'keeps going past %s, which is about that row only',
+    async (reason) => {
+      const addItem = vi
+        .fn()
+        .mockResolvedValueOnce({ status: 'failed', reason, message: '' })
+        .mockResolvedValue({ status: 'updated' });
+
+      sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
+      const { commands, store } = setup(cartCommandsStub({ addItem }));
+
+      await commands.sendMessage(STORE_ID, { message: 'Add two things' });
+      const result = await commands.applyProposal(STORE_ID);
+
+      expect(result.status).toBe('applied');
+      expect(addItem).toHaveBeenCalledTimes(2);
+      expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+        'failed',
+        'applied',
+      ]);
+    },
+  );
+});
+
+describe('storefront assistant retry command', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * `unknown` on the first row: item-scoped, so the loop still applies the
+   * second row, and retryable, so this is the shape the retry control actually
+   * appears in.
+   */
+  async function appliedWithFirstRowFailed(reason = 'unknown') {
+    const addItem = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'failed', reason, message: '' })
+      .mockResolvedValue({ status: 'updated' });
+
+    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
+    const harness = setup(cartCommandsStub({ addItem }));
+
+    await harness.commands.sendMessage(STORE_ID, { message: 'Add two things' });
+    await harness.commands.applyProposal(STORE_ID);
+    addItem.mockClear();
+
+    return { ...harness, addItem };
+  }
+
+  it('re-runs only the failed row and leaves the others alone', async () => {
+    const { commands, store, addItem } = await appliedWithFirstRowFailed();
+
+    const result = await commands.retryOperation(STORE_ID, 'op-1');
+
+    expect(result).toEqual({
+      status: 'applied',
+      results: [{ operationId: 'op-1', outcome: 'accepted' }],
+    });
+    expect(addItem).toHaveBeenCalledTimes(1);
+    expect(addItem.mock.calls[0]?.[1].productId).toBe('product-1');
+    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+      'applied',
+      'applied',
+    ]);
+  });
+
+  it('drops the stale reason once the retry succeeds', async () => {
+    const { commands, store } = await appliedWithFirstRowFailed();
+
+    await commands.retryOperation(STORE_ID, 'op-1');
+
+    const row = store.getState().proposal?.rows[0];
+
+    expect(row?.failureCode).toBeUndefined();
+    expect(row?.isRetrying).toBeUndefined();
+  });
+
+  it('records the new reason when the retry fails again', async () => {
+    const { commands, store, addItem } = await appliedWithFirstRowFailed();
+
+    addItem.mockResolvedValueOnce({
+      status: 'failed',
+      reason: 'sold-out',
+      message: '',
+    });
+
+    const result = await commands.retryOperation(STORE_ID, 'op-1');
+
+    // Item-scoped, so it is not returned as a failure: the row already says it,
+    // and surfacing it again would put the same message on screen twice.
+    expect(result).toEqual({
+      status: 'applied',
+      results: [
+        { operationId: 'op-1', outcome: 'failed', failureCode: 'sold-out' },
+      ],
+    });
+    expect(store.getState().proposal?.rows[0]?.failureCode).toBe('sold-out');
+    expect(store.getState().proposal?.rows[0]?.isRetrying).toBeUndefined();
+  });
+
+  it('returns a session-scoped retry failure for the caller to surface', async () => {
+    const { commands, store, addItem } = await appliedWithFirstRowFailed();
+
+    addItem.mockResolvedValueOnce({
+      status: 'failed',
+      reason: 'order-locked',
+      message: 'Locked',
+    });
+
+    const result = await commands.retryOperation(STORE_ID, 'op-1');
+
+    expect(result).toEqual({
+      status: 'failed',
+      reason: 'order-locked',
+      message: 'Locked',
+    });
+    expect(store.getState().proposal?.rows[0]?.failureCode).toBe(
+      'order-locked',
+    );
+  });
+
+  it('refuses to retry a row that did not fail', async () => {
+    const { commands, addItem } = await appliedWithFirstRowFailed();
+
+    const result = await commands.retryOperation(STORE_ID, 'op-2');
+
+    expect(result.status).toBe('failed');
+    expect(addItem).not.toHaveBeenCalled();
+  });
+
+  it('refuses to retry when there is no open proposal', async () => {
+    const { commands, cartCommands } = setup();
+
+    const result = await commands.retryOperation(STORE_ID, 'op-1');
+
+    expect(result.status).toBe('failed');
+    expect(cartCommands.addItem).not.toHaveBeenCalled();
+  });
+
+  it('refuses a second retry while the first is still in flight', async () => {
+    const { commands, addItem } = await appliedWithFirstRowFailed();
+
+    let release: (() => void) | undefined;
+    addItem.mockImplementationOnce(
+      async () =>
+        new Promise((resolve) => {
+          release = () => {
+            resolve({ status: 'updated' });
+          };
+        }),
+    );
+
+    const inFlight = commands.retryOperation(STORE_ID, 'op-1');
+    const second = await commands.retryOperation(STORE_ID, 'op-1');
+
+    // Without the in-flight guard this would post the same add twice and the
+    // guest would end up with two of the item.
+    expect(second.status).toBe('failed');
+    expect(addItem).toHaveBeenCalledTimes(1);
+
+    release?.();
+    await inFlight;
+  });
+
+  it('reports a retried row in the outcome sent with the next message', async () => {
+    const { commands, store } = await appliedWithFirstRowFailed();
+
+    await commands.retryOperation(STORE_ID, 'op-1');
+
+    sendMessageMock.mockResolvedValue({
+      versionId: 'v1',
+      response: { type: 'message', reply: 'Done.' },
+    });
+    await commands.sendMessage(STORE_ID, { message: 'Anything else?' });
+
+    // The report is read off the rows at send time, so a retry needs no separate
+    // reporting path: the assistant is told `accepted`, not the first failure.
+    expect(sendMessageMock.mock.calls.at(-1)?.[1].previousOutcome).toEqual({
+      proposalId: 'proposal-1',
+      results: [
+        { operationId: 'op-1', outcome: 'accepted' },
+        { operationId: 'op-2', outcome: 'accepted' },
+      ],
+    });
+    expect(store.getState().proposal).toBeNull();
+  });
+});
+
+describe('storefront assistant transcript load', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function transcript() {
+    return [
+      {
+        id: 'turn-1',
+        message: '有什麼推薦的？',
+        versionId: 'v1',
+        createdAt: '2026-10-01T00:00:00.000Z',
+        response: { type: 'message' as const, reply: '紅茶很受歡迎。' },
+      },
+      {
+        id: 'turn-2',
+        message: '那來一杯',
+        versionId: 'v1',
+        createdAt: '2026-10-01T00:01:00.000Z',
+        response: {
+          type: 'proposal' as const,
+          reply: '這樣可以嗎？',
+          proposalId: 'proposal-9',
+          confirmationRequired: true,
+          operations: [
+            {
+              type: 'add_item' as const,
+              operationId: 'op-9',
+              summary: '加入紅茶',
+              item: { productId: 'product-9', quantity: 1 },
+            },
+          ],
+        },
+      },
+    ];
+  }
+
+  it('rebuilds both halves of every stored turn, oldest first', async () => {
+    getConversationMock.mockResolvedValue(transcript());
+    const { commands, store } = setup();
+
+    const result = await commands.loadConversation(STORE_ID);
+
+    expect(result).toEqual({ status: 'loaded' });
+    expect(
+      store.getState().entries.map((entry) => [entry.role, entry.id]),
+    ).toEqual([
+      ['guest', 'turn-1:guest'],
+      ['assistant', 'turn-1:assistant'],
+      ['guest', 'turn-2:guest'],
+      ['assistant', 'turn-2:assistant'],
+    ]);
+    expect(store.getState().isLoaded).toBe(true);
+    expect(store.getState().isLoading).toBe(false);
+  });
+
+  it('does not restore the last proposal as actionable', async () => {
+    getConversationMock.mockResolvedValue(transcript());
+    const { commands, store } = setup();
+
+    await commands.loadConversation(STORE_ID);
+
+    // The server learns a proposal's outcome only from the NEXT message, so a
+    // proposal that is the last stored turn may already have been applied before
+    // the reload. An Apply button on it would double the items in the cart.
+    expect(store.getState().proposal).toBeNull();
+  });
+
+  it('reaches the network once however often the panel reopens', async () => {
+    getConversationMock.mockResolvedValue(transcript());
+    const { commands } = setup();
+
+    await commands.loadConversation(STORE_ID);
+    await commands.loadConversation(STORE_ID);
+    await commands.loadConversation(STORE_ID);
+
+    expect(getConversationMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start a second read while the first is in flight', async () => {
+    let release: ((turns: never[]) => void) | undefined;
+    getConversationMock.mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const { commands, store } = setup();
+
+    const first = commands.loadConversation(STORE_ID);
+
+    expect(store.getState().isLoading).toBe(true);
+    await expect(commands.loadConversation(STORE_ID)).resolves.toEqual({
+      status: 'loaded',
+    });
+    expect(getConversationMock).toHaveBeenCalledTimes(1);
+
+    release?.([]);
+    await first;
+  });
+
+  it('leaves the transcript unread after a failure so the next open retries', async () => {
+    getConversationMock.mockRejectedValue(new Error('network down'));
+    const { commands, store } = setup();
+
+    const result = await commands.loadConversation(STORE_ID);
+
+    expect(result.status).toBe('failed');
+    expect(store.getState().isLoading).toBe(false);
+    // Not `true`: marking it loaded would show the "ask me about a dish" hint to
+    // a guest whose conversation simply failed to arrive.
+    expect(store.getState().isLoaded).toBe(false);
+
+    getConversationMock.mockResolvedValue(transcript());
+    await commands.loadConversation(STORE_ID);
+
+    expect(store.getState().isLoaded).toBe(true);
+    expect(getConversationMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses to load for a store the session is not scoped to', async () => {
+    const { commands } = setup();
+
+    const result = await commands.loadConversation('store-other');
+
+    expect(result.status).toBe('failed');
+    expect(getConversationMock).not.toHaveBeenCalled();
+  });
+
+  it('discards a transcript that arrives after the session moved on', async () => {
+    let release: ((turns: ReturnType<typeof transcript>) => void) | undefined;
+    getConversationMock.mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const { commands, store, sessionStore } = setup();
+
+    const inFlight = commands.loadConversation(STORE_ID);
+    sessionStore.setState({ guestToken: 'token-b' });
+    release?.(transcript());
+
+    const result = await inFlight;
+
+    // Writing it would show one cart's conversation inside another's.
+    expect(result.status).toBe('failed');
+    expect(store.getState().entries).toEqual([]);
+  });
+
+  it('starts a fresh unread transcript when the conversation is reset', async () => {
+    getConversationMock.mockResolvedValue(transcript());
+    const { commands, store } = setup();
+
+    await commands.loadConversation(STORE_ID);
+    commands.resetConversation();
+
+    expect(store.getState().isLoaded).toBe(false);
+    expect(store.getState().entries).toEqual([]);
+
+    await commands.loadConversation(STORE_ID);
+
+    expect(getConversationMock).toHaveBeenCalledTimes(2);
   });
 });

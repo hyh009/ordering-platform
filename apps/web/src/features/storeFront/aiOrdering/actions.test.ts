@@ -97,10 +97,9 @@ describe('storefront assistant actions', () => {
     actions.operationDismissed('op-1');
 
     expect(
-      store.getState().proposal?.rows.map((row) => [
-        row.operation.operationId,
-        row.status,
-      ]),
+      store
+        .getState()
+        .proposal?.rows.map((row) => [row.operation.operationId, row.status]),
     ).toEqual([
       ['op-1', 'dismissed'],
       ['op-2', 'pending'],
@@ -126,6 +125,38 @@ describe('storefront assistant actions', () => {
       'dismissed',
       'applied',
     ]);
+  });
+
+  it('marks only a failed row as retrying', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalApplied([
+      {
+        operationId: 'op-1',
+        row: {
+          operation: proposalOperations[0]!,
+          status: 'failed',
+          failureCode: 'network',
+        },
+      },
+      {
+        operationId: 'op-2',
+        row: { operation: proposalOperations[1]!, status: 'applied' },
+      },
+    ]);
+
+    actions.operationRetryStarted('op-1');
+    // An applied row is not a retry target, so asking for one changes nothing.
+    actions.operationRetryStarted('op-2');
+
+    const rows = store.getState().proposal?.rows ?? [];
+
+    expect(rows[0]?.isRetrying).toBe(true);
+    // The reason stays put while the retry runs: blanking it would empty the
+    // line the guest is reading mid-flight.
+    expect(rows[0]?.failureCode).toBe('network');
+    expect(rows[1]?.isRetrying).toBeUndefined();
   });
 
   it('expiring a proposal clears it and leaves the transcript alone', () => {

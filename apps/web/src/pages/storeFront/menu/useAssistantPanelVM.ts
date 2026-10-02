@@ -30,6 +30,19 @@ export function useAssistantPanelVM(input: {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState('');
 
+  // The transcript is read on open rather than with the menu: a guest who never
+  // opens the panel should not pay for a request they will not look at. The
+  // command is idempotent per conversation, so reopening costs nothing.
+  useEffect(() => {
+    if (!isOpen || !isAvailable) return;
+
+    void commands.loadAssistantConversation(storeId).then((result) => {
+      if (result.status !== 'loaded') {
+        handleStoreFrontFailure(result);
+      }
+    });
+  }, [commands, isAvailable, isOpen, storeId]);
+
   const open = useCallback(() => {
     setIsOpen(true);
   }, []);
@@ -80,6 +93,22 @@ export function useAssistantPanelVM(input: {
     [send],
   );
 
+  const retryOperation = useCallback(
+    async (operationId: string) => {
+      const result = await commands.retryAssistantOperation(
+        storeId,
+        operationId,
+      );
+
+      // Only a session-scoped failure comes back here; an item-scoped one is
+      // already written onto the row the guest is looking at.
+      if (result.status !== 'applied') {
+        handleStoreFrontFailure(result);
+      }
+    },
+    [commands, storeId],
+  );
+
   const dismissOperation = useCallback(
     (operationId: string) => {
       commands.dismissAssistantOperation(operationId);
@@ -120,6 +149,7 @@ export function useAssistantPanelVM(input: {
     submitDraft,
     selectOption,
     applyProposal,
+    retryOperation,
     dismissOperation,
   };
 }

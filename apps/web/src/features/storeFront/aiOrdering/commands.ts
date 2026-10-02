@@ -6,6 +6,7 @@ import { storeFrontAiOrderingService } from '@/services/storeFrontAiOrdering.ser
 import {
   mapStoreFrontApiError,
   type StoreFrontCommandFailure,
+  type StoreFrontCommandFailureReason,
 } from '@/services/utils/storeFrontApiError';
 
 import type {
@@ -27,7 +28,18 @@ export type AiOrderingApplyResult =
   | { status: 'applied'; results: AiOrderingOperationResult[] }
   | StoreFrontCommandFailure;
 
+export type AiOrderingLoadResult =
+  | { status: 'loaded' }
+  | StoreFrontCommandFailure;
+
 export type StoreFrontAiOrderingCommands = {
+  /**
+   * Reads this guest's stored transcript into the panel, once per cart.
+   *
+   * Idempotent on purpose: the panel calls it every time it opens, and only the
+   * first call for a given conversation reaches the network.
+   */
+  loadConversation(expectedStoreId: string): Promise<AiOrderingLoadResult>;
   /**
    * Sends one guest turn. Expires any open proposal first and reports its
    * outcome on this request.
@@ -42,19 +54,62 @@ export type StoreFrontAiOrderingCommands = {
   ): Promise<AiOrderingSendResult>;
   /** Applies every row the guest has not dismissed, in the proposal's order. */
   applyProposal(expectedStoreId: string): Promise<AiOrderingApplyResult>;
+  /**
+   * Re-attempts one row that failed, leaving every other row as it is.
+   *
+   * Only worth offering where the failure could plausibly clear on its own; the
+   * panel decides that from the row's reason and only then shows the control.
+   */
+  retryOperation(
+    expectedStoreId: string,
+    operationId: string,
+  ): Promise<AiOrderingApplyResult>;
   dismissOperation(operationId: string): void;
   resetConversation(): void;
 };
 
 /**
- * A session-level failure means every remaining call would fail the same way, so
- * the apply loop stops rather than spending more requests proving it.
+ * Whether a failed row says anything about the rows after it.
+ *
+ * `item` means the refusal is a property of that one operation — the product is
+ * sold out, the id is gone, the options no longer validate — so the remaining
+ * rows are still worth attempting and the guest gets one complete report.
+ * `session` means the refusal is a property of the session, the cart, the store,
+ * or the connection, so every remaining call would fail identically and the loop
+ * stops instead of spending requests proving it.
+ *
+ * Exhaustive on purpose: a new failure reason cannot be added without deciding
+ * which of the two it is.
  */
+const APPLY_FAILURE_SCOPE: Record<
+  StoreFrontCommandFailureReason,
+  'item' | 'session'
+> = {
+  'session-expired': 'session',
+  'session-store-mismatch': 'session',
+  'store-closed': 'session',
+  'order-locked': 'session',
+  'cart-not-active': 'session',
+  // The cart endpoint is throttling this guest, not refusing this item.
+  'rate-limited': 'session',
+  network: 'session',
+  server: 'session',
+  'sold-out': 'item',
+  'not-found': 'item',
+  invalid: 'item',
+  // Not reachable from a cart command, but the table is exhaustive so that the
+  // reason set and this decision cannot drift apart.
+  'invalid-join-code': 'item',
+  'assistant-unavailable': 'item',
+  'assistant-conversation-full': 'item',
+  // Deliberately `item`: an unclassified failure is not evidence that the rest
+  // of the proposal would fail, and aborting on it would abandon rows that may
+  // well succeed.
+  unknown: 'item',
+};
+
 function isSessionFailure(failure: StoreFrontCommandFailure): boolean {
-  return (
-    failure.reason === 'session-expired' ||
-    failure.reason === 'session-store-mismatch'
-  );
+  return APPLY_FAILURE_SCOPE[failure.reason] === 'session';
 }
 
 export function createStoreFrontAiOrderingCommands(deps: {
@@ -101,6 +156,23 @@ export function createStoreFrontAiOrderingCommands(deps: {
     return requireScopedToken(storeId) === token;
   }
 
+  async function runCartOperation(
+    expectedStoreId: string,
+    operation: AiOrderingProposalRow['operation'],
+  ) {
+    const request = toAiOrderingCartRequest(operation);
+
+    return request.kind === 'add'
+      ? cartCommands.addItem(expectedStoreId, request.request)
+      : request.kind === 'update'
+        ? cartCommands.updateItem(
+            expectedStoreId,
+            request.itemId,
+            request.request,
+          )
+        : cartCommands.removeItem(expectedStoreId, request.itemId);
+  }
+
   let entrySequence = 0;
 
   function nextEntryId(role: string): string {
@@ -115,6 +187,40 @@ export function createStoreFrontAiOrderingCommands(deps: {
 
     resetConversation() {
       actions.conversationCleared();
+    },
+
+    async loadConversation(expectedStoreId) {
+      const state = store.getState();
+
+      // Already read, or a read is in flight: either way there is nothing to do.
+      // This is what lets the panel ask on every open without counting opens.
+      if (state.isLoaded || state.isLoading) return { status: 'loaded' };
+
+      const scoped = requireScopedToken(expectedStoreId);
+      if (typeof scoped !== 'string') return scoped;
+      const token = scoped;
+
+      actions.transcriptLoadStarted();
+
+      try {
+        const turns = await storeFrontAiOrderingService.getConversation(token);
+
+        // The guest may have switched store or session while this was in flight;
+        // writing the transcript then would show one cart's conversation inside
+        // another's.
+        if (!hasScopedToken(expectedStoreId, token)) return mismatchedSession;
+
+        actions.transcriptLoaded(turns);
+        return { status: 'loaded' };
+      } catch (error) {
+        const failure = mapStoreFrontApiError(error);
+
+        if (hasScopedToken(expectedStoreId, token)) {
+          actions.transcriptLoadFailed(failure.message);
+        }
+
+        return failure;
+      }
     },
 
     async sendMessage(expectedStoreId, input) {
@@ -188,17 +294,7 @@ export function createStoreFrontAiOrderingCommands(deps: {
       for (const row of pending) {
         if (aborting) break;
 
-        const request = toAiOrderingCartRequest(row.operation);
-        const result =
-          request.kind === 'add'
-            ? await cartCommands.addItem(expectedStoreId, request.request)
-            : request.kind === 'update'
-              ? await cartCommands.updateItem(
-                  expectedStoreId,
-                  request.itemId,
-                  request.request,
-                )
-              : await cartCommands.removeItem(expectedStoreId, request.itemId);
+        const result = await runCartOperation(expectedStoreId, row.operation);
 
         if (result.status === 'updated') {
           applied.push({
@@ -238,6 +334,59 @@ export function createStoreFrontAiOrderingCommands(deps: {
             ? { failureCode: row.failureCode }
             : {}),
         })),
+      };
+    },
+
+    async retryOperation(expectedStoreId, operationId) {
+      const proposal = store.getState().proposal;
+      if (!proposal) return invalidRequest;
+
+      const row = proposal.rows.find(
+        (candidate) => candidate.operation.operationId === operationId,
+      );
+
+      // Only a settled failure is retryable: a pending row belongs to the apply
+      // flow, and a row already retrying would double-post the same operation.
+      if (!row || row.status !== 'failed' || row.isRetrying === true) {
+        return invalidRequest;
+      }
+
+      actions.operationRetryStarted(operationId);
+
+      const result = await runCartOperation(expectedStoreId, row.operation);
+
+      if (result.status === 'updated') {
+        actions.operationRetried({
+          operationId,
+          row: { operation: row.operation, status: 'applied' },
+        });
+
+        return {
+          status: 'applied',
+          results: [{ operationId, outcome: 'accepted' }],
+        };
+      }
+
+      actions.operationRetried({
+        operationId,
+        row: {
+          operation: row.operation,
+          status: 'failed',
+          failureCode: result.reason,
+        },
+      });
+
+      // A session-scoped failure is about the page, not this row, so it is
+      // returned for the caller to surface. An item-scoped one is already fully
+      // described by the row the guest is looking at, and returning it would
+      // put the same thing on screen twice.
+      if (isSessionFailure(result)) return result;
+
+      return {
+        status: 'applied',
+        results: [
+          { operationId, outcome: 'failed', failureCode: result.reason },
+        ],
       };
     },
   };
