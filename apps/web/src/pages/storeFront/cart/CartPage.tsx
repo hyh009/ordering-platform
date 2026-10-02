@@ -55,7 +55,10 @@ export function CartPage() {
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-storefront-text">
-                {tDefault('guest.cart.submittedOrder.title', 'Order already sent')}
+                {tDefault(
+                  'guest.cart.submittedOrder.title',
+                  'Order already sent',
+                )}
               </p>
               <p className="truncate text-xs text-storefront-text-muted">
                 #{vm.submittedOrder.displayNumber} ·{' '}
@@ -115,7 +118,7 @@ export function CartPage() {
               </p>
             </div>
             <span className="text-sm font-semibold">
-              {tDefault('guest.cart.submit', '送出訂單')} →
+              {tDefault('guest.cart.submit', 'Submit order')} →
             </span>
           </button>
         </div>
