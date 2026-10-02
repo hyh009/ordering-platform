@@ -317,6 +317,75 @@ reads what was suggested and can ask for it again. Making `stale` actionable
 needs the client to report an outcome when it happens rather than only on the next
 message — a separate change, not a tweak here.
 
+## The Cart Sits Beside The Conversation
+
+The assistant used to be a full-screen modal over the menu page, which covered
+the menu's own cart bar, so the guest could not see the cart change while the
+assistant was changing it — and the proposal card ended by telling them to go and
+check the cart. Verifying the result cost three navigations, at exactly the moment
+a guest is deciding whether to trust the assistant.
+
+```txt
+  >= md    conversation | cart          two columns, both always rendered
+  <  md    conversation, cart over it   a control reveals it, dismissing returns
+```
+
+The surface is full-bleed at every width, `h-dvh` and never `h-screen` — iOS
+Safari's `100vh` excludes the address bar, which would push the composer under the
+browser chrome. On a wide viewport the background is full-bleed but the content is
+capped and centred, because an unconstrained conversation runs to an unreadable
+line length and pushes the cart column to the far edge, undoing the one thing this
+layout exists for.
+
+The height is fixed rather than a maximum. It used to be `max-h-[85vh]` inside a
+vertically centred container: the box grew with its content, and a centred box
+that grows puts that growth at both edges, so the header and the composer moved on
+every new message. A fixed frame with the transcript flexing inside it is what
+stops that.
+
+The layout is chosen in CSS (`hidden md:flex` for the column, `md:hidden` for the
+overlay), not by a breakpoint listener. So the narrow-viewport visibility toggle
+is component-local presentational state that nothing has to synchronise: at `md`
+and up the column is always rendered and the toggle is simply unread.
+
+The cart rendered here is the cart, not a restatement of it. `AssistantCartPanel`
+reuses `ParticipantOrderSection` and `OrderTotals` — the cart page's own
+components — so prices, options and totals are the values the cart reports rather
+than the model's per-row summaries. Edit handlers are passed only for the guest's
+own section, which is how `ParticipantOrderSection` already expresses read-only,
+so a shared cart has the same limits here as everywhere else.
+
+`groupCartItemsByParticipant` lives in `models/cart` because `isCurrentUser`
+answers "may this session edit these items". Two surfaces render the cart, and two
+copies of that derivation would mean two answers to that question — in the one
+place where a wrong answer lets a guest change someone else's order.
+
+Submitting is reachable from here too. It reuses the cart page's confirmation,
+command and navigation, so there is one submission flow. This does not widen what
+the assistant can do: "Order submission stays human-only" constrains the
+assistant's operation set, not where the guest's own submit action is rendered.
+
+### Applying Blocks The Surface, And The Guard Is Below The UI
+
+An overlay covers the panel while an accepted proposal is being applied, and
+clears when every cart call has returned. No extra wait is needed for that: each
+cart command writes the cart the server returned rather than predicting it, so the
+loop resolving already means the store holds the confirmed cart.
+
+`isApplying` is separate from `isSending` because the transcript auto-scroll
+reacts to `isSending`, and an apply must not scroll the transcript.
+
+The flag is also the guard. `applyProposal` returns early when it is already set,
+because row statuses are written only after the loop — so a second apply would
+read the same pending rows and post every operation again. Before this, nothing
+set an in-flight flag at all and the panel passed `isSending` as `isApplying`,
+which meant the Apply control stayed live for the whole apply and a double press
+doubled the cart. A disabled button is a UI promise; the guard is the invariant.
+
+The overlay sits inside the panel's own relative box rather than a new fixed
+layer, so no z token was added and the feedback modal and toast layers stay above
+it — a toast from a failed cart call has to be readable.
+
 ## When Apply Fails, The Row Scope Decides What Happens Next
 
 Applying is one cart call per row, in the proposal's order. A failure is
@@ -507,11 +576,27 @@ Storefront panel:
 - with automatic application resolved on, no confirmation controls appear
 - the assistant entry point is absent entirely when `assistantEnabled` is false
 - the transcript opens scrolled to the latest exchange
+- the header and the composer do not move as messages arrive, at either width
+- on iOS Safari the composer stays above the address bar
 - the panel shows a spinner on first open, and the empty-state hint only after
   the read confirms there is nothing stored
 - after a reload the transcript comes back, and a proposal that was the last turn
   comes back read-only with the ask-again line
 - a restored transcript ending on a `choices` question still answers that question
+- at `md` and up the cart is visible beside the conversation and updates as a
+  proposal is applied
+- below `md` the cart control opens the cart and dismissing it returns to the same
+  conversation, with the transcript and any open proposal intact
+- another participant's section in a shared cart shows their items with no edit
+  controls
+- changing a quantity or removing an item from inside the assistant works, and the
+  transcript does not scroll when it does
+- an apply shows the overlay and clears it once the cart has settled, including
+  after a failure
+- submitting from the assistant asks for confirmation, and declining changes
+  nothing
+- editing away an item that a still-open proposal references makes that row fail
+  with a reason rather than silently doing nothing
 
 Merchant review:
 
