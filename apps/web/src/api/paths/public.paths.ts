@@ -43,4 +43,7 @@ export const publicPaths = {
   storeFrontAiOrderingChat() {
     return '/v1/public/guest/ai-ordering/chat';
   },
+  storeFrontAiOrderingConversation() {
+    return '/v1/public/guest/ai-ordering/conversation';
+  },
 } as const;

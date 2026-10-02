@@ -1,6 +1,8 @@
 import type {
   AiOrderingChoice,
   AiOrderingConversationDetailDto,
+  AiOrderingGuestConversationDto,
+  AiOrderingGuestTurnDto,
   AiOrderingConversationSummaryDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
@@ -22,12 +24,14 @@ import type {
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
   GetAiOrderingConversationSuccessResponse,
+  GetAiOrderingGuestConversationSuccessResponse,
   ListAiOrderingConversationsSuccessResponse,
   ListAiOrderingUnansweredSuccessResponse,
 } from '@repo/shared';
 
 export type {
   GetAiOrderingConversationSuccessResponse,
+  GetAiOrderingGuestConversationSuccessResponse,
   ListAiOrderingConversationsSuccessResponse,
   ListAiOrderingUnansweredSuccessResponse,
   ListAiOrderingConversationsQuery,
@@ -67,6 +71,22 @@ export type AiOrderingTurn = {
   response: AiOrderingResponseModel;
 };
 
+export type AiOrderingGuestTurnDtoType = AiOrderingGuestTurnDto;
+export type AiOrderingGuestConversationDtoType = AiOrderingGuestConversationDto;
+
+/**
+ * One exchange from the guest's own stored transcript.
+ *
+ * A superset of `AiOrderingTurn`: the live send path answers with just the
+ * assistant's half, because the client already has the message it sent. A
+ * transcript read has to carry the guest's message too, and an id, because the
+ * panel is rebuilding both sides of a conversation it no longer remembers.
+ */
+export type AiOrderingTranscriptTurn = AiOrderingTurn & {
+  id: string;
+  message: string;
+  createdAt: string;
+};
 
 // ── Merchant review ──────────────────────────────────────────────────────────
 

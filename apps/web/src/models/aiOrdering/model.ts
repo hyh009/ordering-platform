@@ -12,6 +12,8 @@ import type {
   AiOrderingOperationModel,
   AiOrderingResponseDtoType,
   AiOrderingResponseModel,
+  AiOrderingGuestConversationDtoType,
+  AiOrderingTranscriptTurn,
   AiOrderingTurn,
   AiOrderingTurnDtoType,
   AiOrderingUnansweredModel,
@@ -153,6 +155,24 @@ export const aiOrderingModel = {
       versionId: dto.versionId,
       response: aiOrderingModel.deserializeResponse(dto.response),
     };
+  },
+
+  /**
+   * The guest's stored transcript, oldest turn first.
+   *
+   * Field by field like every other deserializer here, so a field added to the
+   * guest DTO cannot reach the panel without someone deciding it should.
+   */
+  deserializeTranscript(
+    dto: AiOrderingGuestConversationDtoType,
+  ): AiOrderingTranscriptTurn[] {
+    return dto.turns.map((turn) => ({
+      id: turn.id,
+      message: turn.message,
+      versionId: turn.versionId,
+      createdAt: turn.createdAt,
+      response: aiOrderingModel.deserializeResponse(turn.response),
+    }));
   },
 
   deserializeConversationSummary(

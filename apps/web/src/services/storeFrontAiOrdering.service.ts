@@ -3,7 +3,9 @@ import { storeFrontApiJson } from '@/api/storeFrontApiJson';
 import { aiOrderingModel } from '@/models/aiOrdering';
 
 import type {
+  AiOrderingTranscriptTurn,
   AiOrderingTurn,
+  GetAiOrderingGuestConversationSuccessResponse,
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
 } from '@/models/aiOrdering';
@@ -28,5 +30,24 @@ export const storeFrontAiOrderingService = {
       );
 
     return aiOrderingModel.deserializeTurn(response.data);
+  },
+
+  /**
+   * Reads back this guest's transcript for the active cart.
+   *
+   * The conversation lives server-side and the assistant reads all of it on every
+   * turn, so without this the panel and the model disagree after a reload: a
+   * blank transcript beside an assistant that answers as though mid-conversation.
+   */
+  async getConversation(
+    guestToken: string,
+  ): Promise<AiOrderingTranscriptTurn[]> {
+    const response =
+      await storeFrontApiJson<GetAiOrderingGuestConversationSuccessResponse>(
+        publicPaths.storeFrontAiOrderingConversation(),
+        guestToken,
+      );
+
+    return aiOrderingModel.deserializeTranscript(response.data);
   },
 };

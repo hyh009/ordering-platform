@@ -122,3 +122,54 @@ describe('aiOrderingModel.deserializeTurn', () => {
     });
   });
 });
+
+describe('aiOrderingModel.deserializeTranscript', () => {
+  it('rebuilds each stored turn with both halves of the exchange', () => {
+    expect(
+      aiOrderingModel.deserializeTranscript({
+        turns: [
+          {
+            id: 'turn-1',
+            message: 'Anything good?',
+            versionId: 'v1-2026-09-30',
+            createdAt: '2026-10-01T00:00:00.000Z',
+            response: { type: 'message', reply: 'The tea is popular.' },
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        id: 'turn-1',
+        message: 'Anything good?',
+        versionId: 'v1-2026-09-30',
+        createdAt: '2026-10-01T00:00:00.000Z',
+        response: { type: 'message', reply: 'The tea is popular.' },
+      },
+    ]);
+  });
+
+  it('drops a field the guest DTO was never meant to carry', () => {
+    const [turn] = aiOrderingModel.deserializeTranscript({
+      turns: [
+        {
+          id: 'turn-1',
+          message: 'Anything good?',
+          versionId: 'v1-2026-09-30',
+          createdAt: '2026-10-01T00:00:00.000Z',
+          response: { type: 'message', reply: 'The tea is popular.' },
+          // The merchant's view of this turn has a fingerprint. If one ever
+          // leaked into the guest's, it still stops here.
+          versionFingerprint: 'abc123',
+        },
+      ],
+    } as unknown as Parameters<
+      typeof aiOrderingModel.deserializeTranscript
+    >[0]);
+
+    expect(turn).not.toHaveProperty('versionFingerprint');
+  });
+
+  it('returns an empty transcript for a guest with no turns', () => {
+    expect(aiOrderingModel.deserializeTranscript({ turns: [] })).toEqual([]);
+  });
+});

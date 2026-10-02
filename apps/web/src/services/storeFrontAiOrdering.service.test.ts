@@ -38,9 +38,9 @@ describe('storeFrontAiOrderingService.sendMessage', () => {
 
     expect(url).toContain('/v1/public/guest/ai-ordering/chat');
     expect(init.method).toBe('POST');
-    expect(
-      new Headers(init.headers).get('Authorization'),
-    ).toBe('Bearer guest-token');
+    expect(new Headers(init.headers).get('Authorization')).toBe(
+      'Bearer guest-token',
+    );
   });
 
   it('attaches the previous outcome when one is reported', async () => {
@@ -121,5 +121,69 @@ describe('storeFrontAiOrderingService.sendMessage', () => {
       .catch((caught: unknown) => caught);
 
     expect(isApiError(error) && error.code).toBe('AI_ORDERING_UNAVAILABLE');
+  });
+});
+
+describe('storeFrontAiOrderingService.getConversation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reads the transcript with the guest token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: 'success',
+        data: {
+          turns: [
+            {
+              id: 'turn-1',
+              message: 'Anything good?',
+              versionId: 'v1-2026-09-30',
+              createdAt: '2026-10-01T00:00:00.000Z',
+              response: { type: 'message', reply: 'The tea is popular.' },
+            },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const turns =
+      await storeFrontAiOrderingService.getConversation('guest-token');
+
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.message).toBe('Anything good?');
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(url).toContain('/v1/public/guest/ai-ordering/conversation');
+    // A read, so no method override and no body.
+    expect(init.method).toBeUndefined();
+    expect(init.body).toBeUndefined();
+    expect(new Headers(init.headers).get('Authorization')).toBe(
+      'Bearer guest-token',
+    );
+  });
+
+  it('surfaces an API error rather than an empty transcript', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            {
+              status: 'error',
+              message: 'Invalid guest token',
+              statusCode: 401,
+            },
+            401,
+          ),
+        ),
+    );
+
+    await expect(
+      storeFrontAiOrderingService.getConversation('guest-token'),
+    ).rejects.toSatisfy(isApiError);
   });
 });
