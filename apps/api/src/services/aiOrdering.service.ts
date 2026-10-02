@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { toAiOrderingGuestConversationDto } from '@src/models/aiOrdering/mapper';
 import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '@src/models/aiOrdering/model';
 import { resolveAiOrderingConfirmationRequired } from '@src/modules/aiOrdering/confirmation';
 import { buildAiOrderingContext } from '@src/modules/aiOrdering/context';
@@ -32,6 +33,7 @@ import {
 import { logger } from '@src/utils/logger';
 
 import type {
+  AiOrderingGuestConversationDto,
   AiOrderingTurnResponseData,
   CartDto,
   PublicMenuDto,
@@ -125,6 +127,33 @@ export class AiOrderingService {
     } finally {
       await this.deps.rateLimiter.release(limitKey);
     }
+  }
+
+  /**
+   * The guest's own transcript, for a panel that is reopening.
+   *
+   * Three things this deliberately does NOT do, each for the same reason — a read
+   * of what the guest already said is not a turn:
+   *
+   * - it does not resolve the runtime, so the transcript is still readable after
+   *   the assistant is switched off or its provider credentials are pulled;
+   * - it does not take the rate limiter, so reopening the panel cannot consume a
+   *   guest's budget for actually talking to the assistant;
+   * - it does not require an open store, so a guest can read back what they
+   *   discussed after the store closed.
+   */
+  public async getConversation(
+    claims: GuestTokenClaims,
+  ): Promise<AiOrderingGuestConversationDto> {
+    const conversation = await this.deps.conversations.findByParticipant({
+      storeId: claims.storeId,
+      cartId: claims.cartId,
+      participantId: claims.participantId,
+    });
+
+    // The participant id is part of the lookup, so a guest can only ever read
+    // their own side of a shared cart. There is no filtering step to get wrong.
+    return toAiOrderingGuestConversationDto(conversation);
   }
 
   /**

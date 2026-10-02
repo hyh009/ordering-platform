@@ -92,9 +92,12 @@ function harness(
     summaryThrows?: boolean;
     maxTurnDurationMs?: number;
     hangModel?: boolean;
+    /** `null` stands in for the assistant being switched off for the deployment. */
+    runtime?: null;
   } = {},
 ) {
   const appended: AiOrderingTurnSnapshot[] = [];
+  const findByParticipantCalls: unknown[] = [];
   const created: unknown[] = [];
   const summaryWrites: unknown[] = [];
   let modelCalls = 0;
@@ -117,9 +120,10 @@ function harness(
 
   const service = createAiOrderingService({
     conversations: {
-      findByParticipant: vi.fn(
-        async () => options.existingConversation ?? null,
-      ),
+      findByParticipant: vi.fn(async (lookup) => {
+        findByParticipantCalls.push(lookup);
+        return options.existingConversation ?? null;
+      }),
       create: vi.fn(async (input) => {
         created.push(input);
         return conversation();
@@ -145,45 +149,48 @@ function harness(
     ),
     getPublicMenu: vi.fn(async () => AI_ORDERING_MENU_FIXTURE),
     getGuestCart: vi.fn(async () => AI_ORDERING_CART_FIXTURE),
-    resolveRuntime: () => ({
-      config: {
-        ...AI_ORDERING_V1_2026_09_30,
-        ...(options.maxTurnDurationMs !== undefined
-          ? { maxTurnDurationMs: options.maxTurnDurationMs }
-          : {}),
-        ...(options.versionPermitsAutomaticApplication !== undefined
-          ? {
-              permitsAutomaticApplication:
-                options.versionPermitsAutomaticApplication,
-            }
-          : {}),
-      },
-      provider: 'gemini',
-      modelName: 'test-model',
-      createModel: () => ({
-        invoke: async () => {
-          modelCalls += 1;
+    resolveRuntime: () =>
+      options.runtime === null
+        ? null
+        : {
+            config: {
+              ...AI_ORDERING_V1_2026_09_30,
+              ...(options.maxTurnDurationMs !== undefined
+                ? { maxTurnDurationMs: options.maxTurnDurationMs }
+                : {}),
+              ...(options.versionPermitsAutomaticApplication !== undefined
+                ? {
+                    permitsAutomaticApplication:
+                      options.versionPermitsAutomaticApplication,
+                  }
+                : {}),
+            },
+            provider: 'gemini',
+            modelName: 'test-model',
+            createModel: () => ({
+              invoke: async () => {
+                modelCalls += 1;
 
-          if (options.hangModel) {
-            await new Promise(() => {
-              // Never settles: stands in for a provider that has stopped
-              // responding without closing the connection.
-            });
-          }
+                if (options.hangModel) {
+                  await new Promise(() => {
+                    // Never settles: stands in for a provider that has stopped
+                    // responding without closing the connection.
+                  });
+                }
 
-          return results[modelCalls - 1] ?? { toolCalls: [], text: '' };
-        },
-      }),
-      createSummaryCaller: () => async () => {
-        summaryCalls += 1;
+                return results[modelCalls - 1] ?? { toolCalls: [], text: '' };
+              },
+            }),
+            createSummaryCaller: () => async () => {
+              summaryCalls += 1;
 
-        if (options.summaryThrows) {
-          throw new Error('summary provider is down');
-        }
+              if (options.summaryThrows) {
+                throw new Error('summary provider is down');
+              }
 
-        return options.summaryText ?? '客人點了兩杯飲料。';
-      },
-    }),
+              return options.summaryText ?? '客人點了兩杯飲料。';
+            },
+          },
     rateLimiter: createInMemoryAiOrderingRateLimiter({
       maxRequestsPerWindow: 10,
       windowMs: 60_000,
@@ -198,6 +205,7 @@ function harness(
     appended,
     created,
     summaryWrites,
+    findByParticipantCalls,
     get modelCalls() {
       return modelCalls;
     },
@@ -589,5 +597,124 @@ describe('AiOrderingService', () => {
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(h.modelCalls).toBe(0);
+  });
+});
+
+describe('AiOrderingService.getConversation', () => {
+  function proposalTurn(id: string): AiOrderingTurnSnapshot {
+    return {
+      ...emptyTurn(1),
+      id,
+      response: {
+        type: 'proposal',
+        reply: '這樣可以嗎？',
+        proposalId: 'proposal-1',
+        confirmationRequired: true,
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '加入珍珠奶茶',
+            item: { productId: 'prod-tea', quantity: 1 },
+          },
+        ],
+      },
+    };
+  }
+
+  it('returns an empty transcript before the guest has said anything', async () => {
+    const h = harness({ existingConversation: null });
+
+    await expect(h.service.getConversation(claims)).resolves.toEqual({
+      turns: [],
+    });
+  });
+
+  it('returns the stored turns oldest first', async () => {
+    const h = harness({
+      existingConversation: conversation([emptyTurn(1), emptyTurn(2)]),
+    });
+
+    const result = await h.service.getConversation(claims);
+
+    expect(result.turns.map((turn) => turn.id)).toEqual(['turn-1', 'turn-2']);
+    expect(result.turns[0]).toEqual({
+      id: 'turn-1',
+      message: '訊息 1',
+      response: { type: 'message', reply: '回覆 1' },
+      versionId: AI_ORDERING_V1_2026_09_30.versionId,
+      createdAt: NOW.toISOString(),
+    });
+  });
+
+  it('never exposes the merchant-only signals on a turn', async () => {
+    const h = harness({
+      existingConversation: conversation([emptyTurn(1)]),
+    });
+
+    const result = await h.service.getConversation(claims);
+
+    // The stored snapshot carries all of these; the guest's DTO must not. A
+    // storefront response is not the place for a prompt fingerprint or which
+    // provider answered.
+    expect(Object.keys(result.turns[0] ?? {}).sort()).toEqual([
+      'createdAt',
+      'id',
+      'message',
+      'response',
+      'versionId',
+    ]);
+  });
+
+  it('carries a proposal turn through intact', async () => {
+    const h = harness({
+      existingConversation: conversation([proposalTurn('turn-1')]),
+    });
+
+    const result = await h.service.getConversation(claims);
+
+    // The operations have to survive: this is what lets a reopened panel show
+    // what was proposed rather than just the sentence introducing it.
+    expect(result.turns[0]?.response).toEqual(proposalTurn('turn-1').response);
+  });
+
+  it('looks the conversation up by store, cart AND participant', async () => {
+    const h = harness({ existingConversation: conversation([emptyTurn(1)]) });
+
+    await h.service.getConversation(claims);
+
+    // Participant scoping is the lookup itself, so one guest cannot read another
+    // participant's side of a shared cart.
+    expect(h.findByParticipantCalls).toEqual([claims]);
+  });
+
+  it('reads back with the assistant switched off', async () => {
+    const h = harness({
+      existingConversation: conversation([emptyTurn(1)]),
+      runtime: null,
+    });
+
+    // `sendMessage` is a 404 in this state. The transcript is not: the turns
+    // already happened, and the guest should still see what they said.
+    await expect(
+      h.service.sendMessage(claims, { message: 'hi' }),
+    ).rejects.toThrow(/not enabled/);
+    await expect(h.service.getConversation(claims)).resolves.toMatchObject({
+      turns: [{ id: 'turn-1' }],
+    });
+  });
+
+  it('does not spend the guest rate-limit budget', async () => {
+    const h = harness({ existingConversation: conversation([emptyTurn(1)]) });
+
+    for (let i = 0; i < 20; i += 1) {
+      await h.service.getConversation(claims);
+    }
+
+    // Reopening the panel is free. If the read took a token, a guest who
+    // reloaded a few times would be locked out of actually talking.
+    await expect(send(h)).resolves.toMatchObject({
+      response: { type: 'message' },
+    });
   });
 });

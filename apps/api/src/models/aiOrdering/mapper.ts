@@ -1,5 +1,6 @@
 /**
- * Conversation entities to the DTOs the merchant review surface reads.
+ * Conversation entities to the DTOs the merchant review surface and the guest's
+ * own transcript read.
  *
  * Everything here is a narrowing. `modelOutput` in particular never crosses this
  * boundary: it is the raw provider reply, kept for replay and evaluation, and it
@@ -10,6 +11,8 @@
 import type {
   AiOrderingConversationDetailDto,
   AiOrderingConversationSummaryDto,
+  AiOrderingGuestConversationDto,
+  AiOrderingGuestTurnDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
 } from '@repo/shared';
@@ -40,6 +43,40 @@ export function toAiOrderingReviewTurnDto(
   }
 
   return dto;
+}
+
+/**
+ * One stored turn as its own guest reads it back.
+ *
+ * A separate narrowing from the review DTO rather than a subset of it: the
+ * fields left out here — fingerprint, provider, model name, quality signals —
+ * are not merely uninteresting to a guest, they are internals that a storefront
+ * response must not carry. Writing the fields out explicitly is what makes a
+ * future addition to the snapshot a deliberate decision on both surfaces.
+ */
+export function toAiOrderingGuestTurnDto(
+  turn: AiOrderingTurnSnapshot,
+): AiOrderingGuestTurnDto {
+  return {
+    id: turn.id,
+    message: turn.message,
+    response: turn.response,
+    versionId: turn.versionId,
+    createdAt: turn.createdAt.toISOString(),
+  };
+}
+
+/**
+ * The guest's transcript, or an empty one before their first turn.
+ *
+ * `null` in, empty `turns` out: "no conversation yet" and "a conversation with no
+ * turns" are the same thing to the panel, and collapsing them here keeps the
+ * client from branching on a distinction it has no use for.
+ */
+export function toAiOrderingGuestConversationDto(
+  conversation: AiOrderingConversationEntity | null,
+): AiOrderingGuestConversationDto {
+  return { turns: (conversation?.turns ?? []).map(toAiOrderingGuestTurnDto) };
 }
 
 function countUnanswered(conversation: AiOrderingConversationEntity): number {

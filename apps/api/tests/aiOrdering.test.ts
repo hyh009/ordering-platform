@@ -5,6 +5,7 @@ import { createApp } from '../src/app.js';
 import { guestTokenService } from '../src/services/guestToken.service.js';
 
 const CHAT_PATH = '/api/v1/public/guest/ai-ordering/chat';
+const CONVERSATION_PATH = '/api/v1/public/guest/ai-ordering/conversation';
 
 const guestToken = guestTokenService.signGuestToken({
   storeId: 'store-ai-eval',
@@ -88,5 +89,31 @@ describe('POST /v1/public/guest/ai-ordering/chat', () => {
       status: 'error',
       statusCode: 401,
     });
+  });
+});
+
+describe('GET /v1/public/guest/ai-ordering/conversation', () => {
+  it('rejects a request with no guest token', async () => {
+    const response = await request(createApp()).get(CONVERSATION_PATH);
+
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe('INVALID_GUEST_TOKEN');
+  });
+
+  it('rejects a request with an invalid guest token', async () => {
+    const response = await request(createApp())
+      .get(CONVERSATION_PATH)
+      .set(auth('not-a-real-token'));
+
+    expect(response.status).toBe(401);
+  });
+
+  it('is published in the generated OpenAPI document', async () => {
+    const response = await request(createApp()).get('/docs.json');
+
+    expect(response.status).toBe(200);
+    expect(
+      response.body.paths?.['/v1/public/guest/ai-ordering/conversation']?.get,
+    ).toBeDefined();
   });
 });

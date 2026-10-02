@@ -8,6 +8,7 @@ import { Router } from 'express';
 import { guestClaims } from './session';
 
 import type {
+  GetAiOrderingGuestConversationSuccessResponse,
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
 } from '@repo/shared';
@@ -138,5 +139,81 @@ router.post(
     res.status(200).json(response);
   },
 );
+
+/**
+ * @openapi
+ * /v1/public/guest/ai-ordering/conversation:
+ *   get:
+ *     tags:
+ *       - Public / Guest AI Ordering
+ *     summary: Read back this guest's assistant transcript
+ *     description: >
+ *       Returns the turns this guest has already exchanged in this cart, so a
+ *       reopened or reloaded panel shows the conversation the assistant is still
+ *       reading. Scoped to the token's own participant: a shared cart's other
+ *       participants are never included.
+ *
+ *       Unlike the chat endpoint this does not require the assistant to be
+ *       enabled or the store to be open — reading what you already said is not a
+ *       turn.
+ *     security:
+ *       - guestToken: []
+ *     responses:
+ *       200:
+ *         description: The guest's turns, oldest first; empty before their first turn
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     turns:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required: [id, message, response, versionId, createdAt]
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           message:
+ *                             type: string
+ *                           versionId:
+ *                             type: string
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           response:
+ *                             type: object
+ *                             description: >
+ *                               One of `message`, `choices`, `proposal`, or
+ *                               `unanswered`, discriminated by `type`.
+ *                             properties:
+ *                               type:
+ *                                 type: string
+ *                                 enum: [message, choices, proposal, unanswered]
+ *       401:
+ *         description: Missing or invalid guest token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/conversation', async (req, res) => {
+  const conversation = await aiOrderingService.getConversation(
+    guestClaims(req),
+  );
+
+  const response: GetAiOrderingGuestConversationSuccessResponse = {
+    status: 'success',
+    data: conversation,
+  };
+
+  res.status(200).json(response);
+});
 
 export default router;
