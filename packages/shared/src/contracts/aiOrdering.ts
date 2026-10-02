@@ -210,6 +210,35 @@ export type AiOrderingTurnResponseData = z.infer<
 export type SendAiOrderingMessageSuccessResponse =
   ApiSuccessResponse<AiOrderingTurnResponseData>;
 
+// ── Guest transcript ─────────────────────────────────────────────────────────
+// What the guest is handed when the panel reopens. The conversation is stored
+// server-side, so a reload used to leave the guest with a blank panel while the
+// assistant kept reading the full history — an assistant remembering a
+// conversation its guest could not see.
+//
+// Deliberately narrower than `AiOrderingReviewTurnDto` over the same stored
+// turn: the fingerprint, provider, model name, and quality signals exist to tell
+// a merchant why a prompt version needs work. None of that is the guest's
+// business, so the two DTOs stay separate rather than one being reused with
+// fields omitted at the edge.
+
+export type AiOrderingGuestTurnDto = {
+  /** The stored turn id, so the transcript has stable React keys. */
+  id: string;
+  message: string;
+  response: AiOrderingResponse;
+  versionId: string;
+  createdAt: string;
+};
+
+export type AiOrderingGuestConversationDto = {
+  /** Empty before the guest's first turn. Never null: there is no "no conversation" state to branch on. */
+  turns: AiOrderingGuestTurnDto[];
+};
+
+export type GetAiOrderingGuestConversationSuccessResponse =
+  ApiSuccessResponse<AiOrderingGuestConversationDto>;
+
 // ── Merchant review ──────────────────────────────────────────────────────────
 // The backstage view of stored conversations. Read-only: nothing here lets a
 // merchant edit a turn, because the corpus is evidence of what the assistant
