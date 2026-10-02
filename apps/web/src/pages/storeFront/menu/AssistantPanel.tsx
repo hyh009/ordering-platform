@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Send, ShoppingCart } from 'lucide-react';
 
 import { useAppTranslation } from '@/app/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 
+import { AssistantCartPanel } from './AssistantCartPanel';
 import { AssistantProposalCard } from './AssistantProposalCard';
 import { AssistantProposalRecord } from './AssistantProposalRecord';
 
@@ -23,6 +24,11 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
   const { tDefault } = useAppTranslation();
   const transcriptRef = useRef<HTMLDivElement>(null);
 
+  // A pure visibility toggle, so it stays here rather than in the VM, which owns
+  // page flow. At `md` and up the cart column is always rendered and this is
+  // simply unread, so a stale `true` left by a resize changes nothing.
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
   // Scroll measurement, so it stays in the component rather than the VM. The
   // latest exchange is the only part worth opening on: a returning guest lands
   // mid-conversation otherwise, which is what the panel looked like before.
@@ -33,165 +39,273 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
     if (!transcript) return;
 
     transcript.scrollTop = transcript.scrollHeight;
+    // Transcript values only. Cart values are deliberately absent: the cart is
+    // on screen beside this, and a quantity change there must not yank the
+    // transcript to the bottom while the guest is reading further up.
   }, [vm.entries, vm.proposal, vm.isSending]);
 
   return (
-    <div className="fixed inset-0 z-page-modal flex flex-col justify-end lg:items-center lg:justify-center">
-      <button
-        type="button"
-        aria-label={tDefault('common.close', 'Close')}
-        className="absolute inset-0 bg-black/40"
-        onClick={vm.close}
-      />
+    <div className="fixed inset-x-0 top-0 z-page-modal h-dvh">
+      {/* `h-dvh`, never `h-screen`: iOS Safari's `100vh` excludes the address
+          bar, which would push the composer under the browser chrome.
+          `StoreFrontLayout` already settles this the same way.
 
-      <div className="relative flex max-h-[85vh] w-full flex-col rounded-t-2xl bg-background lg:mx-auto lg:max-w-lg lg:rounded-2xl lg:shadow-xl">
-        <header className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="text-base font-semibold">
-            {tDefault('guest.assistant.title', 'Ordering assistant')}
-          </h2>
-          <Button variant="ghost" size="sm" onClick={vm.close}>
-            {tDefault('common.close', 'Close')}
-          </Button>
-        </header>
+          The height is FIXED, not a maximum. A `max-h` box grows with its
+          content, and a growing box has to put that growth somewhere — the
+          header and the composer were moving on every new message. A fixed
+          height lets the transcript flex inside a frame that never shifts. */}
+      <div className="relative flex h-full w-full flex-col bg-background">
+        {/* Full-bleed background, constrained content. On a wide screen an
+            unconstrained conversation runs to an unreadable line length and
+            pushes the cart column to the far edge, which undoes the one thing
+            this layout is for: reading both at once. */}
+        <div className="flex min-h-0 w-full flex-1 flex-col md:mx-auto md:max-w-5xl md:border-x md:border-border">
+          <header className="flex items-center justify-between border-b border-border p-4">
+            <h2 className="text-base font-semibold">
+              {tDefault('guest.assistant.title', 'Ordering assistant')}
+            </h2>
 
-        <div
-          ref={transcriptRef}
-          className="flex-1 space-y-3 overflow-y-auto p-4"
-        >
-          {vm.isLoadingTranscript ? (
-            <div
-              className="flex items-center justify-center py-6 text-muted-foreground"
-              role="status"
-              aria-label={tDefault(
-                'guest.assistant.loading',
-                'Loading your conversation…',
-              )}
-            >
-              <Spinner className="size-5" />
+            <div className="flex items-center gap-1">
+              {/* Below `md` only: at `md` and up the cart is already beside the
+                  conversation, so a control to reveal it would do nothing. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => {
+                  setIsCartOpen(true);
+                }}
+              >
+                <ShoppingCart size={16} strokeWidth={2} />
+                {tDefault('guest.assistant.viewCart', 'Cart')}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={vm.close}>
+                {tDefault('common.close', 'Close')}
+              </Button>
             </div>
-          ) : null}
+          </header>
 
-          {vm.showsEmptyHint ? (
-            <p className="text-sm text-muted-foreground">
-              {tDefault(
-                'guest.assistant.emptyHint',
-                'Ask about a dish, or describe what you feel like eating.',
-              )}
-            </p>
-          ) : null}
-
-          {vm.entries.map((entry) => {
-            if (entry.kind === 'guest') {
-              return (
-                <p
-                  key={entry.id}
-                  className="ml-auto max-w-[85%] rounded-xl bg-storefront-primary px-3 py-2 text-sm text-storefront-text"
-                >
-                  {entry.text}
-                </p>
-              );
-            }
-
-            return (
-              <div key={entry.id} className="max-w-[90%] space-y-2">
-                <p className="rounded-xl bg-muted px-3 py-2 text-sm">
-                  {entry.reply}
-                </p>
-
-                {entry.kind === 'choices' ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">{entry.question}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {entry.options.map((option) => (
-                        <Button
-                          key={option.id}
-                          variant="outline"
-                          size="sm"
-                          disabled={vm.isSending}
-                          onClick={() => {
-                            void vm.selectOption(option);
-                          }}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                    {entry.allowsFreeText ? (
-                      <p className="text-xs text-muted-foreground">
-                        {tDefault(
-                          'guest.assistant.freeTextHint',
-                          'Or just type what you want instead.',
-                        )}
-                      </p>
-                    ) : null}
+          <div className="flex min-h-0 flex-1">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div
+                ref={transcriptRef}
+                className="flex-1 space-y-3 overflow-y-auto p-4"
+              >
+                {vm.isLoadingTranscript ? (
+                  <div
+                    className="flex items-center justify-center py-6 text-muted-foreground"
+                    role="status"
+                    aria-label={tDefault(
+                      'guest.assistant.loading',
+                      'Loading your conversation…',
+                    )}
+                  >
+                    <Spinner className="size-5" />
                   </div>
                 ) : null}
 
-                {entry.kind === 'proposal' && entry.record === 'live' ? (
-                  vm.proposal ? (
-                    <AssistantProposalCard
-                      proposal={vm.proposal}
-                      isApplying={vm.isSending}
-                      onDismissOperation={vm.dismissOperation}
-                      onRetryOperation={(operationId) => {
-                        void vm.retryOperation(operationId);
-                      }}
-                      onApply={() => {
-                        void vm.applyProposal();
-                      }}
-                    />
-                  ) : null
+                {vm.showsEmptyHint ? (
+                  <p className="text-sm text-muted-foreground">
+                    {tDefault(
+                      'guest.assistant.emptyHint',
+                      'Ask about a dish, or describe what you feel like eating.',
+                    )}
+                  </p>
                 ) : null}
 
-                {entry.kind === 'proposal' && entry.record !== 'live' ? (
-                  <AssistantProposalRecord
-                    operations={entry.operations}
-                    isStale={entry.record === 'stale'}
-                  />
+                {vm.entries.map((entry) => {
+                  if (entry.kind === 'guest') {
+                    return (
+                      <p
+                        key={entry.id}
+                        className="ml-auto max-w-[85%] rounded-xl bg-storefront-primary px-3 py-2 text-sm text-storefront-text"
+                      >
+                        {entry.text}
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div key={entry.id} className="max-w-[90%] space-y-2">
+                      <p className="rounded-xl bg-muted px-3 py-2 text-sm">
+                        {entry.reply}
+                      </p>
+
+                      {entry.kind === 'choices' ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {entry.question}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {entry.options.map((option) => (
+                              <Button
+                                key={option.id}
+                                variant="outline"
+                                size="sm"
+                                disabled={vm.isSending}
+                                onClick={() => {
+                                  void vm.selectOption(option);
+                                }}
+                              >
+                                {option.label}
+                              </Button>
+                            ))}
+                          </div>
+                          {entry.allowsFreeText ? (
+                            <p className="text-xs text-muted-foreground">
+                              {tDefault(
+                                'guest.assistant.freeTextHint',
+                                'Or just type what you want instead.',
+                              )}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {entry.kind === 'proposal' && entry.record === 'live' ? (
+                        vm.proposal ? (
+                          <AssistantProposalCard
+                            proposal={vm.proposal}
+                            isApplying={vm.isApplying}
+                            onDismissOperation={vm.dismissOperation}
+                            onRetryOperation={(operationId) => {
+                              void vm.retryOperation(operationId);
+                            }}
+                            onApply={() => {
+                              void vm.applyProposal();
+                            }}
+                          />
+                        ) : null
+                      ) : null}
+
+                      {entry.kind === 'proposal' && entry.record !== 'live' ? (
+                        <AssistantProposalRecord
+                          operations={entry.operations}
+                          isStale={entry.record === 'stale'}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                {vm.isSending ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Spinner className="size-4" />
+                    {tDefault('guest.assistant.thinking', 'Thinking…')}
+                  </div>
+                ) : null}
+
+                {vm.error ? (
+                  <p className="text-sm text-destructive">{vm.error}</p>
                 ) : null}
               </div>
-            );
-          })}
 
-          {vm.isSending ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner className="size-4" />
-              {tDefault('guest.assistant.thinking', 'Thinking…')}
+              <form
+                className="flex items-center gap-2 border-t border-border p-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void vm.submitDraft();
+                }}
+              >
+                <Input
+                  value={vm.draft}
+                  placeholder={tDefault(
+                    'guest.assistant.inputPlaceholder',
+                    'Ask or order something…',
+                  )}
+                  onChange={(event) => {
+                    vm.setDraft(event.target.value);
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant="storefront"
+                  size="icon"
+                  aria-label={tDefault('guest.assistant.send', 'Send')}
+                  disabled={!vm.canSend}
+                >
+                  <Send size={16} strokeWidth={2} />
+                </Button>
+              </form>
             </div>
-          ) : null}
-
-          {vm.error ? (
-            <p className="text-sm text-destructive">{vm.error}</p>
-          ) : null}
+            {/* Always rendered at `md` and up, which is what makes the toggle
+                above inert there. */}
+            <div className="hidden w-80 shrink-0 flex-col border-l border-border md:flex">
+              <AssistantCartPanel
+                groups={vm.cartGroups}
+                totals={vm.cartTotals}
+                isEmpty={vm.isCartEmpty}
+                isMutating={vm.isMutatingCart}
+                isApplying={vm.isApplying}
+                onChangeQuantity={(item, quantity) => {
+                  void vm.changeCartItemQuantity(item, quantity);
+                }}
+                onRemove={(item) => {
+                  void vm.removeCartItem(item);
+                }}
+                onSubmit={() => {
+                  void vm.submitCart();
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        <form
-          className="flex items-center gap-2 border-t border-border p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void vm.submitDraft();
-          }}
-        >
-          <Input
-            value={vm.draft}
-            placeholder={tDefault(
-              'guest.assistant.inputPlaceholder',
-              'Ask or order something…',
+        {/* Below `md`, the cart covers the conversation instead of sitting beside
+            it, so only one of the two scrolls at a time. Dismissing it changes
+            nothing but this component's own state, which is why the transcript
+            and any open proposal are still there underneath. */}
+        {isCartOpen ? (
+          <div className="absolute inset-0 flex flex-col bg-background md:hidden">
+            <header className="flex items-center gap-2 border-b border-border p-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsCartOpen(false);
+                }}
+              >
+                <ArrowLeft size={16} strokeWidth={2} />
+                {tDefault('guest.assistant.backToChat', 'Back to chat')}
+              </Button>
+            </header>
+
+            <div className="min-h-0 flex-1">
+              <AssistantCartPanel
+                groups={vm.cartGroups}
+                totals={vm.cartTotals}
+                isEmpty={vm.isCartEmpty}
+                isMutating={vm.isMutatingCart}
+                isApplying={vm.isApplying}
+                onChangeQuantity={(item, quantity) => {
+                  void vm.changeCartItemQuantity(item, quantity);
+                }}
+                onRemove={(item) => {
+                  void vm.removeCartItem(item);
+                }}
+                onSubmit={() => {
+                  void vm.submitCart();
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {/* Inside the panel's own relative box rather than a new fixed layer, so
+            no z token is needed and the global feedback/toast layers still sit
+            above it — a toast from a failed cart call has to be readable. */}
+        {vm.isApplying ? (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-background/80"
+            role="status"
+            aria-label={tDefault(
+              'guest.assistant.applying',
+              'Updating your cart…',
             )}
-            onChange={(event) => {
-              vm.setDraft(event.target.value);
-            }}
-          />
-          <Button
-            type="submit"
-            variant="storefront"
-            size="icon"
-            aria-label={tDefault('guest.assistant.send', 'Send')}
-            disabled={!vm.canSend}
           >
-            <Send size={16} strokeWidth={2} />
-          </Button>
-        </form>
+            <Spinner className="size-6" />
+          </div>
+        ) : null}
       </div>
     </div>
   );

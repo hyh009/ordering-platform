@@ -44,13 +44,16 @@ const manualResources: Resource = {
       guest: {
         assistant: {
           applyProposal: 'Add these to my cart',
+          applying: 'Updating your cart…',
+          backToChat: 'Back to chat',
+          cartEmpty:
+            'Nothing in your cart yet. Anything you accept will show up here.',
           dismissOperation: 'Remove this change',
           emptyHint: 'Ask about a dish, or describe what you feel like eating.',
           freeTextHint: 'Or just type what you want instead.',
           inputPlaceholder: 'Ask or order something…',
           loading: 'Loading your conversation…',
           open: 'Ask the assistant',
-          proposalResultHint: 'Check your cart to review the result.',
           rowApplied: 'Added',
           rowDismissed: 'Removed',
           rowFailed: 'Could not be applied',
@@ -70,6 +73,7 @@ const manualResources: Resource = {
             'This suggestion is from before. Ask again if you still want it.',
           thinking: 'Thinking…',
           title: 'Ordering assistant',
+          viewCart: 'Cart',
         },
         cart: {
           currentUserBadge: 'Me',
@@ -637,13 +641,15 @@ const manualResources: Resource = {
       guest: {
         assistant: {
           applyProposal: '加入購物車',
+          applying: '正在更新購物車…',
+          backToChat: '回到對話',
+          cartEmpty: '購物車還是空的。你接受的項目會出現在這裡。',
           dismissOperation: '移除這項變更',
           emptyHint: '可以問我餐點的事，或是描述你想吃什麼。',
           freeTextHint: '也可以直接輸入你想要的。',
           inputPlaceholder: '想問什麼或想點什麼…',
           loading: '正在載入你的對話…',
           open: '問問點餐助理',
-          proposalResultHint: '可以到購物車確認結果。',
           rowApplied: '已加入',
           rowDismissed: '已移除',
           rowFailed: '無法套用',
@@ -662,6 +668,7 @@ const manualResources: Resource = {
           staleProposalHint: '這是之前的建議。如果還想要，可以再跟我說一次。',
           thinking: '思考中…',
           title: '點餐助理',
+          viewCart: '購物車',
         },
         cart: {
           currentUserBadge: '我',

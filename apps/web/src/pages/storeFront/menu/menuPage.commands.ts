@@ -1,5 +1,9 @@
 import type { StoreFrontRuntime } from '@/features/storeFront/runtime';
-import type { AddCartItemRequest } from '@/models/cart';
+import type {
+  AddCartItemRequest,
+  SubmitCartRequest,
+  UpdateCartItemRequest,
+} from '@/models/cart';
 
 export function createMenuPageCommands(runtime: StoreFrontRuntime) {
   return {
@@ -17,6 +21,22 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
 
     addItem(storeId: string, request: AddCartItemRequest) {
       return runtime.commands.cart.addItem(storeId, request);
+    },
+
+    updateCartItem(
+      storeId: string,
+      itemId: string,
+      request: UpdateCartItemRequest,
+    ) {
+      return runtime.commands.cart.updateItem(storeId, itemId, request);
+    },
+
+    removeCartItem(storeId: string, itemId: string) {
+      return runtime.commands.cart.removeItem(storeId, itemId);
+    },
+
+    submitCart(storeId: string, request: SubmitCartRequest) {
+      return runtime.commands.cart.submitCart(storeId, request);
     },
 
     sendAssistantMessage(

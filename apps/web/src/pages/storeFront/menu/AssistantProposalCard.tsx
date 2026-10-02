@@ -163,15 +163,6 @@ export function AssistantProposalCard({
           {tDefault('guest.assistant.applyProposal', 'Add these to my cart')}
         </Button>
       ) : null}
-
-      {proposal.isApplied ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {tDefault(
-            'guest.assistant.proposalResultHint',
-            'Check your cart to review the result.',
-          )}
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useStore } from 'zustand';
 
+import { feedbackCommands } from '@/app/global/feedback/feedback.commands';
+import { useAppTranslation } from '@/app/i18n';
+import { PATHS } from '@/app/routing/paths';
 import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
+import { groupCartItemsByParticipant } from '@/models/cart';
 
 import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
 import { buildAssistantPanelView } from './assistantPanelView';
 import { createMenuPageCommands } from './menuPage.commands';
+
+import type { CartItem } from '@/models/cart';
 
 /**
  * Owns the assistant panel's flow state: whether it is open, the draft message,
@@ -18,6 +25,8 @@ export function useAssistantPanelVM(input: {
   isAvailable: boolean;
 }) {
   const { storeId, isAvailable } = input;
+  const navigate = useNavigate();
+  const { tDefault } = useAppTranslation();
   const runtime = getStoreFrontRuntime();
   const commands = useMemo(() => createMenuPageCommands(runtime), [runtime]);
 
@@ -25,6 +34,102 @@ export function useAssistantPanelVM(input: {
   const view = useMemo(
     () => buildAssistantPanelView({ state, isAvailable }),
     [state, isAvailable],
+  );
+
+  // The same cart the menu page and the cart page read. The assistant shows the
+  // cart rather than restating it, so there is no second source to keep in step
+  // and the storefront SSE stream already keeps a shared cart current here.
+  const activeStoreId = useStore(
+    runtime.stores.tenant,
+    (tenant) => tenant.activeStoreId,
+  );
+  const rawCart = useStore(runtime.stores.cart, (cart) => cart.cart);
+  const rawIsMutatingCart = useStore(
+    runtime.stores.cart,
+    (cart) => cart.isMutating,
+  );
+  const rawParticipantId = useStore(
+    runtime.stores.session,
+    (session) => session.participantId,
+  );
+
+  // Guarded the same way the cart page guards it: while the active store is
+  // handing over, another store's cart must not appear beside this conversation.
+  const isActiveStore = activeStoreId === storeId;
+  const cart = isActiveStore ? rawCart : null;
+  const participantId = isActiveStore ? rawParticipantId : null;
+  const isMutatingCart = isActiveStore && rawIsMutatingCart;
+
+  const cartGroups = useMemo(
+    () => groupCartItemsByParticipant(cart, participantId),
+    [cart, participantId],
+  );
+  const cartTotals = useMemo(
+    () =>
+      cart
+        ? {
+            subtotal: cart.subtotal,
+            serviceFeeAmount: cart.serviceFeeAmount,
+            serviceFeeRate: cart.serviceFeeRate,
+            totalAmount: cart.totalAmount,
+          }
+        : null,
+    [cart],
+  );
+  const isCartEmpty = (cart?.items.length ?? 0) === 0;
+
+  const changeCartItemQuantity = useCallback(
+    async (item: CartItem, quantity: number) => {
+      const result = await commands.updateCartItem(storeId, item.id, {
+        quantity,
+      });
+
+      if (result.status === 'failed') {
+        handleStoreFrontFailure(result);
+      }
+    },
+    [commands, storeId],
+  );
+
+  /**
+   * Submitting is the guest's own action, reusing the cart page's confirmation and
+   * command so there is one submission flow with one wording.
+   *
+   * This does not widen what the assistant can do: no assistant operation
+   * submits, pays for, or closes an order. The guest presses this.
+   */
+  const submitCart = useCallback(async () => {
+    const confirmed = await feedbackCommands.confirm({
+      title: tDefault('guest.cart.submitConfirmTitle', 'Submit order?'),
+      message: tDefault(
+        'guest.cart.submitConfirmMessage',
+        'Your order will be sent to the kitchen. You can keep adding items before payment.',
+      ),
+      confirmLabel: tDefault('guest.cart.submitConfirm', 'Submit'),
+    });
+    if (!confirmed) return;
+
+    const result = await commands.submitCart(storeId, {});
+
+    if (result.status === 'submitted') {
+      // Leaving is correct: the cart the conversation was about has become an
+      // order, so there is nothing left for the assistant to propose against.
+      void navigate(PATHS.STOREFRONT.ORDER_BUILD(storeId, result.orderId));
+      return;
+    }
+
+    handleStoreFrontFailure(result);
+  }, [commands, navigate, storeId, tDefault]);
+
+  const removeCartItem = useCallback(
+    async (item: CartItem) => {
+      const result = await commands.removeCartItem(storeId, item.id);
+
+      if (result.status === 'failed') {
+        handleStoreFrontFailure(result);
+      }
+    },
+    [commands, storeId],
   );
 
   const [isOpen, setIsOpen] = useState(false);
@@ -151,5 +256,12 @@ export function useAssistantPanelVM(input: {
     applyProposal,
     retryOperation,
     dismissOperation,
+    cartGroups,
+    cartTotals,
+    isCartEmpty,
+    isMutatingCart,
+    changeCartItemQuantity,
+    removeCartItem,
+    submitCart,
   };
 }
