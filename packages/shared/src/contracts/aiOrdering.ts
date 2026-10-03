@@ -259,7 +259,11 @@ export type DecideAiOrderingProposalSuccessResponse =
  */
 export type AiOrderingProposalStateDto =
   | { status: 'pending' }
-  | { status: 'decided'; decidedAt: string; results: AiOrderingOperationResult[] };
+  | {
+      status: 'decided';
+      decidedAt: string;
+      results: AiOrderingOperationResult[];
+    };
 
 export type AiOrderingGuestTurnDto = {
   /** The stored turn id, so the transcript has stable React keys. */
@@ -320,6 +324,30 @@ export type AiOrderingConversationSummaryDto = {
 };
 
 /**
+ * What the model actually answered, as the review surface reads it.
+ *
+ * The quality signals say THAT a turn was degraded; this says what the model
+ * said. They are different questions, and only this one answers "it told the
+ * guest it would add a note, so why is there no note" — which needed a direct
+ * database read every time it came up.
+ *
+ * A deliberately narrow projection of the stored raw reply, not the reply
+ * itself: the tool the model chose, the arguments it chose, and any plain text
+ * beside them. `args` stays `unknown` because every tool has its own argument
+ * shape and the reader renders them as JSON; the reader must not branch on
+ * them. Absent when the turn stored nothing recognizable, which a pre-agent
+ * turn or a future provider can produce — a shape this does not recognize is
+ * omitted rather than passed through, so this field never becomes a hole in
+ * the contract.
+ */
+export type AiOrderingModelOutputDto = {
+  /** The tool the model called, if any. Empty for a plain-text answer. */
+  toolCalls: { name: string; args: unknown }[];
+  /** Text the model wrote alongside the call. Often empty. */
+  text: string;
+};
+
+/**
  * One stored turn, as the merchant sees it.
  *
  * `versionFingerprint` travels with `versionId` because a draft version's file
@@ -338,6 +366,12 @@ export type AiOrderingReviewTurnDto = {
   versionFingerprint: string;
   provider: string;
   modelName: string;
+  /**
+   * Present when the stored raw reply was recognizable. Merchant-only: the
+   * guest DTO carries no equivalent, because this is what the assistant tried
+   * to do, not what the guest was told.
+   */
+  modelOutput?: AiOrderingModelOutputDto;
   repairAttempted: boolean;
   repairSucceeded?: boolean;
   droppedOperationCount: number;
