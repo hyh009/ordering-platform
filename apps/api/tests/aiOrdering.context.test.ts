@@ -239,7 +239,7 @@ describe('AI ordering context assembly', () => {
       const noAction = blockText(
         buildAiOrderingContext(
           contextInput({
-            reportedOutcomes: [{ operationId: 'op-1', outcome: 'no_action' }],
+            reportedOutcomes: [{ operationId: 'op-1', outcome: 'superseded' }],
           }),
         ),
         'current_turn',
@@ -249,7 +249,26 @@ describe('AI ordering context assembly', () => {
       // next reply will be wrong in one of the two cases.
       expect(rejected).not.toBe(noAction);
       expect(rejected).toContain('dismissed');
-      expect(noAction).toContain('neither accepted nor dismissed');
+      // The abandonment line has to say what the CART did, not only what the
+      // guest did: a model that reads "they moved on" and still believes its own
+      // last reply will invent a cart item id for an item never added.
+      expect(noAction).toContain('never answered');
+      expect(noAction).toContain('did NOT change');
+    });
+
+    it('tells the model the outcomes outrank its own last reply', () => {
+      const text = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            reportedOutcomes: [{ operationId: 'op-1', outcome: 'superseded' }],
+          }),
+        ),
+        'current_turn',
+      );
+
+      // The failure this exists for: the history still holds "I added the milk
+      // tea for you", and without this the model trusts that over the cart.
+      expect(text).toContain('this is right and your reply was not');
     });
 
     it('passes a failure code through when one was reported', () => {

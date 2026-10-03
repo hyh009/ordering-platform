@@ -213,6 +213,9 @@ export function buildAiOrderingContext(
 
   if (input.reportedOutcomes && input.reportedOutcomes.length > 0) {
     currentTurnLines.push('## What happened to your last proposal');
+    currentTurnLines.push(
+      'This is what the cart actually did. Where it disagrees with what you said last turn, this is right and your reply was not.',
+    );
 
     for (const result of input.reportedOutcomes) {
       currentTurnLines.push(
@@ -250,9 +253,10 @@ export function buildAiOrderingContext(
 }
 
 /**
- * `rejected` and `no_action` must read differently to the model: one is a
- * refusal it should respect, the other is a guest who simply moved on and may
- * still want the item. Collapsing them would make the next reply wrong.
+ * The four non-acceptances must read differently to the model. A refusal it
+ * should respect, a proposal the guest never answered, one an earlier failure
+ * stopped it from reaching, and one that was attempted and would not apply are
+ * four different facts, and collapsing any two makes the next reply wrong.
  */
 function describeOutcome(
   outcome: string,
@@ -263,8 +267,10 @@ function describeOutcome(
       return 'the guest accepted it and it is now in the cart';
     case 'rejected':
       return 'the guest dismissed it — do not propose it again unless they ask';
+    case 'superseded':
+      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; offer it again if they still seem to want it';
     case 'no_action':
-      return 'the guest neither accepted nor dismissed it before moving on';
+      return 'the guest accepted it but an earlier failure stopped the proposal before this one was attempted, so it is not in the cart';
     case 'failed':
       return `the guest accepted it but it could not be applied${failureCode ? ` (${failureCode})` : ''}`;
     default:

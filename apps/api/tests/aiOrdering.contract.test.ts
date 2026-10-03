@@ -135,11 +135,13 @@ describe('AI ordering contract', () => {
       ).toBe(false);
     });
 
-    it('keeps rejected, no_action and failed as distinct values', () => {
-      // These three must never be collapsed: "you removed it", "you moved on"
-      // and "it failed" have to produce different assistant replies.
-      expect(new Set(aiOrderingOperationOutcomes).size).toBe(4);
+    it('keeps the four ways of not ending up in the cart distinct', () => {
+      // "You removed it", "you never answered", "we never got to it" and "it
+      // would not apply" have to produce different assistant replies and
+      // different lines in the guest's transcript.
+      expect(new Set(aiOrderingOperationOutcomes).size).toBe(5);
       expect(aiOrderingOperationOutcomes).toContain('rejected');
+      expect(aiOrderingOperationOutcomes).toContain('superseded');
       expect(aiOrderingOperationOutcomes).toContain('no_action');
       expect(aiOrderingOperationOutcomes).toContain('failed');
     });
@@ -165,7 +167,6 @@ describe('AI ordering contract', () => {
           .success,
       ).toBe(false);
     });
-
   });
 
   describe('proposal decision request', () => {

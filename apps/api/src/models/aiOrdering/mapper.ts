@@ -141,7 +141,7 @@ export function toAiOrderingGuestTurnDto(
 /**
  * Two states, not three.
  *
- * An expired proposal is a decided one whose operations are all `no_action`, so
+ * A lapsed proposal is a decided one whose operations are all `superseded`, so
  * `pending` means exactly one thing to the panel: there is still something to
  * accept. Expiry is resolved before this point, never here.
  */

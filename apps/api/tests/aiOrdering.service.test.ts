@@ -3,7 +3,6 @@ import { MemorySaver } from '@langchain/langgraph';
 import { fakeModel } from 'langchain';
 import { describe, expect, it, vi } from 'vitest';
 
-
 import {
   AI_ORDERING_CART_FIXTURE,
   AI_ORDERING_FIXTURE_CART_ID,
@@ -21,10 +20,10 @@ import { createAiOrderingService } from '../src/services/aiOrdering.service.js';
 
 import type {
   AiOrderingConversationEntity,
+  AiOrderingProposalDecision,
   AiOrderingTurnSnapshot,
 } from '../src/models/aiOrdering/model.js';
 import type { StoreEntity } from '../src/models/store/model.js';
-
 
 const claims = {
   storeId: AI_ORDERING_FIXTURE_STORE_ID,
@@ -97,6 +96,8 @@ function harness(
     summaryThrows?: boolean;
     maxTurnDurationMs?: number;
     hangModel?: boolean;
+    /** Stands in for the guest accepting the proposal in the same instant. */
+    proposalClaimLost?: boolean;
     /** `null` stands in for the assistant being switched off for the deployment. */
     runtime?: null;
   } = {},
@@ -105,6 +106,10 @@ function harness(
   const findByParticipantCalls: unknown[] = [];
   const created: unknown[] = [];
   const summaryWrites: unknown[] = [];
+  const proposalDecisions: {
+    proposalId: string;
+    decision: AiOrderingProposalDecision;
+  }[] = [];
   let summaryCalls = 0;
 
   const chatModel = fakeModel();
@@ -187,6 +192,37 @@ function harness(
         summaryWrites.push(input);
         return conversation();
       }),
+      recordProposalDecision: vi.fn(
+        async (input: {
+          proposalId: string;
+          decision: AiOrderingProposalDecision;
+        }) => {
+          proposalDecisions.push({
+            proposalId: input.proposalId,
+            decision: input.decision,
+          });
+
+          return {
+            claimed: options.proposalClaimLost !== true,
+            proposal:
+              options.proposalClaimLost === true
+                ? {
+                    snapshot: {
+                      proposalId: input.proposalId,
+                      operations: [],
+                      decision: {
+                        decidedAt: NOW,
+                        results: [
+                          { operationId: 'op-1', outcome: 'accepted' as const },
+                        ],
+                      },
+                    },
+                    response: { type: 'proposal' },
+                  }
+                : null,
+          };
+        },
+      ),
     },
     findStore: vi.fn(async () =>
       options.storeEntity === undefined ? store() : options.storeEntity,
@@ -214,7 +250,9 @@ function harness(
             createChatModel: () => activeModel,
             toToolSchema: (schema: unknown) =>
               toGeminiToolSchema(schema as never) as Record<string, unknown>,
-            createModel: () => ({ invoke: async () => ({ toolCalls: [], text: '' }) }),
+            createModel: () => ({
+              invoke: async () => ({ toolCalls: [], text: '' }),
+            }),
             createSummaryCaller: () => async () => {
               summaryCalls += 1;
 
@@ -241,8 +279,15 @@ function harness(
     created,
     summaryWrites,
     findByParticipantCalls,
+    proposalDecisions,
     get modelCalls() {
       return chatModel.callCount;
+    },
+    /** Everything the first model call was shown, flattened for matching. */
+    get firstPrompt() {
+      return (chatModel.calls[0]?.messages ?? [])
+        .map((message) => String(message.content))
+        .join('\n');
     },
     get summaryCalls() {
       return summaryCalls;
@@ -253,7 +298,6 @@ function harness(
 async function send(h: Harness, message = '介紹一下珍珠奶茶') {
   return h.service.sendMessage(claims, { message });
 }
-
 
 /**
  * Attaches provider usage to a scripted reply.
@@ -655,6 +699,142 @@ describe('AiOrderingService', () => {
   });
 });
 
+describe('AiOrderingService proposal lifetime', () => {
+  function undecidedProposalTurn(): AiOrderingTurnSnapshot {
+    return {
+      ...emptyTurn(1),
+      response: {
+        type: 'proposal',
+        reply: '好的，為您加上無糖鮮奶茶，請確認以下內容：',
+        proposalId: 'proposal-1',
+        confirmationRequired: true,
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '加入鮮奶茶',
+            item: { productId: 'prod-milk-tea', quantity: 1 },
+          },
+        ],
+      },
+      proposal: {
+        proposalId: 'proposal-1',
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '加入鮮奶茶',
+            item: { productId: 'prod-milk-tea', quantity: 1 },
+          },
+        ],
+      },
+    };
+  }
+
+  it('settles an unanswered proposal when the guest speaks again', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+    });
+
+    await send(h, '我要去冰');
+
+    // A proposal is good for the turn that made it. Left open, it stayed
+    // applicable for as long as its checkpoint lived.
+    expect(h.proposalDecisions).toHaveLength(1);
+    expect(h.proposalDecisions[0]?.proposalId).toBe('proposal-1');
+    expect(h.proposalDecisions[0]?.decision.superseded).toBe(true);
+    expect(h.proposalDecisions[0]?.decision.results).toEqual([
+      { operationId: 'op-1', outcome: 'superseded' },
+    ]);
+  });
+
+  it('reports the settled proposal back to the panel', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+    });
+
+    const result = await send(h, '我要去冰');
+
+    // Nothing happened on the client, so the panel cannot know those rows are
+    // over. Without this it keeps showing them with no verdict, and an applied
+    // proposal and an abandoned one read exactly the same.
+    expect(result.settledProposal).toEqual({
+      proposalId: 'proposal-1',
+      results: [{ operationId: 'op-1', outcome: 'superseded' }],
+    });
+  });
+
+  it('reports nothing when the acceptance won the race', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+      proposalClaimLost: true,
+    });
+
+    const result = await send(h, '我要去冰');
+
+    // The client made that decision and already has its results. Reporting the
+    // no-action set here would overwrite them with the write that LOST.
+    expect(result.settledProposal).toBeUndefined();
+  });
+
+  it('tells the model the cart did not change', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+    });
+
+    await send(h, '我要去冰');
+
+    // The failure this exists for: the history still holds "I added the milk
+    // tea", the cart does not have it, and nothing used to reconcile the two —
+    // so the model invented a cart item id for an item never added.
+    expect(h.firstPrompt).toContain('What happened to your last proposal');
+    expect(h.firstPrompt).toContain('did NOT change');
+  });
+
+  it('leaves an already-decided proposal alone', async () => {
+    const decided = undecidedProposalTurn();
+    decided.proposal = {
+      ...decided.proposal!,
+      decision: {
+        decidedAt: NOW,
+        results: [{ operationId: 'op-1', outcome: 'accepted' }],
+      },
+    };
+
+    const h = harness({ existingConversation: conversation([decided]) });
+
+    await send(h, '我要去冰');
+
+    // Writing again would be refused by the conditional claim anyway, but the
+    // round trip should not happen at all.
+    expect(h.proposalDecisions).toHaveLength(0);
+    expect(h.firstPrompt).toContain('now in the cart');
+  });
+
+  it('does not settle anything when no proposal was ever made', async () => {
+    const h = harness({ existingConversation: conversation([emptyTurn(1)]) });
+
+    await send(h);
+
+    expect(h.proposalDecisions).toHaveLength(0);
+  });
+
+  it('yields to an acceptance that lands in the same instant', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+      proposalClaimLost: true,
+    });
+
+    await send(h, '我要去冰');
+
+    // Both writes race on `decision: { $exists: false }` and only one matches.
+    // When the acceptance wins, what the model is told is what it executed —
+    // never the no-action set this turn tried to write.
+    expect(h.firstPrompt).toContain('now in the cart');
+    expect(h.firstPrompt).not.toContain('did NOT change');
+  });
+});
+
 describe('AiOrderingService.getConversation', () => {
   function proposalTurn(id: string): AiOrderingTurnSnapshot {
     return {
@@ -795,7 +975,11 @@ describe('AiOrderingService proposal decisions', () => {
       proposal?: {
         proposalId: string;
         operations: typeof operations;
-        decision?: { decidedAt: Date; results: unknown[] };
+        decision?: {
+          decidedAt: Date;
+          results: unknown[];
+          superseded?: boolean;
+        };
       } | null;
       claimed?: boolean;
       resumable?: boolean;
@@ -844,18 +1028,19 @@ describe('AiOrderingService proposal decisions', () => {
       }),
       updateCartItem: vi.fn(async () => undefined),
       removeCartItem: vi.fn(async () => undefined),
-      resolveRuntime: () => ({
-        config: AI_ORDERING_V1_2026_09_30,
-        provider: 'gemini',
-        modelName: 'test-model',
-        createChatModel: () => chatModel,
-        toToolSchema: (schema: unknown) =>
-          toGeminiToolSchema(schema as never) as Record<string, unknown>,
-        createModel: () => ({
-          invoke: async () => ({ toolCalls: [], text: '' }),
-        }),
-        createSummaryCaller: () => async () => '',
-      }) as never,
+      resolveRuntime: () =>
+        ({
+          config: AI_ORDERING_V1_2026_09_30,
+          provider: 'gemini',
+          modelName: 'test-model',
+          createChatModel: () => chatModel,
+          toToolSchema: (schema: unknown) =>
+            toGeminiToolSchema(schema as never) as Record<string, unknown>,
+          createModel: () => ({
+            invoke: async () => ({ toolCalls: [], text: '' }),
+          }),
+          createSummaryCaller: () => async () => '',
+        }) as never,
       getCheckpointer: async () => new MemorySaver(),
       rateLimiter: createInMemoryAiOrderingRateLimiter({
         maxRequestsPerWindow: 10,
@@ -888,6 +1073,29 @@ describe('AiOrderingService proposal decisions', () => {
     });
 
     // Nothing ran. The claim is what stops a double apply, not the UI.
+    expect(h.cartCalls).toHaveLength(0);
+  });
+
+  it('reports a lapsed proposal as expired, not as already answered', async () => {
+    const h = decisionHarness({
+      claimed: false,
+      proposal: {
+        proposalId: 'proposal-1',
+        operations,
+        decision: { decidedAt: NOW, results: [], superseded: true },
+      },
+    });
+
+    await expect(
+      h.service.decideProposal(claims, {
+        proposalId: 'proposal-1',
+        keptOperationIds: ['op-1'],
+      }),
+    ).rejects.toMatchObject({ code: 'AI_ORDERING_PROPOSAL_EXPIRED' });
+
+    // The guest never answered this one — the conversation moved past it.
+    // "You already answered this" would be the same class of lie the decided
+    // case above exists to avoid.
     expect(h.cartCalls).toHaveLength(0);
   });
 

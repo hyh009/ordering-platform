@@ -261,7 +261,7 @@ router.get('/conversation', async (req, res) => {
  *                             type: string
  *                           outcome:
  *                             type: string
- *                             enum: [accepted, rejected, no_action, failed]
+ *                             enum: [accepted, rejected, superseded, no_action, failed]
  *                           failureCode:
  *                             type: string
  *                     cart:

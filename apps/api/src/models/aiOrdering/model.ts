@@ -42,6 +42,21 @@ export type AiOrderingPromptSnapshot = {
 export type AiOrderingProposalDecision = {
   decidedAt: Date;
   results: AiOrderingOperationResult[];
+  /**
+   * Set when the conversation moved on instead of the guest answering.
+   *
+   * A proposal is good for the turn that made it. Sending another message
+   * settles the old one as `superseded` so it can no longer be applied — a guest
+   * who kept talking for ten turns must not be able to accept something the
+   * assistant offered at the start, against a cart and a menu that have both
+   * changed since.
+   *
+   * Distinct from a decision the guest made, even though both are decisions and
+   * both settle every operation: "you already answered this" and "that offer
+   * lapsed, ask again" are different things to tell a guest, and this field is
+   * what tells them apart on a proposal with no operations to carry an outcome.
+   */
+  superseded?: boolean;
 };
 
 /**

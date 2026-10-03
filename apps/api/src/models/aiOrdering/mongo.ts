@@ -48,6 +48,10 @@ const proposalDecisionSchema = new Schema<AiOrderingProposalDecision>(
   {
     decidedAt: { type: Date, required: true },
     results: { type: [operationResultSnapshotSchema], required: true },
+    // Absent on a decision the guest made. Present when the next message
+    // settled an unanswered proposal; see the entity for why the two are not
+    // collapsed.
+    superseded: { type: Boolean },
   },
   { _id: false },
 );

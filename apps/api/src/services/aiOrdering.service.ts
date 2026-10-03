@@ -10,7 +10,8 @@ import {
   windowAiOrderingHistory,
 } from '@src/modules/aiOrdering/history';
 import {
-  readAiOrderingLastProposalOutcome,
+  buildAiOrderingSupersededResults,
+  readAiOrderingLastProposal,
   resolveAiOrderingPrompt,
 } from '@src/modules/aiOrdering/promptResolution';
 import { createRedisAiOrderingRateLimiter } from '@src/modules/aiOrdering/rateLimit.redis';
@@ -42,6 +43,7 @@ import type {
   AiOrderingGuestConversationDto,
   AiOrderingOperation,
   AiOrderingOperationResult,
+  AiOrderingSettledProposal,
   AiOrderingProposalDecisionData,
   AiOrderingTurnResponseData,
   CartDto,
@@ -231,6 +233,17 @@ export class AiOrderingService {
         throw new NotFoundError(
           'That proposal is no longer available.',
           ERROR_CODES.AI_ORDERING_PROPOSAL_NOT_FOUND,
+        );
+      }
+
+      if (claim.proposal.snapshot.decision?.superseded) {
+        // Settled by the guest's own next message, not by them answering it.
+        // Reported as expiry, which is what it is: the offer lapsed when the
+        // conversation moved past it. Telling them they "already answered"
+        // would be the same class of lie this guards against below.
+        throw new ConflictError(
+          'That proposal is no longer available to apply.',
+          ERROR_CODES.AI_ORDERING_PROPOSAL_EXPIRED,
         );
       }
 
@@ -485,6 +498,68 @@ export class AiOrderingService {
     }
   }
 
+  /**
+   * Settles the previous proposal if the guest never answered it, and returns
+   * what the model should be told about it.
+   *
+   * A proposal is good for the turn that made it. Without this, an unanswered
+   * proposal stayed applicable for as long as its checkpoint lived — a guest
+   * could keep talking for ten turns and then accept an offer made against a
+   * cart and a menu that had both moved on.
+   *
+   * Settling it here rather than when the turn is appended is deliberate: the
+   * model needs the outcome in THIS turn's context, the one where the guest
+   * typed instead of accepting. Without it, "you never answered" and "I never
+   * offered" look identical to the model while its own reply still sits in the
+   * history saying it added something — which is how it ends up inventing a
+   * cart item id for an item that was never added.
+   *
+   * The write reuses the same conditional claim an acceptance uses, so a guest
+   * who presses accept at the very moment they send a message cannot have both:
+   * exactly one of the two writes matches `decision: { $exists: false }`, and
+   * if the acceptance wins, its results are what the model is told.
+   */
+  private async settleLastProposal(
+    lookup: { storeId: string; cartId: string; participantId: string },
+    conversation: AiOrderingConversationEntity | null,
+  ): Promise<{
+    results: AiOrderingOperationResult[];
+    settledProposal?: AiOrderingSettledProposal;
+  }> {
+    const proposal = readAiOrderingLastProposal(conversation);
+
+    if (!proposal) {
+      return { results: [] };
+    }
+
+    if (proposal.decision) {
+      return { results: proposal.decision.results };
+    }
+
+    const results = buildAiOrderingSupersededResults(proposal);
+
+    const claim = await this.deps.conversations.recordProposalDecision({
+      ...lookup,
+      proposalId: proposal.proposalId,
+      decision: { decidedAt: this.deps.now(), results, superseded: true },
+    });
+
+    if (claim.claimed) {
+      // Reported to the caller as well as to the model. The panel is still
+      // showing those rows with no verdict, and it has no other way to learn
+      // this: nothing happened on the client, the guest simply typed instead.
+      return {
+        results,
+        settledProposal: { proposalId: proposal.proposalId, results },
+      };
+    }
+
+    // The acceptance won. Its own results are authoritative, and they may still
+    // be empty for the instant between claiming and recording what executed.
+    // Not reported back: the client made that decision and already has them.
+    return { results: claim.proposal?.snapshot.decision?.results ?? [] };
+  }
+
   private async planTurn(
     claims: GuestTokenClaims,
     request: SendAiOrderingMessageRequest,
@@ -524,7 +599,9 @@ export class AiOrderingService {
     }
 
     // What the backend recorded when it executed, not what a client claims.
-    const previousResults = readAiOrderingLastProposalOutcome(conversation);
+    // Settling an unanswered proposal here is what makes it one turn's offer.
+    const settled = await this.settleLastProposal(lookup, conversation);
+    const previousResults = settled.results;
 
     const [store, menu, cart] = await Promise.all([
       this.deps.findStore(claims.storeId),
@@ -641,7 +718,13 @@ export class AiOrderingService {
 
     await this.maybeRebuildSummary(runtime, stored, deadlineAt);
 
-    return { versionId: runtime.config.versionId, response: record.response };
+    return {
+      versionId: runtime.config.versionId,
+      response: record.response,
+      ...(settled.settledProposal !== undefined
+        ? { settledProposal: settled.settledProposal }
+        : {}),
+    };
   }
 
   /**
@@ -661,7 +744,11 @@ export class AiOrderingService {
         itemId: string;
         item: UpdateCartItemRequest;
       }) => {
-        await this.deps.updateCartItem(claims, operation.itemId, operation.item);
+        await this.deps.updateCartItem(
+          claims,
+          operation.itemId,
+          operation.item,
+        );
       },
       removeItem: async (operation: { itemId: string }) => {
         await this.deps.removeCartItem(claims, operation.itemId);

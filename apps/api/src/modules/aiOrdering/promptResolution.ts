@@ -1,5 +1,8 @@
 import type { AiOrderingOperationResult } from '@repo/shared';
-import type { AiOrderingConversationEntity } from '@src/models/aiOrdering/model';
+import type {
+  AiOrderingConversationEntity,
+  AiOrderingProposalSnapshot,
+} from '@src/models/aiOrdering/model';
 import type { AiOrderingResolvedPrompt } from '@src/modules/aiOrdering/types';
 
 export type AiOrderingPromptResolutionFailure =
@@ -63,6 +66,22 @@ export function resolveAiOrderingPrompt(
   };
 }
 /**
+ * The most recent proposal in the conversation, decided or not.
+ *
+ * Only the LAST one: a proposal is good for the turn that made it, so every
+ * earlier proposal has already been settled by the message that followed it.
+ */
+export function readAiOrderingLastProposal(
+  conversation: AiOrderingConversationEntity | null,
+): AiOrderingProposalSnapshot | null {
+  const proposals = (conversation?.turns ?? [])
+    .map((turn) => turn.proposal)
+    .filter((proposal) => proposal !== undefined);
+
+  return proposals.at(-1) ?? null;
+}
+
+/**
  * The outcome of the most recent proposal, if it has one.
  *
  * Read from what the backend RECORDED when it executed, never from anything the
@@ -73,9 +92,23 @@ export function resolveAiOrderingPrompt(
 export function readAiOrderingLastProposalOutcome(
   conversation: AiOrderingConversationEntity | null,
 ): AiOrderingOperationResult[] {
-  const proposals = (conversation?.turns ?? [])
-    .map((turn) => turn.proposal)
-    .filter((proposal) => proposal !== undefined);
+  return readAiOrderingLastProposal(conversation)?.decision?.results ?? [];
+}
 
-  return proposals.at(-1)?.decision?.results ?? [];
+/**
+ * The results that settle a proposal nobody answered: every operation untouched.
+ *
+ * Its own outcome rather than `rejected` or `no_action`. Not `rejected`, because
+ * the guest did not refuse these — they moved on, and may still want them. Not
+ * `no_action`, which means the guest accepted and a failure stopped the proposal
+ * before this operation was reached. Those read differently to the model and to
+ * the guest, so they are separate values.
+ */
+export function buildAiOrderingSupersededResults(
+  proposal: AiOrderingProposalSnapshot,
+): AiOrderingOperationResult[] {
+  return proposal.operations.map((operation) => ({
+    operationId: operation.operationId,
+    outcome: 'superseded' as const,
+  }));
 }
