@@ -90,10 +90,56 @@ export function AiOrderingConversationDetailPage() {
                 </Badge>
               ) : null}
 
+              {turn.modelOutput?.toolNames.map((name) => (
+                <Badge key={name} variant="secondary" className="font-mono">
+                  {name}
+                </Badge>
+              ))}
+
               <span className="ml-auto text-muted-foreground">
                 {new Date(turn.createdAt).toLocaleString()}
               </span>
             </div>
+
+            {turn.modelOutput ? (
+              // Collapsed by default: the reply is what a merchant reads, and
+              // the model's own arguments are what they open when the reply and
+              // the cart disagree.
+              <details className="mt-2 text-xs">
+                <summary className="cursor-pointer text-muted-foreground">
+                  {tDefault('merchant.aiOrdering.modelOutput', 'Model output')}
+                </summary>
+
+                <div className="mt-2 space-y-2">
+                  {turn.modelOutput.toolArgs.map((call, index) => (
+                    <div key={`${call.name}-${index}`}>
+                      <p className="font-mono text-muted-foreground">
+                        {call.name}
+                      </p>
+                      <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 font-mono">
+                        {call.json}
+                      </pre>
+                    </div>
+                  ))}
+
+                  {turn.modelOutput.text ? (
+                    <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2">
+                      {turn.modelOutput.text}
+                    </pre>
+                  ) : null}
+
+                  {turn.modelOutput.toolArgs.length === 0 &&
+                  !turn.modelOutput.text ? (
+                    <p className="text-muted-foreground">
+                      {tDefault(
+                        'merchant.aiOrdering.modelOutputEmpty',
+                        'The model answered with nothing at all.',
+                      )}
+                    </p>
+                  ) : null}
+                </div>
+              </details>
+            ) : null}
           </li>
         ))}
       </ol>

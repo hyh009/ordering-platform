@@ -173,3 +173,46 @@ describe('aiOrderingModel.deserializeTranscript', () => {
     expect(aiOrderingModel.deserializeTranscript({ turns: [] })).toEqual([]);
   });
 });
+
+describe('aiOrderingModel.deserializeReviewTurn', () => {
+  const reviewTurn = {
+    id: 'turn-1',
+    message: '幫我加辣',
+    response: { type: 'message', reply: '好的，幫你備註加辣。' },
+    versionId: 'v1-2026-09-30',
+    versionFingerprint: 'abc123',
+    provider: 'gemini',
+    modelName: 'test-model',
+    repairAttempted: false,
+    droppedOperationCount: 0,
+    ownershipViolationCount: 0,
+    createdAt: '2026-10-01T00:00:00.000Z',
+  } as const;
+
+  it('carries what the model answered through to the review surface', () => {
+    const turn = aiOrderingModel.deserializeReviewTurn({
+      ...reviewTurn,
+      modelOutput: {
+        toolCalls: [
+          { name: 'propose_cart_operations', args: { operations: [] } },
+        ],
+        text: '',
+      },
+    });
+
+    // Untouched on purpose: a reviewer comparing the reply against the cart is
+    // reading the arguments the model sent, not this layer's reading of them.
+    expect(turn.modelOutput).toEqual({
+      toolCalls: [
+        { name: 'propose_cart_operations', args: { operations: [] } },
+      ],
+      text: '',
+    });
+  });
+
+  it('leaves the field off a turn that recorded no output', () => {
+    expect(
+      aiOrderingModel.deserializeReviewTurn(reviewTurn),
+    ).not.toHaveProperty('modelOutput');
+  });
+});

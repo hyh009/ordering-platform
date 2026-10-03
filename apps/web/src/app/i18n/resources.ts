@@ -880,6 +880,8 @@ const manualResources: Resource = {
           dropped: '已捨棄',
           lastTurnAt: '最後訊息',
           loading: '載入對話中…',
+          modelOutput: '模型輸出',
+          modelOutputEmpty: '模型什麼都沒有回。',
           ownershipViolations: '越權',
           participant: '客人',
           product: '商品',

@@ -4,6 +4,7 @@ import type {
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
   AiOrderingConversationSummaryDto,
+  AiOrderingModelOutputDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
   ListAiOrderingConversationsQuery,
@@ -127,6 +128,15 @@ export type AiOrderingReviewTurnDtoType = AiOrderingReviewTurnDto;
 export type AiOrderingUnansweredEntryDtoType = AiOrderingUnansweredEntryDto;
 
 export type AiOrderingConversationSummary = AiOrderingConversationSummaryDto;
+
+/**
+ * What the model answered on a turn, for the review surface only.
+ *
+ * `args` stays `unknown`: the review surface renders it as JSON and must not
+ * branch on a tool's argument shape, which is the backend's contract with the
+ * model and changes with it.
+ */
+export type AiOrderingModelOutput = AiOrderingModelOutputDto;
 export type AiOrderingReviewTurn = AiOrderingReviewTurnDto;
 export type AiOrderingConversationDetail = AiOrderingConversationDetailDto;
 export type AiOrderingUnansweredEntry = AiOrderingUnansweredEntryDto;

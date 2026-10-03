@@ -237,6 +237,13 @@ export const aiOrderingModel = {
       turn.repairSucceeded = dto.repairSucceeded;
     }
 
+    // Carried through unchanged rather than reshaped. The backend already
+    // narrowed the raw reply into a declared shape, and the review surface's
+    // whole purpose for it is to show what was sent, not a reading of it.
+    if (dto.modelOutput !== undefined) {
+      turn.modelOutput = dto.modelOutput;
+    }
+
     return turn;
   },
 

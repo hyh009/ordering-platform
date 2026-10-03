@@ -23,6 +23,20 @@ export type AiOrderingReviewTurnRow = {
   message: string;
   responseType: AiOrderingReviewTurn['response']['type'];
   reply: string;
+  /**
+   * What the model answered, formatted for reading.
+   *
+   * Flattened here rather than in the view because turning arguments into
+   * readable JSON is a presentation decision about data, which is the row's
+   * job; the view only decides whether to reveal it. Absent when the turn
+   * recorded no recognizable output.
+   */
+  modelOutput?: {
+    toolNames: string[];
+    /** Pretty-printed tool arguments, in call order. */
+    toolArgs: { name: string; json: string }[];
+    text: string;
+  };
   versionId: string;
   versionFingerprint: string;
   modelName: string;
@@ -34,6 +48,21 @@ export type AiOrderingReviewTurnRow = {
   wasDegraded: boolean;
   createdAt: string;
 };
+
+/**
+ * Tool arguments as text.
+ *
+ * `JSON.stringify` can return `undefined` (for a function or a bare
+ * `undefined`) and throws on a circular structure. Neither should be able to
+ * blank out a review page, so both land on a placeholder.
+ */
+function formatArgs(args: unknown): string {
+  try {
+    return JSON.stringify(args, null, 2) ?? String(args);
+  } catch {
+    return '[unserializable]';
+  }
+}
 
 function toRow(turn: AiOrderingReviewTurn): AiOrderingReviewTurnRow {
   const row: AiOrderingReviewTurnRow = {
@@ -57,6 +86,17 @@ function toRow(turn: AiOrderingReviewTurn): AiOrderingReviewTurnRow {
 
   if (turn.repairSucceeded !== undefined) {
     row.repairSucceeded = turn.repairSucceeded;
+  }
+
+  if (turn.modelOutput) {
+    row.modelOutput = {
+      toolNames: turn.modelOutput.toolCalls.map((call) => call.name),
+      toolArgs: turn.modelOutput.toolCalls.map((call) => ({
+        name: call.name,
+        json: formatArgs(call.args),
+      })),
+      text: turn.modelOutput.text,
+    };
   }
 
   return row;
