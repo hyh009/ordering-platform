@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   toAiOrderingConversationDetailDto,
   toAiOrderingConversationSummaryDto,
+  toAiOrderingGuestConversationDto,
   toAiOrderingUnansweredEntryDtos,
 } from '../src/models/aiOrdering/mapper.js';
 import { createAiOrderingReviewService } from '../src/services/aiOrderingReview.service.js';
@@ -64,28 +65,102 @@ const unansweredResponse: AiOrderingResponse = {
 };
 
 describe('AI ordering merchant mapper', () => {
-  it('never exposes the raw provider output', () => {
+  it('exposes what the model answered, not only what the guest saw', () => {
+    // The question this exists for: the reply promised a note and no note was
+    // written. Only the model's own arguments say which of the two happened.
     const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        turn(
+          'turn-1',
+          { type: 'message', reply: '好的，幫你備註加辣。' },
+          {
+            modelOutput: {
+              toolCalls: [
+                {
+                  name: 'propose_cart_operations',
+                  args: { operations: [{ type: 'update_own_item' }] },
+                },
+              ],
+              text: '',
+            },
+          },
+        ),
+      ]),
+    );
+
+    expect(detail.turns[0]?.modelOutput).toEqual({
+      toolCalls: [
+        {
+          name: 'propose_cart_operations',
+          args: { operations: [{ type: 'update_own_item' }] },
+        },
+      ],
+      text: '',
+    });
+  });
+
+  it('omits a stored output whose shape it does not recognize', () => {
+    // `modelOutput` is `Mixed` in Mongo, so the stored value is whatever some
+    // past or future runtime wrote. A half-understood object must not reach the
+    // reader as though the contract covered it.
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        turn(
+          'turn-1',
+          { type: 'message', reply: '好的。' },
+          {
+            modelOutput: { candidates: ['provider internals'] },
+          },
+        ),
+      ]),
+    );
+
+    expect(detail.turns[0]).not.toHaveProperty('modelOutput');
+    expect(JSON.stringify(detail)).not.toContain('provider internals');
+  });
+
+  it('omits the field entirely when a turn stored no output', () => {
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        turn(
+          'turn-1',
+          { type: 'message', reply: '好的。' },
+          {
+            modelOutput: undefined,
+          },
+        ),
+      ]),
+    );
+
+    expect(detail.turns[0]).not.toHaveProperty('modelOutput');
+  });
+
+  it('keeps the raw output out of the guest transcript', () => {
+    const dto = toAiOrderingGuestConversationDto(
       conversation([turn('turn-1', { type: 'message', reply: '好的。' })]),
     );
 
-    // `modelOutput` is kept for replay and evaluation. It is not a stable shape
-    // and a backstage reader must not come to depend on it.
-    expect(JSON.stringify(detail)).not.toContain('provider internals');
-    expect(detail.turns[0]).not.toHaveProperty('modelOutput');
+    // Opening this to the merchant did not open it to the guest: the two DTOs
+    // are separate narrowings, which is what makes that a one-sided change.
+    expect(JSON.stringify(dto)).not.toContain('provider internals');
+    expect(dto.turns[0]).not.toHaveProperty('modelOutput');
   });
 
   it('exposes the quality signals that explain a turn', () => {
     const detail = toAiOrderingConversationDetailDto(
       conversation([
-        turn('turn-1', { type: 'message', reply: '好的。' }, {
-          quality: {
-            repairAttempted: true,
-            repairSucceeded: false,
-            droppedOperationCount: 2,
-            ownershipViolationCount: 1,
+        turn(
+          'turn-1',
+          { type: 'message', reply: '好的。' },
+          {
+            quality: {
+              repairAttempted: true,
+              repairSucceeded: false,
+              droppedOperationCount: 2,
+              ownershipViolationCount: 1,
+            },
           },
-        }),
+        ),
       ]),
     );
 
@@ -129,9 +204,9 @@ describe('AI ordering merchant mapper', () => {
   });
 
   it('omits lastTurnAt on a conversation with no turns', () => {
-    expect(toAiOrderingConversationSummaryDto(conversation([]))).not.toHaveProperty(
-      'lastTurnAt',
-    );
+    expect(
+      toAiOrderingConversationSummaryDto(conversation([])),
+    ).not.toHaveProperty('lastTurnAt');
   });
 
   it('flattens unanswered turns and keeps the product reference', () => {
@@ -173,7 +248,9 @@ describe('AI ordering merchant mapper', () => {
 
 describe('AI ordering merchant review service', () => {
   function repositoryStub(
-    overrides: Partial<Parameters<typeof createAiOrderingReviewService>[0]['repository']> = {},
+    overrides: Partial<
+      Parameters<typeof createAiOrderingReviewService>[0]['repository']
+    > = {},
   ) {
     return {
       listByStore: vi.fn().mockResolvedValue([]),

@@ -2,10 +2,18 @@
  * Conversation entities to the DTOs the merchant review surface and the guest's
  * own transcript read.
  *
- * Everything here is a narrowing. `modelOutput` in particular never crosses this
- * boundary: it is the raw provider reply, kept for replay and evaluation, and it
- * is neither a stable shape nor something a backstage reader should depend on.
- * The merchant sees what the GUEST saw, plus the signals that explain it.
+ * Everything here is a narrowing. The GUEST sees what they were shown. The
+ * MERCHANT sees that, plus the signals that explain it, plus what the model
+ * actually answered — `modelOutput`, projected into a declared shape rather
+ * than passed through raw.
+ *
+ * That last part was once withheld on the grounds that the raw provider reply
+ * is not a stable shape. True, and the reason the projection exists; but
+ * withholding it entirely meant every question of the form "the assistant said
+ * it would do X and X did not happen" could only be answered by reading the
+ * database by hand. The reviewer needs to see the model's own answer, so the
+ * contract declares a narrow view of it and `toAiOrderingModelOutputDto` below
+ * refuses anything that does not fit.
  */
 
 import type {
@@ -13,6 +21,7 @@ import type {
   AiOrderingConversationSummaryDto,
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
+  AiOrderingModelOutputDto,
   AiOrderingProposalStateDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
@@ -21,6 +30,55 @@ import type {
   AiOrderingConversationEntity,
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
+
+/**
+ * The stored raw reply, as the review DTO declares it — or nothing.
+ *
+ * `modelOutput` is `unknown` on the entity and `Mixed` in Mongo, so this is the
+ * one place the shape is asserted. A value that does not fit is dropped rather
+ * than coerced or passed through: a reviewer reading a half-recognized object
+ * would be reading the runtime's internals, which is what the raw field was
+ * withheld to prevent. Dropping it shows as "nothing recorded", which is
+ * honest, and the full value is still in the database for a replay.
+ *
+ * `args` is carried through untouched. Every tool has its own argument shape,
+ * validating them here would duplicate the gate, and the reviewer's interest is
+ * precisely in the arguments that FAILED validation.
+ */
+function toAiOrderingModelOutputDto(
+  value: unknown,
+): AiOrderingModelOutputDto | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const { toolCalls, text } = value as {
+    toolCalls?: unknown;
+    text?: unknown;
+  };
+
+  if (!Array.isArray(toolCalls) || typeof text !== 'string') {
+    return undefined;
+  }
+
+  const calls: AiOrderingModelOutputDto['toolCalls'] = [];
+
+  for (const call of toolCalls) {
+    if (typeof call !== 'object' || call === null) {
+      return undefined;
+    }
+
+    const { name, args } = call as { name?: unknown; args?: unknown };
+
+    if (typeof name !== 'string') {
+      return undefined;
+    }
+
+    calls.push({ name, args });
+  }
+
+  return { toolCalls: calls, text };
+}
 
 export function toAiOrderingReviewTurnDto(
   turn: AiOrderingTurnSnapshot,
@@ -38,6 +96,12 @@ export function toAiOrderingReviewTurnDto(
     ownershipViolationCount: turn.quality.ownershipViolationCount,
     createdAt: turn.createdAt.toISOString(),
   };
+
+  const modelOutput = toAiOrderingModelOutputDto(turn.modelOutput);
+
+  if (modelOutput !== undefined) {
+    dto.modelOutput = modelOutput;
+  }
 
   if (turn.quality.repairSucceeded !== undefined) {
     dto.repairSucceeded = turn.quality.repairSucceeded;
