@@ -34,14 +34,24 @@ export const aiOrderingUnansweredReasons = [
  * What became of one proposed operation. Recorded when the outcome is
  * determined, not when the guest next speaks.
  *
- * `rejected` (the guest dismissed the row) and `no_action` (the guest moved on
- * or let the proposal expire) must stay distinct: "you removed the tea" and "you
- * moved on" should not produce the same reply. `failed` (accepted but rejected
- * on execution) is distinct from both.
+ * Four ways not to end up in the cart, and they are deliberately not collapsed,
+ * because each produces a different next reply and a different line in the
+ * guest's transcript:
+ *
+ * - `rejected` — the guest unchecked the row before accepting. A refusal.
+ * - `superseded` — the guest never answered; they sent another message and the
+ *   proposal lapsed with it. Not a refusal: they may still want it.
+ * - `no_action` — the guest accepted, but an earlier operation failed in a way
+ *   that stopped the proposal before this one was attempted.
+ * - `failed` — the guest accepted and it was attempted, but it did not apply.
+ *
+ * "You removed the tea", "you never answered", "we never got to it" and "it
+ * would not go in" are four different things to say.
  */
 export const aiOrderingOperationOutcomes = [
   'accepted',
   'rejected',
+  'superseded',
   'no_action',
   'failed',
 ] as const;
@@ -176,9 +186,24 @@ export const decideAiOrderingProposalSchema = z.object({
     .max(AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL),
 });
 
+/**
+ * What the server recorded for the proposal this message settled.
+ *
+ * Present only when the guest had an unanswered proposal open and sent another
+ * message instead of answering it. Sending a message ends that proposal, and
+ * this is the record of it ending — the panel marks those rows from this rather
+ * than inferring them, because the server is the side that wrote the decision
+ * and it may have lost the race to an acceptance landing in the same instant.
+ */
+export const aiOrderingSettledProposalSchema = z.object({
+  proposalId: aiOrderingIdSchema,
+  results: z.array(aiOrderingOperationResultSchema),
+});
+
 export const aiOrderingTurnResponseDataSchema = z.object({
   versionId: aiOrderingIdSchema,
   response: aiOrderingResponseSchema,
+  settledProposal: aiOrderingSettledProposalSchema.optional(),
 });
 
 export type AiOrderingChoice = z.infer<typeof aiOrderingChoiceSchema>;
@@ -198,6 +223,9 @@ export type AiOrderingUnansweredResponse = z.infer<
 export type AiOrderingResponse = z.infer<typeof aiOrderingResponseSchema>;
 export type AiOrderingOperationResult = z.infer<
   typeof aiOrderingOperationResultSchema
+>;
+export type AiOrderingSettledProposal = z.infer<
+  typeof aiOrderingSettledProposalSchema
 >;
 export type SendAiOrderingMessageRequest = z.infer<
   typeof sendAiOrderingMessageSchema
@@ -252,7 +280,7 @@ export type DecideAiOrderingProposalSuccessResponse =
  * What became of a proposal, as the guest's restored transcript reports it.
  *
  * Two states, not three. An expired proposal is a decided one whose operations
- * are all `no_action`, so the client renders results in both cases and only
+ * are all `superseded`, so the client renders results in both cases and only
  * `pending` means there is still something to accept. That keeps "you already
  * answered this" and "this is still waiting for you" as the only distinction the
  * panel has to draw, which is the one the guest cares about.
