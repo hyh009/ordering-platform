@@ -802,8 +802,12 @@ all day. Do not use empty `availabilityRules` to mean unavailable; use
   which also store it without filtering on it
 - every turn is stored, including turns whose model output failed validation —
   those are the most useful rows in the evaluation corpus
-- `turns[].modelOutput` is the raw provider reply, kept for replay. It is never
-  exposed through the merchant API.
+- `turns[].modelOutput` is the raw provider reply, kept for replay. The merchant
+  API exposes a narrow projection of it — the tool the model called, its
+  arguments, and any text beside them — because "the assistant said it would do
+  X and X did not happen" has no other answer. A stored value the projection
+  does not recognize is omitted rather than passed through, so the raw shape
+  never becomes part of the contract. The guest API carries none of it.
 - `turns[].versionId` names the prompt version; `turns[].versionFingerprint`
   hashes its content. A draft version's file may be edited between two turns
   sharing an id, and the fingerprint is what tells them apart.

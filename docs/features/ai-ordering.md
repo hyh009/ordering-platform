@@ -589,6 +589,37 @@ entirely.
 Indexes: unique `{id}`, unique `{storeId, cartId, participantId}`,
 and `{storeId, createdAt: -1}` for the merchant review listing.
 
+### The Review Surface Shows What The Model Answered
+
+The quality signals say THAT a turn was degraded. They do not say what the model
+said, and that is the question every real investigation turned out to be: *the
+reply promised a note and no note was written — did the model fail to put it in
+the operation, or did the operation fail to apply?* The reply alone cannot tell
+them apart, and for a while the only way to find out was to read the stored
+document by hand.
+
+So the merchant review DTO carries `modelOutput`: the tool the model called, the
+arguments it called it with, and any text beside them. Three boundaries keep
+that from becoming a hole:
+
+- **The merchant only.** `AiOrderingGuestTurnDto` carries no equivalent. This is
+  what the assistant TRIED to do, which is not the same as what the guest was
+  told, and the guest surface must never conflate them.
+- **A declared projection, not the raw reply.** `turns[].modelOutput` is
+  `unknown` on the entity and `Mixed` in Mongo, so `toAiOrderingModelOutputDto`
+  asserts the shape in one place and drops a value that does not fit. A reviewer
+  reading a half-recognized object would be reading the runtime's internals,
+  which is exactly what withholding the field was meant to prevent. Dropping it
+  reads as "nothing recorded", and the full value is still in the database.
+- **`args` stays untyped.** Every tool has its own argument shape, the reviewer
+  renders it as JSON, and the interesting case is precisely the arguments that
+  FAILED validation — so re-validating them at this boundary would hide the one
+  thing worth looking at.
+
+A turn with no usable output at all is never stored (there was no response the
+guest saw), so it shows up in the API log rather than here. That is still the one
+gap: an unusable turn is the hardest to diagnose and the least visible.
+
 ## Code Map
 
 Contracts:
@@ -657,7 +688,8 @@ Merchant review (backend):
 - `apps/api/src/services/aiOrderingReview.service.ts` — read side, deliberately
   separate from the turn service so review works with the assistant switched off
 - `apps/api/src/models/aiOrdering/mapper.ts` — entity to DTO; `modelOutput`
-  never crosses it
+  crosses it only as a declared projection (tool name, arguments, text), and
+  only to the merchant
 - `apps/api/src/routes/v1/merchant/stores/[storeId]/aiOrdering.ts`
 
 Storefront (web):
