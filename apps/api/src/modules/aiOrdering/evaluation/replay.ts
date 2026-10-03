@@ -128,6 +128,7 @@ async function replayOne(
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
     confirmationRequired: true,
+    locale: input.locale ?? 'zh-TW',
     newId: (prefix) => `${prefix}-replay`,
     toToolSchema: input.toToolSchema,
     model: input.createModel(),

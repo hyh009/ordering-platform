@@ -352,6 +352,8 @@ export class AiOrderingService {
         participantId: input.claims.participantId,
       },
       confirmationRequired: true,
+      // Unused on a resume: the labels were written when the proposal was made.
+      locale: 'zh-TW',
       newId: this.deps.newId,
       toToolSchema: (schema) => input.runtime.toToolSchema(schema),
       model: input.runtime.createChatModel(),
@@ -582,6 +584,7 @@ export class AiOrderingService {
       context,
       validation: { menu, cart, participantId: claims.participantId },
       confirmationRequired,
+      locale: store.locale.defaultLocale,
       newId: (prefix) =>
         prefix === 'proposal' ? proposalId : this.deps.newId(prefix),
       toToolSchema: (schema) => runtime.toToolSchema(schema),

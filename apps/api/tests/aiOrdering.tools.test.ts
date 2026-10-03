@@ -76,7 +76,10 @@ describe('AI ordering tool definitions', () => {
       Object.keys(
         (parsed as { operations: object[] }).operations[0] as object,
       ).sort(),
-    ).toEqual(['item', 'summary', 'type']);
+      // No `summary`: the per-operation label is derived by the backend, so the
+      // model has no field in which to describe an action instead of specifying
+      // one.
+    ).toEqual(['item', 'type']);
   });
 
   it('lets the model supply choice labels but not option ids', () => {

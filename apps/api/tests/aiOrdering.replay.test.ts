@@ -102,7 +102,6 @@ describe('AI ordering replay', () => {
               operations: [
                 {
                   type: 'add_item',
-                  summary: '白飯 x1',
                   item: { productId: 'prod-rice', quantity: 1 },
                 },
               ],
@@ -113,7 +112,9 @@ describe('AI ordering replay', () => {
     });
 
     expect(run.outcomes[0]?.responseType).toBe('proposal');
-    expect(run.outcomes[0]?.operationSummaries).toEqual(['白飯 x1']);
+    // Derived from the operation, so the report describes what would actually
+    // have happened rather than what the model said about it.
+    expect(run.outcomes[0]?.operationSummaries).toEqual(['+ 白飯 ×1']);
   });
 
   it('never executes, because the run is never resumed', async () => {
@@ -132,7 +133,6 @@ describe('AI ordering replay', () => {
               operations: [
                 {
                   type: 'add_item',
-                  summary: '白飯 x1',
                   item: { productId: 'prod-rice', quantity: 1 },
                 },
               ],

@@ -65,6 +65,7 @@ function agentInput(input: {
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
     confirmationRequired: true,
+    locale: 'zh-TW' as const,
     newId: (prefix: string) => {
       sequence += 1;
       return `${prefix}-${String(sequence)}`;
@@ -93,6 +94,7 @@ function build(
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
     confirmationRequired: true,
+    locale: 'zh-TW' as const,
     newId: (prefix) => {
       sequence += 1;
       return `${prefix}-${String(sequence)}`;
@@ -496,6 +498,35 @@ describe('AI ordering agent run', () => {
     expect(
       (model.calls.at(-1)?.options as { signal?: AbortSignal }).signal,
     ).toBeInstanceOf(AbortSignal);
+  });
+  it('labels a proposal from the operation, not from anything the model said', async () => {
+    const model = fakeModel().respondWithTools([
+      {
+        name: 'propose_cart_operations',
+        args: {
+          reply: 'I will add a note about chilli.',
+          operations: [
+            {
+              type: 'add_item',
+              // The model cannot author a label, so this is the whole claim it
+              // can make — and the label below is built from it, not from the
+              // reply above.
+              item: { productId: 'prod-rice', quantity: 1 },
+            },
+          ],
+        },
+        id: 'call_1',
+      },
+    ]);
+    const { agent, record, messages } = build(model, cart);
+
+    await agent.invoke({ messages }, threadConfig);
+
+    const response = record.response;
+
+    if (response?.type !== 'proposal') throw new Error('expected a proposal');
+
+    expect(response.operations[0]?.summary).toBe('+ 白飯 ×1');
   });
 });
 

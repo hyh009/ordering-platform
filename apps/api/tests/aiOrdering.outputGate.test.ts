@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { aiOrderingModelReplyFor } from './fixtures/aiOrdering.js';
+import {
+  AI_ORDERING_CART_FIXTURE,
+  AI_ORDERING_MENU_FIXTURE,
+  aiOrderingModelReplyFor,
+} from './fixtures/aiOrdering.js';
 import { hydrateAiOrderingResponse } from '../src/modules/aiOrdering/modelResponse.js';
 import { inspectAiOrderingModelOutput } from '../src/modules/aiOrdering/outputGate.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
@@ -11,6 +15,16 @@ const config = AI_ORDERING_V1_2026_09_30;
 
 let idCounter = 0;
 const newId = (prefix: string) => `${prefix}-${++idCounter}`;
+
+const hydrationContext = {
+  confirmationRequired: true,
+  newId,
+  label: {
+    menu: AI_ORDERING_MENU_FIXTURE,
+    cart: AI_ORDERING_CART_FIXTURE,
+    locale: 'zh-TW' as const,
+  },
+};
 
 function gate(output: unknown) {
   return inspectAiOrderingModelOutput(output, config);
@@ -174,7 +188,7 @@ describe('AI ordering output gate', () => {
       const hydrated = hydrateAiOrderingResponse(
         (result as { ok: true; modelResponse: AiOrderingModelResponse })
           .modelResponse,
-        { confirmationRequired: true, newId },
+        hydrationContext,
       );
 
       expect(
@@ -207,7 +221,7 @@ describe('AI ordering output gate', () => {
       const hydrated = hydrateAiOrderingResponse(
         (result as { ok: true; modelResponse: AiOrderingModelResponse })
           .modelResponse,
-        { confirmationRequired: true, newId },
+        hydrationContext,
       );
 
       if (hydrated.type !== 'proposal') {
@@ -238,7 +252,7 @@ describe('AI ordering output gate', () => {
       const hydrated = hydrateAiOrderingResponse(
         (result as { ok: true; modelResponse: AiOrderingModelResponse })
           .modelResponse,
-        { confirmationRequired: true, newId },
+        hydrationContext,
       );
 
       if (hydrated.type !== 'choices') {

@@ -22,7 +22,12 @@ import { validateAiOrderingOperations } from '@src/modules/aiOrdering/validation
 import { createAgent, createMiddleware, humanInTheLoopMiddleware } from 'langchain';
 
 import type { BaseCheckpointSaver } from '@langchain/langgraph';
-import type { AiOrderingOperation, AiOrderingOperationResult, AiOrderingResponse } from '@repo/shared';
+import type {
+  AiOrderingOperation,
+  AiOrderingOperationResult,
+  AiOrderingResponse,
+  SupportedLocale,
+} from '@repo/shared';
 import type { AiOrderingTurnQualitySignals } from '@src/models/aiOrdering/model';
 import type { AiOrderingCartExecutor } from '@src/modules/aiOrdering/cartExecution';
 import type { AiOrderingAssembledContext, AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
@@ -103,6 +108,8 @@ export type AiOrderingAgentInput = {
   validation: AiOrderingValidationInput;
   confirmationRequired: boolean;
   newId: (prefix: string) => string;
+  /** The locale the per-operation labels are written in. */
+  locale: SupportedLocale;
   /** Applied to each tool's argument schema; the provider decides its dialect. */
   toToolSchema: (schema: unknown) => Record<string, unknown>;
   model: unknown;
@@ -213,6 +220,18 @@ export function createAiOrderingAgent(
         schema: input.toToolSchema(definition.schema),
       }),
     );
+
+  const hydrationContext = {
+    confirmationRequired: input.confirmationRequired,
+    newId: input.newId,
+    // The same menu and cart validation ran against, so the label describes the
+    // operation as it was checked.
+    label: {
+      menu: input.validation.menu,
+      cart: input.validation.cart,
+      locale: input.locale,
+    },
+  };
 
   const callSignal = () =>
     AbortSignal.timeout(
@@ -329,10 +348,7 @@ export function createAiOrderingAgent(
         record.response =
           modelResponse.type === 'proposal'
             ? { type: 'message', reply: modelResponse.reply }
-            : hydrateAiOrderingResponse(modelResponse, {
-                confirmationRequired: input.confirmationRequired,
-                newId: input.newId,
-              });
+            : hydrateAiOrderingResponse(modelResponse, hydrationContext);
 
         // Returned WITHOUT tool calls, so the agent loop ends here. `ask_choice`
         // and `report_unanswerable` have nothing to execute, and letting them
@@ -342,10 +358,7 @@ export function createAiOrderingAgent(
 
       const hydrated = hydrateAiOrderingResponse(
         { ...modelResponse, operations: validation.operations },
-        {
-          confirmationRequired: input.confirmationRequired,
-          newId: input.newId,
-        },
+        hydrationContext,
       );
 
       record.response = hydrated;
