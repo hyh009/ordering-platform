@@ -46,6 +46,28 @@ export function createGeminiTextModel(input: {
 }
 
 /**
+ * The chat model the agent run drives, with NO tools bound here.
+ *
+ * `createAgent` binds the tools itself, so binding them twice would be two
+ * sources of the same list. What the provider still owns is the DIALECT those
+ * schemas have to be written in, which is `toGeminiToolSchema` below.
+ */
+export function createGeminiChatModel(input: {
+  apiKey: string;
+  model: string;
+}) {
+  return createChat(input);
+}
+
+/**
+ * Gemini's `functionDeclarations[].parameters` is an OpenAPI 3.0 subset, not
+ * full JSON Schema. LangChain's own converter emits `const`, which the endpoint
+ * rejects — so the conversion stays on the provider side, where a second
+ * provider can want something else.
+ */
+export { toGeminiToolSchema };
+
+/**
  * Builds the real Gemini-backed model, with the assistant's tools bound.
  *
  * All provider access goes through LangChain rather than the Google SDK, so a

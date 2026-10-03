@@ -16,17 +16,17 @@
  * never appends a turn, so running it cannot pollute the corpus it reads from.
  */
 
+import { MemorySaver } from '@langchain/langgraph';
 import { buildAiOrderingContext } from '@src/modules/aiOrdering/context';
 import {
   AI_ORDERING_CART_FIXTURE,
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
 } from '@src/modules/aiOrdering/evaluation/fixture';
-import { planAiOrderingTurn } from '@src/modules/aiOrdering/planner';
+import { createAiOrderingAgent } from '@src/modules/aiOrdering/runtime/agent';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 
 import type { AiOrderingResponseType, SupportedLocale } from '@repo/shared';
-import type { AiOrderingModelCaller } from '@src/modules/aiOrdering/planner';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 
 /** One guest message to replay, with where it came from when it came from the corpus. */
@@ -67,7 +67,8 @@ export type AiOrderingReplayInput = {
    * Built per case by the caller, because one session per turn is what the
    * production path does and pooling them would pool their token counts.
    */
-  createModelCaller: () => AiOrderingModelCaller;
+  createModel: () => unknown;
+  toToolSchema: (schema: unknown) => Record<string, unknown>;
 };
 
 /**
@@ -113,21 +114,42 @@ async function replayOne(
     history: [],
   });
 
-  let planned;
+  // The same agent production runs, with an in-memory checkpointer and a resume
+  // that never comes. A proposal pauses the run and is read off the record; the
+  // tool body is therefore unreachable, so replay stays read-only BY
+  // CONSTRUCTION rather than by remembering not to execute. Measuring a second,
+  // parallel planning path would make the report evidence about the wrong code.
+  const { agent, record, messages } = createAiOrderingAgent({
+    config: input.config,
+    context,
+    validation: {
+      menu: AI_ORDERING_MENU_FIXTURE,
+      cart: AI_ORDERING_CART_FIXTURE,
+      participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+    },
+    confirmationRequired: true,
+    newId: (prefix) => `${prefix}-replay`,
+    toToolSchema: input.toToolSchema,
+    model: input.createModel(),
+    checkpointer: new MemorySaver(),
+    executor: {
+      addItem: () => {
+        throw new Error('replay never executes');
+      },
+      updateItem: () => {
+        throw new Error('replay never executes');
+      },
+      removeItem: () => {
+        throw new Error('replay never executes');
+      },
+    },
+  });
 
   try {
-    planned = await planAiOrderingTurn({
-      config: input.config,
-      context,
-      validation: {
-        menu: AI_ORDERING_MENU_FIXTURE,
-        cart: AI_ORDERING_CART_FIXTURE,
-        participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
-      },
-      confirmationRequired: true,
-      callModel: input.createModelCaller(),
-      newId: (prefix) => `${prefix}-replay`,
-    });
+    await agent.invoke(
+      { messages },
+      { configurable: { thread_id: `replay-${replayCase.message.slice(0, 40)}` } },
+    );
   } catch (error) {
     return {
       message: replayCase.message,
@@ -140,25 +162,23 @@ async function replayOne(
     };
   }
 
-  const quality = planned.quality;
-
   const base = {
     message: replayCase.message,
-    repairAttempted: quality.repairAttempted,
-    droppedOperationCount: quality.droppedOperationCount,
-    ownershipViolationCount: quality.ownershipViolationCount,
+    repairAttempted: record.quality.repairAttempted,
+    droppedOperationCount: record.quality.droppedOperationCount,
+    ownershipViolationCount: record.quality.ownershipViolationCount,
   };
 
-  if (!planned.ok) {
+  if (!record.response) {
     return {
       ...base,
       responseType: null,
       operationSummaries: [],
-      failure: planned.detail,
+      failure: record.rejectionDetail ?? 'unusable model output',
     };
   }
 
-  const { response } = planned;
+  const response = record.response;
 
   return {
     ...base,

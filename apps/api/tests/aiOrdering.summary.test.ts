@@ -47,13 +47,20 @@ describe('AI ordering summary transcript', () => {
     expect(transcript).toContain('Guest: 訊息 2');
   });
 
-  it('carries reported outcomes, because a refusal changes the next reply', () => {
+  it('carries a proposal outcome, because a refusal changes the next reply', () => {
     const transcript = buildAiOrderingSummaryTranscript([
       turn(1, {
-        reportedOutcomes: [
-          { operationId: 'op-1', outcome: 'rejected' },
-          { operationId: 'op-2', outcome: 'accepted' },
-        ],
+        proposal: {
+          proposalId: 'proposal-1',
+          operations: [],
+          decision: {
+            decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+            results: [
+              { operationId: 'op-1', outcome: 'rejected' },
+              { operationId: 'op-2', outcome: 'accepted' },
+            ],
+          },
+        },
       }),
     ]);
 

@@ -7,7 +7,7 @@ import {
 } from '../src/modules/aiOrdering/history.js';
 import {
   resolveAiOrderingPrompt,
-  resolveAiOrderingReportedOutcomes,
+  readAiOrderingLastProposalOutcome,
 } from '../src/modules/aiOrdering/promptResolution.js';
 
 import type {
@@ -246,85 +246,101 @@ describe('AI ordering prompt resolution', () => {
   });
 });
 
-describe('AI ordering reported outcomes', () => {
-  const proposalTurn = turn(1, {
-    response: {
-      type: 'proposal',
-      reply: '幫你加白飯。',
-      proposalId: 'proposal-1',
-      confirmationRequired: true,
-      operations: [
-        {
-          type: 'add_item',
-          operationId: 'op-1',
-          summary: '白飯 x1',
-          item: { productId: 'prod-rice', quantity: 1 },
-        },
-      ],
+describe('AI ordering recorded proposal outcomes', () => {
+  const operations = [
+    {
+      type: 'add_item' as const,
+      operationId: 'op-1',
+      summary: '白飯 x1',
+      item: { productId: 'prod-rice', quantity: 1 },
     },
-    proposal: {
-      proposalId: 'proposal-1',
-      operations: [
-        {
-          type: 'add_item',
-          operationId: 'op-1',
-          summary: '白飯 x1',
-          item: { productId: 'prod-rice', quantity: 1 },
-        },
-      ],
-    },
-  });
+  ];
 
-  it('reports nothing when the guest sent no outcome', () => {
+  const proposalTurn = (decided: boolean) =>
+    turn(1, {
+      response: {
+        type: 'proposal',
+        reply: '幫你加白飯。',
+        proposalId: 'proposal-1',
+        confirmationRequired: true,
+        operations,
+      },
+      proposal: {
+        proposalId: 'proposal-1',
+        operations,
+        ...(decided
+          ? {
+              decision: {
+                decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+                results: [{ operationId: 'op-1', outcome: 'rejected' as const }],
+              },
+            }
+          : {}),
+      },
+    });
+
+  it('reports nothing while the proposal is still undecided', () => {
     expect(
-      resolveAiOrderingReportedOutcomes(
-        conversation([proposalTurn]),
-        undefined,
+      readAiOrderingLastProposalOutcome(conversation([proposalTurn(false)])),
+    ).toEqual([]);
+  });
+
+  it('reports what the backend recorded, with no guest message in between', () => {
+    // The outcome exists because the backend executed it, not because a client
+    // reported it on a later turn. A guest who accepts and then says nothing
+    // still leaves the assistant able to reason about what happened.
+    expect(
+      readAiOrderingLastProposalOutcome(conversation([proposalTurn(true)])),
+    ).toEqual([{ operationId: 'op-1', outcome: 'rejected' }]);
+  });
+
+  it('reports nothing when the conversation has no proposal at all', () => {
+    expect(readAiOrderingLastProposalOutcome(conversation([turn(1)]))).toEqual(
+      [],
+    );
+  });
+
+  it('reports the most recent proposal, not an older one', () => {
+    const older = proposalTurn(true);
+    const newer = turn(2, {
+      response: {
+        type: 'proposal',
+        reply: '再幫你加一份。',
+        proposalId: 'proposal-2',
+        confirmationRequired: true,
+        operations,
+      },
+      proposal: {
+        proposalId: 'proposal-2',
+        operations,
+        decision: {
+          decidedAt: new Date('2026-09-30T00:01:00.000Z'),
+          results: [{ operationId: 'op-1', outcome: 'accepted' as const }],
+        },
+      },
+    });
+
+    expect(
+      readAiOrderingLastProposalOutcome(conversation([older, newer])),
+    ).toEqual([{ operationId: 'op-1', outcome: 'accepted' }]);
+  });
+
+  it('reports nothing when the newest proposal is undecided', () => {
+    // An older decided proposal is history; what the next turn needs to know is
+    // the fate of the one it just made.
+    expect(
+      readAiOrderingLastProposalOutcome(
+        conversation([proposalTurn(true), turn(2, {
+          response: {
+            type: 'proposal',
+            reply: '再幫你加一份。',
+            proposalId: 'proposal-2',
+            confirmationRequired: true,
+            operations,
+          },
+          proposal: { proposalId: 'proposal-2', operations },
+        })]),
       ),
-    ).toEqual({ results: [], unknownProposal: false });
-  });
-
-  it('keeps outcomes that match the stored proposal', () => {
-    const result = resolveAiOrderingReportedOutcomes(
-      conversation([proposalTurn]),
-      {
-        proposalId: 'proposal-1',
-        results: [{ operationId: 'op-1', outcome: 'rejected' }],
-      },
-    );
-
-    expect(result.results).toHaveLength(1);
-    expect(result.unknownProposal).toBe(false);
-  });
-
-  it('drops outcomes for operations the backend never proposed', () => {
-    // A client could otherwise poison both the next turn and the evaluation
-    // corpus with outcomes for operations that never existed.
-    const result = resolveAiOrderingReportedOutcomes(
-      conversation([proposalTurn]),
-      {
-        proposalId: 'proposal-1',
-        results: [
-          { operationId: 'op-1', outcome: 'accepted' },
-          { operationId: 'op-invented', outcome: 'accepted' },
-        ],
-      },
-    );
-
-    expect(result.results.map((entry) => entry.operationId)).toEqual(['op-1']);
-  });
-
-  it('flags a proposal id this conversation never issued', () => {
-    const result = resolveAiOrderingReportedOutcomes(
-      conversation([proposalTurn]),
-      {
-        proposalId: 'proposal-never-issued',
-        results: [{ operationId: 'op-1', outcome: 'accepted' }],
-      },
-    );
-
-    // Not worth refusing the turn over — the guest is mid-conversation and a
-    // stale client is not their fault — but the caller should log it.
-    expect(result).toEqual({ results: [], unknownProposal: true });
+    ).toEqual([]);
   });
 });

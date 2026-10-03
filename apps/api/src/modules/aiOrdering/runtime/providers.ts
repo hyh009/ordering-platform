@@ -1,7 +1,9 @@
 import {
+  createGeminiChatModel,
   createGeminiTextModel,
   createGeminiToolCallingModel,
 } from '@src/modules/aiOrdering/runtime/gemini';
+import { toGeminiToolSchema } from '@src/modules/aiOrdering/runtime/geminiSchema';
 
 import type {
   AiOrderingTextModel,
@@ -30,6 +32,15 @@ export const aiOrderingProviderIds = ['gemini'] as const;
 export type AiOrderingProviderId = (typeof aiOrderingProviderIds)[number];
 
 export type AiOrderingProviderAdapter = {
+  /** The chat model the agent run drives. The agent binds the tools. */
+  createChatModel(input: { apiKey: string; model: string }): unknown;
+  /**
+   * Rewrites a tool argument schema into this provider's dialect.
+   *
+   * Lives on the adapter because it is a wire-format concern: the schemas stay
+   * written in zod and each provider says what its own parser needs.
+   */
+  toToolSchema(schema: unknown): Record<string, unknown>;
   /** The assistant's own model, with the tools bound. */
   createToolCallingModel(input: {
     apiKey: string;
@@ -44,6 +55,9 @@ export type AiOrderingProviderAdapter = {
 
 const adapters: Record<AiOrderingProviderId, AiOrderingProviderAdapter> = {
   gemini: {
+    createChatModel: createGeminiChatModel,
+    toToolSchema: (schema) =>
+      toGeminiToolSchema(schema as never) as Record<string, unknown>,
     createToolCallingModel: createGeminiToolCallingModel,
     createTextModel: createGeminiTextModel,
   },

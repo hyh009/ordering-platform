@@ -15,7 +15,13 @@ export {
   AI_ORDERING_MENU_FIXTURE,
 } from '../../src/modules/aiOrdering/evaluation/fixture.js';
 
-import type { AiOrderingToolCallingModelResult } from '../../src/modules/aiOrdering/runtime/model.js';
+import { AIMessage } from '@langchain/core/messages';
+
+/** The gate's input shape: what a provider reply reduces to before validation. */
+export type AiOrderingModelReplyFixture = {
+  toolCalls: { name: string; args: unknown }[];
+  text: string;
+};
 
 const AI_ORDERING_TOOL_NAME_BY_TYPE = {
   proposal: 'propose_cart_operations',
@@ -34,17 +40,44 @@ export function aiOrderingModelReplyFor(
   response: { type: keyof typeof AI_ORDERING_TOOL_NAME_BY_TYPE | 'message' } & {
     [key: string]: unknown;
   },
-  raw?: unknown,
-): AiOrderingToolCallingModelResult {
+): AiOrderingModelReplyFixture {
   const { type, ...args } = response;
 
   if (type === 'message') {
-    return { toolCalls: [], text: String(args.reply ?? ''), raw };
+    return { toolCalls: [], text: String(args.reply ?? '') };
   }
 
   return {
     toolCalls: [{ name: AI_ORDERING_TOOL_NAME_BY_TYPE[type], args }],
     text: '',
-    raw,
   };
+}
+
+/**
+ * The same answer as a provider MESSAGE, for scripting a fake model.
+ *
+ * Separate from the gate-shaped helper above because they sit on opposite sides
+ * of the same boundary: one is what a provider sends, the other is what the gate
+ * reads once the agent has reduced it.
+ */
+export function aiOrderingModelMessageFor(
+  response: Parameters<typeof aiOrderingModelReplyFor>[0],
+): AIMessage {
+  const reply = aiOrderingModelReplyFor(response);
+  const [toolCall] = reply.toolCalls;
+
+  if (!toolCall) {
+    return new AIMessage(reply.text);
+  }
+
+  return new AIMessage({
+    content: '',
+    tool_calls: [
+      {
+        id: `call_${toolCall.name}`,
+        name: toolCall.name,
+        args: toolCall.args as Record<string, unknown>,
+      },
+    ],
+  });
 }

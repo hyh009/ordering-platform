@@ -17,8 +17,8 @@ export type AiOrderingSummaryCaller = (input: {
 /**
  * Renders turns for summarisation.
  *
- * Reported outcomes are included because a refusal is one of the two things a
- * summary most needs to carry forward — "they turned the tea down" changes the
+ * A proposal's recorded outcomes are included because a refusal is one of the
+ * two things a summary most needs to carry forward — "they turned the tea down" changes the
  * next reply, while "they ordered rice" is already visible in the cart.
  */
 export function buildAiOrderingSummaryTranscript(
@@ -30,7 +30,7 @@ export function buildAiOrderingSummaryTranscript(
     lines.push(`Guest: ${turn.message}`);
     lines.push(`Assistant (${turn.response.type}): ${turn.response.reply}`);
 
-    for (const outcome of turn.reportedOutcomes ?? []) {
+    for (const outcome of turn.proposal?.decision?.results ?? []) {
       lines.push(`  - ${outcome.operationId}: ${outcome.outcome}`);
     }
   }

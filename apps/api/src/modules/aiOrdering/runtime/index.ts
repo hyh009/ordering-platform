@@ -15,6 +15,9 @@ export type AiOrderingRuntime = {
   provider: AiOrderingProviderId;
   modelName: string;
   createModel(): AiOrderingToolCallingModel;
+  /** The chat model the agent run drives, and its tool-schema dialect. */
+  createChatModel(): unknown;
+  toToolSchema(schema: unknown): Record<string, unknown>;
   /**
    * Plain-text call used to rebuild the rolling summary.
    *
@@ -98,6 +101,9 @@ export function resolveAiOrderingRuntime(
         apiKey,
         model: settings.modelName,
       }),
+    createChatModel: () =>
+      provider.adapter.createChatModel({ apiKey, model: settings.modelName }),
+    toToolSchema: (schema) => provider.adapter.toToolSchema(schema),
     createSummaryCaller: (deadlineAt?: number) =>
       createAiOrderingSummaryCaller({
         model: provider.adapter.createTextModel({

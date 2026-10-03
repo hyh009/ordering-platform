@@ -11,13 +11,8 @@
  */
 
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { toAiOrderingProviderMessages } from '@src/modules/aiOrdering/runtime/messages';
 
 import type { BaseMessage } from '@langchain/core/messages';
-import type {
-  AiOrderingModelCall,
-  AiOrderingModelCaller,
-} from '@src/modules/aiOrdering/planner';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
 import type { AiOrderingToolCall } from '@src/modules/aiOrdering/tools';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
@@ -54,44 +49,6 @@ export type AiOrderingToolCallingModel = {
   ): Promise<AiOrderingToolCallingModelResult>;
 };
 
-export type AiOrderingModelSession = {
-  callModel: AiOrderingModelCaller;
-  /** Usage summed across every call this session made, including any repair. */
-  getUsage(): AiOrderingProviderUsage;
-};
-
-function readUsage(raw: unknown): Partial<AiOrderingProviderUsage> {
-  if (typeof raw !== 'object' || raw === null) {
-    return {};
-  }
-
-  const usage = (
-    raw as {
-      usage_metadata?: {
-        input_tokens?: unknown;
-        output_tokens?: unknown;
-        input_token_details?: { cache_read?: unknown };
-      };
-    }
-  ).usage_metadata;
-
-  if (!usage) {
-    return {};
-  }
-
-  const cacheRead = usage.input_token_details?.cache_read;
-
-  return {
-    ...(typeof usage.input_tokens === 'number'
-      ? { inputTokens: usage.input_tokens }
-      : {}),
-    ...(typeof usage.output_tokens === 'number'
-      ? { outputTokens: usage.output_tokens }
-      : {}),
-    ...(typeof cacheRead === 'number' ? { cacheReadTokens: cacheRead } : {}),
-  };
-}
-
 /**
  * Builds a per-turn session around a structured model.
  *
@@ -112,7 +69,14 @@ function readUsage(raw: unknown): Partial<AiOrderingProviderUsage> {
  * with 2 seconds left and still run for 20, pushing the turn past the deadline
  * the in-flight lock's expiry was chosen against.
  */
-function nextCallTimeoutMs(
+/**
+ * How long the NEXT provider call may take.
+ *
+ * Clamped to what is left of the turn's budget, not just the per-call timeout:
+ * a repair that starts with 200ms left must not be given the full timeout, or
+ * the turn's duration stops being a guarantee.
+ */
+export function nextAiOrderingCallTimeoutMs(
   config: AiOrderingVersionConfig,
   deadlineAt: number | undefined,
 ): number {
@@ -121,44 +85,6 @@ function nextCallTimeoutMs(
   }
 
   return Math.max(0, Math.min(config.timeoutMs, deadlineAt - Date.now()));
-}
-
-export function createAiOrderingModelSession(input: {
-  model: AiOrderingToolCallingModel;
-  config: AiOrderingVersionConfig;
-  /** Epoch milliseconds the whole turn must finish by. */
-  deadlineAt?: number;
-}): AiOrderingModelSession {
-  const usage: AiOrderingProviderUsage = {
-    cacheReadTokens: 0,
-    inputTokens: 0,
-    outputTokens: 0,
-  };
-
-  const callModel: AiOrderingModelCaller = async (
-    call: AiOrderingModelCall,
-  ) => {
-    const result = await input.model.invoke(
-      toAiOrderingProviderMessages(call),
-      {
-        signal: AbortSignal.timeout(
-          nextCallTimeoutMs(input.config, input.deadlineAt),
-        ),
-      },
-    );
-
-    const observed = readUsage(result.raw);
-
-    usage.cacheReadTokens += observed.cacheReadTokens ?? 0;
-    usage.inputTokens += observed.inputTokens ?? 0;
-    usage.outputTokens += observed.outputTokens ?? 0;
-
-    // The tool call and any free text are the whole answer; `raw` stays here so
-    // the stored turn carries what the model said rather than a provider message.
-    return { toolCalls: result.toolCalls, text: result.text };
-  };
-
-  return { callModel, getUsage: () => ({ ...usage }) };
 }
 
 /**
@@ -206,7 +132,7 @@ export function createAiOrderingSummaryCaller(input: {
       [new SystemMessage(instructions), new HumanMessage(transcript)],
       {
         signal: AbortSignal.timeout(
-          nextCallTimeoutMs(input.config, input.deadlineAt),
+          nextAiOrderingCallTimeoutMs(input.config, input.deadlineAt),
         ),
       },
     );

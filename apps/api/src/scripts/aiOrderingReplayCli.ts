@@ -7,7 +7,6 @@ import {
   compareAiOrderingReplayRuns,
   replayAiOrderingVersion,
 } from '@src/modules/aiOrdering/evaluation/replay';
-import { createAiOrderingModelSession } from '@src/modules/aiOrdering/runtime/model';
 import { resolveAiOrderingProvider } from '@src/modules/aiOrdering/runtime/providers';
 import {
   listAiOrderingVersionIds,
@@ -204,16 +203,16 @@ async function run() {
       continue;
     }
 
-    const model = provider.adapter.createToolCallingModel({ apiKey, model: modelName });
-
     const replayRun = await replayAiOrderingVersion({
       config,
       provider: provider.id,
       modelName,
       cases,
-      // One session per case, matching the production path.
-      createModelCaller: () =>
-        createAiOrderingModelSession({ model, config }).callModel,
+      // The production model and the production tool dialect. Replay drives the
+      // same agent; only the resume never comes.
+      createModel: () =>
+        provider.adapter.createChatModel({ apiKey, model: modelName }),
+      toToolSchema: (schema) => provider.adapter.toToolSchema(schema),
     });
 
     runs.push(replayRun);

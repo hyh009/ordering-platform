@@ -6,6 +6,7 @@ import { createApp } from './app.js';
 import { connectMongo, connectRedis } from './config/db.js';
 import { env } from './config/env.js';
 import { setRedisClient } from './config/redis.js';
+import { closeAiOrderingCheckpointer } from './modules/aiOrdering/runtime/checkpointer.js';
 import { logger } from './utils/logger.js';
 
 let server: ReturnType<typeof createServer>;
@@ -39,6 +40,9 @@ async function bootstrap() {
 
     await mongoose.connection.close();
     await redisClient.quit();
+    // Opened lazily, and only when the assistant is enabled; closing a
+    // checkpointer that was never created is a no-op.
+    await closeAiOrderingCheckpointer();
 
     server.close(() => {
       process.exit(0);

@@ -62,51 +62,20 @@ export function resolveAiOrderingPrompt(
     },
   };
 }
-
-export type AiOrderingOutcomeResolution = {
-  /** Outcomes that matched operations in the proposal they claim to answer. */
-  results: AiOrderingOperationResult[];
-  /** True when the report named a proposal this conversation never issued. */
-  unknownProposal: boolean;
-};
-
 /**
- * Matches a reported outcome against the proposal the backend actually made.
+ * The outcome of the most recent proposal, if it has one.
  *
- * A client could otherwise report outcomes for operations that were never
- * proposed, which would poison both the model's next turn and the evaluation
- * corpus. Only outcomes naming an operation in the stored proposal survive.
- *
- * An unreported proposal is not an error worth refusing the turn over — the
- * guest is mid-conversation and a stale client is not their fault — so it is
- * reported back to the caller to log rather than thrown.
+ * Read from what the backend RECORDED when it executed, never from anything the
+ * client sends. That is the point of executing server-side: an outcome can no
+ * longer be claimed for operations that were never proposed, and it exists
+ * whether or not the guest spoke again.
  */
-export function resolveAiOrderingReportedOutcomes(
+export function readAiOrderingLastProposalOutcome(
   conversation: AiOrderingConversationEntity | null,
-  previousOutcome:
-    | { proposalId: string; results: AiOrderingOperationResult[] }
-    | undefined,
-): AiOrderingOutcomeResolution {
-  if (!previousOutcome) {
-    return { results: [], unknownProposal: false };
-  }
-
-  const proposal = conversation?.turns
+): AiOrderingOperationResult[] {
+  const proposals = (conversation?.turns ?? [])
     .map((turn) => turn.proposal)
-    .find((candidate) => candidate?.proposalId === previousOutcome.proposalId);
+    .filter((proposal) => proposal !== undefined);
 
-  if (!proposal) {
-    return { results: [], unknownProposal: true };
-  }
-
-  const proposedIds = new Set(
-    proposal.operations.map((operation) => operation.operationId),
-  );
-
-  return {
-    results: previousOutcome.results.filter((result) =>
-      proposedIds.has(result.operationId),
-    ),
-    unknownProposal: false,
-  };
+  return proposals.at(-1)?.decision?.results ?? [];
 }
