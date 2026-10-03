@@ -22,6 +22,7 @@ import type {
   DecideAiOrderingProposalSuccessResponse,
   AiOrderingResponse,
   AiOrderingResponseType,
+  AiOrderingSettledProposal,
   AiOrderingTurnResponseData,
   AiOrderingUnansweredReason,
   AiOrderingUnansweredResponse,
@@ -53,6 +54,8 @@ export type {
   DecideAiOrderingProposalSuccessResponse,
 };
 
+export type { AiOrderingSettledProposal };
+
 export type AiOrderingChoiceDtoType = AiOrderingChoice;
 export type AiOrderingResponseDtoType = AiOrderingResponse;
 export type AiOrderingTurnDtoType = AiOrderingTurnResponseData;
@@ -76,6 +79,15 @@ export type AiOrderingResponseModel = AiOrderingResponse;
 export type AiOrderingTurn = {
   versionId: string;
   response: AiOrderingResponseModel;
+  /**
+   * The proposal this message ended, if the guest had one open.
+   *
+   * Sending a message ends an unanswered proposal. The panel has no other way
+   * to learn that: nothing happened on the client, the guest simply typed. Only
+   * the server knows whether its write won — an acceptance can land in the same
+   * instant — so this comes back from the turn rather than being inferred.
+   */
+  settledProposal?: AiOrderingSettledProposal;
 };
 
 export type AiOrderingGuestTurnDtoType = AiOrderingGuestTurnDto;

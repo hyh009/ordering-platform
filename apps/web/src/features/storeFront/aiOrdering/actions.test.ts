@@ -146,6 +146,24 @@ describe('storefront assistant actions', () => {
     ]);
   });
 
+  it('distinguishes never answering from refusing and from not reaching it', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'superseded' },
+      { operationId: 'op-2', outcome: 'no_action' },
+    ]);
+
+    // "You never answered this" is not "a failure stopped us reaching it", and
+    // showing the guest "not attempted" for a proposal they simply walked past
+    // described the system rather than what they did.
+    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+      'unanswered',
+      'not-attempted',
+    ]);
+  });
+
   it('leaves a row alone when the decision carries no result for it', () => {
     const { store, actions } = setup();
 
@@ -182,6 +200,85 @@ describe('storefront assistant actions', () => {
 
     expect(store.getState().proposal).toBeNull();
     expect(store.getState().entries).toHaveLength(1);
+  });
+
+  it('writes a decision onto the transcript entry, not only the live card', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'accepted' },
+      { operationId: 'op-2', outcome: 'rejected' },
+    ]);
+
+    // The card is replaced by the next message. Without this, a guest reading
+    // back saw every past proposal with no verdict at all.
+    const entry = store.getState().entries[0];
+
+    expect(entry?.role === 'assistant' && entry.proposalResults).toEqual([
+      { operationId: 'op-1', outcome: 'accepted' },
+      { operationId: 'op-2', outcome: 'rejected' },
+    ]);
+  });
+
+  it('marks a proposal the next message settled', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.turnAppended({
+      id: 'assistant-2',
+      turn: {
+        ...messageTurn,
+        settledProposal: {
+          proposalId: 'proposal-1',
+          results: [
+            { operationId: 'op-1', outcome: 'superseded' },
+            { operationId: 'op-2', outcome: 'superseded' },
+          ],
+        },
+      },
+    });
+
+    // The guest typed instead of answering. Nothing happened on the client, so
+    // the server has to say so — and it says so about an EARLIER entry.
+    const entry = store.getState().entries[0];
+
+    expect(entry?.role === 'assistant' && entry.proposalResults).toEqual([
+      { operationId: 'op-1', outcome: 'superseded' },
+      { operationId: 'op-2', outcome: 'superseded' },
+    ]);
+  });
+
+  it('settles the proposal the id names, not the most recent one', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.turnAppended({
+      id: 'assistant-2',
+      turn: {
+        ...proposalTurn,
+        response: { ...proposalTurn.response, proposalId: 'proposal-2' },
+      } as AiOrderingTurn,
+    });
+    actions.turnAppended({
+      id: 'assistant-3',
+      turn: {
+        ...messageTurn,
+        settledProposal: {
+          proposalId: 'proposal-1',
+          results: [{ operationId: 'op-1', outcome: 'superseded' }],
+        },
+      },
+    });
+
+    const [first, second] = store.getState().entries;
+
+    expect(first?.role === 'assistant' && first.proposalResults).toHaveLength(
+      1,
+    );
+    expect(
+      second?.role === 'assistant' && second.proposalResults,
+    ).toBeUndefined();
   });
 
   it('a send failure stops the sending flag and records the message', () => {

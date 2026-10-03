@@ -37,13 +37,15 @@ export type AiOrderingChatEntry =
  * guest has not decided yet. Every other status comes back from the server with
  * the decision, because the server is what executed it.
  *
- * `not-attempted` is distinct from `dismissed`: one is "a failure stopped the
- * proposal before we reached this", the other is "the guest said no". They read
- * differently to a guest looking at the rows, so they are not collapsed.
+ * The three ways a row can end up unapplied are not collapsed, because they read
+ * differently to a guest looking back at the conversation: `dismissed` is "you
+ * said no", `unanswered` is "you never answered this one", and `not-attempted`
+ * is "a failure stopped the proposal before we reached it".
  */
 export type AiOrderingProposalRowStatus =
   | 'pending'
   | 'dismissed'
+  | 'unanswered'
   | 'applied'
   | 'failed'
   | 'not-attempted';

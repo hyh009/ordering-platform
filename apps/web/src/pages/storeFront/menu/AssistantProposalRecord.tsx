@@ -20,6 +20,10 @@ const OUTCOME_LABELS: Record<string, { key: string; fallback: string }> = {
     key: 'guest.assistant.rowFailed',
     fallback: 'Could not be applied',
   },
+  superseded: {
+    key: 'guest.assistant.rowUnanswered',
+    fallback: 'Not answered',
+  },
   no_action: {
     key: 'guest.assistant.rowNotAttempted',
     fallback: 'Not attempted',

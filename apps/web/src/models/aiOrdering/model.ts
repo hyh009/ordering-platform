@@ -158,6 +158,12 @@ export const aiOrderingModel = {
     return {
       versionId: dto.versionId,
       response: aiOrderingModel.deserializeResponse(dto.response),
+      // Carried through as the server wrote it. These results belong to an
+      // EARLIER entry in the transcript, not to this turn, which is why the
+      // proposal id travels with them.
+      ...(dto.settledProposal !== undefined
+        ? { settledProposal: dto.settledProposal }
+        : {}),
     };
   },
 
