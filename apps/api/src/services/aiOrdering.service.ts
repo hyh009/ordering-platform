@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { Command } from '@langchain/langgraph';
 import { toAiOrderingGuestConversationDto } from '@src/models/aiOrdering/mapper';
 import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '@src/models/aiOrdering/model';
 import { resolveAiOrderingConfirmationRequired } from '@src/modules/aiOrdering/confirmation';
@@ -8,15 +9,18 @@ import {
   planAiOrderingSummarization,
   windowAiOrderingHistory,
 } from '@src/modules/aiOrdering/history';
-import { planAiOrderingTurn } from '@src/modules/aiOrdering/planner';
 import {
+  readAiOrderingLastProposalOutcome,
   resolveAiOrderingPrompt,
-  resolveAiOrderingReportedOutcomes,
 } from '@src/modules/aiOrdering/promptResolution';
 import { createRedisAiOrderingRateLimiter } from '@src/modules/aiOrdering/rateLimit.redis';
 import { resolveAiOrderingRuntime } from '@src/modules/aiOrdering/runtime';
+import {
+  AI_ORDERING_PROPOSAL_TOOL,
+  createAiOrderingAgent,
+} from '@src/modules/aiOrdering/runtime/agent';
+import { getAiOrderingCheckpointer } from '@src/modules/aiOrdering/runtime/checkpointer';
 import { mapAiOrderingProviderFailure } from '@src/modules/aiOrdering/runtime/failures';
-import { createAiOrderingModelSession } from '@src/modules/aiOrdering/runtime/model';
 import { generateAiOrderingSummary } from '@src/modules/aiOrdering/summary';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 import { aiOrderingRepository } from '@src/repositories/aiOrdering/repository';
@@ -26,18 +30,26 @@ import { publicStoreService } from '@src/services/publicStore.service';
 import { ERROR_CODES } from '@src/utils/errorCode.js';
 import {
   BadRequestError,
+  ConflictError,
   InternalServerError,
   NotFoundError,
   TooManyRequestsError,
 } from '@src/utils/errors';
 import { logger } from '@src/utils/logger';
 
+import type { BaseCheckpointSaver } from '@langchain/langgraph';
 import type {
   AiOrderingGuestConversationDto,
+  AiOrderingOperation,
+  AiOrderingOperationResult,
+  AiOrderingProposalDecisionData,
   AiOrderingTurnResponseData,
   CartDto,
+  CartItemInput,
+  DecideAiOrderingProposalRequest,
   PublicMenuDto,
   SendAiOrderingMessageRequest,
+  UpdateCartItemRequest,
 } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
@@ -46,7 +58,11 @@ import type {
 import type { StoreEntity } from '@src/models/store/model';
 import type { AiOrderingRateLimiter } from '@src/modules/aiOrdering/rateLimit';
 import type { AiOrderingRuntime } from '@src/modules/aiOrdering/runtime';
-import type { AiOrderingRepository } from '@src/repositories/aiOrdering/repository';
+import type { AiOrderingRunRecord } from '@src/modules/aiOrdering/runtime/agent';
+import type {
+  AiOrderingRepository,
+  AiOrderingStoredProposal,
+} from '@src/repositories/aiOrdering/repository';
 import type { GuestTokenClaims } from '@src/services/guestToken.service';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -70,7 +86,25 @@ export type AiOrderingServiceDeps = {
   findStore: (storeId: string) => Promise<StoreEntity | null>;
   getPublicMenu: (storeId: string) => Promise<PublicMenuDto>;
   getGuestCart: (claims: GuestTokenClaims) => Promise<CartDto>;
+  addCartItem: (
+    claims: GuestTokenClaims,
+    request: CartItemInput,
+  ) => Promise<unknown>;
+  updateCartItem: (
+    claims: GuestTokenClaims,
+    itemId: string,
+    request: UpdateCartItemRequest,
+  ) => Promise<unknown>;
+  removeCartItem: (
+    claims: GuestTokenClaims,
+    itemId: string,
+  ) => Promise<unknown>;
   resolveRuntime: () => AiOrderingRuntime | null;
+  /**
+   * The paused-run store. Injectable like every other dependency so a unit test
+   * can hand the service an in-memory one and never open a second Mongo pool.
+   */
+  getCheckpointer: () => Promise<BaseCheckpointSaver>;
   rateLimiter: AiOrderingRateLimiter;
   newId: (prefix: string) => string;
   now: () => Date;
@@ -127,6 +161,248 @@ export class AiOrderingService {
     } finally {
       await this.deps.rateLimiter.release(limitKey);
     }
+  }
+
+  /**
+   * The guest's decision on a pending proposal — the only path that changes the
+   * cart from the assistant.
+   *
+   * The guest sends ids, never operations. What executes is rebuilt from the
+   * proposal the backend recorded, so a caller can neither add an operation the
+   * assistant never proposed nor alter one it did.
+   *
+   * The decision is CLAIMED before anything runs. That claim is the single-use
+   * guarantee, and it has to come first: executing and then recording would let
+   * two in-flight acceptances both apply before either had written anything.
+   */
+  public async decideProposal(
+    claims: GuestTokenClaims,
+    request: DecideAiOrderingProposalRequest,
+  ): Promise<AiOrderingProposalDecisionData> {
+    const runtime = this.deps.resolveRuntime();
+
+    if (!runtime) {
+      throw new NotFoundError(
+        'The ordering assistant is not enabled for this deployment.',
+        ERROR_CODES.AI_ORDERING_DISABLED,
+      );
+    }
+
+    const lookup = {
+      storeId: claims.storeId,
+      cartId: claims.cartId,
+      participantId: claims.participantId,
+    };
+
+    const limitKey = `${claims.storeId}:${claims.cartId}:${claims.participantId}`;
+    const limit = await this.deps.rateLimiter.acquire(limitKey);
+
+    if (!limit.allowed) {
+      throw new TooManyRequestsError(
+        limit.reason === 'concurrent'
+          ? 'A previous assistant request is still in progress.'
+          : 'Too many assistant requests. Try again shortly.',
+      );
+    }
+
+    try {
+      return await this.runDecision(claims, request, runtime, lookup);
+    } finally {
+      await this.deps.rateLimiter.release(limitKey);
+    }
+  }
+
+  private async runDecision(
+    claims: GuestTokenClaims,
+    request: DecideAiOrderingProposalRequest,
+    runtime: AiOrderingRuntime,
+    lookup: { storeId: string; cartId: string; participantId: string },
+  ): Promise<AiOrderingProposalDecisionData> {
+    const claim = await this.deps.conversations.recordProposalDecision({
+      ...lookup,
+      proposalId: request.proposalId,
+      // Results are filled in after execution. Claiming settles WHO decides;
+      // this record settles THAT it was decided, which is what must be atomic.
+      decision: { decidedAt: this.deps.now(), results: [] },
+    });
+
+    if (!claim.claimed) {
+      if (!claim.proposal) {
+        throw new NotFoundError(
+          'That proposal is no longer available.',
+          ERROR_CODES.AI_ORDERING_PROPOSAL_NOT_FOUND,
+        );
+      }
+
+      // Already answered. Distinct from expiry on purpose: telling a guest who
+      // double-submitted that their proposal expired is a different lie from
+      // telling a guest who waited that they already acted.
+      throw new ConflictError(
+        'That proposal has already been answered.',
+        ERROR_CODES.AI_ORDERING_PROPOSAL_ALREADY_DECIDED,
+      );
+    }
+
+    const proposal = claim.proposal;
+
+    if (!proposal) {
+      throw new NotFoundError(
+        'That proposal is no longer available.',
+        ERROR_CODES.AI_ORDERING_PROPOSAL_NOT_FOUND,
+      );
+    }
+
+    const kept = new Set(request.keptOperationIds);
+    const keptOperations = proposal.snapshot.operations.filter((operation) =>
+      kept.has(operation.operationId),
+    );
+    const dismissed: AiOrderingOperationResult[] = proposal.snapshot.operations
+      .filter((operation) => !kept.has(operation.operationId))
+      .map((operation) => ({
+        operationId: operation.operationId,
+        outcome: 'rejected' as const,
+      }));
+
+    if (keptOperations.length === 0) {
+      // Nothing to run, so no cart call and no model call. The proposal is
+      // resolved and the paused run is simply left to expire.
+      await this.deps.conversations.setProposalResults({
+        ...lookup,
+        proposalId: request.proposalId,
+        results: dismissed,
+      });
+
+      return {
+        proposalId: request.proposalId,
+        results: dismissed,
+        cart: await this.deps.getGuestCart(claims),
+      };
+    }
+
+    const resumed = await this.resumeProposal({
+      claims,
+      runtime,
+      proposalId: request.proposalId,
+      proposal,
+      keptOperations,
+    });
+
+    const results = this.orderResults(proposal.snapshot.operations, [
+      ...(resumed.results ?? []),
+      ...dismissed,
+    ]);
+
+    await this.deps.conversations.setProposalResults({
+      ...lookup,
+      proposalId: request.proposalId,
+      results,
+    });
+
+    return {
+      proposalId: request.proposalId,
+      results,
+      cart: await this.deps.getGuestCart(claims),
+      ...(resumed.reply !== undefined ? { reply: resumed.reply } : {}),
+    };
+  }
+
+  /**
+   * Results in the order the operations were proposed.
+   *
+   * The guest reads them beside the rows they accepted, so "the second one
+   * failed" has to mean the second row.
+   */
+  private orderResults(
+    operations: AiOrderingOperation[],
+    results: AiOrderingOperationResult[],
+  ): AiOrderingOperationResult[] {
+    const byId = new Map(results.map((result) => [result.operationId, result]));
+
+    return operations.map(
+      (operation) =>
+        byId.get(operation.operationId) ?? {
+          operationId: operation.operationId,
+          outcome: 'no_action' as const,
+        },
+    );
+  }
+
+  /**
+   * Resumes the paused run with the guest's edit, which executes the kept
+   * operations and lets the model answer what happened in the same exchange.
+   *
+   * A proposal whose run is gone has expired: the checkpoint's lifetime IS the
+   * proposal's lifetime. Nothing is executed in that case.
+   */
+  private async resumeProposal(input: {
+    claims: GuestTokenClaims;
+    runtime: AiOrderingRuntime;
+    proposalId: string;
+    proposal: AiOrderingStoredProposal;
+    keptOperations: AiOrderingOperation[];
+  }): Promise<{ results: AiOrderingOperationResult[] | null; reply?: string }> {
+    const { agent, record } = createAiOrderingAgent({
+      config: input.runtime.config,
+      // The paused run carries its own context; these are only needed to build
+      // the same agent shape, never to plan again.
+      context: { versionId: input.runtime.config.versionId, blocks: [] },
+      validation: {
+        menu: { groups: [], modifiers: [] } as unknown as PublicMenuDto,
+        cart: { items: [] } as unknown as CartDto,
+        participantId: input.claims.participantId,
+      },
+      confirmationRequired: true,
+      newId: this.deps.newId,
+      toToolSchema: (schema) => input.runtime.toToolSchema(schema),
+      model: input.runtime.createChatModel(),
+      checkpointer: await this.deps.getCheckpointer(),
+      executor: this.createCartExecutor(input.claims),
+    });
+
+    const config = { configurable: { thread_id: input.proposalId } };
+    // A paused run has a pending task waiting on the interrupt. No task means
+    // the checkpoint is gone, which is what expiry looks like from here.
+    const state = (await agent.getState(config)) as unknown as {
+      tasks?: unknown[];
+    };
+
+    if ((state.tasks?.length ?? 0) === 0) {
+      throw new ConflictError(
+        'That proposal is no longer available to apply.',
+        ERROR_CODES.AI_ORDERING_PROPOSAL_EXPIRED,
+      );
+    }
+
+    const result = await agent.invoke(
+      new Command({
+        resume: {
+          decisions: [
+            {
+              type: 'edit',
+              editedAction: {
+                name: AI_ORDERING_PROPOSAL_TOOL,
+                // The WHOLE call, rebuilt from the stored proposal with only
+                // the kept operations. A partial set of arguments is rejected
+                // by the interrupt without a word, and the tool never runs.
+                args: {
+                  ...input.proposal.response,
+                  operations: input.keptOperations,
+                },
+              },
+            },
+          ],
+        },
+      }),
+      config,
+    );
+
+    const last = result.messages?.at(-1);
+    const reply = typeof last?.content === 'string' ? last.content : undefined;
+
+    return {
+      results: record.results,
+      ...(reply !== undefined && reply.length > 0 ? { reply } : {}),
+    };
   }
 
   /**
@@ -245,17 +521,8 @@ export class AiOrderingService {
       );
     }
 
-    const outcomes = resolveAiOrderingReportedOutcomes(
-      conversation,
-      request.previousOutcome,
-    );
-
-    if (outcomes.unknownProposal) {
-      logger.warn(
-        { ...lookup, proposalId: request.previousOutcome?.proposalId },
-        'AI ordering outcome reported for a proposal this conversation never issued',
-      );
-    }
+    // What the backend recorded when it executed, not what a client claims.
+    const previousResults = readAiOrderingLastProposalOutcome(conversation);
 
     const [store, menu, cart] = await Promise.all([
       this.deps.findStore(claims.storeId),
@@ -299,28 +566,38 @@ export class AiOrderingService {
       ...(prompt.resolvedPrompt !== undefined
         ? { resolvedPrompt: prompt.resolvedPrompt }
         : {}),
-      ...(outcomes.results.length > 0
-        ? { reportedOutcomes: outcomes.results }
+      ...(previousResults.length > 0
+        ? { reportedOutcomes: previousResults }
         : {}),
     });
 
-    const session = createAiOrderingModelSession({
-      model: runtime.createModel(),
+    // The proposal id is generated BEFORE the run so it can be the run's thread
+    // id. That is what makes a proposal resumable by the one identifier the
+    // guest comes back with, and what scopes the checkpoint's lifetime to the
+    // proposal's own. It is simply unused when the model does not propose.
+    const proposalId = this.deps.newId('proposal');
+
+    const { agent, record, messages } = createAiOrderingAgent({
       config: runtime.config,
+      context,
+      validation: { menu, cart, participantId: claims.participantId },
+      confirmationRequired,
+      newId: (prefix) =>
+        prefix === 'proposal' ? proposalId : this.deps.newId(prefix),
+      toToolSchema: (schema) => runtime.toToolSchema(schema),
+      model: runtime.createChatModel(),
+      checkpointer: await this.deps.getCheckpointer(),
       deadlineAt,
+      // Never called during planning: the run pauses before the tool body. It is
+      // supplied anyway because the same tool definition serves both phases.
+      executor: this.createCartExecutor(claims),
     });
 
-    let plan;
-
     try {
-      plan = await planAiOrderingTurn({
-        config: runtime.config,
-        context,
-        validation: { menu, cart, participantId: claims.participantId },
-        confirmationRequired,
-        callModel: session.callModel,
-        newId: this.deps.newId,
-      });
+      await agent.invoke(
+        { messages },
+        { configurable: { thread_id: proposalId } },
+      );
     } catch (error) {
       // Provider errors carry prompt fragments and internal identifiers: the
       // real one goes to the log, a stable reason goes no further.
@@ -337,11 +614,15 @@ export class AiOrderingService {
       );
     }
 
-    if (!plan.ok) {
+    if (!record.response) {
       // Nothing usable came back twice. There is no response the guest saw, so
       // there is no turn to store; the raw output is logged instead.
       logger.error(
-        { ...lookup, detail: plan.detail, modelOutput: plan.modelOutput },
+        {
+          ...lookup,
+          detail: record.rejectionDetail,
+          modelOutput: record.modelOutput,
+        },
         'AI ordering model output was unusable after a repair attempt',
       );
 
@@ -351,30 +632,51 @@ export class AiOrderingService {
       );
     }
 
-    const turn = this.buildTurn({
-      request,
-      runtime,
-      plan,
-      cacheReadTokens: session.getUsage().cacheReadTokens,
-      reportedOutcomes: outcomes.results,
-    });
+    const turn = this.buildTurn({ request, runtime, record });
 
     const stored = await this.persistTurn(store, lookup, conversation, turn);
 
     await this.maybeRebuildSummary(runtime, stored, deadlineAt);
 
-    return { versionId: runtime.config.versionId, response: plan.response };
+    return { versionId: runtime.config.versionId, response: record.response };
+  }
+
+  /**
+   * The cart calls the proposal tool makes once the guest has accepted.
+   *
+   * Deliberately the SAME service the guest cart routes use, under the guest's
+   * own claims: every ownership rule, cart-state check, and SSE emission that
+   * protects a guest editing their own cart protects this path unchanged,
+   * because it is that path.
+   */
+  private createCartExecutor(claims: GuestTokenClaims) {
+    return {
+      addItem: async (operation: { item: CartItemInput }) => {
+        await this.deps.addCartItem(claims, operation.item);
+      },
+      updateItem: async (operation: {
+        itemId: string;
+        item: UpdateCartItemRequest;
+      }) => {
+        await this.deps.updateCartItem(claims, operation.itemId, operation.item);
+      },
+      removeItem: async (operation: { itemId: string }) => {
+        await this.deps.removeCartItem(claims, operation.itemId);
+      },
+    };
   }
 
   private buildTurn(input: {
     request: SendAiOrderingMessageRequest;
     runtime: AiOrderingRuntime;
-    plan: Extract<Awaited<ReturnType<typeof planAiOrderingTurn>>, { ok: true }>;
-    cacheReadTokens: number;
-    reportedOutcomes: AiOrderingTurnSnapshot['reportedOutcomes'];
+    record: AiOrderingRunRecord;
   }): AiOrderingTurnSnapshot {
-    const { plan, request, runtime } = input;
-    const response = plan.response;
+    const { record, request, runtime } = input;
+    const response = record.response;
+
+    if (!response) {
+      throw new InternalServerError('No assistant response to store.');
+    }
 
     return {
       id: this.deps.newId('turn'),
@@ -385,14 +687,11 @@ export class AiOrderingService {
       ...(request.selectedOptionId !== undefined
         ? { selectedOptionId: request.selectedOptionId }
         : {}),
-      ...(input.reportedOutcomes && input.reportedOutcomes.length > 0
-        ? { reportedOutcomes: input.reportedOutcomes }
-        : {}),
       versionId: runtime.config.versionId,
       versionFingerprint: aiOrderingVersionFingerprint(runtime.config),
       provider: runtime.provider,
       modelName: runtime.modelName,
-      modelOutput: plan.modelOutput,
+      modelOutput: record.modelOutput,
       response,
       // Snapshotted so the NEXT turn can resolve what the guest is answering or
       // reporting on, without trusting anything the client sends back.
@@ -413,7 +712,7 @@ export class AiOrderingService {
             },
           }
         : {}),
-      quality: { ...plan.quality, cacheReadTokens: input.cacheReadTokens },
+      quality: { ...record.quality, cacheReadTokens: record.cacheReadTokens },
       createdAt: this.deps.now(),
     };
   }
@@ -524,7 +823,14 @@ export function createAiOrderingService(
     findStore: (storeId) => storeRepository.findById(storeId),
     getPublicMenu: (storeId) => publicStoreService.getPublicMenu(storeId),
     getGuestCart: (claims) => guestOrderingService.getGuestCart(claims),
+    addCartItem: (claims, request) =>
+      guestOrderingService.addCartItem(claims, request),
+    updateCartItem: (claims, itemId, request) =>
+      guestOrderingService.updateCartItem(claims, itemId, request),
+    removeCartItem: (claims, itemId) =>
+      guestOrderingService.removeCartItem(claims, itemId),
     resolveRuntime: () => resolveAiOrderingRuntime(),
+    getCheckpointer: () => getAiOrderingCheckpointer(),
     rateLimiter: createRedisAiOrderingRateLimiter({
       maxRequestsPerWindow: MAX_REQUESTS_PER_WINDOW,
       windowMs: RATE_LIMIT_WINDOW_MS,

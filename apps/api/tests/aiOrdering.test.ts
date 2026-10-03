@@ -5,6 +5,7 @@ import { createApp } from '../src/app.js';
 import { guestTokenService } from '../src/services/guestToken.service.js';
 
 const CHAT_PATH = '/api/v1/public/guest/ai-ordering/chat';
+const DECISION_PATH = '/api/v1/public/guest/ai-ordering/proposals/decision';
 const CONVERSATION_PATH = '/api/v1/public/guest/ai-ordering/conversation';
 
 const guestToken = guestTokenService.signGuestToken({
@@ -54,18 +55,23 @@ describe('POST /v1/public/guest/ai-ordering/chat', () => {
     expect(response.status).toBe(400);
   });
 
-  it('rejects a malformed previous outcome', async () => {
+  it('rejects a decision that names no proposal', async () => {
     const response = await request(createApp())
-      .post(CHAT_PATH)
+      .post(DECISION_PATH)
       .set(auth(guestToken))
-      .send({
-        message: '那換紅茶好了',
-        previousOutcome: {
-          proposalId: 'proposal-1',
-          results: [{ operationId: 'op-1', outcome: 'maybe' }],
-        },
-      });
+      .send({ keptOperationIds: ['op-1'] });
 
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects a decision carrying operation content instead of ids', async () => {
+    const response = await request(createApp())
+      .post(DECISION_PATH)
+      .set(auth(guestToken))
+      .send({ proposalId: 'proposal-1', keptOperationIds: [{ id: 'op-1' }] });
+
+    // Ids only. What executes is rebuilt from the proposal the backend
+    // recorded, so operation content from a caller has nowhere to go.
     expect(response.status).toBe(400);
   });
 

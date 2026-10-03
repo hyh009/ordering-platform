@@ -1,4 +1,7 @@
-import { sendAiOrderingMessageSchema } from '@repo/shared';
+import {
+  decideAiOrderingProposalSchema,
+  sendAiOrderingMessageSchema,
+} from '@repo/shared';
 import { requireGuest } from '@src/middlewares/guestAuth';
 import { requireOpenStore } from '@src/middlewares/requireOpenStore';
 import { validate } from '@src/middlewares/validate';
@@ -8,6 +11,8 @@ import { Router } from 'express';
 import { guestClaims } from './session';
 
 import type {
+  DecideAiOrderingProposalRequest,
+  DecideAiOrderingProposalSuccessResponse,
   GetAiOrderingGuestConversationSuccessResponse,
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
@@ -48,26 +53,6 @@ router.use(requireGuest);
  *               selectedOptionId:
  *                 type: string
  *                 description: Absent when the guest typed instead of choosing.
- *               previousOutcome:
- *                 type: object
- *                 description: What became of the previous proposal.
- *                 required: [proposalId, results]
- *                 properties:
- *                   proposalId:
- *                     type: string
- *                   results:
- *                     type: array
- *                     items:
- *                       type: object
- *                       required: [operationId, outcome]
- *                       properties:
- *                         operationId:
- *                           type: string
- *                         outcome:
- *                           type: string
- *                           enum: [accepted, rejected, no_action, failed]
- *                         failureCode:
- *                           type: string
  *     responses:
  *       200:
  *         description: One assistant turn
@@ -215,5 +200,131 @@ router.get('/conversation', async (req, res) => {
 
   res.status(200).json(response);
 });
+
+/**
+ * @openapi
+ * /v1/public/guest/ai-ordering/proposals/decision:
+ *   post:
+ *     tags:
+ *       - Public / Guest AI Ordering
+ *     summary: Accept or dismiss a pending assistant proposal
+ *     description: >
+ *       Executes the operations the guest kept, in the order they were proposed,
+ *       and records the outcome against the turn that proposed them. The request
+ *       carries operation IDs only: what runs is rebuilt from the proposal the
+ *       backend stored, so a caller can neither add an operation the assistant
+ *       never proposed nor alter one it did. An empty `keptOperationIds` refuses
+ *       the whole proposal and changes nothing. A proposal may be decided once.
+ *     security:
+ *       - guestToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [proposalId, keptOperationIds]
+ *             properties:
+ *               proposalId:
+ *                 type: string
+ *               keptOperationIds:
+ *                 type: array
+ *                 description: The operations the guest kept. Empty refuses all.
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: The per-operation results and the resulting cart
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     proposalId:
+ *                       type: string
+ *                     results:
+ *                       type: array
+ *                       description: >
+ *                         One entry per operation in the proposal, including the
+ *                         dismissed ones and any a failure left unattempted.
+ *                       items:
+ *                         type: object
+ *                         required: [operationId, outcome]
+ *                         properties:
+ *                           operationId:
+ *                             type: string
+ *                           outcome:
+ *                             type: string
+ *                             enum: [accepted, rejected, no_action, failed]
+ *                           failureCode:
+ *                             type: string
+ *                     cart:
+ *                       type: object
+ *                       description: The cart as it stands after execution.
+ *                     reply:
+ *                       type: string
+ *                       description: >
+ *                         The assistant's answer to what happened. Absent when
+ *                         the closing model call failed; the cart change and the
+ *                         recorded outcome are unaffected.
+ *       400:
+ *         description: Missing proposal id, or more kept ids than a proposal can hold
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Missing or invalid guest token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: The assistant is disabled, or no such proposal in this conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: >
+ *           The proposal was already decided, or it expired before the guest
+ *           answered. The two are distinct codes.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       429:
+ *         description: Rate limit, or a request already in flight
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/proposals/decision',
+  validate(decideAiOrderingProposalSchema),
+  // The same store and cart checks the chat route carries: this one calls the
+  // model AND changes the cart, so it is at least as privileged.
+  requireOpenStore,
+  async (req, res) => {
+    const data = await aiOrderingService.decideProposal(
+      guestClaims(req),
+      req.body as DecideAiOrderingProposalRequest,
+    );
+
+    const response: DecideAiOrderingProposalSuccessResponse = {
+      status: 'success',
+      data,
+    };
+
+    res.status(200).json(response);
+  },
+);
 
 export default router;

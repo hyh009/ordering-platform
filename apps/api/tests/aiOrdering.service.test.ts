@@ -1,4 +1,8 @@
+import { AIMessage } from '@langchain/core/messages';
+import { MemorySaver } from '@langchain/langgraph';
+import { fakeModel } from 'langchain';
 import { describe, expect, it, vi } from 'vitest';
+
 
 import {
   AI_ORDERING_CART_FIXTURE,
@@ -6,10 +10,11 @@ import {
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_FIXTURE_STORE_ID,
   AI_ORDERING_MENU_FIXTURE,
-  aiOrderingModelReplyFor,
+  aiOrderingModelMessageFor,
 } from './fixtures/aiOrdering.js';
 import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '../src/models/aiOrdering/model.js';
 import { createInMemoryAiOrderingRateLimiter } from '../src/modules/aiOrdering/rateLimit.js';
+import { toGeminiToolSchema } from '../src/modules/aiOrdering/runtime/geminiSchema.js';
 import { aiOrderingVersionFingerprint } from '../src/modules/aiOrdering/versions/fingerprint.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
 import { createAiOrderingService } from '../src/services/aiOrdering.service.js';
@@ -19,7 +24,7 @@ import type {
   AiOrderingTurnSnapshot,
 } from '../src/models/aiOrdering/model.js';
 import type { StoreEntity } from '../src/models/store/model.js';
-import type { AiOrderingToolCallingModelResult } from '../src/modules/aiOrdering/runtime/model.js';
+
 
 const claims = {
   storeId: AI_ORDERING_FIXTURE_STORE_ID,
@@ -82,7 +87,7 @@ type Harness = ReturnType<typeof harness>;
 
 function harness(
   options: {
-    modelResults?: AiOrderingToolCallingModelResult[];
+    modelResults?: AIMessage[];
     existingConversation?: AiOrderingConversationEntity | null;
     storeEntity?: StoreEntity | null;
     versionPermitsAutomaticApplication?: boolean;
@@ -100,21 +105,60 @@ function harness(
   const findByParticipantCalls: unknown[] = [];
   const created: unknown[] = [];
   const summaryWrites: unknown[] = [];
-  let modelCalls = 0;
   let summaryCalls = 0;
 
+  const chatModel = fakeModel();
+
   const results = options.modelResults ?? [
-    aiOrderingModelReplyFor(
-      { type: 'message', reply: '珍珠奶茶是紅茶加鮮奶。' },
-      {
-        usage_metadata: {
-          input_tokens: 4000,
-          output_tokens: 40,
-          input_token_details: { cache_read: 3500 },
-        },
-      },
+    withUsage(
+      aiOrderingModelMessageFor({
+        type: 'message',
+        reply: '珍珠奶茶是紅茶加鮮奶。',
+      }),
+      { cacheRead: 3500, input: 4000, output: 40 },
     ),
   ];
+
+  for (const result of results) {
+    chatModel.respond(result);
+  }
+
+  // Stands in for a provider that has stopped responding without closing the
+  // connection. A proxy rather than an assignment because the agent invokes the
+  // model through `bindTools(...)`, so overwriting `invoke` on the instance
+  // would never be reached.
+  const neverSettles = () =>
+    new Promise<never>(() => {
+      // deliberately never settles
+    });
+
+  const hangingProxy = (target: object): object =>
+    new Proxy(target, {
+      get(instance, property, receiver) {
+        if (property === 'invoke' || property === 'stream') {
+          return neverSettles;
+        }
+
+        const value = Reflect.get(instance, property, receiver);
+
+        if (typeof value === 'function') {
+          return (...args: unknown[]) => {
+            const result = (value as (...a: unknown[]) => unknown).apply(
+              instance,
+              args,
+            );
+
+            return typeof result === 'object' && result !== null
+              ? hangingProxy(result)
+              : result;
+          };
+        }
+
+        return value;
+      },
+    });
+
+  const activeModel = options.hangModel ? hangingProxy(chatModel) : chatModel;
 
   let counter = 0;
 
@@ -167,20 +211,10 @@ function harness(
             },
             provider: 'gemini',
             modelName: 'test-model',
-            createModel: () => ({
-              invoke: async () => {
-                modelCalls += 1;
-
-                if (options.hangModel) {
-                  await new Promise(() => {
-                    // Never settles: stands in for a provider that has stopped
-                    // responding without closing the connection.
-                  });
-                }
-
-                return results[modelCalls - 1] ?? { toolCalls: [], text: '' };
-              },
-            }),
+            createChatModel: () => activeModel,
+            toToolSchema: (schema: unknown) =>
+              toGeminiToolSchema(schema as never) as Record<string, unknown>,
+            createModel: () => ({ invoke: async () => ({ toolCalls: [], text: '' }) }),
             createSummaryCaller: () => async () => {
               summaryCalls += 1;
 
@@ -191,6 +225,7 @@ function harness(
               return options.summaryText ?? '客人點了兩杯飲料。';
             },
           },
+    getCheckpointer: async () => new MemorySaver(),
     rateLimiter: createInMemoryAiOrderingRateLimiter({
       maxRequestsPerWindow: 10,
       windowMs: 60_000,
@@ -207,7 +242,7 @@ function harness(
     summaryWrites,
     findByParticipantCalls,
     get modelCalls() {
-      return modelCalls;
+      return chatModel.callCount;
     },
     get summaryCalls() {
       return summaryCalls;
@@ -217,6 +252,26 @@ function harness(
 
 async function send(h: Harness, message = '介紹一下珍珠奶茶') {
   return h.service.sendMessage(claims, { message });
+}
+
+
+/**
+ * Attaches provider usage to a scripted reply.
+ *
+ * The cache-read count is the only evidence the volatility-ordered prompt layout
+ * is earning its keep, so it has to survive the agent and reach the stored turn.
+ */
+function withUsage(
+  message: AIMessage,
+  usage: { cacheRead: number; input: number; output: number },
+): AIMessage {
+  (message as unknown as { usage_metadata: unknown }).usage_metadata = {
+    input_tokens: usage.input,
+    output_tokens: usage.output,
+    input_token_details: { cache_read: usage.cacheRead },
+  };
+
+  return message;
 }
 
 describe('AiOrderingService', () => {
@@ -241,7 +296,7 @@ describe('AiOrderingService', () => {
     it('refuses past the per-minute rate', async () => {
       const h = harness({
         modelResults: Array.from({ length: 12 }, () =>
-          aiOrderingModelReplyFor({ type: 'message', reply: 'ok' }, {}),
+          aiOrderingModelMessageFor({ type: 'message', reply: 'ok' }),
         ),
       });
 
@@ -258,7 +313,7 @@ describe('AiOrderingService', () => {
       let release: (() => void) | undefined;
       const h = harness({
         modelResults: [
-          aiOrderingModelReplyFor({ type: 'message', reply: 'slow' }, {}),
+          aiOrderingModelMessageFor({ type: 'message', reply: 'slow' }),
         ],
       });
 
@@ -353,7 +408,7 @@ describe('AiOrderingService', () => {
     it('stores a turn whose model output was rejected into a degraded reply', async () => {
       const h = harness({
         modelResults: [
-          aiOrderingModelReplyFor(
+          aiOrderingModelMessageFor(
             {
               type: 'proposal',
               reply: '這個賣完了。',
@@ -367,7 +422,7 @@ describe('AiOrderingService', () => {
             },
             {},
           ),
-          aiOrderingModelReplyFor(
+          aiOrderingModelMessageFor(
             {
               type: 'proposal',
               reply: '這個賣完了。',
@@ -397,7 +452,7 @@ describe('AiOrderingService', () => {
     it('snapshots a proposal so the next turn can resolve its outcomes', async () => {
       const h = harness({
         modelResults: [
-          aiOrderingModelReplyFor(
+          aiOrderingModelMessageFor(
             {
               type: 'proposal',
               reply: '幫你加白飯。',
@@ -439,7 +494,7 @@ describe('AiOrderingService', () => {
         versionPermitsAutomaticApplication: false,
         storeEntity: store({ assistant: { autoApplyCartOperations: true } }),
         modelResults: [
-          aiOrderingModelReplyFor(
+          aiOrderingModelMessageFor(
             {
               type: 'proposal',
               reply: '幫你加白飯。',
@@ -469,7 +524,7 @@ describe('AiOrderingService', () => {
         versionPermitsAutomaticApplication: true,
         storeEntity: store({ assistant: { autoApplyCartOperations: true } }),
         modelResults: [
-          aiOrderingModelReplyFor(
+          aiOrderingModelMessageFor(
             {
               type: 'proposal',
               reply: '幫你加白飯。',
@@ -716,5 +771,182 @@ describe('AiOrderingService.getConversation', () => {
     await expect(send(h)).resolves.toMatchObject({
       response: { type: 'message' },
     });
+  });
+});
+
+describe('AiOrderingService proposal decisions', () => {
+  const operations = [
+    {
+      type: 'add_item' as const,
+      operationId: 'op-1',
+      summary: '白飯 x1',
+      item: { productId: 'prod-rice', quantity: 1 },
+    },
+    {
+      type: 'add_item' as const,
+      operationId: 'op-2',
+      summary: '白飯 x2',
+      item: { productId: 'prod-rice', quantity: 2 },
+    },
+  ];
+
+  function decisionHarness(
+    options: {
+      proposal?: {
+        proposalId: string;
+        operations: typeof operations;
+        decision?: { decidedAt: Date; results: unknown[] };
+      } | null;
+      claimed?: boolean;
+      resumable?: boolean;
+      addItemImpl?: (...args: unknown[]) => Promise<unknown>;
+    } = {},
+  ) {
+    const snapshot =
+      options.proposal === undefined
+        ? { proposalId: 'proposal-1', operations }
+        : options.proposal;
+    const proposal = snapshot
+      ? {
+          snapshot,
+          response: {
+            type: 'proposal' as const,
+            reply: '幫你加白飯。',
+            proposalId: snapshot.proposalId,
+            confirmationRequired: true,
+            operations: snapshot.operations,
+          },
+        }
+      : null;
+
+    const resultsWritten: unknown[] = [];
+    const cartCalls: unknown[] = [];
+    const chatModel = fakeModel().respond(new AIMessage('都幫你加好了。'));
+
+    const service = createAiOrderingService({
+      conversations: {
+        findByParticipant: vi.fn(async () => null),
+        findProposal: vi.fn(async () => proposal),
+        recordProposalDecision: vi.fn(async () => ({
+          claimed: options.claimed ?? true,
+          proposal,
+        })),
+        setProposalResults: vi.fn(async (input: { results: unknown }) => {
+          resultsWritten.push(input.results);
+        }),
+      } as never,
+      findStore: vi.fn(async () => store()),
+      getPublicMenu: vi.fn(async () => AI_ORDERING_MENU_FIXTURE),
+      getGuestCart: vi.fn(async () => AI_ORDERING_CART_FIXTURE),
+      addCartItem: vi.fn(async (...args: unknown[]) => {
+        cartCalls.push(args);
+        return options.addItemImpl ? options.addItemImpl(...args) : undefined;
+      }),
+      updateCartItem: vi.fn(async () => undefined),
+      removeCartItem: vi.fn(async () => undefined),
+      resolveRuntime: () => ({
+        config: AI_ORDERING_V1_2026_09_30,
+        provider: 'gemini',
+        modelName: 'test-model',
+        createChatModel: () => chatModel,
+        toToolSchema: (schema: unknown) =>
+          toGeminiToolSchema(schema as never) as Record<string, unknown>,
+        createModel: () => ({
+          invoke: async () => ({ toolCalls: [], text: '' }),
+        }),
+        createSummaryCaller: () => async () => '',
+      }) as never,
+      getCheckpointer: async () => new MemorySaver(),
+      rateLimiter: createInMemoryAiOrderingRateLimiter({
+        maxRequestsPerWindow: 10,
+        windowMs: 60_000,
+      }),
+      newId: (prefix) => `${prefix}-decision`,
+      now: () => NOW,
+    });
+
+    return { service, resultsWritten, cartCalls };
+  }
+
+  it('refuses a second decision on the same proposal', async () => {
+    const h = decisionHarness({
+      claimed: false,
+      proposal: {
+        proposalId: 'proposal-1',
+        operations,
+        decision: { decidedAt: NOW, results: [] },
+      },
+    });
+
+    await expect(
+      h.service.decideProposal(claims, {
+        proposalId: 'proposal-1',
+        keptOperationIds: ['op-1'],
+      }),
+    ).rejects.toMatchObject({
+      code: 'AI_ORDERING_PROPOSAL_ALREADY_DECIDED',
+    });
+
+    // Nothing ran. The claim is what stops a double apply, not the UI.
+    expect(h.cartCalls).toHaveLength(0);
+  });
+
+  it('reports an unknown proposal differently from a decided one', async () => {
+    const h = decisionHarness({ claimed: false, proposal: null });
+
+    await expect(
+      h.service.decideProposal(claims, {
+        proposalId: 'proposal-gone',
+        keptOperationIds: ['op-1'],
+      }),
+    ).rejects.toMatchObject({ code: 'AI_ORDERING_PROPOSAL_NOT_FOUND' });
+  });
+
+  it('changes nothing when the guest dismissed every operation', async () => {
+    const h = decisionHarness();
+
+    const result = await h.service.decideProposal(claims, {
+      proposalId: 'proposal-1',
+      keptOperationIds: [],
+    });
+
+    // No cart call and no model call: an empty decision resolves the proposal
+    // and leaves the paused run to expire.
+    expect(h.cartCalls).toHaveLength(0);
+    expect(result.results).toEqual([
+      { operationId: 'op-1', outcome: 'rejected' },
+      { operationId: 'op-2', outcome: 'rejected' },
+    ]);
+    expect(result.reply).toBeUndefined();
+  });
+
+  it('records a result for every operation, dismissed ones included', async () => {
+    const h = decisionHarness();
+
+    await h.service
+      .decideProposal(claims, {
+        proposalId: 'proposal-1',
+        keptOperationIds: [],
+      })
+      .catch(() => undefined);
+
+    // An operation with no result would be an outcome the assistant has to
+    // infer from absence.
+    expect((h.resultsWritten[0] as unknown[]).length).toBe(operations.length);
+  });
+
+  it('treats a proposal with no resumable run as expired', async () => {
+    const h = decisionHarness();
+
+    // Nothing was ever paused under this proposal id in this harness, so the
+    // checkpoint is absent — which is what expiry looks like from here.
+    await expect(
+      h.service.decideProposal(claims, {
+        proposalId: 'proposal-1',
+        keptOperationIds: ['op-1'],
+      }),
+    ).rejects.toMatchObject({ code: 'AI_ORDERING_PROPOSAL_EXPIRED' });
+
+    expect(h.cartCalls).toHaveLength(0);
   });
 });
