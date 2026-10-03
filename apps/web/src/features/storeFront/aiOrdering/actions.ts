@@ -1,12 +1,33 @@
 import type {
+  AiOrderingOperationOutcome,
+  AiOrderingOperationResult,
   AiOrderingTranscriptTurn,
   AiOrderingTurn,
 } from '@/models/aiOrdering';
 import type {
   AiOrderingChatEntry,
   AiOrderingProposalRow,
+  AiOrderingProposalRowStatus,
   StoreFrontAiOrderingStore,
 } from './store';
+
+/**
+ * The row status a reported outcome produces.
+ *
+ * The inverse of the table the client used to keep for reporting: outcomes now
+ * arrive from the server, so this is the only direction that still exists.
+ * `no_action` means the operation was never attempted — a session-scoped failure
+ * stopped the proposal before it — which reads differently from a refusal.
+ */
+const ROW_STATUS_BY_OUTCOME: Record<
+  AiOrderingOperationOutcome,
+  AiOrderingProposalRowStatus
+> = {
+  accepted: 'applied',
+  rejected: 'dismissed',
+  no_action: 'not-attempted',
+  failed: 'failed',
+};
 
 export function createStoreFrontAiOrderingActions(
   store: StoreFrontAiOrderingStore,
@@ -41,12 +62,35 @@ export function createStoreFrontAiOrderingActions(
           role: 'assistant',
           versionId: turn.versionId,
           response: turn.response,
+          ...(turn.proposal?.status === 'decided'
+            ? { proposalResults: turn.proposal.results }
+            : {}),
         },
       ]);
 
+      // A proposal the server still records as pending is restored as the live
+      // one, so a guest who reloads mid-decision can still answer it. This is
+      // what the server-side record bought: before it, a restored proposal had
+      // to be read-only, because "already applied" and "never answered" looked
+      // identical from here.
+      const pending = turns.at(-1);
+      const proposal =
+        pending?.response.type === 'proposal' &&
+        pending.proposal?.status === 'pending'
+          ? {
+              proposalId: pending.response.proposalId,
+              confirmationRequired: pending.response.confirmationRequired,
+              rows: pending.response.operations.map((operation) => ({
+                operation,
+                status: 'pending' as const,
+              })),
+              isApplied: false,
+            }
+          : null;
+
       store.setState({
         entries,
-        proposal: null,
+        proposal,
         isLoaded: true,
         isLoading: false,
         error: null,
@@ -134,16 +178,16 @@ export function createStoreFrontAiOrderingActions(
     },
 
     /**
-     * Writes the apply results back onto the rows the apply flow attempted.
+     * Writes the server's decision back onto every row.
      *
-     * Rows the flow did not attempt — the dismissed ones — keep their status, so
-     * one apply never rewrites a decision the guest already made.
+     * Every operation in the proposal comes back with a result, including the
+     * dismissed ones and any a failure left unattempted, so this replaces each
+     * row rather than merging: a row is whatever the side that executed it says
+     * it is, not a blend of that and what the client assumed.
      */
-    proposalApplied(
-      results: { operationId: string; row: AiOrderingProposalRow }[],
-    ) {
+    proposalDecided(results: AiOrderingOperationResult[]) {
       const byOperationId = new Map(
-        results.map((result) => [result.operationId, result.row]),
+        results.map((result) => [result.operationId, result]),
       );
 
       store.setState((state) =>
@@ -152,61 +196,22 @@ export function createStoreFrontAiOrderingActions(
               proposal: {
                 ...state.proposal,
                 isApplied: true,
-                rows: state.proposal.rows.map(
-                  (row) => byOperationId.get(row.operation.operationId) ?? row,
-                ),
-              },
-            }
-          : {},
-      );
-    },
+                rows: state.proposal.rows.map((row) => {
+                  const result = byOperationId.get(row.operation.operationId);
 
-    /**
-     * Marks one failed row as being retried.
-     *
-     * The row keeps its `failed` status and its `failureCode` while the retry is
-     * in flight: clearing them first would blank the reason the guest is looking
-     * at, and a retry that fails the same way would read as a new failure.
-     */
-    operationRetryStarted(operationId: string) {
-      store.setState((state) =>
-        state.proposal
-          ? {
-              proposal: {
-                ...state.proposal,
-                rows: state.proposal.rows.map((row) =>
-                  row.operation.operationId === operationId &&
-                  row.status === 'failed'
-                    ? { ...row, isRetrying: true }
-                    : row,
-                ),
-              },
-            }
-          : {},
-      );
-    },
+                  if (!result) return row;
 
-    /**
-     * Writes one retried row's result back, replacing the row outright.
-     *
-     * Replacing rather than merging is what drops `isRetrying` and a stale
-     * `failureCode` on success, so a row that now reads `applied` cannot still
-     * carry the reason it failed the first time.
-     */
-    operationRetried(result: {
-      operationId: string;
-      row: AiOrderingProposalRow;
-    }) {
-      store.setState((state) =>
-        state.proposal
-          ? {
-              proposal: {
-                ...state.proposal,
-                rows: state.proposal.rows.map((row) =>
-                  row.operation.operationId === result.operationId
-                    ? result.row
-                    : row,
-                ),
+                  return {
+                    operation: row.operation,
+                    status: ROW_STATUS_BY_OUTCOME[result.outcome],
+                    ...(result.failureCode !== undefined
+                      ? {
+                          failureCode:
+                            result.failureCode as AiOrderingProposalRow['failureCode'],
+                        }
+                      : {}),
+                  };
+                }),
               },
             }
           : {},

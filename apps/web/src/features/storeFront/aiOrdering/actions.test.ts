@@ -106,15 +106,16 @@ describe('storefront assistant actions', () => {
     ]);
   });
 
-  it('records apply results without rewriting a dismissed row', () => {
+  it('writes the server decision onto every row', () => {
     const { store, actions } = setup();
 
     actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
-    actions.operationDismissed('op-1');
-    actions.proposalApplied([
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'rejected' },
       {
         operationId: 'op-2',
-        row: { operation: proposalOperations[1]!, status: 'applied' },
+        outcome: 'failed',
+        failureCode: 'PRODUCT_SOLD_OUT',
       },
     ]);
 
@@ -123,40 +124,38 @@ describe('storefront assistant actions', () => {
     expect(proposal?.isApplied).toBe(true);
     expect(proposal?.rows.map((row) => row.status)).toEqual([
       'dismissed',
-      'applied',
+      'failed',
     ]);
+    expect(proposal?.rows[1]?.failureCode).toBe('PRODUCT_SOLD_OUT');
   });
 
-  it('marks only a failed row as retrying', () => {
+  it('distinguishes an operation that was never attempted from a refusal', () => {
     const { store, actions } = setup();
 
     actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
-    actions.proposalApplied([
-      {
-        operationId: 'op-1',
-        row: {
-          operation: proposalOperations[0]!,
-          status: 'failed',
-          failureCode: 'network',
-        },
-      },
-      {
-        operationId: 'op-2',
-        row: { operation: proposalOperations[1]!, status: 'applied' },
-      },
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'rejected' },
+      { operationId: 'op-2', outcome: 'no_action' },
     ]);
 
-    actions.operationRetryStarted('op-1');
-    // An applied row is not a retry target, so asking for one changes nothing.
-    actions.operationRetryStarted('op-2');
+    // "The guest said no" and "a failure stopped the proposal before we got
+    // here" read differently to the guest looking at the rows.
+    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+      'dismissed',
+      'not-attempted',
+    ]);
+  });
 
-    const rows = store.getState().proposal?.rows ?? [];
+  it('leaves a row alone when the decision carries no result for it', () => {
+    const { store, actions } = setup();
 
-    expect(rows[0]?.isRetrying).toBe(true);
-    // The reason stays put while the retry runs: blanking it would empty the
-    // line the guest is reading mid-flight.
-    expect(rows[0]?.failureCode).toBe('network');
-    expect(rows[1]?.isRetrying).toBeUndefined();
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalDecided([{ operationId: 'op-1', outcome: 'accepted' }]);
+
+    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
+      'applied',
+      'pending',
+    ]);
   });
 
   it('an apply flag is independent of the sending flag', () => {

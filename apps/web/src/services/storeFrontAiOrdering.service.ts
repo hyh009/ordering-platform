@@ -3,8 +3,11 @@ import { storeFrontApiJson } from '@/api/storeFrontApiJson';
 import { aiOrderingModel } from '@/models/aiOrdering';
 
 import type {
+  AiOrderingProposalDecisionResult,
   AiOrderingTranscriptTurn,
   AiOrderingTurn,
+  DecideAiOrderingProposalRequest,
+  DecideAiOrderingProposalSuccessResponse,
   GetAiOrderingGuestConversationSuccessResponse,
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
@@ -15,8 +18,8 @@ export const storeFrontAiOrderingService = {
    * Sends one guest turn and returns the assistant's answer as a model.
    *
    * Nothing here applies anything: a `proposal` comes back as data, and the cart
-   * only changes if the guest accepts it and the apply flow calls the cart
-   * commands. The assistant endpoint never mutates the cart.
+   * changes only when the guest accepts it through `decideProposal`. This
+   * endpoint never mutates the cart.
    */
   async sendMessage(
     guestToken: string,
@@ -49,5 +52,27 @@ export const storeFrontAiOrderingService = {
       );
 
     return aiOrderingModel.deserializeTranscript(response.data);
+  },
+
+  /**
+   * Sends the guest's decision on a pending proposal.
+   *
+   * Operation ids only. What runs is rebuilt from the proposal the backend
+   * recorded, so this request cannot add an operation the assistant never
+   * proposed or alter one it did — and the per-operation results come back from
+   * the side that actually executed them.
+   */
+  async decideProposal(
+    guestToken: string,
+    request: DecideAiOrderingProposalRequest,
+  ): Promise<AiOrderingProposalDecisionResult> {
+    const response =
+      await storeFrontApiJson<DecideAiOrderingProposalSuccessResponse>(
+        publicPaths.storeFrontAiOrderingProposalDecision(),
+        guestToken,
+        { method: 'POST', body: JSON.stringify(request) },
+      );
+
+    return aiOrderingModel.deserializeProposalDecision(response.data);
   },
 };

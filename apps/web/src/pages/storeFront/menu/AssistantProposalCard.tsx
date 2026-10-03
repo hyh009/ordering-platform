@@ -1,4 +1,4 @@
-import { Check, RotateCcw, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 import { useAppTranslation } from '@/app/i18n';
 import { Button } from '@/shared/components/ui/button';
@@ -49,7 +49,6 @@ type AssistantProposalCardProps = {
   proposal: AssistantProposalView;
   isApplying: boolean;
   onDismissOperation: (operationId: string) => void;
-  onRetryOperation: (operationId: string) => void;
   onApply: () => void;
 };
 
@@ -63,7 +62,6 @@ export function AssistantProposalCard({
   proposal,
   isApplying,
   onDismissOperation,
-  onRetryOperation,
   onApply,
 }: AssistantProposalCardProps) {
   const { tDefault } = useAppTranslation();
@@ -106,16 +104,14 @@ export function AssistantProposalCard({
                       {tDefault('guest.assistant.rowApplied', 'Added')}
                     </span>
                   ) : row.status === 'failed' ? (
-                    row.isRetrying ? (
-                      tDefault('guest.assistant.rowRetrying', 'Trying again…')
-                    ) : (
-                      tDefault(
-                        'guest.assistant.rowFailed',
-                        'Could not be applied',
-                      )
-                    )
+                    tDefault('guest.assistant.rowFailed', 'Could not be applied')
                   ) : row.status === 'dismissed' ? (
                     tDefault('guest.assistant.rowDismissed', 'Removed')
+                  ) : row.status === 'not-attempted' ? (
+                    tDefault(
+                      'guest.assistant.rowNotAttempted',
+                      'Not attempted',
+                    )
                   ) : (
                     tDefault('guest.assistant.rowPending', 'Not applied')
                   )}
@@ -126,28 +122,17 @@ export function AssistantProposalCard({
             {/* The reason sits under its own row rather than in the status
                 column: it is a sentence, and squeezing it beside the summary
                 would wrap both into something unreadable on a phone. */}
+            {/* No retry control. Retrying one row used to mean a second cart
+                call outside the proposal, which a single-use proposal does not
+                allow; the guest asks the assistant instead, and gets an
+                alternative that is valid now rather than the same failure. */}
             {row.failure ? (
-              <div className="flex items-start justify-between gap-2 pl-0">
-                <span className="text-xs text-destructive">
-                  {tDefault(
-                    FAILURE_LABELS[row.failure.kind].key,
-                    FAILURE_LABELS[row.failure.kind].fallback,
-                  )}
-                </span>
-
-                {row.failure.canRetry ? (
-                  <button
-                    type="button"
-                    className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs text-storefront-primary hover:bg-muted"
-                    onClick={() => {
-                      onRetryOperation(row.operationId);
-                    }}
-                  >
-                    <RotateCcw size={12} strokeWidth={2} />
-                    {tDefault('guest.assistant.rowRetry', 'Try again')}
-                  </button>
-                ) : null}
-              </div>
+              <span className="text-xs text-destructive">
+                {tDefault(
+                  FAILURE_LABELS[row.failure.kind].key,
+                  FAILURE_LABELS[row.failure.kind].fallback,
+                )}
+              </span>
             ) : null}
           </li>
         ))}

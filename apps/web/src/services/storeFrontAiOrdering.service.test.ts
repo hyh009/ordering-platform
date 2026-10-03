@@ -43,34 +43,49 @@ describe('storeFrontAiOrderingService.sendMessage', () => {
     );
   });
 
-  it('attaches the previous outcome when one is reported', async () => {
+  it('sends the kept operation ids when the guest decides a proposal', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({
         status: 'success',
         data: {
-          versionId: 'v1-2026-09-30',
-          response: { type: 'message', reply: 'Noted.' },
+          proposalId: 'proposal-1',
+          results: [{ operationId: 'op-2', outcome: 'accepted' }],
+          cart: {
+            id: 'cart-1',
+            storeId: 'store-1',
+            status: 'active',
+            items: [],
+            participants: [],
+            subtotal: 0,
+            serviceFeeRate: 0,
+            serviceFeeAmount: 0,
+            totalAmount: 0,
+            createdAt: '2026-10-01T00:00:00.000Z',
+            updatedAt: '2026-10-01T00:00:00.000Z',
+          },
+          reply: 'Added one.',
         },
       }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await storeFrontAiOrderingService.sendMessage('guest-token', {
-      message: 'Something else then',
-      previousOutcome: {
-        proposalId: 'proposal-1',
-        results: [{ operationId: 'op-1', outcome: 'rejected' }],
-      },
-    });
+    const decision = await storeFrontAiOrderingService.decideProposal(
+      'guest-token',
+      { proposalId: 'proposal-1', keptOperationIds: ['op-2'] },
+    );
 
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 
-    expect(JSON.parse(String(init.body))).toMatchObject({
-      previousOutcome: {
-        proposalId: 'proposal-1',
-        results: [{ operationId: 'op-1', outcome: 'rejected' }],
-      },
+    expect(String(url)).toContain('/ai-ordering/proposals/decision');
+    // Ids only: what executes is rebuilt from the proposal the backend stored.
+    expect(JSON.parse(String(init.body))).toEqual({
+      proposalId: 'proposal-1',
+      keptOperationIds: ['op-2'],
     });
+    expect(decision.results).toEqual([
+      { operationId: 'op-2', outcome: 'accepted' },
+    ]);
+    expect(decision.reply).toBe('Added one.');
   });
 
   it('raises the typed failure when the assistant is disabled for the store', async () => {

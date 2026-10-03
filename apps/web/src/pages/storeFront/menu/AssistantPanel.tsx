@@ -168,9 +168,6 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                             proposal={vm.proposal}
                             isApplying={vm.isApplying}
                             onDismissOperation={vm.dismissOperation}
-                            onRetryOperation={(operationId) => {
-                              void vm.retryOperation(operationId);
-                            }}
                             onApply={() => {
                               void vm.applyProposal();
                             }}
@@ -181,7 +178,9 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                       {entry.kind === 'proposal' && entry.record !== 'live' ? (
                         <AssistantProposalRecord
                           operations={entry.operations}
-                          isStale={entry.record === 'stale'}
+                          {...(entry.results !== undefined
+                            ? { results: entry.results }
+                            : {})}
                         />
                       ) : null}
                     </div>

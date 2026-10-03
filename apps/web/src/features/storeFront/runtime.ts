@@ -68,12 +68,14 @@ export function createStoreFrontRuntime() {
     actions: orderHistoryActions,
     tenantStore,
   });
-  // The assistant proposes; the cart commands are what actually change the cart,
-  // so the apply flow goes through them rather than a second write path.
+  // The assistant proposes and the BACKEND applies, so there is no cart write
+  // path here. The decision response carries the resulting cart, which is handed
+  // to the cart actions the same way the SSE stream hands over a cart it was
+  // pushed — there is one cart store and one way into it.
   const aiOrderingCommands = createStoreFrontAiOrderingCommands({
     actions: aiOrderingActions,
     store: aiOrderingStore,
-    cartCommands,
+    cartActions,
     sessionStore,
     tenantStore,
   });

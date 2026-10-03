@@ -1,3 +1,5 @@
+import { cartModel } from '@/models/cart';
+
 import type {
   AiOrderingChoiceDtoType,
   AiOrderingConversationDetail,
@@ -13,6 +15,8 @@ import type {
   AiOrderingResponseDtoType,
   AiOrderingResponseModel,
   AiOrderingGuestConversationDtoType,
+  AiOrderingProposalDecision,
+  AiOrderingProposalDecisionResult,
   AiOrderingTranscriptTurn,
   AiOrderingTurn,
   AiOrderingTurnDtoType,
@@ -172,7 +176,26 @@ export const aiOrderingModel = {
       versionId: turn.versionId,
       createdAt: turn.createdAt,
       response: aiOrderingModel.deserializeResponse(turn.response),
+      // Carried through as the server recorded it. The panel draws a proposal
+      // from this rather than guessing from its position in the transcript.
+      ...(turn.proposal ? { proposal: turn.proposal } : {}),
     }));
+  },
+
+  /**
+   * A decision's results, the cart it produced, and the assistant's closing
+   * reply. The cart is deserialized through the cart model so no raw DTO
+   * escapes this boundary.
+   */
+  deserializeProposalDecision(
+    dto: AiOrderingProposalDecision,
+  ): AiOrderingProposalDecisionResult {
+    return {
+      proposalId: dto.proposalId,
+      results: dto.results,
+      cart: cartModel.deserialize(dto.cart),
+      ...(dto.reply !== undefined ? { reply: dto.reply } : {}),
+    };
   },
 
   deserializeConversationSummary(

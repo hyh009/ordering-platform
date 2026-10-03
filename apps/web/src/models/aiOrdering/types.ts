@@ -14,8 +14,11 @@ import type {
   AiOrderingOperation,
   AiOrderingOperationOutcome,
   AiOrderingOperationResult,
-  AiOrderingPreviousOutcome,
   AiOrderingProposalResponse,
+  AiOrderingProposalDecisionData,
+  AiOrderingProposalStateDto,
+  DecideAiOrderingProposalRequest,
+  DecideAiOrderingProposalSuccessResponse,
   AiOrderingResponse,
   AiOrderingResponseType,
   AiOrderingTurnResponseData,
@@ -29,6 +32,8 @@ import type {
   ListAiOrderingUnansweredSuccessResponse,
 } from '@repo/shared';
 
+import type { Cart } from '@/models/cart';
+
 export type {
   GetAiOrderingConversationSuccessResponse,
   GetAiOrderingGuestConversationSuccessResponse,
@@ -39,11 +44,12 @@ export type {
   AiOrderingChoiceInputMode,
   AiOrderingOperationOutcome,
   AiOrderingOperationResult,
-  AiOrderingPreviousOutcome,
   AiOrderingResponseType,
   AiOrderingUnansweredReason,
   SendAiOrderingMessageRequest,
   SendAiOrderingMessageSuccessResponse,
+  DecideAiOrderingProposalRequest,
+  DecideAiOrderingProposalSuccessResponse,
 };
 
 export type AiOrderingChoiceDtoType = AiOrderingChoice;
@@ -86,6 +92,29 @@ export type AiOrderingTranscriptTurn = AiOrderingTurn & {
   id: string;
   message: string;
   createdAt: string;
+  /**
+   * Present exactly when the turn carried a proposal.
+   *
+   * Without it a reloaded panel cannot tell an applied proposal from one still
+   * waiting, and would have to guess — which is how a guest ends up being told
+   * to ask again for something already in their cart.
+   */
+  proposal?: AiOrderingProposalState;
+};
+
+/** Two states. An expired proposal is a decided one whose rows are all no-action. */
+export type AiOrderingProposalState = AiOrderingProposalStateDto;
+
+/** What a decision produced, as the wire carries it. */
+export type AiOrderingProposalDecision = AiOrderingProposalDecisionData;
+
+/** The same, with the cart mapped through the cart model. */
+export type AiOrderingProposalDecisionResult = {
+  proposalId: string;
+  results: AiOrderingOperationResult[];
+  cart: Cart;
+  /** Absent when the closing model call failed; the cart change still happened. */
+  reply?: string;
 };
 
 // ── Merchant review ──────────────────────────────────────────────────────────

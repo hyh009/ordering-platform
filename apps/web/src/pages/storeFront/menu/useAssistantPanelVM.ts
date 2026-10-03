@@ -198,22 +198,6 @@ export function useAssistantPanelVM(input: {
     [send],
   );
 
-  const retryOperation = useCallback(
-    async (operationId: string) => {
-      const result = await commands.retryAssistantOperation(
-        storeId,
-        operationId,
-      );
-
-      // Only a session-scoped failure comes back here; an item-scoped one is
-      // already written onto the row the guest is looking at.
-      if (result.status !== 'applied') {
-        handleStoreFrontFailure(result);
-      }
-    },
-    [commands, storeId],
-  );
-
   const dismissOperation = useCallback(
     (operationId: string) => {
       commands.dismissAssistantOperation(operationId);
@@ -254,7 +238,6 @@ export function useAssistantPanelVM(input: {
     submitDraft,
     selectOption,
     applyProposal,
-    retryOperation,
     dismissOperation,
     cartGroups,
     cartTotals,

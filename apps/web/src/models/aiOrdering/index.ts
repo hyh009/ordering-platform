@@ -5,10 +5,9 @@ export {
   aiOrderingOperationOutcomes,
   aiOrderingResponseTypes,
   aiOrderingUnansweredReasons,
+  decideAiOrderingProposalSchema,
   sendAiOrderingMessageSchema,
 } from '@repo/shared';
 
 export { aiOrderingModel } from './model';
-export { toAiOrderingCartRequest } from './requestMapper';
-export type { AiOrderingCartRequest } from './requestMapper';
 export type * from './types';

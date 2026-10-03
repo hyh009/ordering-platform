@@ -46,4 +46,7 @@ export const publicPaths = {
   storeFrontAiOrderingConversation() {
     return '/v1/public/guest/ai-ordering/conversation';
   },
+  storeFrontAiOrderingProposalDecision() {
+    return '/v1/public/guest/ai-ordering/proposals/decision';
+  },
 } as const;

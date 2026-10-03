@@ -9,12 +9,14 @@ import { createStoreFrontAiOrderingStore } from './store';
 import { createTenantStore } from '../tenant/store';
 
 import type { AiOrderingTurn } from '@/models/aiOrdering';
-import type { StoreFrontCartCommands } from '../cart/commands';
+import type { Cart } from '@/models/cart';
+import type { StoreFrontCartActions } from '../cart/actions';
 
 vi.mock('@/services/storeFrontAiOrdering.service', () => ({
   storeFrontAiOrderingService: {
     sendMessage: vi.fn(),
     getConversation: vi.fn(),
+    decideProposal: vi.fn(),
   },
 }));
 
@@ -22,26 +24,21 @@ const sendMessageMock = vi.mocked(storeFrontAiOrderingService.sendMessage);
 const getConversationMock = vi.mocked(
   storeFrontAiOrderingService.getConversation,
 );
+const decideProposalMock = vi.mocked(
+  storeFrontAiOrderingService.decideProposal,
+);
 
 const STORE_ID = 'store-a';
 
-function cartCommandsStub(
-  overrides: Partial<StoreFrontCartCommands> = {},
-): StoreFrontCartCommands {
-  const updated = { status: 'updated' } as const;
+const CART = { id: 'cart-1', items: [] } as unknown as Cart;
 
-  return {
-    addItem: vi.fn().mockResolvedValue(updated),
-    updateItem: vi.fn().mockResolvedValue(updated),
-    removeItem: vi.fn().mockResolvedValue(updated),
-    ...overrides,
-  } as unknown as StoreFrontCartCommands;
-}
-
-function setup(cartCommands: StoreFrontCartCommands = cartCommandsStub()) {
+function setup() {
   const store = createStoreFrontAiOrderingStore();
   const sessionStore = createGuestSessionStore();
   const tenantStore = createTenantStore();
+  const cartActions = {
+    cartUpdated: vi.fn(),
+  } as unknown as StoreFrontCartActions;
 
   sessionStore.setState({
     guestToken: 'token-a',
@@ -53,11 +50,11 @@ function setup(cartCommands: StoreFrontCartCommands = cartCommandsStub()) {
   return {
     store,
     sessionStore,
-    cartCommands,
+    cartActions,
     commands: createStoreFrontAiOrderingCommands({
       actions: createStoreFrontAiOrderingActions(store),
       store,
-      cartCommands,
+      cartActions,
       sessionStore,
       tenantStore,
     }),
@@ -108,7 +105,7 @@ describe('storefront assistant send command', () => {
     expect(sendMessageMock).not.toHaveBeenCalled();
   });
 
-  it('sends no previous outcome on the first turn', async () => {
+  it('sends only the message, with no client-reported outcome', async () => {
     sendMessageMock.mockResolvedValue(messageTurn);
     const { commands } = setup();
 
@@ -116,50 +113,6 @@ describe('storefront assistant send command', () => {
 
     expect(sendMessageMock).toHaveBeenCalledWith('token-a', {
       message: 'What is bubble tea?',
-    });
-  });
-
-  it('attaches the previous outcome, distinguishing a dismissal from moving on', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-    const { commands } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
-
-    commands.dismissOperation('op-1');
-
-    sendMessageMock.mockResolvedValue(messageTurn);
-    await commands.sendMessage(STORE_ID, { message: 'Actually, never mind' });
-
-    // op-1 was dismissed on purpose; op-2 was simply left behind. "You removed
-    // the tea" and "you moved on" must not reach the model as the same thing.
-    expect(sendMessageMock).toHaveBeenLastCalledWith('token-a', {
-      message: 'Actually, never mind',
-      previousOutcome: {
-        proposalId: 'proposal-1',
-        results: [
-          { operationId: 'op-1', outcome: 'rejected' },
-          { operationId: 'op-2', outcome: 'no_action' },
-        ],
-      },
-    });
-  });
-
-  it('reports applied rows as accepted on the next turn', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-    await commands.applyProposal(STORE_ID);
-
-    sendMessageMock.mockResolvedValue(messageTurn);
-    await commands.sendMessage(STORE_ID, { message: 'Anything else?' });
-
-    expect(sendMessageMock).toHaveBeenLastCalledWith('token-a', {
-      message: 'Anything else?',
-      previousOutcome: {
-        proposalId: 'proposal-1',
-        results: [{ operationId: 'op-1', outcome: 'accepted' }],
-      },
     });
   });
 
@@ -212,476 +165,192 @@ describe('storefront assistant send command', () => {
   });
 });
 
-describe('storefront assistant apply command', () => {
+describe('storefront assistant decision command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('applies every pending row in the proposal order', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2', 'op-3']));
-    const { commands, cartCommands, store } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add three things' });
-    const result = await commands.applyProposal(STORE_ID);
-
-    expect(result).toEqual({
-      status: 'applied',
-      results: [
-        { operationId: 'op-1', outcome: 'accepted' },
-        { operationId: 'op-2', outcome: 'accepted' },
-        { operationId: 'op-3', outcome: 'accepted' },
-      ],
-    });
-    expect(cartCommands.addItem).toHaveBeenCalledTimes(3);
-    expect(
-      vi
-        .mocked(cartCommands.addItem)
-        .mock.calls.map(([, request]) => request.productId),
-    ).toEqual(['product-1', 'product-2', 'product-3']);
-    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-      'applied',
-      'applied',
-      'applied',
-    ]);
-  });
-
-  it('keeps going when the second of three fails, and reports each row', async () => {
-    const addItem = vi
-      .fn()
-      .mockResolvedValueOnce({ status: 'updated' })
-      .mockResolvedValueOnce({
-        status: 'failed',
-        reason: 'sold-out',
-        message: 'Sold out',
-      })
-      .mockResolvedValueOnce({ status: 'updated' });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2', 'op-3']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add three things' });
-    const result = await commands.applyProposal(STORE_ID);
-
-    // An item-specific refusal says nothing about the other rows, so the third
-    // still goes through and the guest gets one complete report.
-    expect(result).toEqual({
-      status: 'applied',
-      results: [
-        { operationId: 'op-1', outcome: 'accepted' },
-        { operationId: 'op-2', outcome: 'failed', failureCode: 'sold-out' },
-        { operationId: 'op-3', outcome: 'accepted' },
-      ],
-    });
-    expect(addItem).toHaveBeenCalledTimes(3);
-    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-      'applied',
-      'failed',
-      'applied',
-    ]);
-  });
-
-  it('stops after a session failure instead of retrying the rest', async () => {
-    const addItem = vi
-      .fn()
-      .mockResolvedValueOnce({ status: 'updated' })
-      .mockResolvedValueOnce({
-        status: 'failed',
-        reason: 'session-expired',
-        message: '',
-      });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2', 'op-3']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add three things' });
-    const result = await commands.applyProposal(STORE_ID);
-
-    expect(result).toEqual({
-      status: 'failed',
-      reason: 'session-expired',
-      message: '',
-    });
-    expect(addItem).toHaveBeenCalledTimes(2);
-    // The third was never attempted, so it stays undecided and will report as
-    // `no_action` rather than a failure nobody observed.
-    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-      'applied',
-      'failed',
-      'pending',
-    ]);
-  });
-
-  it('skips the rows the guest dismissed', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-    const { commands, cartCommands } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
-    commands.dismissOperation('op-1');
-    await commands.applyProposal(STORE_ID);
-
-    expect(cartCommands.addItem).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(cartCommands.addItem).mock.calls[0]?.[1].productId).toBe(
-      'product-2',
-    );
-  });
-
-  it('refuses to apply once every row has been dismissed', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands, cartCommands } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-    commands.dismissOperation('op-1');
-
-    const result = await commands.applyProposal(STORE_ID);
-
-    expect(result.status).toBe('failed');
-    expect(cartCommands.addItem).not.toHaveBeenCalled();
-  });
-
-  // The abort set used to be the two session reasons only. A locked cart or a
-  // dead connection is just as much a property of the request rather than the
-  // item, so continuing only produced N copies of the same error.
-  it.each([
-    'order-locked',
-    'cart-not-active',
-    'store-closed',
-    'network',
-    'server',
-    'rate-limited',
-  ])(
-    'stops the loop on %s rather than repeating it per row',
-    async (reason) => {
-      const addItem = vi
-        .fn()
-        .mockResolvedValue({ status: 'failed', reason, message: '' });
-
-      sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2', 'op-3']));
-      const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-      await commands.sendMessage(STORE_ID, { message: 'Add three things' });
-      const result = await commands.applyProposal(STORE_ID);
-
-      expect(result).toEqual({ status: 'failed', reason, message: '' });
-      expect(addItem).toHaveBeenCalledTimes(1);
-      expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-        'failed',
-        'pending',
-        'pending',
-      ]);
-    },
-  );
-
-  it.each(['sold-out', 'not-found', 'invalid', 'unknown'])(
-    'keeps going past %s, which is about that row only',
-    async (reason) => {
-      const addItem = vi
-        .fn()
-        .mockResolvedValueOnce({ status: 'failed', reason, message: '' })
-        .mockResolvedValue({ status: 'updated' });
-
-      sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-      const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-      await commands.sendMessage(STORE_ID, { message: 'Add two things' });
-      const result = await commands.applyProposal(STORE_ID);
-
-      expect(result.status).toBe('applied');
-      expect(addItem).toHaveBeenCalledTimes(2);
-      expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-        'failed',
-        'applied',
-      ]);
-    },
-  );
-});
-
-describe('storefront assistant apply is blocked while it runs', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('raises the apply flag for the duration of the loop', async () => {
-    let release: (() => void) | undefined;
-    const addItem = vi.fn().mockImplementation(
-      async () =>
-        new Promise((resolve) => {
-          release = () => {
-            resolve({ status: 'updated' });
-          };
-        }),
-    );
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-    const inFlight = commands.applyProposal(STORE_ID);
-
-    expect(store.getState().isApplying).toBe(true);
-
-    release?.();
-    await inFlight;
-
-    // False exactly when the command resolves: every cart call has returned, and
-    // each one wrote the cart the server sent back, so what is on screen is the
-    // confirmed cart rather than a prediction.
-    expect(store.getState().isApplying).toBe(false);
-  });
-
-  it('sends each operation once when apply is activated twice', async () => {
-    let release: (() => void) | undefined;
-    const addItem = vi
-      .fn()
-      .mockImplementationOnce(
-        async () =>
-          new Promise((resolve) => {
-            release = () => {
-              resolve({ status: 'updated' });
-            };
-          }),
-      )
-      .mockResolvedValue({ status: 'updated' });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-    const { commands } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
-
-    const first = commands.applyProposal(STORE_ID);
-    const second = await commands.applyProposal(STORE_ID);
-
-    // Without the guard the second apply reads the same pending rows — statuses
-    // are written only after the loop — and the guest ends up with doubles.
-    expect(second.status).toBe('failed');
-
-    release?.();
-    await first;
-
-    expect(addItem).toHaveBeenCalledTimes(2);
-    expect(
-      addItem.mock.calls.map(([, request]) => request.productId),
-    ).toEqual(['product-1', 'product-2']);
-  });
-
-  it('clears the flag after a row failure', async () => {
-    const addItem = vi
-      .fn()
-      .mockResolvedValue({ status: 'failed', reason: 'sold-out', message: '' });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-    await commands.applyProposal(STORE_ID);
-
-    expect(store.getState().isApplying).toBe(false);
-  });
-
-  it('clears the flag after a session-scoped abort', async () => {
-    const addItem = vi.fn().mockResolvedValue({
-      status: 'failed',
-      reason: 'order-locked',
-      message: 'Locked',
-    });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add two things' });
-    const result = await commands.applyProposal(STORE_ID);
-
-    expect(result.status).toBe('failed');
-    expect(store.getState().isApplying).toBe(false);
-  });
-
-  it('clears the flag when a cart command throws', async () => {
-    const addItem = vi.fn().mockRejectedValue(new Error('boom'));
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands, store } = setup(cartCommandsStub({ addItem }));
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-
-    // The throw is not swallowed — the finally is what matters here, because an
-    // overlay left up with nothing in flight is worse than no overlay.
-    await expect(commands.applyProposal(STORE_ID)).rejects.toThrow('boom');
-    expect(store.getState().isApplying).toBe(false);
-  });
-
-  it('leaves the flag down when there is nothing to apply', async () => {
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1']));
-    const { commands, store } = setup();
-
-    await commands.sendMessage(STORE_ID, { message: 'Add a tea' });
-    commands.dismissOperation('op-1');
-    await commands.applyProposal(STORE_ID);
-
-    expect(store.getState().isApplying).toBe(false);
-  });
-});
-
-describe('storefront assistant retry command', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  /**
-   * `unknown` on the first row: item-scoped, so the loop still applies the
-   * second row, and retryable, so this is the shape the retry control actually
-   * appears in.
-   */
-  async function appliedWithFirstRowFailed(reason = 'unknown') {
-    const addItem = vi
-      .fn()
-      .mockResolvedValueOnce({ status: 'failed', reason, message: '' })
-      .mockResolvedValue({ status: 'updated' });
-
-    sendMessageMock.mockResolvedValue(proposalTurn(['op-1', 'op-2']));
-    const harness = setup(cartCommandsStub({ addItem }));
+  async function openProposal(operationIds = ['op-1', 'op-2']) {
+    sendMessageMock.mockResolvedValue(proposalTurn(operationIds));
+    const harness = setup();
 
     await harness.commands.sendMessage(STORE_ID, { message: 'Add two things' });
-    await harness.commands.applyProposal(STORE_ID);
-    addItem.mockClear();
 
-    return { ...harness, addItem };
+    return harness;
   }
 
-  it('re-runs only the failed row and leaves the others alone', async () => {
-    const { commands, store, addItem } = await appliedWithFirstRowFailed();
+  it('sends the kept operation ids, not the operations', async () => {
+    const h = await openProposal();
 
-    const result = await commands.retryOperation(STORE_ID, 'op-1');
-
-    expect(result).toEqual({
-      status: 'applied',
-      results: [{ operationId: 'op-1', outcome: 'accepted' }],
-    });
-    expect(addItem).toHaveBeenCalledTimes(1);
-    expect(addItem.mock.calls[0]?.[1].productId).toBe('product-1');
-    expect(store.getState().proposal?.rows.map((row) => row.status)).toEqual([
-      'applied',
-      'applied',
-    ]);
-  });
-
-  it('drops the stale reason once the retry succeeds', async () => {
-    const { commands, store } = await appliedWithFirstRowFailed();
-
-    await commands.retryOperation(STORE_ID, 'op-1');
-
-    const row = store.getState().proposal?.rows[0];
-
-    expect(row?.failureCode).toBeUndefined();
-    expect(row?.isRetrying).toBeUndefined();
-  });
-
-  it('records the new reason when the retry fails again', async () => {
-    const { commands, store, addItem } = await appliedWithFirstRowFailed();
-
-    addItem.mockResolvedValueOnce({
-      status: 'failed',
-      reason: 'sold-out',
-      message: '',
-    });
-
-    const result = await commands.retryOperation(STORE_ID, 'op-1');
-
-    // Item-scoped, so it is not returned as a failure: the row already says it,
-    // and surfacing it again would put the same message on screen twice.
-    expect(result).toEqual({
-      status: 'applied',
+    h.commands.dismissOperation('op-1');
+    decideProposalMock.mockResolvedValue({
+      proposalId: 'proposal-1',
       results: [
-        { operationId: 'op-1', outcome: 'failed', failureCode: 'sold-out' },
+        { operationId: 'op-1', outcome: 'rejected' },
+        { operationId: 'op-2', outcome: 'accepted' },
       ],
-    });
-    expect(store.getState().proposal?.rows[0]?.failureCode).toBe('sold-out');
-    expect(store.getState().proposal?.rows[0]?.isRetrying).toBeUndefined();
-  });
-
-  it('returns a session-scoped retry failure for the caller to surface', async () => {
-    const { commands, store, addItem } = await appliedWithFirstRowFailed();
-
-    addItem.mockResolvedValueOnce({
-      status: 'failed',
-      reason: 'order-locked',
-      message: 'Locked',
+      cart: CART,
     });
 
-    const result = await commands.retryOperation(STORE_ID, 'op-1');
+    await h.commands.applyProposal(STORE_ID);
 
-    expect(result).toEqual({
-      status: 'failed',
-      reason: 'order-locked',
-      message: 'Locked',
+    // Ids only. What executes is rebuilt from the proposal the backend
+    // recorded, so a client cannot alter what it proposed.
+    expect(decideProposalMock).toHaveBeenCalledWith('token-a', {
+      proposalId: 'proposal-1',
+      keptOperationIds: ['op-2'],
     });
-    expect(store.getState().proposal?.rows[0]?.failureCode).toBe(
-      'order-locked',
-    );
   });
 
-  it('refuses to retry a row that did not fail', async () => {
-    const { commands, addItem } = await appliedWithFirstRowFailed();
+  it('writes the server results onto the rows', async () => {
+    const h = await openProposal(['op-1', 'op-2', 'op-3']);
 
-    const result = await commands.retryOperation(STORE_ID, 'op-2');
-
-    expect(result.status).toBe('failed');
-    expect(addItem).not.toHaveBeenCalled();
-  });
-
-  it('refuses to retry when there is no open proposal', async () => {
-    const { commands, cartCommands } = setup();
-
-    const result = await commands.retryOperation(STORE_ID, 'op-1');
-
-    expect(result.status).toBe('failed');
-    expect(cartCommands.addItem).not.toHaveBeenCalled();
-  });
-
-  it('refuses a second retry while the first is still in flight', async () => {
-    const { commands, addItem } = await appliedWithFirstRowFailed();
-
-    let release: (() => void) | undefined;
-    addItem.mockImplementationOnce(
-      async () =>
-        new Promise((resolve) => {
-          release = () => {
-            resolve({ status: 'updated' });
-          };
-        }),
-    );
-
-    const inFlight = commands.retryOperation(STORE_ID, 'op-1');
-    const second = await commands.retryOperation(STORE_ID, 'op-1');
-
-    // Without the in-flight guard this would post the same add twice and the
-    // guest would end up with two of the item.
-    expect(second.status).toBe('failed');
-    expect(addItem).toHaveBeenCalledTimes(1);
-
-    release?.();
-    await inFlight;
-  });
-
-  it('reports a retried row in the outcome sent with the next message', async () => {
-    const { commands, store } = await appliedWithFirstRowFailed();
-
-    await commands.retryOperation(STORE_ID, 'op-1');
-
-    sendMessageMock.mockResolvedValue({
-      versionId: 'v1',
-      response: { type: 'message', reply: 'Done.' },
-    });
-    await commands.sendMessage(STORE_ID, { message: 'Anything else?' });
-
-    // The report is read off the rows at send time, so a retry needs no separate
-    // reporting path: the assistant is told `accepted`, not the first failure.
-    expect(sendMessageMock.mock.calls.at(-1)?.[1].previousOutcome).toEqual({
+    decideProposalMock.mockResolvedValue({
       proposalId: 'proposal-1',
       results: [
         { operationId: 'op-1', outcome: 'accepted' },
-        { operationId: 'op-2', outcome: 'accepted' },
+        {
+          operationId: 'op-2',
+          outcome: 'failed',
+          failureCode: 'PRODUCT_SOLD_OUT',
+        },
+        { operationId: 'op-3', outcome: 'no_action' },
       ],
+      cart: CART,
     });
-    expect(store.getState().proposal).toBeNull();
+
+    await h.commands.applyProposal(STORE_ID);
+
+    const rows = h.store.getState().proposal?.rows ?? [];
+
+    // The side that executed is the side that says what happened; the client
+    // does not blend its own assumption into the result.
+    expect(rows.map((row) => row.status)).toEqual([
+      'applied',
+      'failed',
+      'not-attempted',
+    ]);
+    expect(rows[1]?.failureCode).toBe('PRODUCT_SOLD_OUT');
+  });
+
+  it('takes the cart from the decision rather than reading it again', async () => {
+    const h = await openProposal(['op-1']);
+
+    decideProposalMock.mockResolvedValue({
+      proposalId: 'proposal-1',
+      results: [{ operationId: 'op-1', outcome: 'accepted' }],
+      cart: CART,
+    });
+
+    await h.commands.applyProposal(STORE_ID);
+
+    // The response carries the cart the server produced, so the surface
+    // unblocks on a confirmed cart rather than on a second round trip.
+    expect(h.cartActions.cartUpdated).toHaveBeenCalledWith(CART);
+  });
+
+  it('sends one request when the decision is activated twice', async () => {
+    const h = await openProposal(['op-1']);
+
+    let release = () => undefined as void;
+    decideProposalMock.mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          release = () => {
+            resolve({
+              proposalId: 'proposal-1',
+              results: [{ operationId: 'op-1', outcome: 'accepted' }],
+              cart: CART,
+            });
+          };
+        }),
+    );
+
+    const first = h.commands.applyProposal(STORE_ID);
+    const second = await h.commands.applyProposal(STORE_ID);
+
+    // The guard, not the disabled button, is what makes this non-repeatable.
+    expect(second).toMatchObject({ status: 'failed', reason: 'invalid' });
+
+    release();
+    await first;
+
+    expect(decideProposalMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('raises the apply flag for the duration of the request', async () => {
+    const h = await openProposal(['op-1']);
+
+    let release = () => undefined as void;
+    decideProposalMock.mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          release = () => {
+            resolve({
+              proposalId: 'proposal-1',
+              results: [{ operationId: 'op-1', outcome: 'accepted' }],
+              cart: CART,
+            });
+          };
+        }),
+    );
+
+    const inFlight = h.commands.applyProposal(STORE_ID);
+
+    expect(h.store.getState().isApplying).toBe(true);
+    // Distinct from sending: an apply must not scroll the transcript.
+    expect(h.store.getState().isSending).toBe(false);
+
+    release();
+    await inFlight;
+
+    expect(h.store.getState().isApplying).toBe(false);
+  });
+
+  it('clears the flag when the request fails', async () => {
+    const h = await openProposal(['op-1']);
+
+    decideProposalMock.mockRejectedValue(new Error('network down'));
+
+    const result = await h.commands.applyProposal(STORE_ID);
+
+    // An overlay left on screen with nothing in flight is worse than none.
+    expect(h.store.getState().isApplying).toBe(false);
+    expect(result).toMatchObject({ status: 'failed' });
+  });
+
+  it('leaves the rows answerable when nothing executed', async () => {
+    const h = await openProposal(['op-1']);
+
+    decideProposalMock.mockRejectedValue(new Error('network down'));
+
+    await h.commands.applyProposal(STORE_ID);
+
+    // The request never reached the backend, so the proposal was not decided
+    // and the guest can answer it again.
+    expect(h.store.getState().proposal?.rows[0]?.status).toBe('pending');
+    expect(h.store.getState().proposal?.isApplied).toBe(false);
+  });
+
+  it('refuses when every row is already dismissed', async () => {
+    const h = await openProposal(['op-1']);
+
+    h.commands.dismissOperation('op-1');
+
+    await expect(h.commands.applyProposal(STORE_ID)).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'invalid',
+    });
+    expect(decideProposalMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a token scoped to another store before calling the service', async () => {
+    const h = await openProposal(['op-1']);
+
+    await expect(h.commands.applyProposal('store-b')).resolves.toMatchObject({
+      reason: 'session-store-mismatch',
+    });
+    expect(decideProposalMock).not.toHaveBeenCalled();
   });
 });
 

@@ -58,10 +58,6 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
       return runtime.commands.aiOrdering.applyProposal(storeId);
     },
 
-    retryAssistantOperation(storeId: string, operationId: string) {
-      return runtime.commands.aiOrdering.retryOperation(storeId, operationId);
-    },
-
     dismissAssistantOperation(operationId: string) {
       runtime.commands.aiOrdering.dismissOperation(operationId);
     },

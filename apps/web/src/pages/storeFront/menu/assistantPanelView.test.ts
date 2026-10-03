@@ -5,8 +5,10 @@ import { createStoreFrontAiOrderingStore } from '@/features/storeFront/aiOrderin
 
 import { buildAssistantPanelView } from './assistantPanelView';
 
-import type { AiOrderingTurn } from '@/models/aiOrdering';
-import type { StoreFrontCommandFailureReason } from '@/services/utils/storeFrontApiError';
+import type {
+  AiOrderingProposalState,
+  AiOrderingTurn,
+} from '@/models/aiOrdering';
 import type { AssistantRowFailureKind } from './assistantPanelView';
 
 function setup() {
@@ -192,14 +194,12 @@ describe('assistant proposal card', () => {
         operationId: 'op-1',
         summary: 'Add item 1',
         status: 'pending',
-        isRetrying: false,
         canDismiss: true,
       },
       {
         operationId: 'op-2',
         summary: 'Add item 2',
         status: 'pending',
-        isRetrying: false,
         canDismiss: true,
       },
     ]);
@@ -227,7 +227,7 @@ describe('assistant proposal card', () => {
     expect(view().proposal?.rows.every((row) => !row.canDismiss)).toBe(true);
   });
 
-  it('shows the per-row result after applying and offers no further apply', () => {
+  it('shows the per-row result after a decision and offers no further apply', () => {
     const { actions, view } = setup();
 
     actions.turnAppended({
@@ -238,52 +238,55 @@ describe('assistant proposal card', () => {
       }),
     });
 
-    const rows = view().proposal?.rows ?? [];
-
-    actions.proposalApplied([
-      {
-        operationId: 'op-1',
-        row: {
-          operation: {
-            type: 'add_item',
-            operationId: 'op-1',
-            summary: 'Add item 1',
-            item: { productId: 'product-1', quantity: 1 },
-          },
-          status: 'applied',
-        },
-      },
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'accepted' },
       {
         operationId: 'op-2',
-        row: {
-          operation: {
-            type: 'add_item',
-            operationId: 'op-2',
-            summary: 'Add item 2',
-            item: { productId: 'product-2', quantity: 1 },
-          },
-          status: 'failed',
-          failureCode: 'sold-out',
-        },
+        outcome: 'failed',
+        failureCode: 'PRODUCT_SOLD_OUT',
       },
     ]);
 
-    expect(rows).toHaveLength(2);
     expect(view().proposal?.isApplied).toBe(true);
+    // A decided proposal cannot be answered a second time, so there is nothing
+    // left to apply even though one row did not succeed.
     expect(view().proposal?.canApply).toBe(false);
     expect(view().proposal?.rows.map((row) => row.status)).toEqual([
       'applied',
       'failed',
     ]);
-    expect(view().proposal?.rows[1]?.failure).toEqual({
-      kind: 'sold-out',
-      canRetry: false,
+    expect(view().proposal?.rows[1]?.failure).toEqual({ kind: 'sold-out' });
+  });
+
+  it('offers no apply for a row a failure left unattempted', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+      }),
     });
+
+    actions.proposalDecided([
+      {
+        operationId: 'op-1',
+        outcome: 'failed',
+        failureCode: 'ORDER_LOCKED',
+      },
+      { operationId: 'op-2', outcome: 'no_action' },
+    ]);
+
+    // The proposal is spent. Asking again means asking the assistant, which is
+    // also how the guest gets an alternative that is valid now.
+    expect(view().proposal?.canApply).toBe(false);
+    expect(view().proposal?.rows[1]?.status).toBe('not-attempted');
   });
 });
 
 describe('assistant proposal row failures', () => {
-  function failedRowWith(failureCode: StoreFrontCommandFailureReason) {
+  function failedRowWith(failureCode: string) {
     const { actions, view } = setup();
 
     actions.turnAppended({
@@ -293,40 +296,29 @@ describe('assistant proposal row failures', () => {
         operationIds: ['op-1'],
       }),
     });
-    actions.proposalApplied([
-      {
-        operationId: 'op-1',
-        row: {
-          operation: {
-            type: 'add_item',
-            operationId: 'op-1',
-            summary: 'Add item 1',
-            item: { productId: 'product-1', quantity: 1 },
-          },
-          status: 'failed',
-          failureCode,
-        },
-      },
+    actions.proposalDecided([
+      { operationId: 'op-1', outcome: 'failed', failureCode },
     ]);
 
     return { actions, row: () => view().proposal?.rows[0] };
   }
 
   // The point of the whole slice: the reason reaches the guest instead of being
-  // captured, reported to the merchant, and then dropped.
+  // captured, reported to the merchant, and then dropped. The codes are the
+  // backend's now, because the backend is what attempted the operation.
   it.each([
-    ['sold-out', 'sold-out'],
-    ['not-found', 'off-menu'],
-    ['invalid', 'options-changed'],
-    ['order-locked', 'cart-closed'],
-    ['store-closed', 'cart-closed'],
-    ['cart-not-active', 'cart-closed'],
-    ['session-expired', 'cart-closed'],
-    ['network', 'temporary'],
-    ['server', 'temporary'],
-    ['rate-limited', 'temporary'],
-    ['unknown', 'unknown'],
-  ] as [StoreFrontCommandFailureReason, AssistantRowFailureKind][])(
+    ['PRODUCT_SOLD_OUT', 'sold-out'],
+    ['PRODUCT_NOT_FOUND', 'off-menu'],
+    ['CART_ITEM_NOT_FOUND', 'off-menu'],
+    ['MODIFIER_SELECTION_INVALID', 'options-changed'],
+    ['NOT_ITEM_OWNER', 'options-changed'],
+    ['ORDER_LOCKED', 'cart-closed'],
+    ['STORE_NOT_OPEN', 'cart-closed'],
+    ['CART_NOT_ACTIVE', 'cart-closed'],
+    ['INVALID_GUEST_TOKEN', 'cart-closed'],
+    ['TOO_MANY_REQUESTS', 'temporary'],
+    ['INTERNAL_SERVER_ERROR', 'temporary'],
+  ] as [string, AssistantRowFailureKind][])(
     'presents %s as %s',
     (failureCode, kind) => {
       const { row } = failedRowWith(failureCode);
@@ -335,48 +327,10 @@ describe('assistant proposal row failures', () => {
     },
   );
 
-  it('offers a retry only where retrying could succeed', () => {
-    // A sold-out product stays sold out, so a retry button would only promise
-    // something it cannot deliver.
-    expect(failedRowWith('sold-out').row()?.failure?.canRetry).toBe(false);
-    expect(failedRowWith('order-locked').row()?.failure?.canRetry).toBe(false);
-    expect(failedRowWith('not-found').row()?.failure?.canRetry).toBe(false);
-    expect(failedRowWith('network').row()?.failure?.canRetry).toBe(true);
-    expect(failedRowWith('server').row()?.failure?.canRetry).toBe(true);
-  });
-
-  it('withdraws the retry control while that row is retrying', () => {
-    const { actions, row } = failedRowWith('network');
-
-    actions.operationRetryStarted('op-1');
-
-    expect(row()?.isRetrying).toBe(true);
-    // Still a failure line — the guest keeps reading why — but the control is
-    // gone so the same operation cannot be posted twice.
-    expect(row()?.failure?.kind).toBe('temporary');
-    expect(row()?.failure?.canRetry).toBe(false);
-  });
-
-  it('clears the failure once a retry succeeds', () => {
-    const { actions, row } = failedRowWith('network');
-
-    actions.operationRetryStarted('op-1');
-    actions.operationRetried({
-      operationId: 'op-1',
-      row: {
-        operation: {
-          type: 'add_item',
-          operationId: 'op-1',
-          summary: 'Add item 1',
-          item: { productId: 'product-1', quantity: 1 },
-        },
-        status: 'applied',
-      },
-    });
-
-    expect(row()?.status).toBe('applied');
-    expect(row()?.failure).toBeUndefined();
-    expect(row()?.isRetrying).toBe(false);
+  it('falls back rather than dropping a code it does not recognise', () => {
+    // The code set is the API's whole error vocabulary, so an unmapped one is
+    // expected. Showing nothing would be worse than showing a generic line.
+    expect(failedRowWith('SOME_NEW_CODE').row()?.failure?.kind).toBe('unknown');
   });
 
   it('leaves a row with no recorded reason on the generic failure line', () => {
@@ -389,20 +343,7 @@ describe('assistant proposal row failures', () => {
         operationIds: ['op-1'],
       }),
     });
-    actions.proposalApplied([
-      {
-        operationId: 'op-1',
-        row: {
-          operation: {
-            type: 'add_item',
-            operationId: 'op-1',
-            summary: 'Add item 1',
-            item: { productId: 'product-1', quantity: 1 },
-          },
-          status: 'failed',
-        },
-      },
-    ]);
+    actions.proposalDecided([{ operationId: 'op-1', outcome: 'failed' }]);
 
     expect(view().proposal?.rows[0]?.status).toBe('failed');
     expect(view().proposal?.rows[0]?.failure).toBeUndefined();
@@ -542,26 +483,57 @@ describe('assistant proposal records in the transcript', () => {
     };
   }
 
-  function restoredTurn(id: string, proposalId: string) {
+  function restoredTurn(
+    id: string,
+    proposalId: string,
+    proposal?: AiOrderingProposalState,
+  ) {
     return {
       id,
       message: 'A tea please',
       versionId: 'v1',
       createdAt: '2026-10-01T00:00:00.000Z',
       response: proposalResponse(proposalId),
+      ...(proposal ? { proposal } : {}),
     };
   }
 
-  it('marks the latest restored proposal stale rather than live', () => {
+  it('restores a still-pending proposal as the live one', () => {
     const { actions, view } = setup();
 
-    actions.transcriptLoaded([restoredTurn('turn-1', 'proposal-1')]);
+    actions.transcriptLoaded([
+      restoredTurn('turn-1', 'proposal-1', { status: 'pending' }),
+    ]);
 
     const entry = view().entries.at(-1);
 
-    // Stale, not live: the card must not offer Apply on a proposal whose outcome
-    // the server never recorded.
-    expect(entry?.kind === 'proposal' && entry.record).toBe('stale');
+    // Answerable after a reload, which it could not be before: the server now
+    // records whether a proposal was decided, so "never answered" and "already
+    // applied" are no longer the same thing from here.
+    expect(entry?.kind === 'proposal' && entry.record).toBe('live');
+    expect(view().proposal?.proposalId).toBe('proposal-1');
+    expect(view().proposal?.canApply).toBe(true);
+  });
+
+  it('restores a decided proposal with the outcome the server recorded', () => {
+    const { actions, view } = setup();
+
+    actions.transcriptLoaded([
+      restoredTurn('turn-1', 'proposal-1', {
+        status: 'decided',
+        decidedAt: '2026-10-01T00:00:10.000Z',
+        results: [{ operationId: 'proposal-1-op', outcome: 'accepted' }],
+      }),
+    ]);
+
+    const entry = view().entries.at(-1);
+
+    // The defect this change exists to fix: a guest whose items are already in
+    // the cart must not be told to ask for them again.
+    expect(entry?.kind === 'proposal' && entry.record).toBe('history');
+    expect(entry?.kind === 'proposal' && entry.results).toEqual([
+      { operationId: 'proposal-1-op', outcome: 'accepted' },
+    ]);
     expect(view().proposal).toBeNull();
   });
 
@@ -569,7 +541,11 @@ describe('assistant proposal records in the transcript', () => {
     const { actions, view } = setup();
 
     actions.transcriptLoaded([
-      restoredTurn('turn-1', 'proposal-1'),
+      restoredTurn('turn-1', 'proposal-1', {
+        status: 'decided',
+        decidedAt: '2026-10-01T00:00:10.000Z',
+        results: [],
+      }),
       {
         id: 'turn-2',
         message: 'Thanks',

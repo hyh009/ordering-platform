@@ -2,9 +2,9 @@ import { createStore } from 'zustand/vanilla';
 
 import type {
   AiOrderingOperationModel,
+  AiOrderingOperationResult,
   AiOrderingResponseModel,
 } from '@/models/aiOrdering';
-import type { StoreFrontCommandFailureReason } from '@/services/utils/storeFrontApiError';
 
 /**
  * One line of the transcript. The guest's own message is kept beside the
@@ -19,21 +19,34 @@ export type AiOrderingChatEntry =
       role: 'assistant';
       versionId: string;
       response: AiOrderingResponseModel;
+      /**
+       * Present on a decided proposal, from the server's own record.
+       *
+       * Carried on the entry rather than looked up when drawing, because a
+       * restored transcript has no other source: the panel did not watch the
+       * decision happen, and guessing from position is what used to tell a guest
+       * to ask again for something already in their cart.
+       */
+      proposalResults?: AiOrderingOperationResult[];
     };
 
 /**
- * What became of one proposed row, from the guest's side.
+ * What became of one proposed row.
  *
- * Distinct from the contract's outcome enum on purpose: `pending` is a UI state
- * with no outcome yet, and the translation to an outcome happens only when the
- * proposal is reported (see `outcome.ts`). Collapsing the two would force this
- * store to invent an outcome for a row the guest has not decided on.
+ * `pending` is the only status the client writes on its own, and it means the
+ * guest has not decided yet. Every other status comes back from the server with
+ * the decision, because the server is what executed it.
+ *
+ * `not-attempted` is distinct from `dismissed`: one is "a failure stopped the
+ * proposal before we reached this", the other is "the guest said no". They read
+ * differently to a guest looking at the rows, so they are not collapsed.
  */
 export type AiOrderingProposalRowStatus =
   | 'pending'
   | 'dismissed'
   | 'applied'
-  | 'failed';
+  | 'failed'
+  | 'not-attempted';
 
 export type AiOrderingProposalRow = {
   operation: AiOrderingOperationModel;
@@ -41,21 +54,19 @@ export type AiOrderingProposalRow = {
   /**
    * Set only when `status` is `failed`; a stable code, never raw error text.
    *
-   * Typed as the command failure reason rather than a loose string so the
-   * presentation layer can map it exhaustively: a new reason has to declare
-   * what the guest reads, instead of silently falling into a generic line.
+   * A backend error code now rather than a client-side failure reason, because
+   * the side that attempted the operation is the side that names why it failed.
+   * The presentation layer maps it to wording the guest reads.
    */
-  failureCode?: StoreFrontCommandFailureReason;
-  /** True only while a retry of this one row is in flight. */
-  isRetrying?: boolean;
+  failureCode?: string;
 };
 
 /**
- * The proposal the guest is currently deciding on, or the one they just applied.
+ * The proposal the guest is currently deciding on, or the one they just decided.
  *
- * It survives past applying so the panel can show the per-row result, and is
- * cleared only when the next message is sent — which is also when its outcome is
- * reported. There is never more than one: a new message ends the previous one.
+ * It survives past the decision so the panel can show the per-row result, and is
+ * cleared when the next message is sent. There is never more than one: a new
+ * message ends the previous one.
  */
 export type AiOrderingPendingProposal = {
   proposalId: string;
@@ -75,8 +86,8 @@ export type StoreFrontAiOrderingState = {
    *
    * Separate from `isSending` because they are different operations with
    * different readers: the transcript auto-scroll reacts to `isSending`, and an
-   * apply must not scroll the transcript. It is also the guard the apply command
-   * checks, so a second apply cannot post the same operations twice.
+   * apply must not scroll the transcript. It is also the guard the decision
+   * command checks, so a second decision cannot be sent while one is in flight.
    */
   isApplying: boolean;
   /**
