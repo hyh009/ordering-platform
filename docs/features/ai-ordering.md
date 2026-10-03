@@ -14,13 +14,21 @@ ordering is never replaced, and submitting an order stays a human action.
 
 ## The One Rule That Explains The Shape
 
-**The backend never touches the cart.**
+**Nothing changes the cart until the guest accepts it, and then the BACKEND is
+what changes it.**
 
-The guest already has full cart mutation power through the guest cart API, with
-the same identity and the same validation. So a server-side apply path would add
-machinery (stored plans, plan ids, replay guards) to guard against something the
-guest is already allowed to do. Instead the backend only ever _proposes_, and the
-frontend applies through the existing cart commands.
+A turn only ever proposes. The run pauses on the proposal and is resumed by the
+guest's decision, which is when the operations execute — through the same guest
+cart service the cart routes use, under the guest's own identity.
+
+This replaces an earlier rule ("the backend never touches the cart"), and the
+reason it changed is worth keeping. Client-side applying meant an outcome was
+recorded only when the guest happened to send another message. A guest who
+accepted a proposal and then stopped talking left a stored conversation ending in
+a bare proposal, indistinguishable from one nobody acted on — so a reloaded panel
+told them to ask again for items already in their cart, and the assistant could
+not reason about a failure until they spoke. Executing where the outcome is known
+is what closes that.
 
 Everything below follows from that.
 
@@ -31,7 +39,7 @@ guest message
   |
   v
 [ promptResolution.ts ]  resolve "answering a previous question"
-  |                      resolve reported outcomes of the last proposal
+  |                      read the last proposal's RECORDED outcome
   |                      (looked up in THIS guest's own conversation only)
   v
 [ history.ts ]           window recent turns + carry rolling summary
@@ -40,8 +48,8 @@ guest message
 [ context.ts ]           assemble blocks, most static first  (see below)
   |
   v
-[ planner.ts ]  ------------------------------------------+
-  |                                                       |
+[ runtime/agent.ts ]  ------------------------------------+
+  |  createAgent + planning middleware                    |
   |  1st model call                                       |
   v                                                       |
 [ outputGate.ts ]        read the TOOL CALL, then parse   |
@@ -66,6 +74,32 @@ guest message
                                                       v
                                         [ repositories/aiOrdering ]
                                           append one turn (never dropped)
+```
+
+A `proposal` pauses the run there, checkpointed under the proposal id. The guest's
+decision resumes it:
+
+```txt
+guest accepts, naming the operation ids they kept
+  |
+  v
+[ aiOrdering.service ]   claim the decision ATOMICALLY (single use)
+  |                      rebuild the tool arguments from the STORED proposal
+  v
+[ runtime/agent.ts ]     resume -> the proposal tool executes
+  |
+  v
+[ cartExecution.ts ]     run each kept operation in the proposed order
+  |                      never roll back; a result for EVERY operation
+  v
+[ guestOrdering.service ]  the same cart path the guest's own edits take
+  |
+  v
+  one more model call, with NO tools bound
+  |                      -> the assistant answers what actually happened
+  v
+  results + resulting cart + reply, and the outcome written
+  onto the turn that proposed it
 ```
 
 ## Context Assembly Is Ordered By Volatility
@@ -174,7 +208,7 @@ Why validate before the guest sees anything: in a confirm-then-accept flow the
 accept button is a promise. An accept that fails is the worst outcome in the
 interaction.
 
-Degradation ladder in `planner.ts`:
+Degradation ladder, in the planning middleware:
 
 ```txt
   some operations invalid  ->  drop them, keep the rest
@@ -296,26 +330,27 @@ The panel reads on first open, not with the menu: a guest who never opens it
 should not pay for the request. `loadConversation` is idempotent per conversation,
 so the panel asks on every open and only the first call reaches the network.
 
-### A Restored Proposal Is A Record, Not A Decision
+### A Restored Proposal Carries Its Real Outcome
 
-The last stored turn can be a proposal, and the server does not know what became
-of it — an outcome is reported only when the guest sends their **next** message.
-So a proposal that is the last turn is indistinguishable from one the guest
-already applied before reloading, and restoring an Apply button on it would add
-the same items to the cart twice.
+The server records a proposal's outcome when it executes it, so a reloaded
+transcript can say what actually happened:
 
-Each proposal in the transcript is therefore drawn in one of three states:
+| state     | when                              | drawn as                             |
+| --------- | --------------------------------- | ------------------------------------ |
+| `live`    | not decided, and not yet expired  | the full card, with apply and dismiss |
+| `history` | decided                           | its rows, with each one's real result |
 
-| state     | when                                             | drawn as                                             |
-| --------- | ------------------------------------------------ | ---------------------------------------------------- |
-| `live`    | the guest is deciding on it now                  | the full card, with apply, dismiss and retry         |
-| `history` | an earlier proposal, already answered            | its rows, read-only                                  |
-| `stale`   | the latest proposal with no live state behind it | its rows, read-only, plus a line saying to ask again |
+Two states, not three. An expired proposal is a decided one whose operations are
+all `no_action`, so `pending` means exactly one thing to the panel: there is
+still something to accept.
 
-Nothing is thrown away: the rows are rendered from the turn itself, so the guest
-reads what was suggested and can ask for it again. Making `stale` actionable
-needs the client to report an outcome when it happens rather than only on the next
-message — a separate change, not a tweak here.
+**This is the defect the change exists to fix.** Before it, outcomes travelled on
+the guest's next message, so a proposal that was the last stored turn was
+indistinguishable from one already applied. The panel had to hedge — "this
+suggestion is from before, ask again if you still want it" — and that line was
+wrong exactly when it mattered, shown to a guest whose items were already in
+their cart. A pending proposal also could not be restored as answerable, because
+restoring Apply on an already-applied one would have doubled the cart.
 
 ## The Cart Sits Beside The Conversation
 
@@ -365,54 +400,95 @@ command and navigation, so there is one submission flow. This does not widen wha
 the assistant can do: "Order submission stays human-only" constrains the
 assistant's operation set, not where the guest's own submit action is rendered.
 
-### Applying Blocks The Surface, And The Guard Is Below The UI
+### Accepting Blocks The Surface, And The Guard Is Below The UI
 
-An overlay covers the panel while an accepted proposal is being applied, and
-clears when every cart call has returned. No extra wait is needed for that: each
-cart command writes the cart the server returned rather than predicting it, so the
-loop resolving already means the store holds the confirmed cart.
+An overlay covers the panel while a decision is in flight, and clears when the
+response returns. No extra wait is needed: the response carries the cart the
+server produced, so the surface unblocks on a confirmed cart rather than on a
+second read.
 
 `isApplying` is separate from `isSending` because the transcript auto-scroll
-reacts to `isSending`, and an apply must not scroll the transcript.
+reacts to `isSending`, and accepting must not scroll the transcript.
 
-The flag is also the guard. `applyProposal` returns early when it is already set,
-because row statuses are written only after the loop — so a second apply would
-read the same pending rows and post every operation again. Before this, nothing
-set an in-flight flag at all and the panel passed `isSending` as `isApplying`,
-which meant the Apply control stayed live for the whole apply and a double press
-doubled the cart. A disabled button is a UI promise; the guard is the invariant.
+The flag is also the client-side guard: `applyProposal` returns early when it is
+already set. The backend refuses a second decision too, but a client that sent
+one would show the guest a conflict error for pressing a live button. A disabled
+button is a UI promise; the guard is the invariant, and the backend's claim is
+the guarantee.
 
 The overlay sits inside the panel's own relative box rather than a new fixed
 layer, so no z token was added and the feedback modal and toast layers stay above
-it — a toast from a failed cart call has to be readable.
+it — a toast from a failed decision has to be readable.
 
-## When Apply Fails, The Row Scope Decides What Happens Next
+## When An Operation Fails, The Scope Decides What Happens Next
 
-Applying is one cart call per row, in the proposal's order. A failure is
-classified in `features/storeFront/aiOrdering/commands.ts` as either scope:
+Execution is one cart call per kept operation, in the proposal's order, inside
+`modules/aiOrdering/cartExecution.ts`. A failure is classified as either scope:
 
-| scope     | reasons                                                                                                                             | the loop  | the guest                                      |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------- |
-| `item`    | `sold-out`, `not-found`, `invalid`, `unknown`                                                                                       | continues | that row gets a reason; the others still apply |
-| `session` | `session-expired`, `session-store-mismatch`, `store-closed`, `order-locked`, `cart-not-active`, `rate-limited`, `network`, `server` | stops     | a toast, and the untried rows stay offered     |
+| scope     | codes                                                                                                                     | the loop  | the guest                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------ |
+| `item`    | `PRODUCT_SOLD_OUT`, `PRODUCT_NOT_FOUND`, `CART_ITEM_NOT_FOUND`, `MODIFIER_SELECTION_INVALID`, `NOT_ITEM_OWNER`, `BAD_REQUEST` | continues | that row gets a reason; the others still execute |
+| `session` | `CART_NOT_ACTIVE`, `CART_NOT_FOUND`, `ORDER_LOCKED`, `STORE_NOT_OPEN`, `INVALID_GUEST_TOKEN`, and anything unmapped        | stops     | the rest are reported as not attempted           |
 
-The question each reason answers is **does this say anything about the rows after
-it**. A sold-out product says nothing about the next row, so stopping would
-abandon changes that would have worked. A locked cart or a dead connection says
-everything about them, so continuing only produces N copies of one error. The
-table is exhaustive over the reason union, so a new reason cannot be added
-without answering that question.
+The question each code answers is **does this say anything about the operations
+after it**. A sold-out product says nothing about the next one, so stopping would
+abandon changes that would have worked. A locked cart says everything about them,
+so continuing only produces N copies of one error. An unmapped code is treated as
+session-scoped: stopping early costs the guest one extra round trip, carrying on
+through an unknown failure costs N identical errors.
 
-The reason then reaches the guest. `assistantPanelView.ts` maps it to a
-presentation kind — several reasons collapse where the guest's situation is the
-same — and a retry control appears only on the kinds where a second attempt could
-plausibly succeed. A retry button on a sold-out product would read as the guest's
-fault when it fails again.
+**Nothing is rolled back.** A guest who watched two items land should not see them
+vanish because a third failed. The response reports all three.
 
-A retry re-runs that one operation and replaces the row outright, which is what
-drops a stale reason from a row that now reads as added. Nothing extra reports
-it: the outcome sent to the assistant is read off the rows when the next message
-is sent, so a retried row is reported as `accepted` like any other.
+**Every operation carries a result**, including the ones the guest dismissed and
+the ones a session-scoped failure left unattempted. An operation with no result
+would be an outcome the assistant has to infer from absence, and "the guest said
+no" and "we never tried" are not the same thing to say back.
+
+The reason then reaches the guest. `assistantPanelView.ts` maps the code to a
+presentation kind — several codes collapse where the guest's situation is the
+same — and an unrecognised code falls back to a generic line rather than
+vanishing.
+
+**There is no per-row retry.** Retrying one row used to mean a second cart call
+outside the proposal, which a single-use proposal does not allow. The guest asks
+the assistant instead, which is also how they get an alternative that is valid
+now rather than the same failure again.
+
+### A Proposal Is Single Use
+
+A proposal can be decided once. The guarantee is a conditional write: the
+decision is recorded only if no decision is recorded yet, so two acceptances in
+flight at once resolve to exactly one execution and the loser is refused as
+already decided.
+
+Claiming and reporting are two writes because they answer two questions at two
+moments. The claim settles WHO decides, before anything runs. The results settle
+WHAT happened, after. One write would mean either executing before the claim —
+which lets both apply — or holding the claim open across the cart calls.
+
+"Already decided" and "expired" stay distinct codes. Telling a guest who
+double-submitted that their proposal expired is a different lie from telling a
+guest who waited that they already acted.
+
+### The Paused Run Lives In Its Own Store
+
+Human-in-the-loop interrupts need a checkpointer, so a paused run is written to
+`aiOrderingCheckpoints` with a 24-hour TTL. Two stores, deliberately:
+
+- the conversation collection is the long-lived record — merchant review, the
+  evaluation corpus, the transcript a guest reloads. No TTL.
+- the checkpoint collection is execution state, read only by the resume path.
+  Dropping it would expire pending proposals and lose nothing else.
+
+The TTL is the proposal's lifetime, not a storage detail: a guest who walks away
+should not return the next day and apply a proposal built from a menu and a cart
+that have both moved on.
+
+It gets its own MongoDB client rather than borrowing Mongoose's, because the
+saver depends on the v6 driver and Mongoose 9 ships v7. A second pool to the same
+database is the cheaper risk than passing a client across a driver major on a type
+assertion, and it is opened only when the assistant is enabled.
 
 ## Data
 
@@ -423,13 +499,20 @@ participant has their own private conversation.
   AiOrderingConversationEntity
     id, organizationId, storeId, cartId, participantId
     summary?, summarizedUpToTurnIndex?
-    turns[]  ->  message, reported outcomes,
+    turns[]  ->  message,
                  versionId + versionFingerprint, provider, modelName,
                  modelOutput (raw, kept even when rejected),
                  response (what the guest saw),
-                 prompt? / proposal? snapshots,
+                 prompt? snapshot,
+                 proposal? snapshot -> operations + decision?
+                                       (decidedAt + a result per operation)
                  quality signals
 ```
+
+A proposal snapshot carries its own decision. That is deliberate: the outcome
+belongs to the turn that PROPOSED it, not to whichever later turn happened to
+mention it, which is how it used to be stored and why it could go unrecorded
+entirely.
 
 - **Every turn is stored**, including turns whose model output failed validation.
   Rejected output is the most valuable row in the evaluation corpus.
@@ -460,23 +543,28 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `tools.ts` — the three bound tools, and reading a tool call as an answer
 - `outputGate.ts` — shape-only gate over untrusted output
 - `validation.ts` — the four data checks
-- `planner.ts` — the turn pipeline and the single repair
+- `cartExecution.ts` — running an accepted proposal's operations, and the
+  item/session failure scope
 - `confirmation.ts` — version AND store resolution
 - `history.ts` — window and summarisation planning
 - `summary.ts` — rebuilds the rolling summary from the original turns
 - `rateLimit.ts` — the limiter interface, plus an in-process implementation used
   by unit tests
 - `rateLimit.redis.ts` — the implementation the service actually uses
-- `runtime/model.ts` — the provider-agnostic seam: per-turn session, usage
-  accounting, per-call timeout clamp
+- `runtime/agent.ts` — the agent run: `createAgent`, the human-in-the-loop
+  interrupt, and the planning middleware that owns the gate, validation, the
+  single repair, and the quality signals
+- `runtime/checkpointer.ts` — the paused-run store and its TTL
+- `runtime/model.ts` — the provider-agnostic seam: usage reading and the
+  per-call timeout clamp
 - `runtime/gemini.ts` — constructing the Gemini chat model, and nothing else
 - `runtime/geminiSchema.ts` — rewriting tool argument schemas into Gemini's
   OpenAPI subset (`const`, null branches, `oneOf`)
 - `versions/fingerprint.ts` — hashing a version's prompt and limits, so a draft
   stays readable across edits and a stable one cannot be edited unnoticed
-- `runtime/messages.ts`, `runtime/failures.ts` — block-to-message mapping,
-  provider failure mapping
-- `promptResolution.ts` — prior prompt and reported outcomes
+- `runtime/failures.ts` — provider failure mapping
+- `promptResolution.ts` — the prior prompt, and reading the last proposal's
+  recorded outcome
 
 Persistence:
 
@@ -495,7 +583,10 @@ Tests:
 Evaluation and replay:
 
 - `evaluation/fixture.ts` — the frozen menu and cart, the one thing held still
-- `evaluation/replay.ts` — replaying stored messages against a version
+- `evaluation/replay.ts` — replaying stored messages against a version. It drives
+  the SAME agent production drives, with an in-memory checkpointer and a resume
+  that never comes, so it stays read-only by construction: a proposal pauses the
+  run, which makes the executing tool unreachable
 - `apps/api/src/scripts/aiOrderingReplayCli.ts` — `pnpm --filter api replay`
 
 Merchant review (backend):
@@ -508,15 +599,16 @@ Merchant review (backend):
 
 Storefront (web):
 
-- `apps/web/src/models/aiOrdering/` — DTO boundary and the operation-to-cart
-  request mapper
+- `apps/web/src/models/aiOrdering/` — the DTO boundary
 - `apps/web/src/services/storeFrontAiOrdering.service.ts`
-- `apps/web/src/features/storeFront/aiOrdering/` — store, actions, commands,
-  outcome mapping
+- `apps/web/src/features/storeFront/aiOrdering/` — store, actions, commands. One
+  call per decision; there is no client-side apply loop, failure classification,
+  or outcome bookkeeping left here
 - `apps/web/src/pages/storeFront/menu/assistantPanelView.ts` — the pure half of
   the panel VM, which is what the tests can assert on
 - `apps/web/src/pages/storeFront/menu/AssistantPanel.tsx`,
-  `AssistantProposalCard.tsx`
+  `AssistantProposalCard.tsx`, `AssistantProposalRecord.tsx`,
+  `AssistantCartPanel.tsx`
 
 Merchant review (web):
 
@@ -551,6 +643,12 @@ Known follow-ups, tracked in `openspec/changes/add-ai-ordering-assistant`:
   leak into a test run.
 - Not built: the merchant review surface, the storefront UI, and the replay
   script.
+- `HumanInTheLoopMiddlewareConfig` resolves to `never` under the installed
+  LangChain versions, because that package's `zod/v3` types and
+  `@langchain/core`'s do not unify. The config is cast at one call site in
+  `runtime/agent.ts`; the runtime shape is pinned by the interrupt tests rather
+  than by the type.
+- `CartDto.notes` is still a dead field.
 
 ## Manual Checks
 
@@ -566,13 +664,11 @@ Storefront panel:
 - the proposal card shows one row per operation with its own dismiss control and
   a single apply at the bottom
 - after a partial failure, each row shows its own result
-- a failed row shows a reason in the guest's terms, and a retry control only on
-  the reasons where retrying could succeed (`network`, `server`, `rate-limited`,
-  `unknown`)
-- a retry that succeeds replaces the reason rather than leaving it under a row
-  that now reads as added
-- an apply that aborted part-way still offers Apply for the rows it never
-  attempted
+- a failed row shows a reason in the guest's terms, and no retry control — a
+  single-use proposal has none
+- after a session-scoped failure, the rows that were never attempted read as
+  "not attempted" rather than as refusals
+- a decided proposal offers no apply, not even for a row that failed
 - with automatic application resolved on, no confirmation controls appear
 - the assistant entry point is absent entirely when `assistantEnabled` is false
 - the transcript opens scrolled to the latest exchange
@@ -580,8 +676,14 @@ Storefront panel:
 - on iOS Safari the composer stays above the address bar
 - the panel shows a spinner on first open, and the empty-state hint only after
   the read confirms there is nothing stored
-- after a reload the transcript comes back, and a proposal that was the last turn
-  comes back read-only with the ask-again line
+- after accepting a proposal and reloading, it comes back showing what actually
+  happened per operation, with no line telling the guest to ask again
+- after reloading with a proposal still undecided, it comes back answerable, and
+  accepting it then changes the cart exactly once
+- a proposal left unanswered past its lifetime refuses with an expiry message
+  distinct from "already answered", and changes nothing
+- double-submitting a decision changes the cart once; the second attempt reports
+  that the proposal was already answered
 - a restored transcript ending on a `choices` question still answers that question
 - at `md` and up the cart is visible beside the conversation and updates as a
   proposal is applied
@@ -591,8 +693,10 @@ Storefront panel:
   controls
 - changing a quantity or removing an item from inside the assistant works, and the
   transcript does not scroll when it does
-- an apply shows the overlay and clears it once the cart has settled, including
+- accepting shows the overlay and clears it once the response returns, including
   after a failure
+- after a failure, the assistant's own reply in the same exchange speaks to what
+  failed rather than waiting for the guest to ask
 - submitting from the assistant asks for confirmation, and declining changes
   nothing
 - editing away an item that a still-open proposal references makes that row fail
