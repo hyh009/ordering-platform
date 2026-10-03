@@ -149,6 +149,15 @@ describe('AI ordering version fingerprint', () => {
     ).not.toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
   });
 
+  it('changes when the shape the model must answer in changes', () => {
+    // Asserted in aiOrdering.fingerprintShape.test.ts, which has to reload the
+    // module to vary the shape. Noted here so the freezing story reads whole:
+    // a stable version's ANSWER SHAPE is now as frozen as its prompt.
+    expect(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30)).toHaveLength(
+      12,
+    );
+  });
+
   it('changes when a limit the model is held to changes', () => {
     expect(
       aiOrderingVersionFingerprint({
