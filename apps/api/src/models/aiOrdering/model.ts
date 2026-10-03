@@ -31,16 +31,32 @@ export type AiOrderingPromptSnapshot = {
 };
 
 /**
- * A proposal the backend made, stored so the next turn's reported outcomes can
- * be matched to what was actually proposed.
+ * The decision a guest made on a proposal, and what came of it.
  *
- * There is deliberately no status field. The backend never executes these
- * operations — the guest applies them through the existing cart API — so there
- * is no server-side application to guard against replaying.
+ * `results` covers every operation in the proposal, including the dismissed ones
+ * and the ones a failure stopped from being attempted. An operation with no
+ * entry here would be an outcome the assistant has to infer from absence, which
+ * is exactly what "you removed the tea" and "you moved on" must not collapse
+ * into.
+ */
+export type AiOrderingProposalDecision = {
+  decidedAt: Date;
+  results: AiOrderingOperationResult[];
+};
+
+/**
+ * A proposal the backend made, stored so a later decision can be matched to what
+ * was actually proposed — and executed from, since the guest sends ids only.
+ *
+ * `decision` is the record that the proposal has been answered, and it is the
+ * authority for single use: a second decision is refused because this field is
+ * already set, not because the paused run is gone. The two must stay separable,
+ * since "already decided" and "expired" are different things to tell a guest.
  */
 export type AiOrderingProposalSnapshot = {
   proposalId: string;
   operations: AiOrderingOperation[];
+  decision?: AiOrderingProposalDecision;
 };
 
 /**
@@ -75,8 +91,6 @@ export type AiOrderingTurnSnapshot = {
   message: string;
   responseToPromptId?: string;
   selectedOptionId?: string;
-  /** Outcomes of the PREVIOUS proposal as reported by the guest on this turn. */
-  reportedOutcomes?: AiOrderingOperationResult[];
   versionId: string;
   /**
    * Hash of the prompt and limits that produced this turn.

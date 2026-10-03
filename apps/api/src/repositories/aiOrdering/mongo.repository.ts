@@ -10,6 +10,9 @@ import type {
 } from '@src/models/aiOrdering/model';
 import type {
   AiOrderingUnansweredRow,
+  FindAiOrderingProposalInput,
+  RecordAiOrderingProposalDecisionInput,
+  SetAiOrderingProposalResultsInput,
   CreateAiOrderingConversationInput,
   FindAiOrderingConversationByIdInput,
   FindAiOrderingConversationInput,
@@ -47,6 +50,20 @@ function toAiOrderingConversationEntity(
   return Object.fromEntries(
     aiOrderingConversationEntityKeys.map((key) => [key, doc[key]]),
   ) as AiOrderingConversationEntity;
+}
+
+/**
+ * Pairs a turn's proposal snapshot with the response that carried it.
+ *
+ * `null` when the turn is not a proposal turn, which also guards the case where
+ * a projection matched something unexpected.
+ */
+function toStoredProposal(turn: AiOrderingTurnSnapshot | undefined) {
+  if (!turn?.proposal || turn.response.type !== 'proposal') {
+    return null;
+  }
+
+  return { snapshot: turn.proposal, response: turn.response };
 }
 
 export const aiOrderingMongoRepository = {
@@ -218,5 +235,75 @@ export const aiOrderingMongoRepository = {
       .exec();
 
     return doc ? toAiOrderingConversationEntity(doc) : null;
+  },
+  async findProposal(input: FindAiOrderingProposalInput) {
+    const doc = await AiOrderingConversationMongoModel.findOne(
+      {
+        storeId: input.storeId,
+        cartId: input.cartId,
+        participantId: input.participantId,
+        'turns.proposal.proposalId': input.proposalId,
+      },
+      { 'turns.$': 1 },
+    )
+      .lean<{ turns?: AiOrderingTurnSnapshot[] }>()
+      .exec();
+
+    return toStoredProposal(doc?.turns?.[0]);
+  },
+
+  async recordProposalDecision(input: RecordAiOrderingProposalDecisionInput) {
+    // `decision: { $exists: false }` inside the same filter is what makes this
+    // single-use. Reading the turn and then writing would let two concurrent
+    // acceptances both see no decision and both execute.
+    const doc = await AiOrderingConversationMongoModel.findOneAndUpdate(
+      {
+        storeId: input.storeId,
+        cartId: input.cartId,
+        participantId: input.participantId,
+        turns: {
+          $elemMatch: {
+            'proposal.proposalId': input.proposalId,
+            'proposal.decision': { $exists: false },
+          },
+        },
+      },
+      { $set: { 'turns.$.proposal.decision': input.decision } },
+      // `before`, not `after`: MongoDB refuses a positional projection together
+      // with returning the new document ("cannot use a positional projection
+      // and return the new document"). The pre-update turn is what this needs
+      // anyway — the proposal AS PROPOSED, which is what the resume re-issues.
+      { returnDocument: 'before', projection: { 'turns.$': 1 } },
+    )
+      .lean<{ turns?: AiOrderingTurnSnapshot[] }>()
+      .exec();
+
+    if (doc) {
+      return { claimed: true, proposal: toStoredProposal(doc.turns?.[0]) };
+    }
+
+    // No match means the proposal is absent, or it is already decided. The
+    // caller has to tell a guest which, so look it up rather than returning one
+    // ambiguous answer.
+    const existing = await this.findProposal({
+      storeId: input.storeId,
+      cartId: input.cartId,
+      participantId: input.participantId,
+      proposalId: input.proposalId,
+    });
+
+    return { claimed: false, proposal: existing };
+  },
+
+  async setProposalResults(input: SetAiOrderingProposalResultsInput) {
+    await AiOrderingConversationMongoModel.updateOne(
+      {
+        storeId: input.storeId,
+        cartId: input.cartId,
+        participantId: input.participantId,
+        'turns.proposal.proposalId': input.proposalId,
+      },
+      { $set: { 'turns.$.proposal.decision.results': input.results } },
+    ).exec();
   },
 };

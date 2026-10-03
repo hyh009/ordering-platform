@@ -14,7 +14,11 @@ const mongoMocks = vi.hoisted(() => {
   let nextExistsResult: unknown = null;
 
   const findOneCalls: unknown[] = [];
-  const findOneAndUpdateCalls: { filter: unknown; update: unknown }[] = [];
+  const findOneAndUpdateCalls: {
+    filter: unknown;
+    update: unknown;
+    options?: unknown;
+  }[] = [];
 
   function query(read: () => unknown) {
     return {
@@ -43,10 +47,12 @@ const mongoMocks = vi.hoisted(() => {
       return query(() => nextFindOneResult);
     });
 
-    static findOneAndUpdate = vi.fn((filter: unknown, update: unknown) => {
-      findOneAndUpdateCalls.push({ filter, update });
-      return query(() => nextFindOneAndUpdateResult);
-    });
+    static findOneAndUpdate = vi.fn(
+      (filter: unknown, update: unknown, options?: unknown) => {
+        findOneAndUpdateCalls.push({ filter, update, options });
+        return query(() => nextFindOneAndUpdateResult);
+      },
+    );
 
     static exists = vi.fn(async () => nextExistsResult);
   }
@@ -109,6 +115,50 @@ function storedConversation(turns: AiOrderingTurnSnapshot[] = []) {
     turns,
     createdAt: FIXED_DATE,
     updatedAt: FIXED_DATE,
+  };
+}
+
+
+function proposalTurn(
+  id: string,
+  proposalId: string,
+  decided = false,
+): AiOrderingTurnSnapshot {
+  return {
+    ...turn(id),
+    response: {
+      type: 'proposal',
+      reply: 'Shall I add these?',
+      proposalId,
+      confirmationRequired: true,
+      operations: [
+        {
+          type: 'add_item',
+          operationId: 'op-1',
+          summary: '煎荷包蛋 x1',
+          item: { productId: 'product-1', quantity: 1 },
+        },
+      ],
+    },
+    proposal: {
+      proposalId,
+      operations: [
+        {
+          type: 'add_item',
+          operationId: 'op-1',
+          summary: '煎荷包蛋 x1',
+          item: { productId: 'product-1', quantity: 1 },
+        },
+      ],
+      ...(decided
+        ? {
+            decision: {
+              decidedAt: FIXED_DATE,
+              results: [{ operationId: 'op-1', outcome: 'accepted' as const }],
+            },
+          }
+        : {}),
+    },
   };
 }
 
@@ -262,6 +312,143 @@ describe('aiOrderingMongoRepository', () => {
 
       // Distinct from the full case: a missing conversation is not a conflict.
       expect(result).toBeNull();
+    });
+  });
+  describe('findProposal', () => {
+    it('scopes the lookup to the asking guest own conversation', async () => {
+      mongoMocks.reset();
+      mongoMocks.setNextFindOneResult({
+        turns: [proposalTurn('turn-1', 'proposal-1')],
+      });
+
+      const result = await aiOrderingMongoRepository.findProposal({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-1',
+      });
+
+      expect(result?.snapshot.proposalId).toBe('proposal-1');
+      // The participant triple is IN the filter. A proposal id belonging to
+      // another guest must be unreachable, not fetched and then rejected.
+      expect(mongoMocks.findOneCalls.at(-1)).toEqual({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        'turns.proposal.proposalId': 'proposal-1',
+      });
+    });
+
+    it('returns null for a proposal id that is not this guest own', async () => {
+      mongoMocks.reset();
+      mongoMocks.setNextFindOneResult(null);
+
+      const result = await aiOrderingMongoRepository.findProposal({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-from-another-cart',
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('recordProposalDecision', () => {
+    const decision = {
+      decidedAt: FIXED_DATE,
+      results: [{ operationId: 'op-1', outcome: 'accepted' as const }],
+    };
+
+    it('claims the decision only when none is recorded yet', async () => {
+      mongoMocks.reset();
+      mongoMocks.setNextFindOneAndUpdateResult({
+        turns: [proposalTurn('turn-1', 'proposal-1', true)],
+      });
+
+      const result = await aiOrderingMongoRepository.recordProposalDecision({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-1',
+        decision,
+      });
+
+      expect(result.claimed).toBe(true);
+      // MongoDB refuses a positional projection together with returning the new
+      // document, and the unit mock cannot know that — this is here because the
+      // real database rejected it with
+      // "cannot use a positional projection and return the new document".
+      expect(mongoMocks.findOneAndUpdateCalls.at(-1)?.options).toMatchObject({
+        returnDocument: 'before',
+      });
+      // The absence of a decision is asserted INSIDE the filter. Reading first
+      // and then writing would let two concurrent acceptances both execute.
+      expect(mongoMocks.findOneAndUpdateCalls.at(-1)?.filter).toEqual({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        turns: {
+          $elemMatch: {
+            'proposal.proposalId': 'proposal-1',
+            'proposal.decision': { $exists: false },
+          },
+        },
+      });
+    });
+
+    it('lets exactly one of two concurrent decisions win', async () => {
+      mongoMocks.reset();
+      // The first conditional update matches; the second finds the decision
+      // already set, so its filter no longer matches.
+      mongoMocks.setNextFindOneAndUpdateResult({
+        turns: [proposalTurn('turn-1', 'proposal-1', true)],
+      });
+
+      const winner = await aiOrderingMongoRepository.recordProposalDecision({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-1',
+        decision,
+      });
+
+      mongoMocks.setNextFindOneAndUpdateResult(null);
+      mongoMocks.setNextFindOneResult({
+        turns: [proposalTurn('turn-1', 'proposal-1', true)],
+      });
+
+      const loser = await aiOrderingMongoRepository.recordProposalDecision({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-1',
+        decision,
+      });
+
+      expect(winner.claimed).toBe(true);
+      expect(loser.claimed).toBe(false);
+      // The loser still gets the proposal back, so the caller can tell the guest
+      // it was already decided rather than that it expired.
+      expect(loser.proposal?.snapshot.decision).toBeDefined();
+    });
+
+    it('reports a missing proposal differently from an already decided one', async () => {
+      mongoMocks.reset();
+      mongoMocks.setNextFindOneAndUpdateResult(null);
+      mongoMocks.setNextFindOneResult(null);
+
+      const result = await aiOrderingMongoRepository.recordProposalDecision({
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: 'participant-self',
+        proposalId: 'proposal-gone',
+        decision,
+      });
+
+      // Expiry and a repeated decision are different things to tell a guest, so
+      // they must not collapse into one answer here.
+      expect(result).toEqual({ claimed: false, proposal: null });
     });
   });
 });

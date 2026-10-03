@@ -13,6 +13,7 @@ import type {
   AiOrderingConversationSummaryDto,
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
+  AiOrderingProposalStateDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
 } from '@repo/shared';
@@ -61,8 +62,36 @@ export function toAiOrderingGuestTurnDto(
     id: turn.id,
     message: turn.message,
     response: turn.response,
+    // Present exactly when the turn carried a proposal. Without it a reloaded
+    // panel cannot tell an applied proposal from one still waiting, and would
+    // have to guess — which is how a guest ends up being told to ask again for
+    // something already in their cart.
+    ...(turn.proposal
+      ? { proposal: toAiOrderingProposalStateDto(turn.proposal) }
+      : {}),
     versionId: turn.versionId,
     createdAt: turn.createdAt.toISOString(),
+  };
+}
+
+/**
+ * Two states, not three.
+ *
+ * An expired proposal is a decided one whose operations are all `no_action`, so
+ * `pending` means exactly one thing to the panel: there is still something to
+ * accept. Expiry is resolved before this point, never here.
+ */
+function toAiOrderingProposalStateDto(
+  proposal: NonNullable<AiOrderingTurnSnapshot['proposal']>,
+): AiOrderingProposalStateDto {
+  if (!proposal.decision) {
+    return { status: 'pending' };
+  }
+
+  return {
+    status: 'decided',
+    decidedAt: proposal.decision.decidedAt.toISOString(),
+    results: proposal.decision.results,
   };
 }
 

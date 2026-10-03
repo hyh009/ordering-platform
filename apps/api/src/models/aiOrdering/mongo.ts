@@ -6,6 +6,7 @@ import type { AiOrderingChoice, AiOrderingOperationResult } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
   AiOrderingPromptSnapshot,
+  AiOrderingProposalDecision,
   AiOrderingProposalSnapshot,
   AiOrderingTurnQualitySignals,
   AiOrderingTurnSnapshot,
@@ -30,19 +31,6 @@ const promptSnapshotSchema = new Schema<AiOrderingPromptSnapshot>(
   { _id: false },
 );
 
-const proposalSnapshotSchema = new Schema<AiOrderingProposalSnapshot>(
-  {
-    proposalId: { type: String, required: true, trim: true },
-    // Operations are a discriminated union already validated by the shared zod
-    // schema before they reach persistence, so there is nothing for a Mongoose
-    // sub-schema to add here beyond a second, driftable definition of the shape.
-    // Stored as a single Mixed field holding the array rather than an array of
-    // Mixed, which Mongoose's typed schema definitions do not accept.
-    operations: { type: Schema.Types.Mixed, required: true },
-  },
-  { _id: false },
-);
-
 const operationResultSnapshotSchema = new Schema<AiOrderingOperationResult>(
   {
     operationId: { type: String, required: true, trim: true },
@@ -52,6 +40,31 @@ const operationResultSnapshotSchema = new Schema<AiOrderingOperationResult>(
       enum: aiOrderingOperationOutcomes,
     },
     failureCode: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
+const proposalDecisionSchema = new Schema<AiOrderingProposalDecision>(
+  {
+    decidedAt: { type: Date, required: true },
+    results: { type: [operationResultSnapshotSchema], required: true },
+  },
+  { _id: false },
+);
+
+const proposalSnapshotSchema = new Schema<AiOrderingProposalSnapshot>(
+  {
+    proposalId: { type: String, required: true, trim: true },
+    // Operations are a discriminated union already validated by the shared zod
+    // schema before they reach persistence, so there is nothing for a Mongoose
+    // sub-schema to add here beyond a second, driftable definition of the shape.
+    // Stored as a single Mixed field holding the array rather than an array of
+    // Mixed, which Mongoose's typed schema definitions do not accept.
+    operations: { type: Schema.Types.Mixed, required: true },
+    // Absent until the guest answers. Its presence is what refuses a second
+    // decision, so it must never be written twice; see the repository's
+    // conditional update.
+    decision: { type: proposalDecisionSchema },
   },
   { _id: false },
 );
@@ -83,7 +96,6 @@ const turnSnapshotSchema = new Schema<AiOrderingTurnSnapshot>(
     message: { type: String, required: true, trim: true },
     responseToPromptId: { type: String, trim: true },
     selectedOptionId: { type: String, trim: true },
-    reportedOutcomes: { type: [operationResultSnapshotSchema] },
     versionId: { type: String, required: true, trim: true },
     versionFingerprint: { type: String, required: true, trim: true },
     provider: { type: String, required: true, trim: true },

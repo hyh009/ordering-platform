@@ -1,7 +1,13 @@
 import { aiOrderingMongoRepository } from '@src/repositories/aiOrdering/mongo.repository';
 
 import type {
+  AiOrderingOperationResult,
+  AiOrderingProposalResponse,
+} from '@repo/shared';
+import type {
   AiOrderingConversationEntity,
+  AiOrderingProposalDecision,
+  AiOrderingProposalSnapshot,
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
 
@@ -27,6 +33,35 @@ export type ListAiOrderingConversationsInput = {
 export type FindAiOrderingConversationByIdInput = {
   storeId: string;
   conversationId: string;
+};
+
+/**
+ * A stored proposal, with the response that carried it.
+ *
+ * Both halves are needed to re-issue the proposal's tool call on a resume: the
+ * snapshot holds the operations, and the response holds the reply and the
+ * confirmation flag that were part of the same call. Returning only the snapshot
+ * means rebuilding a PARTIAL set of arguments, which the interrupt rejects
+ * silently — the tool simply never runs.
+ */
+export type AiOrderingStoredProposal = {
+  snapshot: AiOrderingProposalSnapshot;
+  response: AiOrderingProposalResponse;
+};
+
+export type FindAiOrderingProposalInput = {
+  storeId: string;
+  cartId: string;
+  participantId: string;
+  proposalId: string;
+};
+
+export type RecordAiOrderingProposalDecisionInput = {
+  storeId: string;
+  cartId: string;
+  participantId: string;
+  proposalId: string;
+  decision: AiOrderingProposalDecision;
 };
 
 export type ListAiOrderingUnansweredInput = {
@@ -98,6 +133,50 @@ export type AiOrderingRepository = {
     input: ListAiOrderingUnansweredInput,
   ): Promise<AiOrderingUnansweredRow[]>;
   countUnanswered(input: { storeId: string; reason?: string }): Promise<number>;
+  /**
+   * One proposal from this guest's OWN conversation, or `null`.
+   *
+   * The participant triple is part of the filter rather than checked afterwards,
+   * so another guest's proposal id is unreachable rather than fetched and then
+   * rejected — the same rule `findById` follows for `storeId`.
+   */
+  findProposal(
+    input: FindAiOrderingProposalInput,
+  ): Promise<AiOrderingStoredProposal | null>;
+  /**
+   * Records a decision only if none is recorded yet, and reports whether this
+   * caller is the one that recorded it.
+   *
+   * This is the single-use guarantee. It is a conditional write rather than a
+   * read-then-write because two acceptances of one proposal can be in flight at
+   * once, and both would pass a check. `claimed: false` with a proposal present
+   * means someone else already decided it; a missing proposal is a different
+   * answer, because expiry and a repeat decision are different things to tell a
+   * guest.
+   */
+  recordProposalDecision(
+    input: RecordAiOrderingProposalDecisionInput,
+  ): Promise<{ claimed: boolean; proposal: AiOrderingStoredProposal | null }>;
+  /**
+   * Fills in the results of a decision that was already claimed.
+   *
+   * Claiming and reporting are two writes because they answer two questions at
+   * two different moments: the claim settles WHO decides, before anything runs,
+   * and this settles WHAT happened, after. Doing them as one write would mean
+   * either executing before the claim — which lets two requests both apply — or
+   * holding the claim open across the cart calls.
+   */
+  setProposalResults(
+    input: SetAiOrderingProposalResultsInput,
+  ): Promise<void>;
+};
+
+export type SetAiOrderingProposalResultsInput = {
+  storeId: string;
+  cartId: string;
+  participantId: string;
+  proposalId: string;
+  results: AiOrderingOperationResult[];
 };
 
 export type UpdateAiOrderingSummaryInput = {
