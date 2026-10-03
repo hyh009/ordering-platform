@@ -8,7 +8,8 @@ export type AiOrderingOperationRejectionCode =
   | 'product_not_found'
   | 'product_sold_out'
   | 'modifier_invalid'
-  | 'not_owned';
+  | 'not_owned'
+  | 'no_change';
 
 export type AiOrderingOperationRejection = {
   /** Index in the model's original operation list, which has no ids yet. */
@@ -32,6 +33,80 @@ export type AiOrderingValidationInput = {
 };
 
 type SelectedOption = { modifierId: string; optionId: string };
+
+/** Order carries no meaning in a selection, so equality is set equality. */
+function sameSelections(
+  proposed: SelectedOption[],
+  current: { modifierId: string; optionId: string }[],
+): boolean {
+  if (proposed.length !== current.length) return false;
+
+  const key = (option: SelectedOption) =>
+    `${option.modifierId}:${option.optionId}`;
+  const currentKeys = new Set(current.map(key));
+
+  return proposed.every((option) => currentKeys.has(key(option)));
+}
+
+/**
+ * Why an update would change nothing, or `null` when it would change something.
+ *
+ * An absent field means "leave this alone", so only the fields the model
+ * actually supplied are compared. The operation is empty when every one of them
+ * already matches the item — including `notes: null` against an item that has no
+ * note, which is a request to clear nothing.
+ */
+function describeEmptyUpdate(
+  update: {
+    quantity?: number | undefined;
+    selectedOptions?: SelectedOption[] | undefined;
+    notes?: string | null | undefined;
+  },
+  item: CartDto['items'][number],
+): string | null {
+  const unchanged: string[] = [];
+
+  if (update.quantity !== undefined) {
+    if (update.quantity !== item.quantity) return null;
+    unchanged.push(`quantity is already ${String(item.quantity)}`);
+  }
+
+  if (update.selectedOptions !== undefined) {
+    if (
+      !sameSelections(
+        update.selectedOptions,
+        item.selectedOptions.map((option) => ({
+          modifierId: option.modifierId,
+          optionId: option.optionId,
+        })),
+      )
+    ) {
+      return null;
+    }
+
+    unchanged.push('the options are already exactly those');
+  }
+
+  if (update.notes !== undefined) {
+    const current = item.notes;
+
+    if (update.notes === null) {
+      if (current !== undefined) return null;
+      unchanged.push('there is no note to remove');
+    } else {
+      if (update.notes !== current) return null;
+      unchanged.push('the note already says that');
+    }
+  }
+
+  if (unchanged.length === 0) {
+    // Nothing supplied at all. The shared schema refuses this, so reaching here
+    // means the shapes have drifted; say so rather than letting it through.
+    return 'it supplies no field to change';
+  }
+
+  return `it changes nothing: ${unchanged.join(', ')}`;
+}
 
 function indexMenu(menu: PublicMenuDto) {
   const products = new Map(
@@ -195,6 +270,17 @@ export function validateAiOrderingOperations(
 
     if (operation.type === 'remove_own_item') {
       operations.push(operation);
+      return;
+    }
+
+    const emptiness = describeEmptyUpdate(operation.item, item);
+
+    if (emptiness) {
+      // Valid against the menu, valid against the cart, and pointless. Without
+      // this it reaches the guest as an action and reports success — which is
+      // how an assistant once announced a note it never specified, over an
+      // operation that only restated the quantity the item already had.
+      reject('no_change', emptiness);
       return;
     }
 

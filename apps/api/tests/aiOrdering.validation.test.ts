@@ -189,11 +189,13 @@ describe('AI ordering operation validation', () => {
     });
 
     it('accepts changing the guest own item', () => {
+      // Three, not two: the fixture item is already at two, and an update to the
+      // value an item already holds is rejected as changing nothing.
       const result = validate({
         type: 'update_own_item',
-        summary: 'Make it two',
+        summary: 'Make it three',
         itemId: 'item-own-rice',
-        item: { quantity: 2 },
+        item: { quantity: 3 },
       });
 
       expect(result.rejections).toHaveLength(0);
@@ -263,5 +265,112 @@ describe('AI ordering operation validation', () => {
 
     expect(result.operations).toHaveLength(0);
     expect(result.rejections).toHaveLength(0);
+  });
+});
+
+describe('check 5: the operation changes something', () => {
+  it('rejects a quantity the item already has', () => {
+    // The shape this change came from: valid against the menu, valid against
+    // the cart, and completely pointless. It reached the guest as an action and
+    // reported success.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2 },
+    });
+
+    expect(result.operations).toHaveLength(0);
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('rejects the same options in a different order', () => {
+    const current = AI_ORDERING_CART_FIXTURE.items.find(
+      (item) => item.id === 'item-own-milk-tea',
+    );
+
+    if (!current) throw new Error('fixture item missing');
+
+    const reversed = [...current.selectedOptions]
+      .reverse()
+      .map((option) => ({
+        modifierId: option.modifierId,
+        optionId: option.optionId,
+      }));
+
+    // Order carries no meaning in a selection, so reordering is not a change.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-milk-tea',
+      item: { selectedOptions: reversed },
+    });
+
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('rejects clearing a note on an item that has none', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { notes: null },
+    });
+
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('keeps an operation that changes one field and repeats another', () => {
+    // A redundant field alongside a real change is still a change. The check
+    // fires only when EVERY supplied field already matches.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2, notes: '少鹽' },
+    });
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(1);
+  });
+
+  it('keeps an operation that only adds a note', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { notes: '加辣' },
+    });
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(1);
+  });
+
+  it('tells the model what was empty rather than only that it was wrong', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2 },
+    });
+
+    // This detail becomes the repair note. "Try again" without saying what was
+    // empty is how a model repeats itself.
+    expect(result.rejections[0]?.detail).toContain('changes nothing');
+    expect(result.rejections[0]?.detail).toContain('already');
+  });
+
+  it('degrades a proposal of only no-ops to a reply, not an empty proposal', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 2 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { notes: null },
+      },
+    );
+
+    // Nothing survives, which is the existing ladder's second rung: the model's
+    // own reply is shown instead. No fourth rung is added.
+    expect(result.operations).toHaveLength(0);
+    expect(result.rejections).toHaveLength(2);
   });
 });
