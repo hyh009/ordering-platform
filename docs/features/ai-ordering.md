@@ -134,8 +134,8 @@ Two schemas, deliberately:
 ```
 
 The model never supplies `confirmationRequired`, `proposalId`, `promptId`,
-`operationId`, `allowFreeText`, or choice option ids. `hydrateAiOrderingResponse`
-fills them in.
+`operationId`, `allowFreeText`, choice option ids, or the per-operation label.
+`hydrateAiOrderingResponse` fills them in.
 
 `confirmationRequired` is the one that forces this: a model-supplied `false`
 would skip a store's confirmation step. A field the model cannot emit is a field
@@ -144,6 +144,48 @@ it cannot get wrong — stronger than validating it afterwards.
 Operation payloads are **derived from the cart's own request schemas**, not
 restated, so the model contract cannot drift from what the cart accepts. A
 contract test asserts reference equality to catch exactly that.
+
+### The Label Is Ours, Because The Model Used It To Speak Instead Of Act
+
+The one line beside each proposed operation used to be model-authored prose. It
+was the only field the model could fill that nothing reconciled against the
+fields that execute — and it eventually did what such a field invites. An
+assistant announced a spicy note on an item while proposing `{ quantity: 1 }` on
+an item already at one. The guest accepted, the row read "Added", and no note
+existed. Every layer behaved correctly; the contract offered a place to describe
+an action instead of specifying one.
+
+`operationLabel.ts` now derives the line from the operation, the menu and the
+cart, so it cannot say more than the operation does. An update names only what
+changes — listing the untouched parts would make the label describe the item
+rather than the operation, which is the same gap again.
+
+The label is still delivered on the wire, so the panel, the merchant review
+surface, the stored corpus and the replay report are unchanged. Only its author
+moved.
+
+The product name is taken in the **store's default locale** while the reply
+follows the guest's language, so a guest writing in another language reads a
+reply in theirs above a label in the store's. Accepted deliberately: a label that
+is honest in the wrong language beats one that is fluent and false. The web
+client holds the menu, the cart and i18n, so it can compose its own later.
+
+### Every Model-Facing Field Says What It Is For
+
+The schema the provider receives carried no field documentation at all —
+`description` appeared zero times. The model was handed `summary` (string, 240)
+and `item.notes` (string, 500, nullable) with nothing to distinguish them, and
+nothing at all to distinguish `notes: null` ("clear it") from omitting `notes`
+("leave it alone"), which are opposites.
+
+Every field is now described, and a test walks the generated JSON Schema and
+fails on any property without a description — a new field must be documented
+rather than merely added.
+
+The descriptions sit on the model-facing composition, never on the shared cart
+request schemas. Those are what the guest cart routes validate against; prose
+written to steer a language model would be read there by the wrong audience. A
+test asserts the shared contract stays free of them.
 
 ## Provider And Model Are One Choice, And Not Part Of A Version
 
@@ -193,7 +235,7 @@ model — so `aiOrdering.geminiSchema.test.ts` asserts that no bound tool schema
 emits `const` or names a null type. That guard, not the integration, is what keeps
 the next literal from shipping.
 
-## Validation: Four Checks, Then At Most One Repair
+## Validation: Five Checks, Then At Most One Repair
 
 `validation.ts` checks each proposed operation against data already loaded for
 the context:
@@ -203,6 +245,18 @@ the context:
 3. option selections satisfy the product's modifier rules (required choices
    present, within min/max, no sold-out option)
 4. an update or remove targets an item **this guest added**
+5. the operation **changes something**
+
+The fifth exists because the first four all pass for an update that restates the
+item's current values. That operation is valid in every data sense and
+completely pointless, and without this check it reaches the guest as an action
+and reports success.
+
+An absent field means "leave this alone", so only the fields the model supplied
+are compared. Options compare as an unordered set — order carries no meaning in
+a selection — and `notes: null` against an item with no note is a request to
+clear nothing. A redundant field alongside a real change still passes: the check
+fires only when every supplied field already matches.
 
 Why validate before the guest sees anything: in a confirm-then-accept flow the
 accept button is a promise. An accept that fails is the worst outcome in the
@@ -240,13 +294,21 @@ violations are counted as a version quality signal.
 ```txt
   modules/aiOrdering/versions/
     v1-2026-09-30.ts   <- status: 'draft' — still being shaped
-    fingerprint.ts     <- hash of the prompt and the limits
+    fingerprint.ts     <- hash of the prompt, the limits, and the answer shape
     index.ts           <- registry + resolver
 ```
 
 A version carries its prompt and its limits. It deliberately carries **no model
 name**: version and model are separate replay axes, since the whole point is
 running an older prompt against a newer model.
+
+The fingerprint covers the **answer shape** as well as the instructions. The
+shape the model must answer in is half the contract, and hashing only the prompt
+left changes to it invisible: two runs answering in different shapes compared as
+though they were the same version. The shape is hashed BEFORE any provider
+rewrite, so a Gemini dialect fix does not read as a version change and one
+version served through two providers shares a fingerprint — which is what keeps
+the provider axis separate from the version axis.
 
 ### Draft Versus Stable
 
@@ -545,6 +607,7 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `validation.ts` — the four data checks
 - `cartExecution.ts` — running an accepted proposal's operations, and the
   item/session failure scope
+- `operationLabel.ts` — the per-operation label, derived from the operation
 - `confirmation.ts` — version AND store resolution
 - `history.ts` — window and summarisation planning
 - `summary.ts` — rebuilds the rolling summary from the original turns
@@ -701,6 +764,12 @@ Storefront panel:
   nothing
 - editing away an item that a still-open proposal references makes that row fail
   with a reason rather than silently doing nothing
+- asking the assistant to add a note to an item already in the cart, accepting,
+  and seeing the note on that item — the case this contract tightening came from
+- a proposal that promises a note it did not specify never reaches the guest: the
+  assistant is made to correct itself instead
+- the per-operation label describes the change rather than the item, so an update
+  to one field does not read as a restatement of the whole item
 
 Merchant review:
 
