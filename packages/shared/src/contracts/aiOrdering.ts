@@ -7,6 +7,7 @@ import {
 } from './cart.js';
 
 import type { ApiSuccessResponse } from './api.js';
+import type { CartDto } from './cart.js';
 
 export const aiOrderingResponseTypes = [
   'message',
@@ -30,12 +31,13 @@ export const aiOrderingUnansweredReasons = [
 ] as const;
 
 /**
- * What became of one proposed operation. Reported on the guest's NEXT turn.
+ * What became of one proposed operation. Recorded when the outcome is
+ * determined, not when the guest next speaks.
  *
- * `rejected` (the guest dismissed the row) and `no_action` (the guest typed
- * something else and the proposal expired) must stay distinct: "you removed the
- * tea" and "you moved on" should not produce the same reply. `failed` (accepted
- * but rejected on execution) is distinct from both.
+ * `rejected` (the guest dismissed the row) and `no_action` (the guest moved on
+ * or let the proposal expire) must stay distinct: "you removed the tea" and "you
+ * moved on" should not produce the same reply. `failed` (accepted but rejected
+ * on execution) is distinct from both.
  */
 export const aiOrderingOperationOutcomes = [
   'accepted',
@@ -151,27 +153,27 @@ export const aiOrderingOperationResultSchema = z.object({
   failureCode: z.string().trim().min(1).max(120).optional(),
 });
 
-/**
- * What became of the previous proposal, reported on the next turn. Only
- * rejections and failures carry information the cart state does not already
- * show, but every listed operation is reported so the assistant never has to
- * infer an outcome from absence.
- */
-export const aiOrderingPreviousOutcomeSchema = z.object({
-  proposalId: aiOrderingIdSchema,
-  results: z
-    .array(aiOrderingOperationResultSchema)
-    .min(1)
-    .max(AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL),
-});
-
 export const sendAiOrderingMessageSchema = z.object({
   message: z.string().trim().min(1).max(AI_ORDERING_MAX_MESSAGE_CHARACTERS),
   /** Set when answering a prior `choices` response. */
   responseToPromptId: aiOrderingIdSchema.optional(),
   /** Absent when the guest answered a `choices` response with free text. */
   selectedOptionId: aiOrderingIdSchema.optional(),
-  previousOutcome: aiOrderingPreviousOutcomeSchema.optional(),
+});
+
+/**
+ * The guest's decision on a pending proposal.
+ *
+ * Ids only, never operation content. The backend rebuilds what to execute from
+ * the proposal it recorded, so a caller can neither add an operation the
+ * assistant never proposed nor alter one it did. An empty list is a refusal of
+ * the whole proposal, which is why there is no minimum.
+ */
+export const decideAiOrderingProposalSchema = z.object({
+  proposalId: aiOrderingIdSchema,
+  keptOperationIds: z
+    .array(aiOrderingIdSchema)
+    .max(AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL),
 });
 
 export const aiOrderingTurnResponseDataSchema = z.object({
@@ -197,11 +199,11 @@ export type AiOrderingResponse = z.infer<typeof aiOrderingResponseSchema>;
 export type AiOrderingOperationResult = z.infer<
   typeof aiOrderingOperationResultSchema
 >;
-export type AiOrderingPreviousOutcome = z.infer<
-  typeof aiOrderingPreviousOutcomeSchema
->;
 export type SendAiOrderingMessageRequest = z.infer<
   typeof sendAiOrderingMessageSchema
+>;
+export type DecideAiOrderingProposalRequest = z.infer<
+  typeof decideAiOrderingProposalSchema
 >;
 export type AiOrderingTurnResponseData = z.infer<
   typeof aiOrderingTurnResponseDataSchema
@@ -209,6 +211,30 @@ export type AiOrderingTurnResponseData = z.infer<
 
 export type SendAiOrderingMessageSuccessResponse =
   ApiSuccessResponse<AiOrderingTurnResponseData>;
+
+/**
+ * What a decision produced.
+ *
+ * `results` covers EVERY operation in the proposal, including the ones the guest
+ * dismissed and the ones a failure stopped from being attempted, so the client
+ * and the assistant both read an outcome rather than inferring one from absence.
+ *
+ * `cart` is the cart as it stands after execution, returned here so the surface
+ * unblocks on a cart the server confirmed rather than on a second read.
+ *
+ * `reply` is the assistant's answer to what actually happened. Optional because
+ * the cart change is already committed when it is produced: a provider failure
+ * at that point costs the closing sentence, never the result.
+ */
+export type AiOrderingProposalDecisionData = {
+  proposalId: string;
+  results: AiOrderingOperationResult[];
+  cart: CartDto;
+  reply?: string;
+};
+
+export type DecideAiOrderingProposalSuccessResponse =
+  ApiSuccessResponse<AiOrderingProposalDecisionData>;
 
 // ── Guest transcript ─────────────────────────────────────────────────────────
 // What the guest is handed when the panel reopens. The conversation is stored
@@ -222,11 +248,26 @@ export type SendAiOrderingMessageSuccessResponse =
 // business, so the two DTOs stay separate rather than one being reused with
 // fields omitted at the edge.
 
+/**
+ * What became of a proposal, as the guest's restored transcript reports it.
+ *
+ * Two states, not three. An expired proposal is a decided one whose operations
+ * are all `no_action`, so the client renders results in both cases and only
+ * `pending` means there is still something to accept. That keeps "you already
+ * answered this" and "this is still waiting for you" as the only distinction the
+ * panel has to draw, which is the one the guest cares about.
+ */
+export type AiOrderingProposalStateDto =
+  | { status: 'pending' }
+  | { status: 'decided'; decidedAt: string; results: AiOrderingOperationResult[] };
+
 export type AiOrderingGuestTurnDto = {
   /** The stored turn id, so the transcript has stable React keys. */
   id: string;
   message: string;
   response: AiOrderingResponse;
+  /** Present exactly when `response.type` is `proposal`. */
+  proposal?: AiOrderingProposalStateDto;
   versionId: string;
   createdAt: string;
 };

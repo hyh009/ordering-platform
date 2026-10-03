@@ -47,6 +47,13 @@ export const ERROR_CODES = {
   AI_ORDERING_CONVERSATION_FULL: 'AI_ORDERING_CONVERSATION_FULL',
   AI_ORDERING_PROMPT_NOT_FOUND: 'AI_ORDERING_PROMPT_NOT_FOUND',
   AI_ORDERING_CONVERSATION_NOT_FOUND: 'AI_ORDERING_CONVERSATION_NOT_FOUND',
+  AI_ORDERING_PROPOSAL_NOT_FOUND: 'AI_ORDERING_PROPOSAL_NOT_FOUND',
+  // Kept distinct from AI_ORDERING_PROPOSAL_EXPIRED on purpose: one means the
+  // guest already answered this proposal, the other means they never did and the
+  // chance has passed. Collapsing them would tell a guest who double-submitted
+  // that their proposal expired, and a guest who waited that they already acted.
+  AI_ORDERING_PROPOSAL_ALREADY_DECIDED: 'AI_ORDERING_PROPOSAL_ALREADY_DECIDED',
+  AI_ORDERING_PROPOSAL_EXPIRED: 'AI_ORDERING_PROPOSAL_EXPIRED',
   NETWORK_ERROR: 'NETWORK_ERROR',
   INVALID_API_RESPONSE: 'INVALID_API_RESPONSE',
 } as const;

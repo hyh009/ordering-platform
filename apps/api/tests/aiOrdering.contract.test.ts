@@ -1,4 +1,5 @@
 import {
+  AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL,
   aiOrderingChoicesResponseSchema,
   aiOrderingMessageResponseSchema,
   aiOrderingOperationOutcomes,
@@ -9,6 +10,7 @@ import {
   aiOrderingUnansweredResponseSchema,
   cartItemInputSchema,
   cartItemParamsSchema,
+  decideAiOrderingProposalSchema,
   sendAiOrderingMessageSchema,
   updateCartItemSchema,
 } from '@repo/shared';
@@ -164,24 +166,59 @@ describe('AI ordering contract', () => {
       ).toBe(false);
     });
 
-    it('accepts a previous outcome report alongside the message', () => {
+  });
+
+  describe('proposal decision request', () => {
+    it('accepts the kept operation ids', () => {
       expect(
-        sendAiOrderingMessageSchema.safeParse({
-          message: '那換紅茶好了',
-          previousOutcome: {
-            proposalId: 'proposal-1',
-            results: [
-              { operationId: 'op-1', outcome: 'rejected' },
-              { operationId: 'op-2', outcome: 'accepted' },
-              {
-                operationId: 'op-3',
-                outcome: 'failed',
-                failureCode: 'PRODUCT_SOLD_OUT',
-              },
-            ],
-          },
+        decideAiOrderingProposalSchema.safeParse({
+          proposalId: 'proposal-1',
+          keptOperationIds: ['op-1', 'op-3'],
         }).success,
       ).toBe(true);
+    });
+
+    it('accepts an empty list, which refuses the whole proposal', () => {
+      expect(
+        decideAiOrderingProposalSchema.safeParse({
+          proposalId: 'proposal-1',
+          keptOperationIds: [],
+        }).success,
+      ).toBe(true);
+    });
+
+    it('carries ids only, never operation content', () => {
+      const parsed = decideAiOrderingProposalSchema.parse({
+        proposalId: 'proposal-1',
+        keptOperationIds: ['op-1'],
+        // A caller cannot smuggle operations in: what executes is rebuilt from
+        // the proposal the backend recorded, so anything extra is dropped here.
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-99',
+            summary: 'Free lobster',
+            item: { productId: 'prod-lobster', quantity: 1 },
+          },
+        ],
+      });
+
+      expect(Object.keys(parsed).sort()).toEqual([
+        'keptOperationIds',
+        'proposalId',
+      ]);
+    });
+
+    it('rejects more kept ids than a proposal can hold', () => {
+      expect(
+        decideAiOrderingProposalSchema.safeParse({
+          proposalId: 'proposal-1',
+          keptOperationIds: Array.from(
+            { length: AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL + 1 },
+            (_, index) => `op-${String(index)}`,
+          ),
+        }).success,
+      ).toBe(false);
     });
   });
 
