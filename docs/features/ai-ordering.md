@@ -397,13 +397,13 @@ so the panel asks on every open and only the first call reaches the network.
 The server records a proposal's outcome when it executes it, so a reloaded
 transcript can say what actually happened:
 
-| state     | when                              | drawn as                             |
-| --------- | --------------------------------- | ------------------------------------ |
-| `live`    | not decided, and not yet expired  | the full card, with apply and dismiss |
-| `history` | decided                           | its rows, with each one's real result |
+| state     | when                             | drawn as                              |
+| --------- | -------------------------------- | ------------------------------------- |
+| `live`    | not decided, and not yet expired | the full card, with apply and dismiss |
+| `history` | decided                          | its rows, with each one's real result |
 
-Two states, not three. An expired proposal is a decided one whose operations are
-all `no_action`, so `pending` means exactly one thing to the panel: there is
+Two states, not three. A lapsed proposal is a decided one whose operations are
+all `superseded`, so `pending` means exactly one thing to the panel: there is
 still something to accept.
 
 **This is the defect the change exists to fix.** Before it, outcomes travelled on
@@ -487,10 +487,10 @@ it — a toast from a failed decision has to be readable.
 Execution is one cart call per kept operation, in the proposal's order, inside
 `modules/aiOrdering/cartExecution.ts`. A failure is classified as either scope:
 
-| scope     | codes                                                                                                                     | the loop  | the guest                                        |
-| --------- | ------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------ |
+| scope     | codes                                                                                                                         | the loop  | the guest                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------ |
 | `item`    | `PRODUCT_SOLD_OUT`, `PRODUCT_NOT_FOUND`, `CART_ITEM_NOT_FOUND`, `MODIFIER_SELECTION_INVALID`, `NOT_ITEM_OWNER`, `BAD_REQUEST` | continues | that row gets a reason; the others still execute |
-| `session` | `CART_NOT_ACTIVE`, `CART_NOT_FOUND`, `ORDER_LOCKED`, `STORE_NOT_OPEN`, `INVALID_GUEST_TOKEN`, and anything unmapped        | stops     | the rest are reported as not attempted           |
+| `session` | `CART_NOT_ACTIVE`, `CART_NOT_FOUND`, `ORDER_LOCKED`, `STORE_NOT_OPEN`, `INVALID_GUEST_TOKEN`, and anything unmapped           | stops     | the rest are reported as not attempted           |
 
 The question each code answers is **does this say anything about the operations
 after it**. A sold-out product says nothing about the next one, so stopping would
@@ -533,6 +533,74 @@ which lets both apply — or holding the claim open across the cart calls.
 double-submitted that their proposal expired is a different lie from telling a
 guest who waited that they already acted.
 
+### A Proposal Belongs To The Turn That Made It
+
+Sending another message settles the previous proposal. Its decision is written
+with every operation `superseded`, which means it can no longer be applied — the same conditional write that refuses a second acceptance
+refuses this one.
+
+Without it, an unanswered proposal stayed applicable for as long as its
+checkpoint lived. A guest could talk for ten turns and then accept an offer made
+against a cart and a menu that had both moved on.
+
+It is settled at the START of the next turn, not when that turn is stored. The
+model needs the outcome in the context of the turn where the guest typed instead
+of accepting:
+
+> **Guest:** 我要去冰
+> **History:** You (proposal): 好的，為您加上無糖鮮奶茶
+> **Cart:** _(no milk tea)_
+
+Before this, nothing reconciled those two. "You never answered" and "I never
+offered" looked identical to the model, while its own reply sat in the history
+saying the item was added — so it believed itself over the cart and invented a
+cart item id for an item that was never there. Every operation then failed
+ownership validation, the proposal degraded to a bare reply, and the guest read
+"請確認以下變更：" with nothing under it.
+
+So the outcome block now leads with which source wins:
+
+> This is what the cart actually did. Where it disagrees with what you said last
+> turn, this is right and your reply was not.
+
+The write reuses the acceptance's own conditional claim, so a guest who presses
+accept in the same instant they send a message cannot get both: exactly one
+write matches `decision: { $exists: false }`, and if the acceptance wins, its
+results are what the model is told.
+
+The turn response carries `settledProposal` when this write won. The panel has
+no other way to learn it: nothing happened on the client, the guest simply
+typed. It is reported only on a won claim — if an acceptance landed in the same
+instant, that client already has the real results, and sending the no-action set
+would overwrite them with the write that lost.
+
+That outcome is written onto the TRANSCRIPT ENTRY that proposed it, matched by
+proposal id. The live card and the transcript are two renderings of one
+proposal, and only the card used to be updated — so a guest reading back saw
+every past proposal with no verdict, an applied one and an abandoned one looking
+identical. Matching by id rather than position matters because a result can
+settle an entry several turns back.
+
+`superseded` is an outcome of its own, not a reuse of `no_action`. There are now
+four ways an operation does not reach the cart and none of them are collapsed:
+
+| outcome      | what happened                                                 |
+| ------------ | ------------------------------------------------------------- |
+| `rejected`   | the guest unchecked the row before accepting                  |
+| `superseded` | the guest never answered; the next message ended the proposal |
+| `no_action`  | accepted, but an earlier failure stopped the proposal first   |
+| `failed`     | accepted and attempted, and it would not apply                |
+
+The guest reads 已移除 / 你沒有回應 / 未嘗試 / 無法套用. Showing "未嘗試" for a
+proposal the guest simply walked past described the system rather than what they
+did, which is what prompted splitting the value out.
+
+The proposal-level `decision.superseded` flag is kept as well, because an empty
+proposal has no operations to carry an outcome: it is what lets the decide path
+report a lapsed proposal as expired rather than as already answered. "You
+already answered this" and "that offer lapsed, ask again" are different things
+to tell a guest.
+
 ### The Paused Run Lives In Its Own Store
 
 Human-in-the-loop interrupts need a checkpointer, so a paused run is written to
@@ -567,7 +635,8 @@ participant has their own private conversation.
                  response (what the guest saw),
                  prompt? snapshot,
                  proposal? snapshot -> operations + decision?
-                                       (decidedAt + a result per operation)
+                                       (decidedAt + a result per operation,
+                                        superseded? when never answered)
                  quality signals
 ```
 
@@ -592,9 +661,9 @@ and `{storeId, createdAt: -1}` for the merchant review listing.
 ### The Review Surface Shows What The Model Answered
 
 The quality signals say THAT a turn was degraded. They do not say what the model
-said, and that is the question every real investigation turned out to be: *the
+said, and that is the question every real investigation turned out to be: _the
 reply promised a note and no note was written — did the model fail to put it in
-the operation, or did the operation fail to apply?* The reply alone cannot tell
+the operation, or did the operation fail to apply?_ The reply alone cannot tell
 them apart, and for a while the only way to find out was to read the stored
 document by hand.
 

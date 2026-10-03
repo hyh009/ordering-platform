@@ -802,6 +802,10 @@ all day. Do not use empty `availabilityRules` to mean unavailable; use
   which also store it without filtering on it
 - every turn is stored, including turns whose model output failed validation —
   those are the most useful rows in the evaluation corpus
+- `turns[].proposal.decision.superseded` marks a proposal the guest never
+  answered, settled when they sent the next message. Its presence is what makes
+  a proposal good for one turn only; its results are every operation
+  `superseded`.
 - `turns[].modelOutput` is the raw provider reply, kept for replay. The merchant
   API exposes a narrow projection of it — the tool the model called, its
   arguments, and any text beside them — because "the assistant said it would do
