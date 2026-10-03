@@ -500,6 +500,7 @@ const manualResources: Resource = {
           page: '載入中…',
         },
         navigation: {
+          aiConversations: '助理對話',
           allergens: '過敏原',
           apiHealth: 'API 健康狀態',
           businessClosed: '休息中',
