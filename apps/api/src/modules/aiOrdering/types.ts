@@ -1,5 +1,6 @@
 import type {
   AiOrderingChoice,
+  AiOrderingOperation,
   AiOrderingOperationResult,
   AiOrderingResponseType,
   CartDto,
@@ -162,4 +163,15 @@ export type AiOrderingContextInput = {
   summary?: string;
   resolvedPrompt?: AiOrderingResolvedPrompt;
   reportedOutcomes?: AiOrderingOperationResult[];
+  /**
+   * What the most recent proposal actually proposed, so each reported outcome
+   * names a change instead of a bare operation id.
+   *
+   * Only the most recent proposal, and only alongside its outcomes. It is
+   * rendered in the current turn rather than attached to the history turn that
+   * made it: marking one history turn as "the latest" would rewrite earlier
+   * text every time a newer proposal appeared, and the history block is
+   * append-only so that its prefix stays cacheable.
+   */
+  lastProposalOperations?: AiOrderingOperation[];
 };

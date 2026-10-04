@@ -290,6 +290,105 @@ describe('AI ordering context assembly', () => {
       expect(failed).toContain('PRODUCT_SOLD_OUT');
     });
 
+    it('says what each operation proposed, not only its id', () => {
+      const text = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            reportedOutcomes: [
+              { operationId: 'op-1', outcome: 'superseded' },
+              { operationId: 'op-2', outcome: 'rejected' },
+              { operationId: 'op-3', outcome: 'accepted' },
+            ],
+            lastProposalOperations: [
+              {
+                type: 'add_item',
+                operationId: 'op-1',
+                summary: '+ 鮮奶茶 ×2',
+                item: {
+                  productId: 'prod-milk-tea',
+                  quantity: 2,
+                  selectedOptions: [
+                    { modifierId: 'mod-sugar', optionId: 'opt-no-sugar' },
+                  ],
+                  notes: '去冰',
+                },
+              },
+              {
+                type: 'update_own_item',
+                operationId: 'op-2',
+                summary: '白飯 → — note removed',
+                itemId: 'item-rice',
+                item: { notes: null },
+              },
+              {
+                type: 'remove_own_item',
+                operationId: 'op-3',
+                summary: '− 紅茶',
+                itemId: 'item-black-tea',
+              },
+            ],
+          }),
+        ),
+        'current_turn',
+      );
+
+      // "op-1 was never answered" tells the model nothing it can act on. With
+      // the ids it proposed, it can offer the same change again instead of
+      // guessing at what its own reply meant.
+      expect(text).toContain(
+        '- op-1 | add_item | product prod-milk-tea | x2 | choices: mod-sugar=opt-no-sugar | note: 去冰: the guest never answered',
+      );
+      // An update lists only what it changed, so it reads as the operation
+      // rather than as the item.
+      expect(text).toContain(
+        '- op-2 | update_own_item | item item-rice | note removed: the guest dismissed',
+      );
+      expect(text).toContain(
+        '- op-3 | remove_own_item | item item-black-tea: the guest accepted',
+      );
+    });
+
+    it('falls back to the bare id for an outcome with no matching operation', () => {
+      const text = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            reportedOutcomes: [{ operationId: 'op-9', outcome: 'rejected' }],
+            lastProposalOperations: [],
+          }),
+        ),
+        'current_turn',
+      );
+
+      expect(text).toContain('- op-9: the guest dismissed');
+    });
+
+    it('keeps the proposed operations out of the history block', () => {
+      const context = buildAiOrderingContext(
+        contextInput({
+          history: [
+            {
+              message: '我要鮮奶茶',
+              reply: '好的，為您加上鮮奶茶。',
+              responseType: 'proposal',
+            },
+          ],
+          reportedOutcomes: [{ operationId: 'op-1', outcome: 'superseded' }],
+          lastProposalOperations: [
+            {
+              type: 'add_item',
+              operationId: 'op-1',
+              summary: '+ 鮮奶茶 ×1',
+              item: { productId: 'prod-milk-tea', quantity: 1 },
+            },
+          ],
+        }),
+      );
+
+      // The history block is append-only so its prefix stays cacheable. Marking
+      // one turn as the latest proposal would rewrite it when the next one came.
+      expect(blockText(context, 'history')).not.toContain('op-1');
+    });
+
     it('omits the section entirely when nothing was reported', () => {
       const currentTurn = blockText(
         buildAiOrderingContext(contextInput()),

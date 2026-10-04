@@ -1,4 +1,5 @@
 import type {
+  AiOrderingOperation,
   CartDto,
   CartItemDto,
   LocalizedStringDto,
@@ -218,8 +219,12 @@ export function buildAiOrderingContext(
     );
 
     for (const result of input.reportedOutcomes) {
+      const operation = input.lastProposalOperations?.find(
+        (candidate) => candidate.operationId === result.operationId,
+      );
+
       currentTurnLines.push(
-        `- ${result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
+        `- ${operation ? renderProposedOperation(operation) : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
       );
     }
   }
@@ -250,6 +255,53 @@ export function buildAiOrderingContext(
       { kind: 'current_turn', role: 'user', text: currentTurnLines.join('\n') },
     ],
   };
+}
+
+/**
+ * One proposed operation as the model wrote it, ids included.
+ *
+ * Ids rather than names because this is what the model needs to act on the
+ * outcome: offering a lapsed change again means sending the same product and
+ * option ids, and the menu block above already says what each one is called.
+ * Only the fields the operation carries are listed, so an update reads as the
+ * change it made rather than as the item it touched.
+ */
+function renderProposedOperation(operation: AiOrderingOperation): string {
+  const parts: string[] = [operation.operationId, operation.type];
+
+  if (operation.type === 'add_item') {
+    parts.push(`product ${operation.item.productId}`);
+  } else {
+    parts.push(`item ${operation.itemId}`);
+  }
+
+  if (operation.type !== 'remove_own_item') {
+    const { quantity, selectedOptions, notes } = operation.item;
+
+    if (quantity !== undefined) {
+      parts.push(`x${quantity}`);
+    }
+
+    if (selectedOptions !== undefined) {
+      parts.push(
+        selectedOptions.length > 0
+          ? `choices: ${selectedOptions
+              .map(
+                (selection) => `${selection.modifierId}=${selection.optionId}`,
+              )
+              .join(', ')}`
+          : 'no choices',
+      );
+    }
+
+    if (notes === null) {
+      parts.push('note removed');
+    } else if (notes !== undefined) {
+      parts.push(`note: ${notes}`);
+    }
+  }
+
+  return parts.join(' | ');
 }
 
 /**

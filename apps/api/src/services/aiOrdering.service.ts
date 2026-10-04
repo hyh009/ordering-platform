@@ -524,16 +524,20 @@ export class AiOrderingService {
     conversation: AiOrderingConversationEntity | null,
   ): Promise<{
     results: AiOrderingOperationResult[];
+    /** What that proposal proposed, so the model can read each result. */
+    operations: AiOrderingOperation[];
     settledProposal?: AiOrderingSettledProposal;
   }> {
     const proposal = readAiOrderingLastProposal(conversation);
 
     if (!proposal) {
-      return { results: [] };
+      return { results: [], operations: [] };
     }
 
+    const { operations } = proposal;
+
     if (proposal.decision) {
-      return { results: proposal.decision.results };
+      return { results: proposal.decision.results, operations };
     }
 
     const results = buildAiOrderingSupersededResults(proposal);
@@ -550,6 +554,7 @@ export class AiOrderingService {
       // this: nothing happened on the client, the guest simply typed instead.
       return {
         results,
+        operations,
         settledProposal: { proposalId: proposal.proposalId, results },
       };
     }
@@ -557,7 +562,10 @@ export class AiOrderingService {
     // The acceptance won. Its own results are authoritative, and they may still
     // be empty for the instant between claiming and recording what executed.
     // Not reported back: the client made that decision and already has them.
-    return { results: claim.proposal?.snapshot.decision?.results ?? [] };
+    return {
+      results: claim.proposal?.snapshot.decision?.results ?? [],
+      operations,
+    };
   }
 
   private async planTurn(
@@ -646,7 +654,10 @@ export class AiOrderingService {
         ? { resolvedPrompt: prompt.resolvedPrompt }
         : {}),
       ...(previousResults.length > 0
-        ? { reportedOutcomes: previousResults }
+        ? {
+            reportedOutcomes: previousResults,
+            lastProposalOperations: settled.operations,
+          }
         : {}),
     });
 

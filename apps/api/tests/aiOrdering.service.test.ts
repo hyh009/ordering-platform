@@ -791,6 +791,21 @@ describe('AiOrderingService proposal lifetime', () => {
     expect(h.firstPrompt).toContain('did NOT change');
   });
 
+  it('tells the model what the lapsed proposal had offered', async () => {
+    const h = harness({
+      existingConversation: conversation([undecidedProposalTurn()]),
+    });
+
+    await send(h, '我要去冰');
+
+    // Its own reply in the history says only "I added the milk tea". Without
+    // the operation it cannot tell which product that was, so it cannot offer
+    // the same change again with the guest's new request folded in.
+    expect(h.firstPrompt).toContain(
+      '- op-1 | add_item | product prod-milk-tea | x1: the guest never answered',
+    );
+  });
+
   it('leaves an already-decided proposal alone', async () => {
     const decided = undecidedProposalTurn();
     decided.proposal = {
