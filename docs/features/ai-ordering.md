@@ -60,7 +60,7 @@ guest message
   |                                                       |
   +-- all good ---------------------------------------+   |
   |                                                   |   |
-  +-- something invalid --> ONE repair call ----------+---+
+  +-- something invalid --> repair, up to 3 calls ----+---+
                                                       |
                                                       v
                                         [ modelResponse.ts ]
@@ -235,7 +235,7 @@ model — so `aiOrdering.geminiSchema.test.ts` asserts that no bound tool schema
 emits `const` or names a null type. That guard, not the integration, is what keeps
 the next literal from shipping.
 
-## Validation: Five Checks, Then At Most One Repair
+## Validation: Five Checks, Then A Bounded Repair
 
 `validation.ts` checks each proposed operation against data already loaded for
 the context:
@@ -265,16 +265,44 @@ interaction.
 Degradation ladder, in the planning middleware:
 
 ```txt
-  some operations invalid  ->  drop them, keep the rest
-  all operations invalid   ->  return the model's own reply as a plain message
-                               (its wording already matches the guest's language)
-  nothing parsed, twice    ->  unusable; the caller surfaces an error
+  call 1, may propose      ->  clean: use it
+  call 2, may propose      ->  told what was wrong with call 1
+                               clean: use it
+                               some operations valid: drop the rest, keep those
+  call 3, may NOT propose  ->  told nothing could be applied, and why
+                               the model explains to the guest, or asks
+  call 3 failed too        ->  a FIXED line as a plain message
+  nothing ever parsed      ->  unusable; the caller surfaces an error
 ```
 
-**At most two model calls, never a loop.** A model that still gets it wrong after
-being told precisely what was wrong has a version defect, not a transient
-failure. This is not agent tool calling: no result is ever fed back for the model
-to continue reasoning from.
+**At most three model calls, and the third cannot propose.** The proposal tool is
+unbound on the last call rather than forbidden in prose. A change that fails for
+a reason the model cannot fix — a sold-out product, an item that is gone — fails
+the same way however many times it is retried, so the last call is spent on
+telling the guest what happened instead of on a third attempt. Written knowing
+nothing was proposed, that reply is in the guest's language and names the actual
+reason.
+
+The fixed line is the last resort: the third call failed, ran out of the turn's
+budget, or came back unusable. Its language is read from what the guest typed —
+any Han character reads as Chinese, any Latin letter as English — and falls back
+to the store's default locale when the message names neither. It follows the
+guest, unlike an operation label, because it is spoken to them and is the only
+thing they read that turn.
+
+What is never shown is the reply the model wrote alongside the failed proposal.
+It was written to introduce a list — "請確認以下變更：" — and the list is gone,
+so the guest read an offer with nothing under it. It then sat in the history,
+where the model took it as its own word that the change was made. What the model
+wrote is still stored as `modelOutput` for review.
+
+This is not agent tool calling: no tool result is ever fed back for the model to
+continue reasoning from. The repair notes are appended after the prompt, in
+order, so each call keeps the prefix the one before it cached.
+
+Transient provider failures are a separate matter and are not counted here. The
+chat model retries 429s, 5xx responses and network errors on its own, with
+exponential backoff, inside the per-call timeout.
 
 ## Shared Cart: Read Everything, Change Only Your Own
 
@@ -498,6 +526,16 @@ abandon changes that would have worked. A locked cart says everything about them
 so continuing only produces N copies of one error. An unmapped code is treated as
 session-scoped: stopping early costs the guest one extra round trip, carrying on
 through an unknown failure costs N identical errors.
+
+**A concurrent cart write is retried before it counts as a failure.** The cart
+layer already retries a lost optimistic write three times with no pause and only
+then reports `CONFLICT`. In a shared cart that means several people wrote in the
+same instant, which passes on its own, so the operation is tried twice more after
+a short wait (100 ms, then 250 ms). It is safe to repeat: on these paths
+`CONFLICT` is raised only when the write did not apply, and each try re-reads the
+cart and validates against it again. Only when those run out does it become a
+`failed` row with a session-scoped stop. No other code is retried — a sold-out
+product fails the same way every time.
 
 **Nothing is rolled back.** A guest who watched two items land should not see them
 vanish because a third failed. The response reports all three.
@@ -732,7 +770,7 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `rateLimit.redis.ts` — the implementation the service actually uses
 - `runtime/agent.ts` — the agent run: `createAgent`, the human-in-the-loop
   interrupt, and the planning middleware that owns the gate, validation, the
-  single repair, and the quality signals
+  bounded repair attempts, and the quality signals
 - `runtime/checkpointer.ts` — the paused-run store and its TTL
 - `runtime/model.ts` — the provider-agnostic seam: usage reading and the
   per-call timeout clamp
@@ -809,7 +847,7 @@ Known follow-ups, tracked in `openspec/changes/add-ai-ordering-assistant`:
   set well above it (three minutes against 75 seconds), because the cap
   guarantees the lock is released explicitly — so the expiry only matters after a
   process dies mid-turn.
-- A turn whose model output was unusable twice is **not stored**: there is no
+- A turn whose model output was unusable on every attempt is **not stored**: there is no
   response the guest saw, and `turns[].response` is required. The raw output is
   logged instead, which means the worst failures are absent from the evaluation
   corpus. Fixing that means making `response` optional and adding a failure
