@@ -53,7 +53,7 @@ export type AiOrderingToolCallingModel = {
  * Builds a per-turn session around a structured model.
  *
  * Usage is accumulated on the session rather than returned from each call
- * because the planner may call the model twice and the caller contract hands
+ * because the planner may call the model several times and the caller contract hands
  * back only the model's answer. Summing here keeps the planner's contract
  * untouched and gets the repair attempt counted, which a per-call return value
  * would have made the caller re-add by hand.

@@ -367,6 +367,7 @@ export class AiOrderingService {
       confirmationRequired: true,
       // Unused on a resume: the labels were written when the proposal was made.
       locale: 'zh-TW',
+      guestMessage: '',
       newId: this.deps.newId,
       toToolSchema: (schema) => input.runtime.toToolSchema(schema),
       model: input.runtime.createChatModel(),
@@ -673,6 +674,7 @@ export class AiOrderingService {
       validation: { menu, cart, participantId: claims.participantId },
       confirmationRequired,
       locale: store.locale.defaultLocale,
+      guestMessage: request.message,
       newId: (prefix) =>
         prefix === 'proposal' ? proposalId : this.deps.newId(prefix),
       toToolSchema: (schema) => runtime.toToolSchema(schema),
@@ -706,15 +708,15 @@ export class AiOrderingService {
     }
 
     if (!record.response) {
-      // Nothing usable came back twice. There is no response the guest saw, so
-      // there is no turn to store; the raw output is logged instead.
+      // Nothing usable came back on any attempt. There is no response the guest
+      // saw, so there is no turn to store; the raw output is logged instead.
       logger.error(
         {
           ...lookup,
           detail: record.rejectionDetail,
           modelOutput: record.modelOutput,
         },
-        'AI ordering model output was unusable after a repair attempt',
+        'AI ordering model output was unusable after every repair attempt',
       );
 
       throw new InternalServerError(

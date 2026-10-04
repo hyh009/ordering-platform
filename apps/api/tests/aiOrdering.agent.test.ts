@@ -8,6 +8,7 @@ import {
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
 } from './fixtures/aiOrdering.js';
+import { AI_ORDERING_EMPTY_PROPOSAL_REPLY } from '../src/modules/aiOrdering/emptyProposalReply.js';
 import { createAiOrderingAgent } from '../src/modules/aiOrdering/runtime/agent.js';
 import { toGeminiToolSchema } from '../src/modules/aiOrdering/runtime/geminiSchema.js';
 import { nextAiOrderingCallTimeoutMs } from '../src/modules/aiOrdering/runtime/model.js';
@@ -25,7 +26,10 @@ function assembledContext() {
   return {
     versionId: config!.versionId,
     blocks: [
-      { role: 'system' as const, text: 'SYSTEM: you are an ordering assistant' },
+      {
+        role: 'system' as const,
+        text: 'SYSTEM: you are an ordering assistant',
+      },
       { role: 'user' as const, text: 'MENU: steamed rice' },
       { role: 'user' as const, text: 'CART: empty' },
       { role: 'user' as const, text: 'GUEST: one steamed rice please' },
@@ -66,6 +70,7 @@ function agentInput(input: {
     },
     confirmationRequired: true,
     locale: 'zh-TW' as const,
+    guestMessage: '請給我一碗白飯',
     newId: (prefix: string) => {
       sequence += 1;
       return `${prefix}-${String(sequence)}`;
@@ -81,7 +86,7 @@ function agentInput(input: {
 function build(
   model: ReturnType<typeof fakeModel>,
   executor: AiOrderingCartExecutor,
-  overrides: { deadlineAt?: number } = {},
+  overrides: { deadlineAt?: number; guestMessage?: string } = {},
 ) {
   let sequence = 0;
 
@@ -95,6 +100,7 @@ function build(
     },
     confirmationRequired: true,
     locale: 'zh-TW' as const,
+    guestMessage: '請給我一碗白飯',
     newId: (prefix) => {
       sequence += 1;
       return `${prefix}-${String(sequence)}`;
@@ -118,6 +124,18 @@ function executor(overrides: Partial<AiOrderingCartExecutor> = {}) {
 }
 
 const threadConfig = { configurable: { thread_id: 'proposal-under-test' } };
+
+/**
+ * The tool names bound for each model call, in call order.
+ *
+ * Read from `bindTools` because the fake model records messages and options per
+ * call but not the tools: they are bound before the call, not passed with it.
+ */
+function boundToolNames(bind: { mock: { calls: unknown[][] } }): string[][] {
+  return bind.mock.calls.map(([tools]) =>
+    (tools as { name?: string }[]).map((candidate) => candidate.name ?? ''),
+  );
+}
 
 describe('AI ordering agent run', () => {
   let cart: ReturnType<typeof executor>;
@@ -185,6 +203,7 @@ describe('AI ordering agent run', () => {
     const model = fakeModel()
       .respondWithTools([proposalCall()])
       .respond(new AIMessage('Added one steamed rice.'));
+    const bind = vi.spyOn(model, 'bindTools');
     const { agent, messages } = build(model, cart);
 
     await agent.invoke({ messages }, threadConfig);
@@ -193,9 +212,12 @@ describe('AI ordering agent run', () => {
       threadConfig,
     );
 
-    const closingCall = model.calls.at(-1);
-
-    expect(closingCall?.options?.tools ?? []).toHaveLength(0);
+    expect(model.calls).toHaveLength(2);
+    // Tools are bound before a call, not passed with it, so the binding is
+    // what is checked: the planning call bound them, the closing call none.
+    expect(boundToolNames(bind).filter((names) => names.length > 0)).toEqual([
+      ['propose_cart_operations', 'ask_choice', 'report_unanswerable'],
+    ]);
   });
 
   it('executes only the operations the guest kept', async () => {
@@ -282,11 +304,99 @@ describe('AI ordering agent run', () => {
     expect(record.modelCalls).toBe(1);
   });
 
-  it('never turns an invalid proposal into an interrupt', async () => {
+  it('lets the model explain, without the proposal tool, once two proposals failed', async () => {
     const model = fakeModel()
       // Both attempts name a product that is not on the menu.
       .respondWithTools([proposalCall('prod-does-not-exist')])
-      .respondWithTools([proposalCall('prod-still-not-real')]);
+      .respondWithTools([proposalCall('prod-still-not-real')])
+      .respond(new AIMessage('We do not have that one. Something else?'));
+    const bind = vi.spyOn(model, 'bindTools');
+    const { agent, record, messages } = build(model, cart);
+
+    const result = await agent.invoke({ messages }, threadConfig);
+
+    expect(result.__interrupt__).toBeUndefined();
+    expect(record.modelCalls).toBe(3);
+    // The model's own words, written knowing nothing was proposed — so they are
+    // in the guest's language and say what actually went wrong.
+    expect(record.response).toEqual({
+      type: 'message',
+      reply: 'We do not have that one. Something else?',
+    });
+
+    // Unbound, not forbidden in prose: a change that fails for a reason the
+    // model cannot fix would fail a third time the same way.
+    const bound = boundToolNames(bind);
+
+    expect(bound).toHaveLength(3);
+    expect(bound[1]).toContain('propose_cart_operations');
+    expect(bound[2]).not.toContain('propose_cart_operations');
+    expect(bound[2]).toContain('ask_choice');
+  });
+
+  it('tells the final attempt why nothing could be applied', async () => {
+    const model = fakeModel()
+      .respondWithTools([proposalCall('prod-does-not-exist')])
+      .respondWithTools([proposalCall('prod-still-not-real')])
+      .respond(new AIMessage('We do not have that one.'));
+    const { agent, messages } = build(model, cart);
+
+    await agent.invoke({ messages }, threadConfig);
+
+    const finalMessages = model.calls[2]?.messages ?? [];
+    const last = String(finalMessages.at(-1)?.content);
+
+    expect(last).toContain('None of the changes you proposed can be applied');
+    expect(last).toContain('can no longer propose');
+    // Both notes, in order, after the prefix the earlier attempts cached.
+    expect(String(finalMessages.at(-2)?.content)).toContain(
+      'cannot be applied',
+    );
+    expect(String(finalMessages[0]?.content)).toContain('SYSTEM:');
+  });
+
+  it('ignores a proposal the final attempt makes without the tool', async () => {
+    const model = fakeModel()
+      .respondWithTools([proposalCall('prod-does-not-exist')])
+      .respondWithTools([proposalCall('prod-still-not-real')])
+      .respondWithTools([proposalCall()]);
+    const { agent, record, messages } = build(model, cart);
+
+    const result = await agent.invoke({ messages }, threadConfig);
+
+    expect(result.__interrupt__).toBeUndefined();
+    expect(record.response).toEqual({
+      type: 'message',
+      reply: AI_ORDERING_EMPTY_PROPOSAL_REPLY['zh-TW'],
+    });
+  });
+
+  it('answers a failed explanation in the language the guest wrote in', async () => {
+    const model = fakeModel()
+      .respondWithTools([proposalCall('prod-does-not-exist')])
+      .respondWithTools([proposalCall('prod-still-not-real')])
+      // An empty reply: nothing the gate can use.
+      .respond(new AIMessage(''));
+    const { agent, record, messages } = build(model, cart, {
+      guestMessage: 'one steamed rice please',
+    });
+
+    await agent.invoke({ messages }, threadConfig);
+
+    // The store's locale here is zh-TW. The guest wrote in English, and this
+    // line is the only thing they read this turn.
+    expect(record.response).toEqual({
+      type: 'message',
+      reply: AI_ORDERING_EMPTY_PROPOSAL_REPLY.en,
+    });
+  });
+
+  it('never turns an invalid proposal into an interrupt', async () => {
+    const model = fakeModel()
+      // Every attempt is unusable: two bad proposals, then an empty reply.
+      .respondWithTools([proposalCall('prod-does-not-exist')])
+      .respondWithTools([proposalCall('prod-still-not-real')])
+      .respond(new AIMessage(''));
     const { agent, record, messages } = build(model, cart);
 
     const result = await agent.invoke({ messages }, threadConfig);
@@ -295,13 +405,18 @@ describe('AI ordering agent run', () => {
     // never shown an Apply button for a change that cannot be applied.
     expect(result.__interrupt__).toBeUndefined();
     expect(cart.addItem).not.toHaveBeenCalled();
+    // Not the model's reply either. It said "I can add that." about a change
+    // that no longer exists, and showing it would promise the guest a list that
+    // is not there — and leave that promise in the history for the next turn.
     expect(record.response).toEqual({
       type: 'message',
-      reply: 'I can add that.',
+      reply: AI_ORDERING_EMPTY_PROPOSAL_REPLY['zh-TW'],
     });
+    // What the model actually said is kept for review, not discarded.
+    expect(JSON.stringify(record.modelOutput)).toContain('I can add that.');
   });
 
-  it('allows exactly one repair, never a loop', async () => {
+  it('stops at the first attempt that needs no repair', async () => {
     const model = fakeModel()
       .respondWithTools([proposalCall('prod-does-not-exist')])
       .respondWithTools([proposalCall()]);
@@ -475,9 +590,9 @@ describe('AI ordering agent run', () => {
     for (const call of model.calls) {
       // Every call carries one, the repair included: a correction that starts
       // late must not be handed a fresh timeout.
-      expect(
-        (call.options as { signal?: AbortSignal }).signal,
-      ).toBeInstanceOf(AbortSignal);
+      expect((call.options as { signal?: AbortSignal }).signal).toBeInstanceOf(
+        AbortSignal,
+      );
     }
   });
 

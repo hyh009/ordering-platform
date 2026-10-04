@@ -290,12 +290,10 @@ describe('check 5: the operation changes something', () => {
 
     if (!current) throw new Error('fixture item missing');
 
-    const reversed = [...current.selectedOptions]
-      .reverse()
-      .map((option) => ({
-        modifierId: option.modifierId,
-        optionId: option.optionId,
-      }));
+    const reversed = [...current.selectedOptions].reverse().map((option) => ({
+      modifierId: option.modifierId,
+      optionId: option.optionId,
+    }));
 
     // Order carries no meaning in a selection, so reordering is not a change.
     const result = validate({
@@ -368,8 +366,8 @@ describe('check 5: the operation changes something', () => {
       },
     );
 
-    // Nothing survives, which is the existing ladder's second rung: the model's
-    // own reply is shown instead. No fourth rung is added.
+    // Nothing survives, so there is no proposal to show. What the guest reads
+    // instead is the planning middleware's concern, not validation's.
     expect(result.operations).toHaveLength(0);
     expect(result.rejections).toHaveLength(2);
   });

@@ -129,6 +129,7 @@ async function replayOne(
     },
     confirmationRequired: true,
     locale: input.locale ?? 'zh-TW',
+    guestMessage: replayCase.message,
     newId: (prefix) => `${prefix}-replay`,
     toToolSchema: input.toToolSchema,
     model: input.createModel(),
@@ -149,7 +150,11 @@ async function replayOne(
   try {
     await agent.invoke(
       { messages },
-      { configurable: { thread_id: `replay-${replayCase.message.slice(0, 40)}` } },
+      {
+        configurable: {
+          thread_id: `replay-${replayCase.message.slice(0, 40)}`,
+        },
+      },
     );
   } catch (error) {
     return {

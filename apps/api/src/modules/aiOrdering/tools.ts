@@ -8,8 +8,8 @@ import type { z } from 'zod';
  *
  * Nothing here executes. A tool call IS the turn's final answer: the arguments
  * are gated, validated, hydrated, and handed to the frontend, and the turn ends.
- * No result is ever fed back for the model to continue reasoning from, which is
- * what keeps the turn to at most two model calls (`planner.ts`).
+ * No result is ever fed back for the model to continue reasoning from, so a
+ * turn makes more than one model call only to repair an unusable answer.
  *
  * Only three tools, because the fourth answer — a plain reply — is what the model
  * produces by NOT calling a tool. Binding a `reply` tool would add a way to get

@@ -488,6 +488,9 @@ describe('AiOrderingService', () => {
       // Rejected output is the most useful row in the evaluation corpus, so the
       // turn is stored even though no proposal survived.
       expect(result.response.type).toBe('message');
+      // The stored reply is the one the guest saw, so the next turn's history
+      // does not carry the model's claim about a change that never existed.
+      expect(h.appended[0]?.response.reply).not.toContain('這個賣完了。');
       expect(h.appended).toHaveLength(1);
       expect(h.appended[0]?.quality.droppedOperationCount).toBe(1);
       expect(h.appended[0]?.quality.repairAttempted).toBe(true);

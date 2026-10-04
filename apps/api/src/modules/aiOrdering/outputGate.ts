@@ -34,7 +34,7 @@ export type AiOrderingGateResult =
  *
  * It also owns the tool-name-to-response-type mapping. A model that called no
  * tool, or two at once, is a shape problem like malformed arguments are, so it
- * belongs in the same rejection set and earns the same one repair attempt.
+ * belongs in the same rejection set and earns the same repair attempts.
  *
  * Treat the input as hostile. It arrived from a language model.
  */

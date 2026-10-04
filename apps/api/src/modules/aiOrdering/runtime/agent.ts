@@ -8,18 +8,23 @@
  *
  * The loop is LangChain's (`createAgent`), but the product decisions inside it
  * are ours and live in `planningMiddleware`: the output gate, validation, the
- * single repair retry, and which tool calls may ever reach a tool node.
+ * bounded repair attempts, and which tool calls may ever reach a tool node.
  */
 
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { executeAiOrderingOperations } from '@src/modules/aiOrdering/cartExecution';
+import { resolveAiOrderingEmptyProposalReply } from '@src/modules/aiOrdering/emptyProposalReply';
 import { hydrateAiOrderingResponse } from '@src/modules/aiOrdering/modelResponse';
 import { inspectAiOrderingModelOutput } from '@src/modules/aiOrdering/outputGate';
 import { nextAiOrderingCallTimeoutMs } from '@src/modules/aiOrdering/runtime/model';
 import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
 import { validateAiOrderingOperations } from '@src/modules/aiOrdering/validation';
-import { createAgent, createMiddleware, humanInTheLoopMiddleware } from 'langchain';
+import {
+  createAgent,
+  createMiddleware,
+  humanInTheLoopMiddleware,
+} from 'langchain';
 
 import type { BaseCheckpointSaver } from '@langchain/langgraph';
 import type {
@@ -30,7 +35,10 @@ import type {
 } from '@repo/shared';
 import type { AiOrderingTurnQualitySignals } from '@src/models/aiOrdering/model';
 import type { AiOrderingCartExecutor } from '@src/modules/aiOrdering/cartExecution';
-import type { AiOrderingAssembledContext, AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
+import type {
+  AiOrderingAssembledContext,
+  AiOrderingVersionConfig,
+} from '@src/modules/aiOrdering/types';
 import type { AiOrderingValidationInput } from '@src/modules/aiOrdering/validation';
 
 export const AI_ORDERING_PROPOSAL_TOOL = 'propose_cart_operations';
@@ -110,6 +118,8 @@ export type AiOrderingAgentInput = {
   newId: (prefix: string) => string;
   /** The locale the per-operation labels are written in. */
   locale: SupportedLocale;
+  /** What the guest typed this turn. Only read to pick a fallback language. */
+  guestMessage: string;
   /** Applied to each tool's argument schema; the provider decides its dialect. */
   toToolSchema: (schema: unknown) => Record<string, unknown>;
   model: unknown;
@@ -129,28 +139,45 @@ export type AiOrderingAgent = {
 /**
  * Describes what was wrong with an attempt, in the model's own terms.
  *
- * Unchanged in substance from the hand-written loop it replaces: the model is
- * told which change failed and why, rather than being asked to try again blind.
+ * The model is told which change failed and why, rather than being asked to try
+ * again blind. `final` is the note for the last attempt, where proposing is no
+ * longer possible: it asks for an explanation to the guest instead of another
+ * try, because a change that failed for a reason the model cannot fix — a
+ * sold-out product, an item that is gone — fails the same way every time.
  */
-function describeProblem(input: {
-  gateDetail?: string;
-  rejections: { index: number; detail: string }[];
-}): string | null {
-  if (input.gateDetail !== undefined) {
-    return `Your previous reply could not be used: ${input.gateDetail}. Reply again in the required format.`;
-  }
-
-  if (input.rejections.length === 0) {
+function describeProblem(
+  input: {
+    gateDetail?: string;
+    rejections: { index: number; detail: string }[];
+  },
+  final = false,
+): string | null {
+  if (input.gateDetail === undefined && input.rejections.length === 0) {
     return null;
   }
 
-  return [
-    'Some of the changes you proposed cannot be applied:',
-    ...input.rejections.map(
-      (rejection) => `- change #${rejection.index + 1}: ${rejection.detail}`,
-    ),
-    'Reply again proposing only changes that are possible, or ask the guest a question instead.',
-  ].join('\n');
+  const problem =
+    input.gateDetail !== undefined
+      ? [`Your previous reply could not be used: ${input.gateDetail}.`]
+      : [
+          final
+            ? 'None of the changes you proposed can be applied:'
+            : 'Some of the changes you proposed cannot be applied:',
+          ...input.rejections.map(
+            (rejection) =>
+              `- change #${rejection.index + 1}: ${rejection.detail}`,
+          ),
+        ];
+
+  const instruction = final
+    ? 'You can no longer propose cart changes in this turn. Tell the guest what could not be done and why, in the language they wrote in, or ask them a question. Do not say that anything was added, changed, or removed.'
+    : input.gateDetail !== undefined
+      ? 'Reply again in the required format.'
+      : 'Reply again proposing only changes that are possible, or ask the guest a question instead.';
+
+  return [...problem, instruction].join(
+    input.gateDetail !== undefined ? ' ' : '\n',
+  );
 }
 
 export function createAiOrderingAgent(
@@ -257,7 +284,10 @@ export function createAiOrderingAgent(
         return closing;
       }
 
-      const attempt = async (repairNote?: string) => {
+      const attempt = async (
+        repairNotes: string[],
+        options: { canPropose: boolean },
+      ) => {
         record.modelCalls += 1;
 
         const message = await handler({
@@ -265,12 +295,27 @@ export function createAiOrderingAgent(
           // Each call is clamped to what is left of the turn's budget, so a
           // repair that starts late cannot run past it on a fresh timeout.
           modelSettings: { ...request.modelSettings, signal: callSignal() },
-          ...(repairNote === undefined
+          ...(options.canPropose
             ? {}
             : {
-                // Appended LAST so the cached prefix the first attempt
-                // established is left intact.
-                messages: [...request.messages, new HumanMessage(repairNote)],
+                // Unbound rather than forbidden in prose: without the tool the
+                // model can only talk to the guest, so this call cannot end in
+                // another proposal that fails the same way.
+                tools: request.tools.filter(
+                  (candidate) =>
+                    (candidate as { name?: unknown }).name !==
+                    AI_ORDERING_PROPOSAL_TOOL,
+                ),
+              }),
+          ...(repairNotes.length === 0
+            ? {}
+            : {
+                // Appended LAST, and in order, so the cached prefix each earlier
+                // attempt established is left intact.
+                messages: [
+                  ...request.messages,
+                  ...repairNotes.map((note) => new HumanMessage(note)),
+                ],
               }),
         });
 
@@ -300,55 +345,126 @@ export function createAiOrderingAgent(
         };
       };
 
-      const first = await attempt();
-      const firstProblem = first.ok
-        ? describeProblem({ rejections: first.validation.rejections })
-        : describeProblem({ gateDetail: first.detail, rejections: [] });
+      type Attempt = Awaited<ReturnType<typeof attempt>>;
+      type ParsedAttempt = Extract<Attempt, { ok: true }>;
 
-      let final = first;
+      const isParsed = (candidate: Attempt): candidate is ParsedAttempt =>
+        candidate.ok;
+
+      const problemOf = (candidate: Attempt, final = false) =>
+        candidate.ok
+          ? describeProblem(
+              { rejections: candidate.validation.rejections },
+              final,
+            )
+          : describeProblem(
+              { gateDetail: candidate.detail, rejections: [] },
+              final,
+            );
+
+      // Three calls at most. The first two may propose; the third may only talk.
+      const first = await attempt([], { canPropose: true });
+      const attempts: Attempt[] = [first];
+      const firstProblem = problemOf(first);
+
+      // The attempt the guest's response is built from. Null means none is.
+      let settled: ParsedAttempt | null =
+        first.ok && firstProblem === null ? first : null;
 
       if (firstProblem !== null) {
         record.quality.repairAttempted = true;
-        final = await attempt(firstProblem);
-        record.quality.repairSucceeded = final.ok
-          ? describeProblem({ rejections: final.validation.rejections }) === null
-          : false;
+
+        const second = await attempt([firstProblem], { canPropose: true });
+        attempts.push(second);
+
+        if (second.ok && problemOf(second) === null) {
+          settled = second;
+        } else {
+          // Prefer the correction, but do not throw away a usable first attempt
+          // because the correction came back unparseable.
+          const partial = second.ok ? second : first.ok ? first : null;
+
+          if (partial && partial.validation.operations.length > 0) {
+            // Some operations survived: drop the rest and propose what is left.
+            settled = partial;
+          } else {
+            const finalNote = problemOf(second, true) ?? '';
+
+            try {
+              const third = await attempt([firstProblem, finalNote], {
+                canPropose: false,
+              });
+              attempts.push(third);
+
+              // A proposal here was made without the tool, so it is ignored.
+              if (third.ok && third.modelResponse.type !== 'proposal') {
+                settled = third;
+              }
+            } catch (error) {
+              // With an earlier attempt that parsed, a failed explanation costs
+              // the guest a fixed line rather than the whole turn.
+              if (!partial) {
+                throw error;
+              }
+            }
+          }
+        }
+
+        record.quality.repairSucceeded =
+          settled !== null && problemOf(settled) === null;
       }
 
-      record.quality.ownershipViolationCount =
-        (first.ok ? first.validation.ownershipViolationCount : 0) +
-        (record.quality.repairAttempted && final.ok
-          ? final.validation.ownershipViolationCount
-          : 0);
+      record.quality.ownershipViolationCount = attempts
+        .filter(isParsed)
+        .reduce(
+          (total, candidate) =>
+            total + candidate.validation.ownershipViolationCount,
+          0,
+        );
 
-      // Prefer the correction, but do not throw away a usable first attempt
-      // because the correction came back unparseable.
-      const usable = final.ok ? final : first.ok ? first : null;
+      if (!settled) {
+        const lastParsed = attempts.filter(isParsed).at(-1);
 
-      if (!usable) {
-        record.modelOutput = final.modelOutput;
-        record.rejectionDetail = final.ok ? 'unusable model output' : final.detail;
+        if (!lastParsed) {
+          const last = attempts.at(-1) ?? first;
 
-        // No tool call and no content: the run ends with nothing to show, and
-        // the caller surfaces an error. There is no text worth showing here.
-        return new AIMessage({ content: '' });
+          record.modelOutput = last.modelOutput;
+          record.rejectionDetail = last.ok
+            ? 'unusable model output'
+            : last.detail;
+
+          // No tool call and no content: the run ends with nothing to show, and
+          // the caller surfaces an error. There is no text worth showing here.
+          return new AIMessage({ content: '' });
+        }
+
+        // Every change was invalid and the model did not manage to say so. Its
+        // earlier reply is NOT shown: it introduces changes that no longer
+        // exist. It stays on the record as `modelOutput` for review.
+        const reply = resolveAiOrderingEmptyProposalReply(
+          input.guestMessage,
+          input.locale,
+        );
+
+        record.modelOutput = lastParsed.modelOutput;
+        record.quality.droppedOperationCount =
+          lastParsed.validation.rejections.length;
+        record.response = { type: 'message', reply };
+
+        return new AIMessage({ content: reply });
       }
 
-      record.modelOutput = usable.modelOutput;
-      record.quality.droppedOperationCount = usable.validation.rejections.length;
+      record.modelOutput = settled.modelOutput;
+      record.quality.droppedOperationCount =
+        settled.validation.rejections.length;
 
-      const { modelResponse, validation } = usable;
+      const { modelResponse, validation } = settled;
 
-      if (
-        modelResponse.type !== 'proposal' ||
-        validation.operations.length === 0
-      ) {
-        // Nothing survived validation, so there is no proposal — but the model's
-        // own reply is still the right thing to say, in the right language.
-        record.response =
-          modelResponse.type === 'proposal'
-            ? { type: 'message', reply: modelResponse.reply }
-            : hydrateAiOrderingResponse(modelResponse, hydrationContext);
+      if (modelResponse.type !== 'proposal') {
+        record.response = hydrateAiOrderingResponse(
+          modelResponse,
+          hydrationContext,
+        );
 
         // Returned WITHOUT tool calls, so the agent loop ends here. `ask_choice`
         // and `report_unanswerable` have nothing to execute, and letting them
