@@ -563,6 +563,22 @@ So the outcome block now leads with which source wins:
 > This is what the cart actually did. Where it disagrees with what you said last
 > turn, this is right and your reply was not.
 
+Each outcome line names what was proposed, not only its operation id:
+
+```txt
+- op-1 | add_item | product prod-milk-tea | x1: the guest never answered it …
+```
+
+The history holds only the reply, so without this the model knows that `op-1`
+lapsed but not what `op-1` was, and cannot offer the same change again. Ids
+rather than names, because re-proposing means sending those ids and the menu
+block already names them.
+
+This covers the most recent proposal only, and it lives in `current_turn`, not
+on the history turn that made the proposal. Marking one history turn as "the
+latest" would rewrite earlier text whenever a newer proposal appeared, and the
+history block is append-only so its prefix stays cacheable.
+
 The write reuses the acceptance's own conditional claim, so a guest who presses
 accept in the same instant they send a message cannot get both: exactly one
 write matches `decision: { $exists: false }`, and if the acceptance wins, its
