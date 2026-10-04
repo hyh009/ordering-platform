@@ -866,7 +866,7 @@ Merchant review (web):
 
 ## Notes
 
-Known follow-ups, tracked in `openspec/changes/add-ai-ordering-assistant`:
+Known follow-ups, tracked in `openspec/changes/archive/2026-10-04-add-ai-ordering-assistant`:
 
 - Request limiting is backed by Redis, so the limits hold across API instances
   and survive a restart. The in-process implementation remains for unit tests,

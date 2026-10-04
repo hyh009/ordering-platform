@@ -52,7 +52,7 @@ guest when none of that proposal's operations survived validation.
   operation alongside valid ones
 - **THEN** the guest receives a proposal containing only the valid operations
 
-#### Scenario: No valid operation is explained by the assistant
+#### Scenario: No valid operation degrades to a reply
 
 - **WHEN** every operation the assistant produced fails validation on both
   attempts that may propose
@@ -122,7 +122,7 @@ operation SHALL be described by what it proposed, not only by its identifier.
 - **THEN** the proposal's outcome is already recorded and the conversation does
   not present the proposal as still undecided
 
-#### Scenario: Typing over a pending proposal ends it
+#### Scenario: Typing over a pending proposal expires it
 
 - **WHEN** a guest types a new message while a proposal is still pending
 - **THEN** the proposal's operations are recorded as `superseded`, and it can no
@@ -223,13 +223,14 @@ guest kept SHALL still carry a result that is not `rejected`.
 A proposal the system can no longer resume SHALL execute nothing, and the guest
 SHALL be told it is no longer available.
 
-#### Scenario: Accepting after the cart has closed changes nothing
+#### Scenario: A proposal left unanswered expires
 
-- **WHEN** a guest accepts a proposal whose cart is no longer open for ordering
+- **WHEN** a guest leaves a proposal undecided until its cart is no longer open
+  for ordering and then accepts it
 - **THEN** nothing reaches the cart, and the guest is told the cart no longer
   accepts changes
 
-#### Scenario: A closed cart is recorded as a failure, not a refusal
+#### Scenario: Expiry is not a refusal
 
 - **WHEN** a guest accepts a proposal whose cart is no longer open for ordering
 - **THEN** the first operation attempted is recorded as `failed` with the reason,
