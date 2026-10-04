@@ -552,17 +552,22 @@ describe('organizations API', () => {
       id: 'user-super-admin',
       isSuperAdmin: true,
     });
+    // Explicit timestamps, newest first: the list defaults to `createdAt`
+    // descending, and two records created back to back only sometimes share a
+    // millisecond, so the order would otherwise depend on the machine.
     repositoryMocks.addOrganization({
       id: 'org-1',
       name: 'Main Street Cafe',
       contactEmail: 'ops@example.com',
       contactPhone: createTaiwanPhone(),
       address: createTaiwanAddress(),
+      createdAt: new Date('2023-01-02'),
     });
     repositoryMocks.addOrganization({
       id: 'org-2',
       name: 'Night Market Tea',
       status: 'disabled',
+      createdAt: new Date('2023-01-01'),
     });
 
     const response = await request(app)
@@ -611,17 +616,23 @@ describe('organizations API', () => {
       id: 'user-super-admin',
       isSuperAdmin: true,
     });
+    // Explicit timestamps: the list sorts by `createdAt`, and three records
+    // created back to back share a millisecond only some of the time, so the
+    // page this asks for would otherwise depend on how fast the machine is.
     repositoryMocks.addOrganization({
       id: 'org-1',
       name: 'Main Street Cafe',
+      createdAt: new Date('2023-01-01'),
     });
     repositoryMocks.addOrganization({
       id: 'org-2',
       name: 'Night Market Tea',
+      createdAt: new Date('2023-01-02'),
     });
     repositoryMocks.addOrganization({
       id: 'org-3',
       name: 'Station Bento',
+      createdAt: new Date('2023-01-03'),
     });
 
     const response = await request(app)
