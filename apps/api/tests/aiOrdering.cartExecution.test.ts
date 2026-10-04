@@ -106,6 +106,86 @@ describe('AI ordering cart execution', () => {
     ]);
   });
 
+  describe('a concurrent cart write', () => {
+    const concurrentWrite = () =>
+      new ConflictError(
+        'Cart was modified concurrently, please retry',
+        ERROR_CODES.CONFLICT,
+      );
+
+    it('is tried again, and the operation lands', async () => {
+      let calls = 0;
+      const add = vi.fn(async () => {
+        calls += 1;
+
+        if (calls === 1) {
+          throw concurrentWrite();
+        }
+      });
+      const wait = vi.fn(async () => undefined);
+
+      const results = await executeAiOrderingOperations(
+        [addItem('op-1'), addItem('op-2')],
+        executor({ addItem: add as AiOrderingCartExecutor['addItem'] }),
+        { wait },
+      );
+
+      // Several people writing to a shared cart in the same instant passes on
+      // its own. Giving up here would stop the whole proposal over a collision.
+      expect(results).toEqual([
+        { operationId: 'op-1', outcome: 'accepted' },
+        { operationId: 'op-2', outcome: 'accepted' },
+      ]);
+      expect(add).toHaveBeenCalledTimes(3);
+      expect(wait).toHaveBeenCalledTimes(1);
+    });
+
+    it('is reported as a failure once the retries run out', async () => {
+      const add = vi.fn(async () => {
+        throw concurrentWrite();
+      });
+      const wait = vi.fn(async () => undefined);
+
+      const results = await executeAiOrderingOperations(
+        [addItem('op-1'), addItem('op-2')],
+        executor({ addItem: add as AiOrderingCartExecutor['addItem'] }),
+        { wait },
+      );
+
+      // Bounded: three tries for the one operation, then the proposal stops.
+      expect(add).toHaveBeenCalledTimes(3);
+      expect(wait).toHaveBeenCalledTimes(2);
+      expect(results).toEqual([
+        {
+          operationId: 'op-1',
+          outcome: 'failed',
+          failureCode: ERROR_CODES.CONFLICT,
+        },
+        { operationId: 'op-2', outcome: 'no_action' },
+      ]);
+    });
+
+    it('does not retry a refusal that would fail the same way again', async () => {
+      const add = vi.fn(async () => {
+        throw new ConflictError(
+          'Product is sold out',
+          ERROR_CODES.PRODUCT_SOLD_OUT,
+        );
+      });
+      const wait = vi.fn(async () => undefined);
+
+      await executeAiOrderingOperations(
+        [addItem('op-1')],
+        executor({ addItem: add as AiOrderingCartExecutor['addItem'] }),
+        { wait },
+      );
+
+      // Same error class, different code. Only a lost write is worth repeating.
+      expect(add).toHaveBeenCalledTimes(1);
+      expect(wait).not.toHaveBeenCalled();
+    });
+  });
+
   it('gives every operation a result, so none has to be inferred from absence', async () => {
     const operations = [addItem('op-1'), addItem('op-2'), addItem('op-3')];
     const results = await executeAiOrderingOperations(
@@ -167,9 +247,9 @@ describe('AI ordering cart execution', () => {
       [ERROR_CODES.STORE_NOT_OPEN, 'session'],
       [ERROR_CODES.INVALID_GUEST_TOKEN, 'session'],
     ])('classifies %s as %s-scoped', (code, scope) => {
-      expect(classifyAiOrderingCartFailure(new AppError(400, 'x', code))).toEqual(
-        { failureCode: code, scope },
-      );
+      expect(
+        classifyAiOrderingCartFailure(new AppError(400, 'x', code)),
+      ).toEqual({ failureCode: code, scope });
     });
 
     it('carries a stable code rather than the error message', () => {

@@ -1,7 +1,10 @@
 import { ERROR_CODES } from '@src/utils/errorCode';
 import { AppError } from '@src/utils/errors';
 
-import type { AiOrderingOperation, AiOrderingOperationResult } from '@repo/shared';
+import type {
+  AiOrderingOperation,
+  AiOrderingOperationResult,
+} from '@repo/shared';
 import type { ErrorCode } from '@src/utils/errorCode';
 
 /**
@@ -62,8 +65,55 @@ export function classifyAiOrderingCartFailure(
   };
 }
 
+/**
+ * How many more times an operation is tried after the cart reports a concurrent
+ * write, and how long to wait before each.
+ *
+ * The cart layer already retries a lost optimistic write three times with no
+ * pause, and only then reports `CONFLICT`. In a shared cart that means several
+ * people were writing in the same instant, which passes on its own within a
+ * moment — so waiting briefly and trying again is cheap and usually works,
+ * where giving up would stop the whole proposal over a collision.
+ *
+ * Safe to repeat: `CONFLICT` on these paths is only ever raised when the write
+ * did NOT apply, and each try re-reads the cart and validates against it again.
+ */
+const CONFLICT_RETRY_DELAYS_MS = [100, 250];
+
+const waitFor = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+function isConcurrentWrite(error: unknown): boolean {
+  return error instanceof AppError && error.code === ERROR_CODES.CONFLICT;
+}
+
+async function runThroughConflicts(
+  run: () => Promise<void>,
+  wait: (ms: number) => Promise<void>,
+): Promise<void> {
+  for (const delayMs of CONFLICT_RETRY_DELAYS_MS) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      if (!isConcurrentWrite(error)) {
+        throw error;
+      }
+
+      await wait(delayMs);
+    }
+  }
+
+  // The last try. Whatever it throws is the operation's outcome.
+  await run();
+}
+
 export type AiOrderingCartExecutor = {
-  addItem(operation: Extract<AiOrderingOperation, { type: 'add_item' }>): Promise<void>;
+  addItem(
+    operation: Extract<AiOrderingOperation, { type: 'add_item' }>,
+  ): Promise<void>;
   updateItem(
     operation: Extract<AiOrderingOperation, { type: 'update_own_item' }>,
   ): Promise<void>;
@@ -86,28 +136,35 @@ export type AiOrderingCartExecutor = {
 export async function executeAiOrderingOperations(
   operations: AiOrderingOperation[],
   executor: AiOrderingCartExecutor,
+  options: { wait?: (ms: number) => Promise<void> } = {},
 ): Promise<AiOrderingOperationResult[]> {
+  const wait = options.wait ?? waitFor;
   const results: AiOrderingOperationResult[] = [];
   let stopped = false;
 
   for (const operation of operations) {
     if (stopped) {
-      results.push({ operationId: operation.operationId, outcome: 'no_action' });
+      results.push({
+        operationId: operation.operationId,
+        outcome: 'no_action',
+      });
       continue;
     }
 
     try {
-      switch (operation.type) {
-        case 'add_item':
-          await executor.addItem(operation);
-          break;
-        case 'update_own_item':
-          await executor.updateItem(operation);
-          break;
-        case 'remove_own_item':
-          await executor.removeItem(operation);
-          break;
-      }
+      await runThroughConflicts(async () => {
+        switch (operation.type) {
+          case 'add_item':
+            await executor.addItem(operation);
+            break;
+          case 'update_own_item':
+            await executor.updateItem(operation);
+            break;
+          case 'remove_own_item':
+            await executor.removeItem(operation);
+            break;
+        }
+      }, wait);
 
       results.push({ operationId: operation.operationId, outcome: 'accepted' });
     } catch (error) {
