@@ -187,6 +187,35 @@ request schemas. Those are what the guest cart routes validate against; prose
 written to steer a language model would be read there by the wrong audience. A
 test asserts the shared contract stays free of them.
 
+## The Model Reads And Writes Short Codes, Not Ids
+
+Every product, modifier, option and cart item id is a prefix plus a UUID, and the
+model has to copy each one from the menu into an operation without changing a
+character. In the prompt each is written as the first eight hex digits of its
+UUID:
+
+```txt
+- 1a2b3c4d | 珍珠奶茶 | 60 | choices: aaaa1111
+```
+
+`shortCodes.ts` turns the codes in an answer back into ids straight after the
+output gate. Validation, hydration, the labels, the cart and the stored proposal
+all work on real ids; nothing past the gate knows codes exist. Validation's
+messages are rewritten the other way before they become a repair note, since the
+model only ever saw codes.
+
+**Derived from the id, never numbered.** A numbered code means something else
+whenever the menu is reordered or an item is added, so a code the model carried
+over would silently name a different product. A derived code points at the same
+id or at nothing, and "nothing" is what validation already rejects.
+
+Two ids sharing their first eight digits both keep their full id, decided per
+turn from the menu and cart shown that turn. An id with no UUID in it is left
+alone, and a full id in an answer is still accepted.
+
+The stored `modelOutput` keeps what the model actually wrote, so merchant review
+shows codes there and ids everywhere else.
+
 ## Provider And Model Are One Choice, And Not Part Of A Version
 
 ```txt
@@ -761,6 +790,7 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `validation.ts` — the four data checks
 - `cartExecution.ts` — running an accepted proposal's operations, and the
   item/session failure scope
+- `shortCodes.ts` — the short codes the model reads and writes in place of ids
 - `operationLabel.ts` — the per-operation label, derived from the operation
 - `confirmation.ts` — version AND store resolution
 - `history.ts` — window and summarisation planning
