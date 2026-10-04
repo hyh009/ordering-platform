@@ -15,6 +15,7 @@ import { nextAiOrderingCallTimeoutMs } from '../src/modules/aiOrdering/runtime/m
 import { resolveAiOrderingVersion } from '../src/modules/aiOrdering/versions/index.js';
 
 import type { AiOrderingCartExecutor } from '../src/modules/aiOrdering/cartExecution.js';
+import type { AiOrderingValidationInput } from '../src/modules/aiOrdering/validation.js';
 
 const config = resolveAiOrderingVersion('v1-2026-09-30');
 
@@ -86,7 +87,11 @@ function agentInput(input: {
 function build(
   model: ReturnType<typeof fakeModel>,
   executor: AiOrderingCartExecutor,
-  overrides: { deadlineAt?: number; guestMessage?: string } = {},
+  overrides: {
+    deadlineAt?: number;
+    guestMessage?: string;
+    validation?: AiOrderingValidationInput;
+  } = {},
 ) {
   let sequence = 0;
 
@@ -642,6 +647,53 @@ describe('AI ordering agent run', () => {
     if (response?.type !== 'proposal') throw new Error('expected a proposal');
 
     expect(response.operations[0]?.summary).toBe('+ 白飯 ×1');
+  });
+});
+
+describe('AI ordering short codes in a run', () => {
+  const RICE_ID = 'product-1a2b3c4d-0000-4000-8000-000000000001';
+
+  // The fixture menu, with the rice given a real-shaped id so it has a code.
+  const validation: AiOrderingValidationInput = {
+    menu: JSON.parse(
+      JSON.stringify(AI_ORDERING_MENU_FIXTURE).replaceAll('prod-rice', RICE_ID),
+    ) as typeof AI_ORDERING_MENU_FIXTURE,
+    cart: AI_ORDERING_CART_FIXTURE,
+    participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+  };
+
+  it('turns the code the model wrote back into the id before anything uses it', async () => {
+    const model = fakeModel().respondWithTools([proposalCall('1a2b3c4d')]);
+    const { agent, record, messages } = build(model, executor(), {
+      validation,
+    });
+
+    await agent.invoke({ messages }, threadConfig);
+
+    // The guest, the cart and the stored proposal all get the real id. Nothing
+    // past the output gate knows a code existed.
+    expect(record.response).toMatchObject({
+      type: 'proposal',
+      operations: [{ type: 'add_item', item: { productId: RICE_ID } }],
+    });
+  });
+
+  it('rejects a code that matches nothing, like any unknown id', async () => {
+    const model = fakeModel()
+      .respondWithTools([proposalCall('deadbeef')])
+      .respondWithTools([proposalCall('1a2b3c4d')]);
+    const { agent, record, messages } = build(model, executor(), {
+      validation,
+    });
+
+    await agent.invoke({ messages }, threadConfig);
+
+    // A derived code points at one id or at nothing. "Nothing" is caught here
+    // and repaired, which a renumbered code pointing elsewhere would not be.
+    expect(String(model.calls[1]?.messages.at(-1)?.content)).toContain(
+      'no product "deadbeef"',
+    );
+    expect(record.response?.type).toBe('proposal');
   });
 });
 

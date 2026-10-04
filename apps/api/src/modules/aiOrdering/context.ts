@@ -1,3 +1,8 @@
+import {
+  buildAiOrderingIdCodec,
+  collectAiOrderingContextIds,
+} from '@src/modules/aiOrdering/shortCodes';
+
 import type {
   AiOrderingOperation,
   CartDto,
@@ -69,7 +74,14 @@ export function buildAiOrderingCartContext(
   return { participantId, modifiableItems, readOnlyItems };
 }
 
-function renderMenu(menu: PublicMenuDto, locale: SupportedLocale): string {
+/** How an id is written for the model. See `shortCodes.ts`. */
+type IdWriter = (id: string) => string;
+
+function renderMenu(
+  menu: PublicMenuDto,
+  locale: SupportedLocale,
+  code: IdWriter,
+): string {
   const lines: string[] = ['## Menu'];
 
   for (const group of menu.groups) {
@@ -81,12 +93,12 @@ function renderMenu(menu: PublicMenuDto, locale: SupportedLocale): string {
       const flags = [
         product.isSoldOut ? 'SOLD OUT' : null,
         product.modifierIds.length > 0
-          ? `choices: ${product.modifierIds.join(', ')}`
+          ? `choices: ${product.modifierIds.map(code).join(', ')}`
           : 'no choices',
       ].filter(Boolean);
 
       lines.push(
-        `- ${product.id} | ${localize(product.name, locale)} | ${product.price} | ${flags.join(' | ')}`,
+        `- ${code(product.id)} | ${localize(product.name, locale)} | ${product.price} | ${flags.join(' | ')}`,
       );
 
       const description = localize(product.description, locale);
@@ -103,7 +115,7 @@ function renderMenu(menu: PublicMenuDto, locale: SupportedLocale): string {
     const required = modifier.minSelect > 0 ? 'required' : 'optional';
 
     lines.push(
-      `- ${modifier.id} | ${localize(modifier.name, locale)} | ${required} | pick ${modifier.minSelect}-${modifier.maxSelect}`,
+      `- ${code(modifier.id)} | ${localize(modifier.name, locale)} | ${required} | pick ${modifier.minSelect}-${modifier.maxSelect}`,
     );
 
     for (const option of modifier.options) {
@@ -114,7 +126,7 @@ function renderMenu(menu: PublicMenuDto, locale: SupportedLocale): string {
       ].filter(Boolean);
 
       lines.push(
-        `    - ${option.id} | ${localize(option.name, locale)}${flags.length > 0 ? ` | ${flags.join(' | ')}` : ''}`,
+        `    - ${code(option.id)} | ${localize(option.name, locale)}${flags.length > 0 ? ` | ${flags.join(' | ')}` : ''}`,
       );
     }
   }
@@ -122,7 +134,7 @@ function renderMenu(menu: PublicMenuDto, locale: SupportedLocale): string {
   return lines.join('\n');
 }
 
-function renderCart(cart: AiOrderingCartContext): string {
+function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
   const lines: string[] = ['## Cart'];
 
   const renderItems = (
@@ -145,7 +157,7 @@ function renderCart(cart: AiOrderingCartContext): string {
       const notes = item.notes ? ` | note: ${item.notes}` : '';
 
       lines.push(
-        `- ${item.itemId} | ${item.productName} | x${item.quantity}${choices}${notes}`,
+        `- ${code(item.itemId)} | ${item.productName} | x${item.quantity}${choices}${notes}`,
       );
     }
   };
@@ -189,10 +201,15 @@ export function buildAiOrderingContext(
     input.locale,
   );
 
+  // One codec for the whole prompt, so an id reads the same wherever it appears.
+  const { encode: code } = buildAiOrderingIdCodec(
+    collectAiOrderingContextIds(input.menu, input.cart),
+  );
+
   const storeData = [
     '# Store data (supplied by the ordering platform, not by the guest)',
     `Store: ${input.storeName}`,
-    renderMenu(input.menu, input.locale),
+    renderMenu(input.menu, input.locale, code),
   ].join('\n\n');
 
   const historyLines: string[] = ['# Conversation so far'];
@@ -210,7 +227,10 @@ export function buildAiOrderingContext(
     }
   }
 
-  const currentTurnLines: string[] = ['# This turn', renderCart(cartContext)];
+  const currentTurnLines: string[] = [
+    '# This turn',
+    renderCart(cartContext, code),
+  ];
 
   if (input.reportedOutcomes && input.reportedOutcomes.length > 0) {
     currentTurnLines.push('## What happened to your last proposal');
@@ -224,7 +244,7 @@ export function buildAiOrderingContext(
       );
 
       currentTurnLines.push(
-        `- ${operation ? renderProposedOperation(operation) : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
+        `- ${operation ? renderProposedOperation(operation, code) : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
       );
     }
   }
@@ -260,19 +280,23 @@ export function buildAiOrderingContext(
 /**
  * One proposed operation as the model wrote it, ids included.
  *
- * Ids rather than names because this is what the model needs to act on the
+ * Ids — in the same short form the menu uses — rather than names, because this
+ * is what the model needs to act on the
  * outcome: offering a lapsed change again means sending the same product and
  * option ids, and the menu block above already says what each one is called.
  * Only the fields the operation carries are listed, so an update reads as the
  * change it made rather than as the item it touched.
  */
-function renderProposedOperation(operation: AiOrderingOperation): string {
+function renderProposedOperation(
+  operation: AiOrderingOperation,
+  code: IdWriter,
+): string {
   const parts: string[] = [operation.operationId, operation.type];
 
   if (operation.type === 'add_item') {
-    parts.push(`product ${operation.item.productId}`);
+    parts.push(`product ${code(operation.item.productId)}`);
   } else {
-    parts.push(`item ${operation.itemId}`);
+    parts.push(`item ${code(operation.itemId)}`);
   }
 
   if (operation.type !== 'remove_own_item') {
@@ -287,7 +311,8 @@ function renderProposedOperation(operation: AiOrderingOperation): string {
         selectedOptions.length > 0
           ? `choices: ${selectedOptions
               .map(
-                (selection) => `${selection.modifierId}=${selection.optionId}`,
+                (selection) =>
+                  `${code(selection.modifierId)}=${code(selection.optionId)}`,
               )
               .join(', ')}`
           : 'no choices',

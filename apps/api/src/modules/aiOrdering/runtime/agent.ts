@@ -18,6 +18,11 @@ import { resolveAiOrderingEmptyProposalReply } from '@src/modules/aiOrdering/emp
 import { hydrateAiOrderingResponse } from '@src/modules/aiOrdering/modelResponse';
 import { inspectAiOrderingModelOutput } from '@src/modules/aiOrdering/outputGate';
 import { nextAiOrderingCallTimeoutMs } from '@src/modules/aiOrdering/runtime/model';
+import {
+  buildAiOrderingIdCodec,
+  collectAiOrderingContextIds,
+  decodeAiOrderingModelResponse,
+} from '@src/modules/aiOrdering/shortCodes';
 import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
 import { validateAiOrderingOperations } from '@src/modules/aiOrdering/validation';
 import {
@@ -260,6 +265,12 @@ export function createAiOrderingAgent(
     },
   };
 
+  // Built from the same menu and cart the prompt was, so it reads the codes the
+  // model was shown. Everything past the gate works on real ids.
+  const idCodec = buildAiOrderingIdCodec(
+    collectAiOrderingContextIds(input.validation.menu, input.validation.cart),
+  );
+
   const callSignal = () =>
     AbortSignal.timeout(
       nextAiOrderingCallTimeoutMs(input.config, input.deadlineAt),
@@ -333,13 +344,18 @@ export function createAiOrderingAgent(
           };
         }
 
+        const modelResponse = decodeAiOrderingModelResponse(
+          gate.modelResponse,
+          idCodec,
+        );
+
         return {
           ok: true as const,
           message,
           modelOutput,
-          modelResponse: gate.modelResponse,
+          modelResponse,
           validation: validateAiOrderingOperations(
-            gate.modelResponse,
+            modelResponse,
             input.validation,
           ),
         };
@@ -354,7 +370,15 @@ export function createAiOrderingAgent(
       const problemOf = (candidate: Attempt, final = false) =>
         candidate.ok
           ? describeProblem(
-              { rejections: candidate.validation.rejections },
+              {
+                // Validation speaks in real ids; the model only ever saw codes.
+                rejections: candidate.validation.rejections.map(
+                  (rejection) => ({
+                    ...rejection,
+                    detail: idCodec.encodeText(rejection.detail),
+                  }),
+                ),
+              },
               final,
             )
           : describeProblem(

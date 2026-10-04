@@ -132,6 +132,47 @@ describe('AI ordering context assembly', () => {
     });
   });
 
+  describe('short codes', () => {
+    const RICE_ID = 'product-1a2b3c4d-0000-4000-8000-000000000001';
+    const menu = JSON.parse(
+      JSON.stringify(AI_ORDERING_MENU_FIXTURE).replaceAll('prod-rice', RICE_ID),
+    ) as typeof AI_ORDERING_MENU_FIXTURE;
+
+    it('shows the model a short code in place of a UUID id', () => {
+      const storeData = blockText(
+        buildAiOrderingContext(contextInput({ menu })),
+        'store_data',
+      );
+
+      // The id is copied by the model into every operation. Eight characters
+      // cost less and go wrong less than thirty-six.
+      expect(storeData).toContain('- 1a2b3c4d | ');
+      expect(storeData).not.toContain(RICE_ID);
+    });
+
+    it('uses the same code for a lapsed proposal as for the menu', () => {
+      const text = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            menu,
+            reportedOutcomes: [{ operationId: 'op-1', outcome: 'superseded' }],
+            lastProposalOperations: [
+              {
+                type: 'add_item',
+                operationId: 'op-1',
+                summary: '+ 白飯 ×1',
+                item: { productId: RICE_ID, quantity: 1 },
+              },
+            ],
+          }),
+        ),
+        'current_turn',
+      );
+
+      expect(text).toContain('- op-1 | add_item | product 1a2b3c4d | x1');
+    });
+  });
+
   describe('shared cart: readable in full, changeable in part', () => {
     it('separates the guest own items from other participants items', () => {
       const cartContext = buildAiOrderingCartContext(
