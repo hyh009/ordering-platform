@@ -46,6 +46,7 @@ export function createStoreFrontRuntime() {
   );
   const sessionWorkflowCommands = createStoreFrontSessionWorkflowCommands({
     guestSessionCommands,
+    aiOrderingActions,
     cartActions,
     orderActions,
     sessionStore,
@@ -57,6 +58,7 @@ export function createStoreFrontRuntime() {
     tenantStore,
   });
   const tenantWorkflowCommands = createTenantWorkflowCommands({
+    aiOrderingActions,
     cartActions,
     guestSessionCommands,
     orderActions,
@@ -105,6 +107,7 @@ export function createStoreFrontRuntime() {
         tenantStore,
       }),
       cart: createStoreFrontCartWorkflowCommands({
+        aiOrderingActions,
         cartCommands,
         guestSessionCommands,
         orderActions,

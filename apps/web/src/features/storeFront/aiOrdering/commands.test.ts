@@ -503,19 +503,4 @@ describe('storefront assistant transcript load', () => {
     expect(result.status).toBe('failed');
     expect(store.getState().entries).toEqual([]);
   });
-
-  it('starts a fresh unread transcript when the conversation is reset', async () => {
-    getConversationMock.mockResolvedValue(transcript());
-    const { commands, store } = setup();
-
-    await commands.loadConversation(STORE_ID);
-    commands.resetConversation();
-
-    expect(store.getState().isLoaded).toBe(false);
-    expect(store.getState().entries).toEqual([]);
-
-    await commands.loadConversation(STORE_ID);
-
-    expect(getConversationMock).toHaveBeenCalledTimes(2);
-  });
 });

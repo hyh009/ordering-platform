@@ -8,6 +8,7 @@ import type {
   UpdateCartItemRequest,
 } from '@/models/cart';
 import type { StoreFrontCommandFailure } from '@/services/utils/storeFrontApiError';
+import type { StoreFrontAiOrderingActions } from '../aiOrdering/actions';
 import type { CartMutationResult, StoreFrontCartCommands } from '../cart/commands';
 import type { StoreFrontOrderActions } from '../order/actions';
 import type { StoreFrontOrderHistoryCommands } from '../orderHistory/commands';
@@ -53,6 +54,7 @@ export type StoreFrontCartWorkflowCommands = {
 };
 
 export function createStoreFrontCartWorkflowCommands(deps: {
+  aiOrderingActions: StoreFrontAiOrderingActions;
   cartCommands: StoreFrontCartCommands;
   guestSessionCommands: GuestSessionCommands;
   orderActions: StoreFrontOrderActions;
@@ -61,6 +63,7 @@ export function createStoreFrontCartWorkflowCommands(deps: {
   sessionWorkflowCommands: StoreFrontSessionWorkflowCommands;
 }): StoreFrontCartWorkflowCommands {
   const {
+    aiOrderingActions,
     cartCommands,
     guestSessionCommands,
     orderActions,
@@ -87,6 +90,10 @@ export function createStoreFrontCartWorkflowCommands(deps: {
     async createCart(storeId, request) {
       const result = await cartCommands.createCart(storeId, request);
       if (result.status === 'created') {
+        // A new cart is a new conversation: the transcript is keyed by cart and
+        // participant on the server, so whatever the panel still holds belongs
+        // to the cart this one replaces.
+        aiOrderingActions.conversationCleared();
         guestSessionCommands.startSession({
           guestToken: result.guestToken,
           participantId: result.participantId,
@@ -102,6 +109,7 @@ export function createStoreFrontCartWorkflowCommands(deps: {
     async joinCart(storeId, request) {
       const result = await cartCommands.joinCart(storeId, request);
       if (result.status === 'joined') {
+        aiOrderingActions.conversationCleared();
         guestSessionCommands.startSession({
           guestToken: result.guestToken,
           participantId: result.participantId,

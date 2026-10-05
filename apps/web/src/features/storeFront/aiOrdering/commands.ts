@@ -58,7 +58,6 @@ export type StoreFrontAiOrderingCommands = {
    */
   applyProposal(expectedStoreId: string): Promise<AiOrderingApplyResult>;
   dismissOperation(operationId: string): void;
-  resetConversation(): void;
 };
 
 export function createStoreFrontAiOrderingCommands(deps: {
@@ -115,10 +114,6 @@ export function createStoreFrontAiOrderingCommands(deps: {
   return {
     dismissOperation(operationId) {
       actions.operationDismissed(operationId);
-    },
-
-    resetConversation() {
-      actions.conversationCleared();
     },
 
     async loadConversation(expectedStoreId) {

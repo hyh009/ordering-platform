@@ -5,6 +5,7 @@ import { createStoreFrontRuntime } from '../runtime';
 
 vi.mock('@/services/storeFrontCart.service', () => ({
   storeFrontCartService: {
+    createCart: vi.fn(),
     joinCart: vi.fn(),
     submitCart: vi.fn(),
   },
@@ -115,5 +116,70 @@ describe('storefront cart workflow order history', () => {
     expect(
       runtime.commands.orderHistory.findEntry('store-a', 'stale-order'),
     ).toBeNull();
+  });
+});
+
+describe('storefront assistant transcript lifetime', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('window', { localStorage: createLocalStorage() });
+  });
+
+  function seedTranscript(runtime: ReturnType<typeof createStoreFrontRuntime>) {
+    runtime.stores.aiOrdering.setState({
+      entries: [{ id: 'guest-1', role: 'guest', message: 'two teas please' }],
+      isLoaded: true,
+    });
+  }
+
+  it('drops the previous cart transcript when a new order starts', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    seedTranscript(runtime);
+    vi.mocked(storeFrontCartService.createCart).mockResolvedValue({
+      cart: { id: 'cart-b', status: 'active' } as never,
+      participantId: 'participant-b',
+      guestToken: 'token-b',
+    });
+
+    await expect(
+      runtime.commands.cart.createCart('store-a', {
+        orderType: 'dine_in',
+        avatarKey: 'owl',
+      }),
+    ).resolves.toEqual({ status: 'created' });
+
+    // The transcript is keyed by cart on the server, so the new cart must start
+    // unread rather than inherit the finished cart's conversation.
+    expect(runtime.stores.aiOrdering.getState()).toMatchObject({
+      entries: [],
+      isLoaded: false,
+    });
+  });
+
+  it('drops the transcript when the session is cleared', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    seedTranscript(runtime);
+
+    runtime.commands.session.clearSession('store-a');
+
+    expect(runtime.stores.aiOrdering.getState()).toMatchObject({
+      entries: [],
+      isLoaded: false,
+    });
+  });
+
+  it('drops the transcript when another store is activated', async () => {
+    const runtime = createStoreFrontRuntime();
+    await runtime.commands.tenant.activateStore('store-a');
+    seedTranscript(runtime);
+
+    await runtime.commands.tenant.activateStore('store-b');
+
+    expect(runtime.stores.aiOrdering.getState()).toMatchObject({
+      entries: [],
+      isLoaded: false,
+    });
   });
 });
