@@ -46,7 +46,10 @@ function parseArgs(argv: string[]): Args {
     const value = argv[index + 1];
 
     if (flag === '--versions' && value) {
-      args.versions = value.split(',').map((part) => part.trim()).filter(Boolean);
+      args.versions = value
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
       index += 1;
     } else if (flag === '--store' && value) {
       args.storeId = value;
@@ -55,7 +58,10 @@ function parseArgs(argv: string[]): Args {
       args.limit = Number.parseInt(value, 10);
       index += 1;
     } else if (flag === '--messages' && value) {
-      args.messages = value.split('|').map((part) => part.trim()).filter(Boolean);
+      args.messages = value
+        .split('|')
+        .map((part) => part.trim())
+        .filter(Boolean);
       index += 1;
     } else if (flag === '--model' && value) {
       args.model = value;
@@ -115,6 +121,12 @@ function printRun(run: AiOrderingReplayRun) {
     if (outcome.failure) console.log(`      failure: ${outcome.failure}`);
     if (outcome.reply) console.log(`      reply: ${outcome.reply}`);
 
+    if (outcome.asked) {
+      console.log(
+        `      asked: ${outcome.asked.question} [${outcome.asked.optionLabels.join(' / ')}]`,
+      );
+    }
+
     for (const summary of outcome.operationSummaries) {
       console.log(`      op: ${summary}`);
     }
@@ -154,7 +166,9 @@ async function run() {
   const apiKey = env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.error('No provider credential configured; replay needs a real model.');
+    console.error(
+      'No provider credential configured; replay needs a real model.',
+    );
     process.exitCode = 1;
     return;
   }

@@ -42,6 +42,8 @@ export type AiOrderingReplayOutcome = {
   reply?: string;
   /** One line per proposed operation, so two runs are comparable at a glance. */
   operationSummaries: string[];
+  /** What a `choices` response asked and offered; absent for every other type. */
+  asked?: { question: string; optionLabels: string[] };
   repairAttempted: boolean;
   droppedOperationCount: number;
   ownershipViolationCount: number;
@@ -194,6 +196,14 @@ async function replayOne(
       response.type === 'proposal'
         ? response.operations.map((operation) => operation.summary)
         : [],
+    ...(response.type === 'choices'
+      ? {
+          asked: {
+            question: response.question,
+            optionLabels: response.options.map((option) => option.label),
+          },
+        }
+      : {}),
   };
 }
 
