@@ -44,6 +44,8 @@ export type AiOrderingReviewTurnRow = {
    */
   modelTrace?: {
     currentTurn: string;
+    history?: string;
+    preludeHash?: string;
     calls: {
       toolNames: string[];
       feedback?: string;
@@ -117,6 +119,12 @@ function toRow(turn: AiOrderingReviewTurn): AiOrderingReviewTurnRow {
   if (turn.modelTrace) {
     row.modelTrace = {
       currentTurn: turn.modelTrace.currentTurn,
+      ...(turn.modelTrace.history !== undefined
+        ? { history: turn.modelTrace.history }
+        : {}),
+      ...(turn.modelTrace.preludeHash !== undefined
+        ? { preludeHash: turn.modelTrace.preludeHash }
+        : {}),
       calls: turn.modelTrace.calls.map((call) => ({
         toolNames: call.toolNames,
         ...(call.feedback !== undefined ? { feedback: call.feedback } : {}),
@@ -184,6 +192,9 @@ export function useAiOrderingConversationDetailPageVM() {
     conversationId: detail?.id ?? conversationId ?? '',
     participantId: detail?.participantId ?? '',
     summary: detail?.summary ?? null,
+    // The unchanging opening of the prompt, once per distinct text. Empty for
+    // anyone the backend does not send it to.
+    promptPreludes: detail?.promptPreludes ?? [],
     turns,
     degradedTurnCount: turns.filter((turn) => turn.wasDegraded).length,
     isLoading,

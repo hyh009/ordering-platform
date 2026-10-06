@@ -33,7 +33,30 @@ export type AiOrderingModelCallRecord = {
 export type AiOrderingModelTrace = {
   /** The `current_turn` block as sent: cart, last proposal's outcome, message. */
   currentTurn: string;
+  /** The `history` block as sent: the summary and the earlier turns in window. */
+  history?: string;
+  /** Which of the conversation's `promptPreludes` opened this turn's prompt. */
+  preludeHash?: string;
   calls: AiOrderingModelCallRecord[];
+};
+
+/**
+ * The part of the prompt that does not change from turn to turn: the core
+ * instructions, the tool definitions, and the store data.
+ *
+ * Stored once per conversation, and again only if it changes mid-conversation —
+ * a menu edit, or a draft version's file being edited. Together with a turn's
+ * `modelTrace` it is the whole prompt that turn sent, without repeating the
+ * bulk of it fifty times.
+ */
+export type AiOrderingPromptPrelude = {
+  /** Identifies this exact text; a turn's trace points at it. */
+  hash: string;
+  coreInstructions: string;
+  /** Every tool as the provider was shown it: name, description, parameters. */
+  tools: string;
+  storeData: string;
+  createdAt: Date;
 };
 
 /**
@@ -148,11 +171,10 @@ export type AiOrderingTurnSnapshot = {
   /**
    * What the model was working from this turn, and every call it took.
    *
-   * Only the parts that differ from turn to turn. The core instructions are
-   * recoverable from `versionFingerprint`, the earlier turns are the rows
-   * before this one, and the menu is left out because it is the bulk of the
-   * prompt and identical on every turn: stored fifty times it would dominate
-   * the document.
+   * Only the parts that differ from turn to turn. The core instructions, the
+   * tools and the menu are the bulk of the prompt and identical on every turn,
+   * so they are stored once on the conversation as a prompt prelude, which this
+   * points at.
    */
   modelTrace?: AiOrderingModelTrace;
   /** The response the guest actually saw. */
@@ -192,6 +214,8 @@ export type AiOrderingConversationEntity = {
   /** Exclusive index into `turns`: everything before it is covered by `summary`. */
   summarizedUpToTurnIndex?: number;
   turns: AiOrderingTurnSnapshot[];
+  /** See `AiOrderingPromptPrelude`. Absent on conversations stored before it. */
+  promptPreludes?: AiOrderingPromptPrelude[];
   createdAt: Date;
   updatedAt: Date;
 };

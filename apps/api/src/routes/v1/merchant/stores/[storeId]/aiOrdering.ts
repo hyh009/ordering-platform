@@ -287,7 +287,10 @@ router.get<StoreParams, ListAiOrderingUnansweredSuccessResponse>(
  *       404:
  *         description: No such conversation in this store
  */
-router.get<AiOrderingConversationParams, GetAiOrderingConversationSuccessResponse>(
+router.get<
+  AiOrderingConversationParams,
+  GetAiOrderingConversationSuccessResponse
+>(
   '/conversations/:conversationId',
   requireAuth,
   requireOrgRole('org_owner', 'org_admin', 'staff'),
@@ -296,6 +299,7 @@ router.get<AiOrderingConversationParams, GetAiOrderingConversationSuccessRespons
     const conversation = await aiOrderingReviewService.getConversation(
       req.params.storeId,
       req.params.conversationId,
+      { isSuperAdmin: req.user?.isSuperAdmin === true },
     );
 
     res.json({ status: 'success', data: { conversation } });

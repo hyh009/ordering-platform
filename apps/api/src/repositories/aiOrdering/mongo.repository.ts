@@ -6,6 +6,7 @@ import { ConflictError } from '@src/utils/errors';
 
 import type {
   AiOrderingConversationEntity,
+  AiOrderingPromptPrelude,
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
 import type {
@@ -30,6 +31,7 @@ const aiOrderingConversationEntityKeys = [
   'summary',
   'summarizedUpToTurnIndex',
   'turns',
+  'promptPreludes',
   'createdAt',
   'updatedAt',
 ] as const satisfies readonly (keyof AiOrderingConversationEntity)[];
@@ -94,7 +96,11 @@ export const aiOrderingMongoRepository = {
     return toAiOrderingConversationEntity(doc.toObject());
   },
 
-  async appendTurn(conversationId: string, turn: AiOrderingTurnSnapshot) {
+  async appendTurn(
+    conversationId: string,
+    turn: AiOrderingTurnSnapshot,
+    promptPrelude?: AiOrderingPromptPrelude,
+  ) {
     // The ceiling is enforced inside the filter rather than by reading the
     // document first and checking its length: requiring the slot at the ceiling
     // index to be absent makes the cap atomic, so two concurrent appends cannot
@@ -106,7 +112,12 @@ export const aiOrderingMongoRepository = {
           $exists: false,
         },
       },
-      { $push: { turns: turn } },
+      {
+        $push: {
+          turns: turn,
+          ...(promptPrelude ? { promptPreludes: promptPrelude } : {}),
+        },
+      },
       { new: true },
     )
       .lean<AiOrderingConversationEntity>()

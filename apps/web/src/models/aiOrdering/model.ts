@@ -280,6 +280,11 @@ export const aiOrderingModel = {
 
     if (dto.summary !== undefined) detail.summary = dto.summary;
 
+    // Sent only to platform staff; absent for everyone else.
+    if (dto.promptPreludes !== undefined) {
+      detail.promptPreludes = dto.promptPreludes;
+    }
+
     return detail;
   },
 

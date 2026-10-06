@@ -142,6 +142,9 @@ const aiOrderingConversationSchema = new Schema<AiOrderingConversationEntity>(
         message: `A conversation cannot hold more than ${AI_ORDERING_MAX_TURNS_PER_CONVERSATION} turns.`,
       },
     },
+    // The unchanging part of the prompt, once per distinct text. Platform-only
+    // on the way out: it holds the core instructions.
+    promptPreludes: { type: [Schema.Types.Mixed], default: undefined },
   },
   {
     collection: 'aiOrderingConversations',

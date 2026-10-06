@@ -20,6 +20,7 @@ import { createAiOrderingService } from '../src/services/aiOrdering.service.js';
 
 import type {
   AiOrderingConversationEntity,
+  AiOrderingPromptPrelude,
   AiOrderingProposalDecision,
   AiOrderingTurnSnapshot,
 } from '../src/models/aiOrdering/model.js';
@@ -103,6 +104,7 @@ function harness(
   } = {},
 ) {
   const appended: AiOrderingTurnSnapshot[] = [];
+  const appendedPreludes: (AiOrderingPromptPrelude | undefined)[] = [];
   const findByParticipantCalls: unknown[] = [];
   const created: unknown[] = [];
   const summaryWrites: unknown[] = [];
@@ -177,11 +179,12 @@ function harness(
         created.push(input);
         return conversation();
       }),
-      appendTurn: vi.fn(async (_id, turn) => {
+      appendTurn: vi.fn(async (_id, turn, promptPrelude) => {
         if (options.appendTurnImpl) {
           return options.appendTurnImpl();
         }
         appended.push(turn);
+        appendedPreludes.push(promptPrelude);
         // Existing turns plus the new one, so summarisation sees the real length.
         return conversation([
           ...(options.existingConversation?.turns ?? []),
@@ -276,6 +279,7 @@ function harness(
   return {
     service,
     appended,
+    appendedPreludes,
     created,
     summaryWrites,
     findByParticipantCalls,
@@ -406,6 +410,37 @@ describe('AiOrderingService', () => {
       await send(h);
 
       expect(h.created).toEqual([{ organizationId: 'org-1', ...claims }]);
+    });
+
+    it('stores the unchanging part of the prompt once per conversation', async () => {
+      const first = harness({ existingConversation: null });
+
+      await send(first);
+
+      const prelude = first.appendedPreludes[0];
+
+      // Core instructions, tools and menu: together with the turn's own trace
+      // this is the whole prompt, and the turn says which prelude it used.
+      expect(prelude?.coreInstructions).toContain('ordering assistant');
+      expect(prelude?.tools).toContain('propose_cart_operations');
+      expect(prelude?.storeData).toContain('## Menu');
+      expect(first.appended[0]?.modelTrace?.preludeHash).toBe(prelude?.hash);
+      expect(first.appended[0]?.modelTrace?.history).toContain(
+        '# Conversation so far',
+      );
+
+      // A conversation that already holds that exact text does not store it
+      // again: fifty turns keep one copy of the menu, not fifty.
+      const second = harness({
+        existingConversation: {
+          ...conversation(),
+          promptPreludes: prelude ? [prelude] : [],
+        },
+      });
+
+      await send(second);
+
+      expect(second.appendedPreludes).toEqual([undefined]);
     });
 
     it('stores the raw model output and the version that produced it', async () => {

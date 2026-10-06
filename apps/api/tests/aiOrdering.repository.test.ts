@@ -118,7 +118,6 @@ function storedConversation(turns: AiOrderingTurnSnapshot[] = []) {
   };
 }
 
-
 function proposalTurn(
   id: string,
   proposalId: string,
@@ -231,6 +230,7 @@ describe('aiOrderingMongoRepository', () => {
           'storeId',
           'summarizedUpToTurnIndex',
           'summary',
+          'promptPreludes',
           'turns',
           'updatedAt',
         ].sort(),

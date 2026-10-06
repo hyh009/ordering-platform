@@ -23,6 +23,7 @@ import type {
   AiOrderingGuestTurnDto,
   AiOrderingModelOutputDto,
   AiOrderingModelTraceDto,
+  AiOrderingPromptPreludeDto,
   AiOrderingProposalStateDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
@@ -92,8 +93,10 @@ function toAiOrderingModelTraceDto(
     return undefined;
   }
 
-  const { currentTurn, calls } = value as {
+  const { currentTurn, history, preludeHash, calls } = value as {
     currentTurn?: unknown;
+    history?: unknown;
+    preludeHash?: unknown;
     calls?: unknown;
   };
 
@@ -101,7 +104,12 @@ function toAiOrderingModelTraceDto(
     return undefined;
   }
 
-  const trace: AiOrderingModelTraceDto = { currentTurn, calls: [] };
+  const trace: AiOrderingModelTraceDto = {
+    currentTurn,
+    ...(typeof history === 'string' ? { history } : {}),
+    ...(typeof preludeHash === 'string' ? { preludeHash } : {}),
+    calls: [],
+  };
 
   for (const call of calls as unknown[]) {
     if (typeof call !== 'object' || call === null) {
@@ -255,8 +263,57 @@ export function toAiOrderingConversationSummaryDto(
   return dto;
 }
 
+/**
+ * The stored preludes that fit their declared shape. `Mixed` in Mongo, so one
+ * that does not fit is left out rather than passed through.
+ */
+function toAiOrderingPromptPreludeDtos(
+  value: unknown,
+): AiOrderingPromptPreludeDto[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return (value as unknown[]).flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return [];
+    }
+
+    const { hash, coreInstructions, tools, storeData, createdAt } = entry as {
+      [key: string]: unknown;
+    };
+
+    if (
+      typeof hash !== 'string' ||
+      typeof coreInstructions !== 'string' ||
+      typeof tools !== 'string' ||
+      typeof storeData !== 'string' ||
+      !(createdAt instanceof Date)
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        hash,
+        coreInstructions,
+        tools,
+        storeData,
+        createdAt: createdAt.toISOString(),
+      },
+    ];
+  });
+}
+
 export function toAiOrderingConversationDetailDto(
   conversation: AiOrderingConversationEntity,
+  options: {
+    /**
+     * Whether the reader may see the prompt preludes. They hold the core
+     * instructions, so this is true only for platform staff and defaults off.
+     */
+    includePromptPreludes?: boolean;
+  } = {},
 ): AiOrderingConversationDetailDto {
   const dto: AiOrderingConversationDetailDto = {
     id: conversation.id,
@@ -270,6 +327,14 @@ export function toAiOrderingConversationDetailDto(
 
   if (conversation.summary !== undefined) {
     dto.summary = conversation.summary;
+  }
+
+  if (options.includePromptPreludes) {
+    const preludes = toAiOrderingPromptPreludeDtos(conversation.promptPreludes);
+
+    if (preludes.length > 0) {
+      dto.promptPreludes = preludes;
+    }
   }
 
   return dto;

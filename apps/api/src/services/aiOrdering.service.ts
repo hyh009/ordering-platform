@@ -9,6 +9,7 @@ import {
   planAiOrderingSummarization,
   windowAiOrderingHistory,
 } from '@src/modules/aiOrdering/history';
+import { buildAiOrderingPromptPrelude } from '@src/modules/aiOrdering/promptPrelude';
 import {
   buildAiOrderingSupersededResults,
   readAiOrderingEarlierProposals,
@@ -57,6 +58,7 @@ import type {
 } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
+  AiOrderingPromptPrelude,
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
 import type { StoreEntity } from '@src/models/store/model';
@@ -730,16 +732,36 @@ export class AiOrderingService {
       );
     }
 
+    const prelude = buildAiOrderingPromptPrelude({
+      context,
+      toToolSchema: (schema) => runtime.toToolSchema(schema),
+      now: new Date(),
+    });
+    const blockText = (kind: string) =>
+      context.blocks.find((block) => block.kind === kind)?.text ?? '';
+
     const turn = this.buildTurn({
       request,
       runtime,
       record,
-      currentTurn:
-        context.blocks.find((block) => block.kind === 'current_turn')?.text ??
-        '',
+      currentTurn: blockText('current_turn'),
+      history: blockText('history'),
+      preludeHash: prelude.hash,
     });
 
-    const stored = await this.persistTurn(store, lookup, conversation, turn);
+    const stored = await this.persistTurn(
+      store,
+      lookup,
+      conversation,
+      turn,
+      // Kept once per distinct text: only a menu edit or a draft version's file
+      // changing mid-conversation adds a second one.
+      conversation?.promptPreludes?.some(
+        (candidate) => candidate.hash === prelude.hash,
+      )
+        ? undefined
+        : prelude,
+    );
 
     await this.maybeRebuildSummary(runtime, stored, deadlineAt);
 
@@ -785,8 +807,10 @@ export class AiOrderingService {
     request: SendAiOrderingMessageRequest;
     runtime: AiOrderingRuntime;
     record: AiOrderingRunRecord;
-    /** The `current_turn` block as it was sent to the model. */
+    /** The `current_turn` and `history` blocks as they were sent to the model. */
     currentTurn: string;
+    history: string;
+    preludeHash: string;
   }): AiOrderingTurnSnapshot {
     const { record, request, runtime } = input;
     const response = record.response;
@@ -809,7 +833,12 @@ export class AiOrderingService {
       provider: runtime.provider,
       modelName: runtime.modelName,
       modelOutput: record.modelOutput,
-      modelTrace: { currentTurn: input.currentTurn, calls: record.calls },
+      modelTrace: {
+        currentTurn: input.currentTurn,
+        history: input.history,
+        preludeHash: input.preludeHash,
+        calls: record.calls,
+      },
       response,
       // Snapshotted so the NEXT turn can resolve what the guest is answering or
       // reporting on, without trusting anything the client sends back.
@@ -862,6 +891,7 @@ export class AiOrderingService {
     },
     existing: AiOrderingConversationEntity | null,
     turn: AiOrderingTurnSnapshot,
+    promptPrelude?: AiOrderingPromptPrelude,
   ): Promise<AiOrderingConversationEntity | null> {
     try {
       const conversation =
@@ -871,7 +901,11 @@ export class AiOrderingService {
           ...lookup,
         }));
 
-      return await this.deps.conversations.appendTurn(conversation.id, turn);
+      return await this.deps.conversations.appendTurn(
+        conversation.id,
+        turn,
+        promptPrelude,
+      );
     } catch (error) {
       logger.error(
         { err: error, ...lookup },

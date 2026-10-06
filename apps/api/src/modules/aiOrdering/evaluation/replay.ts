@@ -27,12 +27,37 @@ import { createAiOrderingAgent } from '@src/modules/aiOrdering/runtime/agent';
 import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 
-import type { AiOrderingResponseType, SupportedLocale } from '@repo/shared';
-import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
+import type {
+  AiOrderingOperation,
+  AiOrderingOperationResult,
+  AiOrderingResponseType,
+  SupportedLocale,
+} from '@repo/shared';
+import type {
+  AiOrderingContextInput,
+  AiOrderingHistoryTurn,
+  AiOrderingVersionConfig,
+} from '@src/modules/aiOrdering/types';
 
 /** One guest message to replay, with where it came from when it came from the corpus. */
 export type AiOrderingReplayCase = {
   message: string;
+  /**
+   * Earlier turns to put in front of the message, written out by hand.
+   *
+   * Scripted, never carried over from the case before: a case still depends on
+   * nothing but itself, so two versions are compared on the same input.
+   */
+  history?: AiOrderingHistoryTurn[];
+  /**
+   * Proposals the scripted history made, and how they ended: the settled ones,
+   * then the most recent one with its outcome. Scripted for the same reason.
+   */
+  earlierProposals?: NonNullable<AiOrderingContextInput['earlierProposals']>;
+  lastProposal?: {
+    operations: AiOrderingOperation[];
+    results: AiOrderingOperationResult[];
+  };
   source?: { conversationId: string; turnId: string };
 };
 
@@ -44,7 +69,7 @@ export type AiOrderingReplayOutcome = {
   /** One line per proposed operation, so two runs are comparable at a glance. */
   operationSummaries: string[];
   /** What a `choices` response asked and offered; absent for every other type. */
-  asked?: { question: string; optionLabels: string[] };
+  asked?: { question: string; optionLabels: string[] }[];
   repairAttempted: boolean;
   droppedOperationCount: number;
   ownershipViolationCount: number;
@@ -111,10 +136,20 @@ async function replayOne(
     cart: AI_ORDERING_CART_FIXTURE,
     participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     message: replayCase.message,
-    // Each case is replayed cold. Carrying history would make an outcome depend
-    // on the outcome before it, and two versions would then diverge for reasons
-    // neither prompt is responsible for.
-    history: [],
+    // Each case is replayed cold. Carrying history from one case into the next
+    // would make an outcome depend on the outcome before it, and two versions
+    // would then diverge for reasons neither prompt is responsible for. A case
+    // that needs earlier turns scripts its own.
+    history: replayCase.history ?? [],
+    ...(replayCase.earlierProposals !== undefined
+      ? { earlierProposals: replayCase.earlierProposals }
+      : {}),
+    ...(replayCase.lastProposal !== undefined
+      ? {
+          reportedOutcomes: replayCase.lastProposal.results,
+          lastProposalOperations: replayCase.lastProposal.operations,
+        }
+      : {}),
   });
 
   // The same agent production runs, with an in-memory checkpointer and a resume
@@ -200,10 +235,13 @@ async function replayOne(
         : [],
     ...(response.type === 'choices'
       ? {
-          asked: {
-            question: response.question,
-            optionLabels: response.options.map((option) => option.label),
-          },
+          asked: [
+            { question: response.question, options: response.options },
+            ...(response.additionalQuestions ?? []),
+          ].map((entry) => ({
+            question: entry.question,
+            optionLabels: entry.options.map((option) => option.label),
+          })),
         }
       : {}),
   };

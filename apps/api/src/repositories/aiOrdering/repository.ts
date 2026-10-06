@@ -6,6 +6,7 @@ import type {
 } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
+  AiOrderingPromptPrelude,
   AiOrderingProposalDecision,
   AiOrderingProposalSnapshot,
   AiOrderingTurnSnapshot,
@@ -100,6 +101,8 @@ export type AiOrderingRepository = {
   appendTurn(
     conversationId: string,
     turn: AiOrderingTurnSnapshot,
+    /** Stored alongside when this turn's prompt opened with text not yet kept. */
+    promptPrelude?: AiOrderingPromptPrelude,
   ): Promise<AiOrderingConversationEntity | null>;
   /**
    * Replaces the rolling summary and the index it covers up to.
@@ -166,9 +169,7 @@ export type AiOrderingRepository = {
    * either executing before the claim — which lets two requests both apply — or
    * holding the claim open across the cart calls.
    */
-  setProposalResults(
-    input: SetAiOrderingProposalResultsInput,
-  ): Promise<void>;
+  setProposalResults(input: SetAiOrderingProposalResultsInput): Promise<void>;
 };
 
 export type SetAiOrderingProposalResultsInput = {

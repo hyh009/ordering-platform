@@ -406,6 +406,10 @@ export type AiOrderingModelOutputDto = {
 export type AiOrderingModelTraceDto = {
   /** The cart, the last proposal's outcome, and the guest's message, as sent. */
   currentTurn: string;
+  /** The earlier turns and summary, as sent. Absent on older stored turns. */
+  history?: string;
+  /** Which prompt prelude opened this turn's prompt, when one was recorded. */
+  preludeHash?: string;
   calls: {
     toolNames: string[];
     feedback?: string;
@@ -448,6 +452,22 @@ export type AiOrderingReviewTurnDto = {
   createdAt: string;
 };
 
+/**
+ * The unchanging opening of a prompt: core instructions, tool definitions, and
+ * store data, each exactly as sent.
+ *
+ * Platform staff only. It holds the assistant's core instructions, which are
+ * the platform's and not a merchant's to read, so the conversation detail
+ * carries these only for a super admin.
+ */
+export type AiOrderingPromptPreludeDto = {
+  hash: string;
+  coreInstructions: string;
+  tools: string;
+  storeData: string;
+  createdAt: string;
+};
+
 export type AiOrderingConversationDetailDto = {
   id: string;
   storeId: string;
@@ -455,6 +475,8 @@ export type AiOrderingConversationDetailDto = {
   participantId: string;
   summary?: string;
   turns: AiOrderingReviewTurnDto[];
+  /** Present only for a super admin. See `AiOrderingPromptPreludeDto`. */
+  promptPreludes?: AiOrderingPromptPreludeDto[];
   createdAt: string;
   updatedAt: string;
 };

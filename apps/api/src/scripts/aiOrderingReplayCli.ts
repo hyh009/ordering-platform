@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { connectMongo } from '@src/config/db';
 import { env } from '@src/config/env';
 import { AiOrderingConversationMongoModel } from '@src/models/aiOrdering/mongo';
+import { AI_ORDERING_REGRESSION_CASES } from '@src/modules/aiOrdering/evaluation/regressionCases';
 import {
   compareAiOrderingReplayRuns,
   replayAiOrderingVersion,
@@ -15,6 +16,7 @@ import {
 import mongoose from 'mongoose';
 
 import type { AiOrderingConversationEntity } from '@src/models/aiOrdering/model';
+import type { AiOrderingRegressionCase } from '@src/modules/aiOrdering/evaluation/regressionCases';
 import type {
   AiOrderingReplayCase,
   AiOrderingReplayRun,
@@ -26,6 +28,12 @@ import type {
  *   pnpm --filter api replay -- --versions v1-2026-09-30,v2-... --store store-1
  *   pnpm --filter api replay -- --versions v1-2026-09-30 --messages "我不能吃蔥"
  *
+ *   pnpm --filter api replay -- --versions v1-2026-09-30 --suite regression
+ *
+ * `--suite regression` replays the fixed set in `evaluation/regressionCases.ts`
+ * and marks each answer PASS or FAIL. Run it before and after a prompt edit.
+ * Add `--match 紅茶` to replay only the cases whose message contains that.
+ *
  * Reads the corpus, never writes to it. The menu and cart come from the frozen
  * fixture, so the only thing moving between two runs is the version.
  */
@@ -36,6 +44,9 @@ type Args = {
   limit: number;
   messages: string[];
   model?: string;
+  suite?: string;
+  /** With `--suite`: only the cases whose message contains this. */
+  match?: string;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -62,6 +73,12 @@ function parseArgs(argv: string[]): Args {
         .split('|')
         .map((part) => part.trim())
         .filter(Boolean);
+      index += 1;
+    } else if (flag === '--match' && value) {
+      args.match = value;
+      index += 1;
+    } else if (flag === '--suite' && value) {
+      args.suite = value;
       index += 1;
     } else if (flag === '--model' && value) {
       args.model = value;
@@ -98,10 +115,24 @@ async function loadCasesFromCorpus(
   return cases;
 }
 
-function printRun(run: AiOrderingReplayRun) {
+function printRun(
+  run: AiOrderingReplayRun,
+  regressionCases: AiOrderingRegressionCase[],
+) {
   console.log(
     `\n### ${run.versionId}  [${run.versionFingerprint}]  ${run.provider}/${run.modelName}`,
   );
+
+  // Empty unless a suite was asked for: an ad-hoc message has no known right
+  // answer, so it is printed without a verdict.
+  const regressionByMessage = new Map(
+    regressionCases.map((regressionCase) => [
+      regressionCase.message,
+      regressionCase,
+    ]),
+  );
+  let checked = 0;
+  let passed = 0;
 
   for (const outcome of run.outcomes) {
     const flags = [
@@ -114,22 +145,42 @@ function printRun(run: AiOrderingReplayRun) {
         : null,
     ].filter(Boolean);
 
+    const expected = regressionByMessage.get(outcome.message);
+    const verdict = expected
+      ? expected.check(outcome)
+        ? 'PASS  '
+        : 'FAIL  '
+      : '';
+
+    if (expected) {
+      checked += 1;
+      passed += verdict.startsWith('PASS') ? 1 : 0;
+    }
+
     console.log(
-      `  ${outcome.responseType ?? 'FAILED'}${flags.length > 0 ? ` (${flags.join(', ')})` : ''}  <- ${outcome.message}`,
+      `  ${verdict}${outcome.responseType ?? 'FAILED'}${flags.length > 0 ? ` (${flags.join(', ')})` : ''}  <- ${outcome.message}`,
     );
+
+    if (expected && verdict.startsWith('FAIL')) {
+      console.log(`      expected: ${expected.expects}`);
+    }
 
     if (outcome.failure) console.log(`      failure: ${outcome.failure}`);
     if (outcome.reply) console.log(`      reply: ${outcome.reply}`);
 
-    if (outcome.asked) {
+    for (const asked of outcome.asked ?? []) {
       console.log(
-        `      asked: ${outcome.asked.question} [${outcome.asked.optionLabels.join(' / ')}]`,
+        `      asked: ${asked.question} [${asked.optionLabels.join(' / ')}]`,
       );
     }
 
     for (const summary of outcome.operationSummaries) {
       console.log(`      op: ${summary}`);
     }
+  }
+
+  if (checked > 0) {
+    console.log(`\n  ${String(passed)} of ${String(checked)} passed`);
   }
 }
 
@@ -183,9 +234,27 @@ async function run() {
 
   const modelName = args.model ?? env.AI_ORDERING_MODEL;
 
-  let cases: AiOrderingReplayCase[] = args.messages.map((message) => ({
-    message,
-  }));
+  if (args.suite !== undefined && args.suite !== 'regression') {
+    console.error(
+      `Unknown suite: ${args.suite}. The only suite is "regression".`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const regressionCases =
+    args.suite === 'regression'
+      ? AI_ORDERING_REGRESSION_CASES.filter(
+          (regressionCase) =>
+            args.match === undefined ||
+            regressionCase.message.includes(args.match),
+        )
+      : [];
+
+  let cases: AiOrderingReplayCase[] =
+    regressionCases.length > 0
+      ? regressionCases
+      : args.messages.map((message) => ({ message }));
 
   if (cases.length === 0) {
     if (!args.storeId) {
@@ -230,7 +299,7 @@ async function run() {
     });
 
     runs.push(replayRun);
-    printRun(replayRun);
+    printRun(replayRun, regressionCases);
   }
 
   if (runs.length > 1) {

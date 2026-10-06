@@ -72,6 +72,7 @@ export class AiOrderingReviewService {
   public async getConversation(
     storeId: string,
     conversationId: string,
+    viewer: { isSuperAdmin: boolean },
   ): Promise<AiOrderingConversationDetailDto> {
     const conversation = await this.deps.repository.findById({
       storeId,
@@ -88,7 +89,11 @@ export class AiOrderingReviewService {
       );
     }
 
-    return toAiOrderingConversationDetailDto(conversation);
+    return toAiOrderingConversationDetailDto(conversation, {
+      // The full prompt opens with the platform's core instructions, which a
+      // merchant's own staff are not shown.
+      includePromptPreludes: viewer.isSuperAdmin,
+    });
   }
 
   public async listUnanswered(

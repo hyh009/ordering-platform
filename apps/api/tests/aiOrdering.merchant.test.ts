@@ -149,6 +149,41 @@ describe('AI ordering merchant mapper', () => {
     });
   });
 
+  it('shows the prompt prelude to platform staff only', () => {
+    const stored = conversation(
+      [turn('turn-1', { type: 'message', reply: '好的。' })],
+      {
+        promptPreludes: [
+          {
+            hash: 'abc123def456',
+            coreInstructions: 'You are an ordering assistant.',
+            tools: '[]',
+            storeData: '## Menu',
+            createdAt: AT,
+          },
+        ],
+      },
+    );
+
+    // The default is the merchant's view: the core instructions are the
+    // platform's, so nothing about them leaves unless explicitly asked for.
+    expect(toAiOrderingConversationDetailDto(stored)).not.toHaveProperty(
+      'promptPreludes',
+    );
+    expect(
+      toAiOrderingConversationDetailDto(stored, { includePromptPreludes: true })
+        .promptPreludes,
+    ).toEqual([
+      {
+        hash: 'abc123def456',
+        coreInstructions: 'You are an ordering assistant.',
+        tools: '[]',
+        storeData: '## Menu',
+        createdAt: AT.toISOString(),
+      },
+    ]);
+  });
+
   it('omits a stored trace it does not recognize', () => {
     const detail = toAiOrderingConversationDetailDto(
       conversation([
@@ -346,7 +381,9 @@ describe('AI ordering merchant review service', () => {
     const service = createAiOrderingReviewService({ repository });
 
     await expect(
-      service.getConversation('store-1', 'ai-conversation-from-store-2'),
+      service.getConversation('store-1', 'ai-conversation-from-store-2', {
+        isSuperAdmin: false,
+      }),
     ).rejects.toMatchObject({ code: 'AI_ORDERING_CONVERSATION_NOT_FOUND' });
 
     expect(repository.findById).toHaveBeenCalledWith({

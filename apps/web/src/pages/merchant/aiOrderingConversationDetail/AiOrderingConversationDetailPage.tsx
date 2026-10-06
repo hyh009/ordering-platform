@@ -47,6 +47,51 @@ export function AiOrderingConversationDetailPage() {
         </p>
       ) : null}
 
+      {vm.promptPreludes.map((prelude) => (
+        <details
+          key={prelude.hash}
+          className="rounded-lg border border-border p-3 text-xs"
+        >
+          <summary className="cursor-pointer text-muted-foreground">
+            {tDefault(
+              'merchant.aiOrdering.promptPrelude',
+              'Prompt sent on every turn',
+            )}
+            <span className="ml-2 font-mono">{prelude.hash}</span>
+          </summary>
+
+          <div className="mt-2 space-y-3">
+            <div>
+              <p className="text-muted-foreground">
+                {tDefault(
+                  'merchant.aiOrdering.promptCoreInstructions',
+                  'Core instructions',
+                )}
+              </p>
+              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono">
+                {prelude.coreInstructions}
+              </pre>
+            </div>
+            <div>
+              <p className="text-muted-foreground">
+                {tDefault('merchant.aiOrdering.promptTools', 'Tools')}
+              </p>
+              <pre className="mt-1 max-h-96 overflow-auto rounded bg-muted p-2 font-mono">
+                {prelude.tools}
+              </pre>
+            </div>
+            <div>
+              <p className="text-muted-foreground">
+                {tDefault('merchant.aiOrdering.promptStoreData', 'Store data')}
+              </p>
+              <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono">
+                {prelude.storeData}
+              </pre>
+            </div>
+          </div>
+        </details>
+      ))}
+
       <ol className="space-y-3">
         {vm.turns.map((turn) => (
           <li key={turn.id} className="rounded-lg border border-border p-3">
@@ -151,6 +196,32 @@ export function AiOrderingConversationDetailPage() {
                 </summary>
 
                 <div className="mt-2 space-y-3">
+                  {turn.modelTrace.preludeHash ? (
+                    <p className="text-muted-foreground">
+                      {tDefault(
+                        'merchant.aiOrdering.modelTracePrelude',
+                        'Opens with prompt',
+                      )}
+                      <span className="ml-2 font-mono">
+                        {turn.modelTrace.preludeHash}
+                      </span>
+                    </p>
+                  ) : null}
+
+                  {turn.modelTrace.history ? (
+                    <div>
+                      <p className="text-muted-foreground">
+                        {tDefault(
+                          'merchant.aiOrdering.modelTraceHistory',
+                          'Conversation so far, as sent to the model',
+                        )}
+                      </p>
+                      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono">
+                        {turn.modelTrace.history}
+                      </pre>
+                    </div>
+                  ) : null}
+
                   <div>
                     <p className="text-muted-foreground">
                       {tDefault(
