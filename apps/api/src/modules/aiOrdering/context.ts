@@ -234,6 +234,29 @@ export function buildAiOrderingContext(
     renderCart(cartContext, code),
   ];
 
+  const earlierProposals = (input.earlierProposals ?? []).filter(
+    (proposal) => proposal.operations.length > 0,
+  );
+
+  if (earlierProposals.length > 0) {
+    currentTurnLines.push('## Earlier proposals, already settled');
+    currentTurnLines.push(
+      'Oldest first. Each of these is finished: an accepted change is already in the cart shown above, and the others were dropped. None of them is waiting, so do not propose any of them again unless the guest asks for it now.',
+    );
+
+    for (const proposal of earlierProposals) {
+      for (const operation of proposal.operations) {
+        const result = proposal.results.find(
+          (candidate) => candidate.operationId === operation.operationId,
+        );
+
+        currentTurnLines.push(
+          `- ${operation.summary}: ${describeSettledOutcome(result?.outcome)}`,
+        );
+      }
+    }
+  }
+
   if (input.reportedOutcomes && input.reportedOutcomes.length > 0) {
     currentTurnLines.push('## What happened to your last proposal');
     currentTurnLines.push(
@@ -246,7 +269,9 @@ export function buildAiOrderingContext(
       );
 
       currentTurnLines.push(
-        `- ${operation ? renderProposedOperation(operation, code) : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
+        // The label first, because it names the choices in words; the ids after
+        // it are what proposing the same change again has to send.
+        `- ${operation ? `${operation.summary} (${renderProposedOperation(operation, code)})` : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
       );
     }
   }
@@ -332,6 +357,29 @@ function renderProposedOperation(
 }
 
 /**
+ * How an EARLIER proposal's change ended, stated as a closed fact.
+ *
+ * Shorter than the latest proposal's wording and without its advice: "offer it
+ * again" is right for the proposal the guest just walked past and wrong for one
+ * from several turns ago, which has been overtaken by everything since.
+ */
+function describeSettledOutcome(outcome: string | undefined): string {
+  switch (outcome) {
+    case 'accepted':
+      return 'accepted — done, already in the cart';
+    case 'rejected':
+      return 'dismissed by the guest';
+    case 'superseded':
+      return 'never answered — lapsed, not in the cart';
+    case 'no_action':
+    case 'failed':
+      return 'accepted but could not be applied — not in the cart';
+    default:
+      return 'never answered — lapsed, not in the cart';
+  }
+}
+
+/**
  * The four non-acceptances must read differently to the model. A refusal it
  * should respect, a proposal the guest never answered, one an earlier failure
  * stopped it from reaching, and one that was attempted and would not apply are
@@ -347,7 +395,7 @@ function describeOutcome(
     case 'rejected':
       return 'the guest dismissed it — do not propose it again unless they ask';
     case 'superseded':
-      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; if they still seem to want it, put it in your next proposal together with anything new they asked for';
+      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; if they still seem to want it, put it in your next proposal together with anything new they asked for. If their message corrects one part of it, change only that part and keep the rest exactly as it was, without asking for it again';
     case 'no_action':
       return 'the guest accepted it but an earlier failure stopped the proposal before this one was attempted, so it is not in the cart';
     case 'failed':

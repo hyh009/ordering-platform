@@ -11,6 +11,7 @@ import {
 } from '@src/modules/aiOrdering/history';
 import {
   buildAiOrderingSupersededResults,
+  readAiOrderingEarlierProposals,
   readAiOrderingLastProposal,
   resolveAiOrderingPrompt,
 } from '@src/modules/aiOrdering/promptResolution';
@@ -662,6 +663,7 @@ export class AiOrderingService {
             lastProposalOperations: settled.operations,
           }
         : {}),
+      earlierProposals: readAiOrderingEarlierProposals(conversation),
     });
 
     // The proposal id is generated BEFORE the run so it can be the run's thread

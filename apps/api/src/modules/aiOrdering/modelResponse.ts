@@ -152,7 +152,7 @@ const modelUpdateItemSchema = describeFields(
 );
 
 const OPERATION_TYPE_DESCRIPTION =
-  'Which change this is: add_item puts a new product in the cart, update_own_item changes an item already there, remove_own_item takes one out.';
+  'Which change this is: add_item adds one more of a product on top of whatever the cart already holds, update_own_item changes an item already there, remove_own_item takes one out.';
 
 const ITEM_ID_DESCRIPTION =
   'The id of the cart item to change, copied from the cart data. Never a product id and never a name.';

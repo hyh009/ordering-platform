@@ -35,7 +35,7 @@ export const aiOrderingToolDefinitions: readonly AiOrderingToolDefinition[] = [
     name: 'propose_cart_operations',
     responseType: 'proposal',
     description:
-      "Propose changes to the guest's cart. The guest reviews the proposal and accepts, edits, or dismisses it, so nothing is applied by calling this and your reply must not say it was. Call it once with every change the guest currently wants, across all items.",
+      "Propose changes to apply on top of the guest's current cart. Each entry is one change: add one more item, change an item that is there, or remove one. It is not a restatement of the cart, so anything already in the cart that is not changing is left out. The guest reviews the proposal and accepts, edits, or dismisses it, so nothing is applied by calling this and your reply must not say it was. Call it once with all the changes the guest is asking for now.",
     schema: aiOrderingModelArgumentSchemas.proposal,
   },
   {

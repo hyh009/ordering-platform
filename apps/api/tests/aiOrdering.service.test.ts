@@ -815,7 +815,7 @@ describe('AiOrderingService proposal lifetime', () => {
     // the operation it cannot tell which product that was, so it cannot offer
     // the same change again with the guest's new request folded in.
     expect(h.firstPrompt).toContain(
-      '- op-1 | add_item | product prod-milk-tea | x1: the guest never answered',
+      '(op-1 | add_item | product prod-milk-tea | x1): the guest never answered',
     );
   });
 

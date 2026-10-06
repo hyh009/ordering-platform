@@ -169,7 +169,7 @@ describe('AI ordering context assembly', () => {
         'current_turn',
       );
 
-      expect(text).toContain('- op-1 | add_item | product 1a2b3c4d | x1');
+      expect(text).toContain('(op-1 | add_item | product 1a2b3c4d | x1)');
     });
   });
 
@@ -377,15 +377,15 @@ describe('AI ordering context assembly', () => {
       // the ids it proposed, it can offer the same change again instead of
       // guessing at what its own reply meant.
       expect(text).toContain(
-        '- op-1 | add_item | product prod-milk-tea | x2 | choices: mod-sugar=opt-no-sugar | note: 去冰: the guest never answered',
+        '(op-1 | add_item | product prod-milk-tea | x2 | choices: mod-sugar=opt-no-sugar | note: 去冰): the guest never answered',
       );
       // An update lists only what it changed, so it reads as the operation
       // rather than as the item.
       expect(text).toContain(
-        '- op-2 | update_own_item | item item-rice | note removed: the guest dismissed',
+        '(op-2 | update_own_item | item item-rice | note removed): the guest dismissed',
       );
       expect(text).toContain(
-        '- op-3 | remove_own_item | item item-black-tea: the guest accepted',
+        '(op-3 | remove_own_item | item item-black-tea): the guest accepted',
       );
     });
 
@@ -485,5 +485,48 @@ describe('AI ordering context assembly', () => {
     // answer and the model proposes it without asking.
     expect(storeData?.text).toContain('required');
     expect(storeData?.text).not.toContain('default');
+  });
+
+  it('tells the model which earlier proposals are finished', () => {
+    // History only says what was said, and "please confirm" reads the same
+    // whether the guest then accepted. Without this a change made two turns ago
+    // was proposed again, and the guest got it twice.
+    const { blocks } = buildAiOrderingContext({
+      ...contextInput(),
+      earlierProposals: [
+        {
+          operations: [
+            {
+              type: 'add_item',
+              operationId: 'op-1',
+              summary: '+ 珍珠奶茶 ×1',
+              item: { productId: 'prod-milk-tea', quantity: 1 },
+            },
+            {
+              type: 'add_item',
+              operationId: 'op-2',
+              summary: '+ 白飯 ×1',
+              item: { productId: 'prod-rice', quantity: 1 },
+            },
+          ],
+          results: [{ operationId: 'op-1', outcome: 'accepted' }],
+        },
+      ],
+    });
+    const currentTurn = blocks.find((block) => block.kind === 'current_turn');
+    const history = blocks.find((block) => block.kind === 'history');
+
+    expect(currentTurn?.text).toContain(
+      '## Earlier proposals, already settled',
+    );
+    expect(currentTurn?.text).toContain(
+      '- + 珍珠奶茶 ×1: accepted — done, already in the cart',
+    );
+    // No recorded result reads as lapsed, never as done.
+    expect(currentTurn?.text).toContain(
+      '- + 白飯 ×1: never answered — lapsed, not in the cart',
+    );
+    // In the current turn, so the append-only history prefix is untouched.
+    expect(history?.text).not.toContain('Earlier proposals');
   });
 });

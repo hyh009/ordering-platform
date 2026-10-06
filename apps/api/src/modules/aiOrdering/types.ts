@@ -174,4 +174,19 @@ export type AiOrderingContextInput = {
    * append-only so that its prefix stays cacheable.
    */
   lastProposalOperations?: AiOrderingOperation[];
+  /**
+   * Every proposal BEFORE the most recent one, oldest first, with how each of
+   * its changes ended.
+   *
+   * The history block carries only what was said, and "please confirm" reads
+   * the same whether the guest then accepted or walked away. Without this the
+   * model could not tell a change that was made two turns ago from one still
+   * waiting, and proposed the first kind again. Rendered in the current turn
+   * for the same reason the latest outcome is: an outcome arrives after the
+   * turn that proposed it, and the history block is append-only.
+   */
+  earlierProposals?: {
+    operations: AiOrderingOperation[];
+    results: AiOrderingOperationResult[];
+  }[];
 };

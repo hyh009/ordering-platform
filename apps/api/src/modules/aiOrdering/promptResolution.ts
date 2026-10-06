@@ -1,4 +1,7 @@
-import type { AiOrderingOperationResult } from '@repo/shared';
+import type {
+  AiOrderingOperation,
+  AiOrderingOperationResult,
+} from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
   AiOrderingProposalSnapshot,
@@ -79,6 +82,35 @@ export function readAiOrderingLastProposal(
     .filter((proposal) => proposal !== undefined);
 
   return proposals.at(-1) ?? null;
+}
+
+/** How many settled proposals the model is shown. Older ones are in the summary. */
+const AI_ORDERING_MAX_EARLIER_PROPOSALS = 10;
+
+/**
+ * Every proposal before the most recent one, oldest first, with its results.
+ *
+ * A proposal with no recorded decision here was overtaken without one being
+ * written, which only a data fault produces; it is reported with no results and
+ * reads as lapsed.
+ */
+export function readAiOrderingEarlierProposals(
+  conversation: AiOrderingConversationEntity | null,
+): {
+  operations: AiOrderingOperation[];
+  results: AiOrderingOperationResult[];
+}[] {
+  const proposals = (conversation?.turns ?? [])
+    .map((turn) => turn.proposal)
+    .filter((proposal) => proposal !== undefined);
+
+  return proposals
+    .slice(0, -1)
+    .slice(-AI_ORDERING_MAX_EARLIER_PROPOSALS)
+    .map((proposal) => ({
+      operations: proposal.operations,
+      results: proposal.decision?.results ?? [],
+    }));
 }
 
 /**
