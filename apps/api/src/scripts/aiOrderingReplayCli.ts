@@ -294,7 +294,15 @@ async function run() {
       // The production model and the production tool dialect. Replay drives the
       // same agent; only the resume never comes.
       createModel: () =>
-        provider.adapter.createChatModel({ apiKey, model: modelName }),
+        provider.adapter.createChatModel({
+          apiKey,
+          model: modelName,
+          // Scoring a suite at the provider's default sampling temperature
+          // measures the sampler as much as the prompt: the same prompt scored
+          // 10, 11 and 9 out of 14 on three consecutive runs. A comparison
+          // between two prompts needs the only difference to be the prompt.
+          temperature: 0,
+        }),
       toToolSchema: (schema) => provider.adapter.toToolSchema(schema),
     });
 

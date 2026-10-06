@@ -33,7 +33,16 @@ export type AiOrderingProviderId = (typeof aiOrderingProviderIds)[number];
 
 export type AiOrderingProviderAdapter = {
   /** The chat model the agent run drives. The agent binds the tools. */
-  createChatModel(input: { apiKey: string; model: string }): unknown;
+  /**
+   * `temperature` is left unset on the production path, which takes the
+   * provider's default. The evaluation harness pins it to 0, because a suite
+   * scored at a sampling temperature measures the sampler as much as the prompt.
+   */
+  createChatModel(input: {
+    apiKey: string;
+    model: string;
+    temperature?: number;
+  }): unknown;
   /**
    * Rewrites a tool argument schema into this provider's dialect.
    *

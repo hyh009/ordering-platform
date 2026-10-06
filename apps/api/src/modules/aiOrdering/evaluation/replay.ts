@@ -27,12 +27,7 @@ import { createAiOrderingAgent } from '@src/modules/aiOrdering/runtime/agent';
 import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 
-import type {
-  AiOrderingOperation,
-  AiOrderingOperationResult,
-  AiOrderingResponseType,
-  SupportedLocale,
-} from '@repo/shared';
+import type { AiOrderingResponseType, SupportedLocale } from '@repo/shared';
 import type {
   AiOrderingContextInput,
   AiOrderingHistoryTurn,
@@ -50,14 +45,10 @@ export type AiOrderingReplayCase = {
    */
   history?: AiOrderingHistoryTurn[];
   /**
-   * Proposals the scripted history made, and how they ended: the settled ones,
-   * then the most recent one with its outcome. Scripted for the same reason.
+   * Proposals the scripted history made, and how they ended, oldest first.
+   * Scripted for the same reason, and each entry names its own turn.
    */
-  earlierProposals?: NonNullable<AiOrderingContextInput['earlierProposals']>;
-  lastProposal?: {
-    operations: AiOrderingOperation[];
-    results: AiOrderingOperationResult[];
-  };
+  proposalLog?: NonNullable<AiOrderingContextInput['proposalLog']>;
   source?: { conversationId: string; turnId: string };
 };
 
@@ -97,7 +88,25 @@ export type AiOrderingReplayInput = {
    */
   createModel: () => unknown;
   toToolSchema: (schema: unknown) => Record<string, unknown>;
+  /**
+   * Smallest gap between two cases, in milliseconds.
+   *
+   * The free tier counts requests per MINUTE (15 for `gemini-3.5-flash-lite`),
+   * and a suite is one planning call per case plus a repair when one is needed —
+   * so an unpaced run exhausts the minute partway through and scores the rest of
+   * the cases as provider failures. A suite that stops being a measurement
+   * halfway is worse than a slow one.
+   */
+  minIntervalMs?: number;
 };
+
+/** Default pace: 15 requests a minute with room for the occasional repair. */
+const AI_ORDERING_REPLAY_MIN_INTERVAL_MS = 5_000;
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 /**
  * Replays every case against one version.
@@ -110,8 +119,18 @@ export async function replayAiOrderingVersion(
   input: AiOrderingReplayInput,
 ): Promise<AiOrderingReplayRun> {
   const outcomes: AiOrderingReplayOutcome[] = [];
+  const minIntervalMs =
+    input.minIntervalMs ?? AI_ORDERING_REPLAY_MIN_INTERVAL_MS;
+  let previousStartedAt = 0;
 
   for (const replayCase of input.cases) {
+    const waitMs = previousStartedAt + minIntervalMs - Date.now();
+
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+
+    previousStartedAt = Date.now();
     outcomes.push(await replayOne(input, replayCase));
   }
 
@@ -141,14 +160,8 @@ async function replayOne(
     // would then diverge for reasons neither prompt is responsible for. A case
     // that needs earlier turns scripts its own.
     history: replayCase.history ?? [],
-    ...(replayCase.earlierProposals !== undefined
-      ? { earlierProposals: replayCase.earlierProposals }
-      : {}),
-    ...(replayCase.lastProposal !== undefined
-      ? {
-          reportedOutcomes: replayCase.lastProposal.results,
-          lastProposalOperations: replayCase.lastProposal.operations,
-        }
+    ...(replayCase.proposalLog !== undefined
+      ? { proposalLog: replayCase.proposalLog }
       : {}),
   });
 

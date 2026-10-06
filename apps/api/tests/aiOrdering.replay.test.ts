@@ -16,7 +16,9 @@ const config = AI_ORDERING_V1_2026_09_30;
 const toToolSchema = (schema: unknown) =>
   toGeminiToolSchema(schema as never) as Record<string, unknown>;
 
-type ScriptedReply = { reply: string } | { tool: { name: string; args: unknown } };
+type ScriptedReply =
+  | { reply: string }
+  | { tool: { name: string; args: unknown } };
 
 /**
  * A model that answers each successive call from the given list.
@@ -46,6 +48,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '珍奶是什麼' }, { message: '我不能吃蔥' }],
       toToolSchema,
       createModel: scriptedModel([
@@ -74,6 +78,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '你好' }],
       toToolSchema,
       createModel: scriptedModel([{ reply: '你好。' }]),
@@ -91,6 +97,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '來一份白飯' }],
       toToolSchema,
       createModel: scriptedModel([
@@ -122,6 +130,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '來一份白飯' }],
       toToolSchema,
       createModel: scriptedModel([
@@ -155,6 +165,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '你好' }, { message: '再見' }],
       toToolSchema,
       createModel: () => fakeModel().respond(new Error('provider exploded')),
@@ -175,6 +187,8 @@ describe('AI ordering replay', () => {
       config,
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       cases: [{ message: '第一句' }, { message: '第二句' }],
       toToolSchema,
       createModel: () => model,
@@ -185,7 +199,9 @@ describe('AI ordering replay', () => {
     expect(model.callCount).toBe(2);
 
     for (const call of model.calls) {
-      const text = call.messages.map((message) => String(message.content)).join('\n');
+      const text = call.messages
+        .map((message) => String(message.content))
+        .join('\n');
 
       expect(text).toContain('No earlier turns.');
       expect(text).not.toContain('第一句\n');
@@ -203,6 +219,8 @@ describe('AI ordering replay comparison', () => {
       versionFingerprint: 'fingerprint',
       provider: 'gemini',
       modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
       outcomes: outcomes.map((outcome) => ({
         message: outcome.message,
         responseType: outcome.responseType as never,

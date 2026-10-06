@@ -16,10 +16,17 @@ import type {
   AiOrderingToolCallingModel,
 } from '@src/modules/aiOrdering/runtime/model';
 
-function createChat(input: { apiKey: string; model: string }) {
+function createChat(input: {
+  apiKey: string;
+  model: string;
+  temperature?: number;
+}) {
   return new ChatGoogleGenerativeAI({
     apiKey: input.apiKey,
     model: input.model,
+    ...(input.temperature !== undefined
+      ? { temperature: input.temperature }
+      : {}),
   });
 }
 
@@ -33,6 +40,7 @@ function createChat(input: { apiKey: string; model: string }) {
 export function createGeminiTextModel(input: {
   apiKey: string;
   model: string;
+  temperature?: number;
 }): AiOrderingTextModel {
   const chat = createChat(input);
 
@@ -55,6 +63,7 @@ export function createGeminiTextModel(input: {
 export function createGeminiChatModel(input: {
   apiKey: string;
   model: string;
+  temperature?: number;
 }) {
   return createChat(input);
 }
