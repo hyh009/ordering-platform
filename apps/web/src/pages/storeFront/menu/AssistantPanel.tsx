@@ -9,7 +9,7 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { AssistantCartPanel } from './AssistantCartPanel';
 import { AssistantProposalCard } from './AssistantProposalCard';
 import { AssistantProposalRecord } from './AssistantProposalRecord';
-import { AssistantQuestionGroup } from './AssistantQuestionGroup';
+import { AssistantQuestionStepper } from './AssistantQuestionStepper';
 
 import type { useAssistantPanelVM } from './useAssistantPanelVM';
 
@@ -34,7 +34,8 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
   // latest exchange is the only part worth opening on: a returning guest lands
   // mid-conversation otherwise, which is what the panel looked like before.
   // Re-runs on a new entry, on the proposal card appearing or changing height,
-  // and on the thinking indicator, since each one grows the transcript.
+  // on the thinking indicator, since each one grows the transcript, and on the
+  // dock arriving, which takes its height out of the transcript's.
   useEffect(() => {
     const transcript = transcriptRef.current;
     if (!transcript) return;
@@ -43,7 +44,7 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
     // Transcript values only. Cart values are deliberately absent: the cart is
     // on screen beside this, and a quantity change there must not yank the
     // transcript to the bottom while the guest is reading further up.
-  }, [vm.entries, vm.proposal, vm.isSending]);
+  }, [vm.entries, vm.proposal, vm.dock, vm.isSending]);
 
   return (
     <div className="fixed inset-x-0 top-0 z-page-modal h-dvh">
@@ -132,70 +133,48 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                         {entry.reply}
                       </p>
 
+                      {/* Asked and answered: the questions stay as text so the
+                          exchange still reads back. The ones still waiting are
+                          in the dock below, and are not repeated here. */}
                       {entry.kind === 'choices' &&
-                      entry.additionalQuestions.length > 0 ? (
-                        <AssistantQuestionGroup
-                          questions={[
-                            {
-                              question: entry.question,
-                              options: entry.options,
-                            },
-                            ...entry.additionalQuestions,
-                          ]}
-                          disabled={vm.isSending}
-                          onSubmit={(labels) => {
-                            void vm.answerQuestions(labels);
+                      !(
+                        vm.dock?.kind === 'questions' &&
+                        vm.dock.promptId === entry.promptId
+                      ) ? (
+                        <ul className="space-y-1 px-3 text-sm text-muted-foreground">
+                          {[
+                            entry.question,
+                            ...entry.additionalQuestions.map(
+                              (item) => item.question,
+                            ),
+                          ]
+                            // The model often words the reply and the question
+                            // identically; said once is enough.
+                            .filter(
+                              (question) =>
+                                question.trim() !== entry.reply.trim(),
+                            )
+                            .map((question, index) => (
+                              <li key={index}>{question}</li>
+                            ))}
+                        </ul>
+                      ) : null}
+
+                      {/* Still to be decided: the dock holds it. Decided, or
+                          applied without asking: it is shown here with what
+                          became of each row. */}
+                      {entry.kind === 'proposal' &&
+                      entry.record === 'live' &&
+                      vm.proposal &&
+                      vm.dock?.kind !== 'proposal' ? (
+                        <AssistantProposalCard
+                          proposal={vm.proposal}
+                          isApplying={vm.isApplying}
+                          onDismissOperation={vm.dismissOperation}
+                          onApply={() => {
+                            void vm.applyProposal();
                           }}
                         />
-                      ) : null}
-
-                      {entry.kind === 'choices' &&
-                      entry.additionalQuestions.length === 0 ? (
-                        <div className="space-y-2">
-                          {/* The model often words the reply and the question
-                              identically; said once is enough. */}
-                          {entry.question.trim() !== entry.reply.trim() ? (
-                            <p className="text-sm font-medium">
-                              {entry.question}
-                            </p>
-                          ) : null}
-                          <div className="flex flex-wrap gap-2">
-                            {entry.options.map((option) => (
-                              <Button
-                                key={option.id}
-                                variant="outline"
-                                size="sm"
-                                disabled={vm.isSending}
-                                onClick={() => {
-                                  void vm.selectOption(option);
-                                }}
-                              >
-                                {option.label}
-                              </Button>
-                            ))}
-                          </div>
-                          {entry.allowsFreeText ? (
-                            <p className="text-xs text-muted-foreground">
-                              {tDefault(
-                                'guest.assistant.freeTextHint',
-                                'Or just type what you want instead.',
-                              )}
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {entry.kind === 'proposal' && entry.record === 'live' ? (
-                        vm.proposal ? (
-                          <AssistantProposalCard
-                            proposal={vm.proposal}
-                            isApplying={vm.isApplying}
-                            onDismissOperation={vm.dismissOperation}
-                            onApply={() => {
-                              void vm.applyProposal();
-                            }}
-                          />
-                        ) : null
                       ) : null}
 
                       {entry.kind === 'proposal' && entry.record !== 'live' ? (
@@ -221,6 +200,39 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                   <p className="text-sm text-destructive">{vm.error}</p>
                 ) : null}
               </div>
+
+              {/* Between the transcript and the composer, never over either:
+                  the guest can still read the reply above and type instead of
+                  tapping. It arrives with a new reply and leaves with the
+                  guest's answer — both moments the transcript is already
+                  moving — and holds one height in between. */}
+              {vm.dock ? (
+                <div className="flex max-h-[45%] shrink-0 animate-in flex-col border-t border-border p-4 duration-200 slide-in-from-bottom-4 fade-in">
+                  {vm.dock.kind === 'questions' ? (
+                    <AssistantQuestionStepper
+                      key={vm.dock.promptId}
+                      questions={vm.dock.questions}
+                      allowsFreeText={vm.dock.allowsFreeText}
+                      disabled={vm.isSending}
+                      onAnswerOne={(option) => {
+                        void vm.selectOption(option);
+                      }}
+                      onAnswerAll={(labels) => {
+                        void vm.answerQuestions(labels);
+                      }}
+                    />
+                  ) : (
+                    <AssistantProposalCard
+                      proposal={vm.dock.proposal}
+                      isApplying={vm.isApplying}
+                      onDismissOperation={vm.dismissOperation}
+                      onApply={() => {
+                        void vm.applyProposal();
+                      }}
+                    />
+                  )}
+                </div>
+              ) : null}
 
               <form
                 className="flex items-center gap-2 border-t border-border p-4"

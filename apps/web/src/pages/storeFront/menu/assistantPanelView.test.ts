@@ -651,3 +651,116 @@ describe('assistant panel apply in progress', () => {
     expect(view().isSending).toBe(true);
   });
 });
+
+describe('assistant panel dock', () => {
+  function choicesTurn(promptId: string): AiOrderingTurn {
+    return turn({
+      type: 'choices',
+      reply: 'Black tea needs two choices.',
+      promptId,
+      question: 'How sweet?',
+      inputMode: 'single_choice',
+      options: [{ id: 'option-1', label: 'Half sugar' }],
+      additionalQuestions: [
+        {
+          question: 'How much ice?',
+          options: [{ id: 'question-2-option-1', label: 'Less ice' }],
+        },
+      ],
+      allowFreeText: true,
+    });
+  }
+
+  it('holds nothing when the last reply asks for nothing', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({ type: 'message', reply: 'We open at eleven.' }),
+    });
+
+    expect(view().dock).toBeNull();
+  });
+
+  it('holds every question the last reply asked, in the order asked', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: choicesTurn('prompt-1') });
+
+    expect(view().dock).toEqual({
+      kind: 'questions',
+      promptId: 'prompt-1',
+      questions: [
+        {
+          question: 'How sweet?',
+          options: [{ id: 'option-1', label: 'Half sugar' }],
+        },
+        {
+          question: 'How much ice?',
+          options: [{ id: 'question-2-option-1', label: 'Less ice' }],
+        },
+      ],
+      allowsFreeText: true,
+    });
+  });
+
+  it('lets go of the questions once the guest has answered', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: choicesTurn('prompt-1') });
+    actions.guestMessageAppended({ id: 'g1', message: 'Half sugar, less ice' });
+
+    expect(view().dock).toBeNull();
+  });
+
+  it('holds a proposal the guest still has to decide', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+      }),
+    });
+
+    const dock = view().dock;
+
+    expect(dock?.kind).toBe('proposal');
+    expect(dock?.kind === 'proposal' && dock.proposal.rows).toHaveLength(2);
+  });
+
+  it('keeps holding the proposal while any row is still undecided', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+      }),
+    });
+    actions.operationDismissed('op-1');
+
+    expect(view().dock?.kind).toBe('proposal');
+
+    // Nothing left to accept, so nothing is waiting on the guest.
+    actions.operationDismissed('op-2');
+
+    expect(view().dock).toBeNull();
+  });
+
+  it('leaves a proposal that applies without asking in the transcript', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: false,
+        operationIds: ['op-1'],
+      }),
+    });
+
+    expect(view().dock).toBeNull();
+  });
+});

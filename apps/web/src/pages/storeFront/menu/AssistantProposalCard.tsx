@@ -67,8 +67,10 @@ export function AssistantProposalCard({
   const { tDefault } = useAppTranslation();
 
   return (
-    <div className="rounded-xl border border-storefront-border bg-background p-3">
-      <ul className="flex flex-col gap-2">
+    // A column with a scrolling list, so in a height-limited container the rows
+    // scroll and the apply button stays in view however many rows there are.
+    <div className="flex min-h-0 flex-col rounded-xl border border-storefront-border bg-background p-3">
+      <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto">
         {proposal.rows.map((row) => (
           <li key={row.operationId} className="flex flex-col gap-1">
             <div className="flex items-start justify-between gap-2">
@@ -104,14 +106,14 @@ export function AssistantProposalCard({
                       {tDefault('guest.assistant.rowApplied', 'Added')}
                     </span>
                   ) : row.status === 'failed' ? (
-                    tDefault('guest.assistant.rowFailed', 'Could not be applied')
+                    tDefault(
+                      'guest.assistant.rowFailed',
+                      'Could not be applied',
+                    )
                   ) : row.status === 'dismissed' ? (
                     tDefault('guest.assistant.rowDismissed', 'Removed')
                   ) : row.status === 'not-attempted' ? (
-                    tDefault(
-                      'guest.assistant.rowNotAttempted',
-                      'Not attempted',
-                    )
+                    tDefault('guest.assistant.rowNotAttempted', 'Not attempted')
                   ) : (
                     tDefault('guest.assistant.rowPending', 'Not applied')
                   )}
@@ -141,7 +143,7 @@ export function AssistantProposalCard({
       {proposal.showsConfirmationControls && proposal.canApply ? (
         <Button
           variant="storefront"
-          className="mt-3 w-full"
+          className="mt-3 w-full shrink-0"
           disabled={isApplying}
           onClick={onApply}
         >

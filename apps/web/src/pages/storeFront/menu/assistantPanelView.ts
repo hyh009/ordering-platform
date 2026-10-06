@@ -154,11 +154,30 @@ export type AssistantProposalView = {
   isApplied: boolean;
 };
 
+/**
+ * The one thing waiting on the guest, held above the composer rather than in
+ * the transcript, so it stays on screen however far the conversation scrolls.
+ *
+ * At most one exists: a proposal still to be decided, or the questions the last
+ * reply asked. A proposal that has been decided, or that applies without asking,
+ * is not waiting on anyone and stays in the transcript.
+ */
+export type AssistantDockView =
+  | { kind: 'proposal'; proposal: AssistantProposalView }
+  | {
+      kind: 'questions';
+      promptId: string;
+      /** In the order asked. Answered one at a time. */
+      questions: { question: string; options: AiOrderingChoiceModel[] }[];
+      allowsFreeText: boolean;
+    };
+
 export type AssistantPanelView = {
   /** False hides the entry point entirely; the panel is never reachable. */
   isAvailable: boolean;
   entries: AssistantEntryView[];
   proposal: AssistantProposalView | null;
+  dock: AssistantDockView | null;
   /** The prompt a typed answer or a picked option should answer, if any. */
   openPrompt: { promptId: string } | null;
   isSending: boolean;
@@ -290,10 +309,27 @@ export function buildAssistantPanelView(input: {
   const openPrompt =
     lastEntry?.kind === 'choices' ? { promptId: lastEntry.promptId } : null;
 
+  const proposal = state.proposal ? toProposalView(state.proposal) : null;
+  const dock: AssistantDockView | null =
+    proposal?.showsConfirmationControls && proposal.canApply
+      ? { kind: 'proposal', proposal }
+      : lastEntry?.kind === 'choices'
+        ? {
+            kind: 'questions',
+            promptId: lastEntry.promptId,
+            questions: [
+              { question: lastEntry.question, options: lastEntry.options },
+              ...lastEntry.additionalQuestions,
+            ],
+            allowsFreeText: lastEntry.allowsFreeText,
+          }
+        : null;
+
   return {
     isAvailable: input.isAvailable,
     entries,
-    proposal: state.proposal ? toProposalView(state.proposal) : null,
+    proposal,
+    dock,
     openPrompt,
     isSending: state.isSending,
     isApplying: state.isApplying,
