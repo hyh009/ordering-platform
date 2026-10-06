@@ -450,6 +450,12 @@ describe('AI ordering agent run', () => {
     // provider cached — is left intact.
     expect(String(last?.content)).toContain('cannot be applied');
     expect(String(repairMessages[0]?.content)).toContain('SYSTEM:');
+
+    // Sent back as the failed call's own error result, after the call itself,
+    // so the model corrects a call it can see rather than one it cannot.
+    expect(last?.getType()).toBe('tool');
+    expect((last as { status?: string }).status).toBe('error');
+    expect(repairMessages.at(-2)?.getType()).toBe('ai');
   });
 
   it('keeps the assembled block order the provider cache depends on', async () => {

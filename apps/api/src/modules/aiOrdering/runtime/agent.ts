@@ -11,7 +11,7 @@
  * bounded repair attempts, and which tool calls may ever reach a tool node.
  */
 
-import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { executeAiOrderingOperations } from '@src/modules/aiOrdering/cartExecution';
 import { resolveAiOrderingEmptyProposalReply } from '@src/modules/aiOrdering/emptyProposalReply';
@@ -31,6 +31,7 @@ import {
   humanInTheLoopMiddleware,
 } from 'langchain';
 
+import type { BaseMessage } from '@langchain/core/messages';
 import type { BaseCheckpointSaver } from '@langchain/langgraph';
 import type {
   AiOrderingOperation,
@@ -175,10 +176,10 @@ function describeProblem(
         ];
 
   const instruction = final
-    ? 'You can no longer propose cart changes in this turn. Tell the guest what could not be done and why, in the language they wrote in, or ask them a question. Do not say that anything was added, changed, or removed.'
+    ? 'You can no longer propose cart changes in this turn. If a choice is missing, ask the guest for it. Otherwise tell them what could not be done and the actual reason given above, in the language they wrote in. Do not call it a system error, and do not say that anything was added, changed, or removed.'
     : input.gateDetail !== undefined
       ? 'Reply again in the required format.'
-      : 'Reply again proposing only changes that are possible, or ask the guest a question instead.';
+      : 'Reply again in the language the guest wrote in. If a choice is missing, do not fill it in yourself, not even with the default: ask the guest for it instead of proposing. Otherwise propose only the changes that are possible.';
 
   return [...problem, instruction].join(
     input.gateDetail !== undefined ? ' ' : '\n',
@@ -295,13 +296,46 @@ export function createAiOrderingAgent(
         return closing;
       }
 
+      /**
+       * An earlier attempt and what was wrong with it, as the model is shown it.
+       *
+       * Where the attempt called a tool, the problem goes back as that call's
+       * ERROR RESULT: the model sees the call it made and the tool refusing it,
+       * which is the exchange it is trained to correct from. A note on its own
+       * left the model retrying a call it could no longer see.
+       */
+      const replayEarlier = (
+        earlier: { message: AIMessage; note: string }[],
+        asToolResults: boolean,
+      ): BaseMessage[] =>
+        earlier.flatMap(({ message, note }): BaseMessage[] => {
+          const toolCalls = asToolResults ? (message.tool_calls ?? []) : [];
+
+          if (toolCalls.length === 0) {
+            return [new HumanMessage(note)];
+          }
+
+          return [
+            message,
+            ...toolCalls.map(
+              (call) =>
+                new ToolMessage({
+                  content: note,
+                  tool_call_id: call.id ?? '',
+                  name: call.name,
+                  status: 'error',
+                }),
+            ),
+          ];
+        });
+
       const attempt = async (
-        repairNotes: string[],
+        earlier: { message: AIMessage; note: string }[],
         options: { canPropose: boolean },
       ) => {
         record.modelCalls += 1;
 
-        const message = await handler({
+        const callRequest = {
           ...request,
           // Each call is clamped to what is left of the turn's budget, so a
           // repair that starts late cannot run past it on a fresh timeout.
@@ -318,17 +352,21 @@ export function createAiOrderingAgent(
                     AI_ORDERING_PROPOSAL_TOOL,
                 ),
               }),
-          ...(repairNotes.length === 0
+          ...(earlier.length === 0
             ? {}
             : {
                 // Appended LAST, and in order, so the cached prefix each earlier
-                // attempt established is left intact.
+                // attempt established is left intact. The closing call gets
+                // plain notes: its proposal tool is unbound, and a provider may
+                // refuse a history that calls a tool it was not given.
                 messages: [
                   ...request.messages,
-                  ...repairNotes.map((note) => new HumanMessage(note)),
+                  ...replayEarlier(earlier, options.canPropose),
                 ],
               }),
-        });
+        };
+
+        const message = await handler(callRequest);
 
         record.cacheReadTokens += readCacheReadTokens(message);
 
@@ -398,7 +436,10 @@ export function createAiOrderingAgent(
       if (firstProblem !== null) {
         record.quality.repairAttempted = true;
 
-        const second = await attempt([firstProblem], { canPropose: true });
+        const second = await attempt(
+          [{ message: first.message, note: firstProblem }],
+          { canPropose: true },
+        );
         attempts.push(second);
 
         if (second.ok && problemOf(second) === null) {
@@ -415,9 +456,13 @@ export function createAiOrderingAgent(
             const finalNote = problemOf(second, true) ?? '';
 
             try {
-              const third = await attempt([firstProblem, finalNote], {
-                canPropose: false,
-              });
+              const third = await attempt(
+                [
+                  { message: first.message, note: firstProblem },
+                  { message: second.message, note: finalNote },
+                ],
+                { canPropose: false },
+              );
               attempts.push(third);
 
               // A proposal here was made without the tool, so it is ignored.
