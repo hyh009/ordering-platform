@@ -21,7 +21,7 @@ describe('AI ordering debug trace', () => {
 
     const text = renderAiOrderingModelCallTrace({
       callNumber: 2,
-      toolNames: ['propose_cart_operations', 'ask_choice'],
+      toolNames: ['propose_cart_operations', 'ask_choices'],
       messages: [
         new HumanMessage('## Menu'),
         failedCall,
@@ -36,7 +36,7 @@ describe('AI ordering debug trace', () => {
     });
 
     expect(text).toContain(
-      'model call 2 — tools bound: propose_cart_operations, ask_choice',
+      'model call 2 — tools bound: propose_cart_operations, ask_choices',
     );
     expect(text).toContain('---- [human]\n## Menu');
     expect(text).toContain(

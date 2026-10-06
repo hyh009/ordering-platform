@@ -22,7 +22,7 @@ describe('AI ordering tool definitions', () => {
     // no tool at all. There is deliberately no menu-retrieval tool.
     expect(aiOrderingToolDefinitions.map((tool) => tool.name)).toEqual([
       'propose_cart_operations',
-      'ask_choice',
+      'ask_choices',
       'report_unanswerable',
     ]);
   });
@@ -84,7 +84,7 @@ describe('AI ordering tool definitions', () => {
 
   it('lets the model supply choice labels but not option ids', () => {
     const askChoice = aiOrderingToolDefinitions.find(
-      (tool) => tool.name === 'ask_choice',
+      (tool) => tool.name === 'ask_choices',
     );
 
     const parsed = askChoice?.schema.parse({

@@ -575,7 +575,7 @@ export function createAiOrderingAgent(
           hydrationContext,
         );
 
-        // Returned WITHOUT tool calls, so the agent loop ends here. `ask_choice`
+        // Returned WITHOUT tool calls, so the agent loop ends here. `ask_choices`
         // and `report_unanswerable` have nothing to execute, and letting them
         // reach a tool node would feed a result back and call the model again.
         return new AIMessage({ content: modelResponse.reply });

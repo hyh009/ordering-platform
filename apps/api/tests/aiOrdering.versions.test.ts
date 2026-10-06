@@ -78,7 +78,7 @@ describe('AI ordering core instructions', () => {
 
   it('tells the model it cannot submit an order', () => {
     expect(V1_CORE_INSTRUCTIONS.toLowerCase()).toContain(
-      'cannot place, submit',
+      'placing, submitting, paying for, or cancelling the final order is done by the guest',
     );
   });
 });

@@ -25,7 +25,7 @@ export type AiOrderingModelReplyFixture = {
 
 const AI_ORDERING_TOOL_NAME_BY_TYPE = {
   proposal: 'propose_cart_operations',
-  choices: 'ask_choice',
+  choices: 'ask_choices',
   unanswered: 'report_unanswerable',
 } as const;
 

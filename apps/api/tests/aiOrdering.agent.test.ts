@@ -221,7 +221,7 @@ describe('AI ordering agent run', () => {
     // Tools are bound before a call, not passed with it, so the binding is
     // what is checked: the planning call bound them, the closing call none.
     expect(boundToolNames(bind).filter((names) => names.length > 0)).toEqual([
-      ['propose_cart_operations', 'ask_choice', 'report_unanswerable'],
+      ['propose_cart_operations', 'ask_choices', 'report_unanswerable'],
     ]);
   });
 
@@ -288,7 +288,7 @@ describe('AI ordering agent run', () => {
   it('never turns a question into an interrupt', async () => {
     const model = fakeModel().respondWithTools([
       {
-        name: 'ask_choice',
+        name: 'ask_choices',
         args: {
           reply: 'Sure.',
           question: 'How sweet would you like it?',
@@ -302,7 +302,7 @@ describe('AI ordering agent run', () => {
 
     const result = await agent.invoke({ messages }, threadConfig);
 
-    // `ask_choice` has nothing to execute. Letting it reach a tool node would
+    // `ask_choices` has nothing to execute. Letting it reach a tool node would
     // feed a result back and call the model a second time for no reason.
     expect(result.__interrupt__).toBeUndefined();
     expect(record.response?.type).toBe('choices');
@@ -336,7 +336,7 @@ describe('AI ordering agent run', () => {
     expect(bound).toHaveLength(3);
     expect(bound[1]).toContain('propose_cart_operations');
     expect(bound[2]).not.toContain('propose_cart_operations');
-    expect(bound[2]).toContain('ask_choice');
+    expect(bound[2]).toContain('ask_choices');
   });
 
   it('tells the final attempt why nothing could be applied', async () => {

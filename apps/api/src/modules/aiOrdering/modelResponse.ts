@@ -121,8 +121,20 @@ const modelSelectedOptionsSchema = z
 const SELECTED_OPTIONS_DESCRIPTION =
   'Every choice the product requires, as id pairs from the menu. Omit only when the product has no modifiers.';
 
-const NOTES_ON_ADD_DESCRIPTION =
-  'A free-text instruction about how to prepare THIS item, such as a spice level, an omission, or an allergy. Never an extra ingredient, side, or anything else the store sells: a note has no price, so that must be an option or a separate product. This is the only field that carries a preparation request: writing it in your reply instead does not record it.';
+/**
+ * What a note IS, written in the field that carries it.
+ *
+ * Stated as what the store receives rather than as a list of prohibitions. A
+ * note is passed along as a request and is not part of what was ordered: it has
+ * no price, so nothing is charged or made for it and the store may decline it.
+ * That is also why it cannot carry an ingredient or a side — the prohibition is
+ * kept alongside the framing rather than replaced by it, because "a note is only
+ * a request" on its own reads as permission to put anything in one.
+ */
+const NOTES_DESCRIPTION_BASE =
+  "A note passes the guest's preparation request on to the store: a spice level, an omission, an allergy. It is a request and not part of the order — it has no price, so nothing extra is charged or made for it, and the store may not be able to honor it. For that reason it can never carry an extra ingredient, a side, or anything else the store sells; those have to be an option on the product or a separate product, and if the store offers neither then it is not available at all. Say so instead of writing it in a note.";
+
+const NOTES_ON_ADD_DESCRIPTION = `${NOTES_DESCRIPTION_BASE} This is the only field that records a preparation request: writing it in your reply instead does not record it. When a change carries a note, say in your reply that it is a request the store may not be able to meet, and that the guest should confirm it with the staff.`;
 
 const modelAddItemSchema = describeFields(
   cartItemInputSchema.safeExtend({
@@ -146,8 +158,7 @@ const modelUpdateItemSchema = describeFields(
       'The new quantity. Omit to leave the quantity as it is. The update must change something, so do not repeat the value the item already has.',
     selectedOptions:
       'The complete new set of choices, replacing the current ones. Omit to leave the choices as they are.',
-    notes:
-      'The new instruction about this item for the kitchen. Omit to leave the current note untouched; send null to erase it. These are opposite: omitting is not how you clear a note.',
+    notes: `${NOTES_DESCRIPTION_BASE} Omit to leave the current note untouched; send null to erase it. These are opposite: omitting is not how you clear a note.`,
   },
 );
 

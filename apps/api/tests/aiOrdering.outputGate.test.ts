@@ -324,7 +324,7 @@ describe('AI ordering tool-call transport', () => {
         'proposal',
       ],
       [
-        'ask_choice',
+        'ask_choices',
         {
           reply: '要什麼甜度？',
           question: '要什麼甜度？',
@@ -352,7 +352,7 @@ describe('AI ordering tool-call transport', () => {
     const result = gate({
       toolCalls: [
         {
-          name: 'ask_choice',
+          name: 'ask_choices',
           args: {
             question: '要什麼甜度？',
             inputMode: 'single_choice',
@@ -435,7 +435,7 @@ describe('AI ordering tool-call transport', () => {
   it('rejects two tools called at once', () => {
     const result = gate({
       toolCalls: [
-        { name: 'ask_choice', args: {} },
+        { name: 'ask_choices', args: {} },
         { name: 'report_unanswerable', args: {} },
       ],
       text: '',
