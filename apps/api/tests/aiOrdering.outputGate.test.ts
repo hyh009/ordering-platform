@@ -196,6 +196,42 @@ describe('AI ordering output gate', () => {
       ).toBe(true);
     });
 
+    it('keeps each further question once, dropping a repeat of the first', () => {
+      const hydrated = hydrateAiOrderingResponse(
+        {
+          type: 'choices',
+          reply: '紅茶需要選甜度和冰塊。',
+          question: '甜度？',
+          inputMode: 'single_choice',
+          options: [{ label: '全糖' }, { label: '半糖' }],
+          additionalQuestions: [
+            // The model tends to list the first question again here.
+            {
+              question: '請選擇甜度',
+              options: [{ label: '半糖' }, { label: '全糖' }],
+            },
+            {
+              question: '冰塊？',
+              options: [{ label: '正常冰' }, { label: '去冰' }],
+            },
+          ],
+        },
+        hydrationContext,
+      );
+
+      expect(
+        hydrated.type === 'choices' && hydrated.additionalQuestions,
+      ).toEqual([
+        {
+          question: '冰塊？',
+          options: [
+            { id: 'question-2-option-1', label: '正常冰' },
+            { id: 'question-2-option-2', label: '去冰' },
+          ],
+        },
+      ]);
+    });
+
     it('assigns its own proposal and operation ids', () => {
       const result = gateAnswer({
         type: 'proposal',
@@ -309,6 +345,66 @@ describe('AI ordering tool-call transport', () => {
 
       expect(result.ok, name).toBe(true);
       expect(result.ok === true && result.modelResponse.type).toBe(expected);
+    }
+  });
+
+  it('uses the question as the reply when a question came without one', () => {
+    const result = gate({
+      toolCalls: [
+        {
+          name: 'ask_choice',
+          args: {
+            question: '要什麼甜度？',
+            inputMode: 'single_choice',
+            options: [{ label: '半糖' }],
+          },
+        },
+      ],
+      text: '',
+    });
+
+    expect(result.ok && result.modelResponse.reply).toBe('要什麼甜度？');
+  });
+
+  it('reads an empty note on an added item as no note', () => {
+    // On an update `null` erases a note, and the model sends it on additions
+    // too. There it can only mean "none", so it is not worth a repair call.
+    const result = gate({
+      toolCalls: [
+        {
+          name: 'propose_cart_operations',
+          args: {
+            reply: '這是紅茶，請確認。',
+            operations: [
+              {
+                type: 'add_item',
+                item: { productId: 'prod-black-tea', quantity: 1, notes: null },
+              },
+              {
+                type: 'update_own_item',
+                itemId: 'item-own-rice',
+                item: { notes: null },
+              },
+            ],
+          },
+        },
+      ],
+      text: '',
+    });
+
+    expect(result.ok).toBe(true);
+
+    if (result.ok && result.modelResponse.type === 'proposal') {
+      expect(result.modelResponse.operations[0]).toEqual({
+        type: 'add_item',
+        item: { productId: 'prod-black-tea', quantity: 1 },
+      });
+      // An update's null is an instruction and is left exactly as sent.
+      expect(result.modelResponse.operations[1]).toEqual({
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { notes: null },
+      });
     }
   });
 

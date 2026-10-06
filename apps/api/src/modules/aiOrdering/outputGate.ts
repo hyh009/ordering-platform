@@ -25,6 +25,65 @@ export type AiOrderingGateResult =
   | { ok: false; rejection: AiOrderingGateRejection };
 
 /**
+ * Gives a question that came without a `reply` its own question as the reply.
+ *
+ * The model often leaves `reply` out when asking, since the question already is
+ * what it wants to say. Refusing that cost a whole extra model call for a field
+ * whose content was sitting in the next one.
+ */
+function withQuestionAsReply(candidate: unknown): unknown {
+  const { type, reply, question } = (candidate ?? {}) as {
+    type?: unknown;
+    reply?: unknown;
+    question?: unknown;
+  };
+  const hasReply = typeof reply === 'string' && reply.trim().length > 0;
+
+  if (type !== 'choices' || hasReply || typeof question !== 'string') {
+    return candidate;
+  }
+
+  return { ...(candidate as object), reply: question };
+}
+
+/**
+ * Drops a `notes` of `null` or blank from every item being ADDED.
+ *
+ * On an update `null` means "erase the note", and the model carries that habit
+ * over to additions, where there is no note to erase and the only possible
+ * meaning is "none". Refusing it cost a whole extra model call to be told
+ * something the gate could read for itself. An update's `notes` is left exactly
+ * as sent: there `null` is an instruction.
+ */
+function withoutEmptyAddNotes(candidate: unknown): unknown {
+  const { operations } = (candidate ?? {}) as { operations?: unknown };
+
+  if (!Array.isArray(operations)) {
+    return candidate;
+  }
+
+  return {
+    ...(candidate as object),
+    operations: (operations as unknown[]).map((operation) => {
+      const { type, item } = (operation ?? {}) as {
+        type?: unknown;
+        item?: unknown;
+      };
+
+      if (type !== 'add_item' || typeof item !== 'object' || item === null) {
+        return operation;
+      }
+
+      const { notes, ...rest } = item as { notes?: unknown };
+      const isEmpty =
+        notes === null || (typeof notes === 'string' && notes.trim() === '');
+
+      return isEmpty ? { ...(operation as object), item: rest } : operation;
+    }),
+  };
+}
+
+/**
  * The boundary between untrusted model output and everything else.
  *
  * Synchronous and pure: shape only, no menu or cart access. Checking a proposed
@@ -65,7 +124,9 @@ export function inspectAiOrderingModelOutput(
 
   // The tool name supplied `type`, so the answer goes through the same union the
   // arguments were narrowed from — one set of rules, stated once.
-  const parsed = aiOrderingModelResponseSchema.safeParse(answer.candidate);
+  const parsed = aiOrderingModelResponseSchema.safeParse(
+    withQuestionAsReply(withoutEmptyAddNotes(answer.candidate)),
+  );
 
   if (!parsed.success) {
     return {
