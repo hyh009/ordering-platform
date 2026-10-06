@@ -90,9 +90,34 @@ export type AiOrderingVersionConfig = {
 
 /** A prior turn compacted for the model. Never the raw model output. */
 export type AiOrderingHistoryTurn = {
+  /**
+   * 1-based position in the whole conversation, not in the sent window.
+   *
+   * Numbered because the proposal log is rendered outside the history and has
+   * to say WHEN each change was proposed. Counting from the conversation rather
+   * than from the window keeps a turn's number the same once it is written,
+   * which is also what keeps the history block's prefix cacheable.
+   */
+  turnNumber: number;
   message: string;
   reply: string;
   responseType: AiOrderingResponseType;
+};
+
+/**
+ * One past proposal and how the cart answered it, addressed by turn number.
+ *
+ * Every proposal the model is shown takes this shape, the one it made last turn
+ * included. They used to be two separate inputs rendered as two sections, which
+ * left the newest outcome unnumbered and the model unable to tell how long ago
+ * anything happened.
+ */
+export type AiOrderingProposalLogEntry = {
+  /** Matches the `[Turn N]` label on the history turn that proposed it. */
+  turnNumber: number;
+  operations: AiOrderingOperation[];
+  /** Empty only in the window between a decision being claimed and recorded. */
+  results: AiOrderingOperationResult[];
 };
 
 /**
@@ -162,31 +187,19 @@ export type AiOrderingContextInput = {
   history: AiOrderingHistoryTurn[];
   summary?: string;
   resolvedPrompt?: AiOrderingResolvedPrompt;
-  reportedOutcomes?: AiOrderingOperationResult[];
   /**
-   * What the most recent proposal actually proposed, so each reported outcome
-   * names a change instead of a bare operation id.
+   * Every proposal made so far with how each of its changes ended, oldest
+   * first; the last entry is the one made on the previous turn.
    *
-   * Only the most recent proposal, and only alongside its outcomes. It is
-   * rendered in the current turn rather than attached to the history turn that
-   * made it: marking one history turn as "the latest" would rewrite earlier
-   * text every time a newer proposal appeared, and the history block is
-   * append-only so that its prefix stays cacheable.
+   * Rendered in the current turn rather than attached to the history turns that
+   * made them: an outcome arrives after the turn that proposed it, so writing it
+   * into the history would rewrite text the provider's prefix cache depends on
+   * staying append-only. The turn number is what reconnects the two blocks.
    */
-  lastProposalOperations?: AiOrderingOperation[];
+  proposalLog?: AiOrderingProposalLogEntry[];
   /**
-   * Every proposal BEFORE the most recent one, oldest first, with how each of
-   * its changes ended.
-   *
-   * The history block carries only what was said, and "please confirm" reads
-   * the same whether the guest then accepted or walked away. Without this the
-   * model could not tell a change that was made two turns ago from one still
-   * waiting, and proposed the first kind again. Rendered in the current turn
-   * for the same reason the latest outcome is: an outcome arrives after the
-   * turn that proposed it, and the history block is append-only.
+   * Which turn the guest's current message is. Defaults to one past the last
+   * history turn, which is right for every caller that did not window oddly.
    */
-  earlierProposals?: {
-    operations: AiOrderingOperation[];
-    results: AiOrderingOperationResult[];
-  }[];
+  currentTurnNumber?: number;
 };

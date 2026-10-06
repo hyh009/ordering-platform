@@ -1,12 +1,12 @@
-import type {
-  AiOrderingOperation,
-  AiOrderingOperationResult,
-} from '@repo/shared';
+import type { AiOrderingOperationResult } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
   AiOrderingProposalSnapshot,
 } from '@src/models/aiOrdering/model';
-import type { AiOrderingResolvedPrompt } from '@src/modules/aiOrdering/types';
+import type {
+  AiOrderingProposalLogEntry,
+  AiOrderingResolvedPrompt,
+} from '@src/modules/aiOrdering/types';
 
 export type AiOrderingPromptResolutionFailure =
   | 'prompt_not_found'
@@ -69,6 +69,33 @@ export function resolveAiOrderingPrompt(
   };
 }
 /**
+ * A proposal together with the 1-based number of the turn that made it.
+ *
+ * The number is the proposal's address in the prompt: the model is shown the
+ * conversation with every turn numbered, so an operation can be attributed to a
+ * turn the model can point at instead of to "earlier".
+ */
+export type AiOrderingNumberedProposal = {
+  turnNumber: number;
+  proposal: AiOrderingProposalSnapshot;
+};
+
+/** Every turn that carried a proposal, oldest first, each with its turn number. */
+function readAiOrderingNumberedProposals(
+  conversation: AiOrderingConversationEntity | null,
+): AiOrderingNumberedProposal[] {
+  const numbered: AiOrderingNumberedProposal[] = [];
+
+  (conversation?.turns ?? []).forEach((turn, index) => {
+    if (turn.proposal) {
+      numbered.push({ turnNumber: index + 1, proposal: turn.proposal });
+    }
+  });
+
+  return numbered;
+}
+
+/**
  * The most recent proposal in the conversation, decided or not.
  *
  * Only the LAST one: a proposal is good for the turn that made it, so every
@@ -76,12 +103,8 @@ export function resolveAiOrderingPrompt(
  */
 export function readAiOrderingLastProposal(
   conversation: AiOrderingConversationEntity | null,
-): AiOrderingProposalSnapshot | null {
-  const proposals = (conversation?.turns ?? [])
-    .map((turn) => turn.proposal)
-    .filter((proposal) => proposal !== undefined);
-
-  return proposals.at(-1) ?? null;
+): AiOrderingNumberedProposal | null {
+  return readAiOrderingNumberedProposals(conversation).at(-1) ?? null;
 }
 
 /** How many settled proposals the model is shown. Older ones are in the summary. */
@@ -96,18 +119,12 @@ const AI_ORDERING_MAX_EARLIER_PROPOSALS = 10;
  */
 export function readAiOrderingEarlierProposals(
   conversation: AiOrderingConversationEntity | null,
-): {
-  operations: AiOrderingOperation[];
-  results: AiOrderingOperationResult[];
-}[] {
-  const proposals = (conversation?.turns ?? [])
-    .map((turn) => turn.proposal)
-    .filter((proposal) => proposal !== undefined);
-
-  return proposals
+): AiOrderingProposalLogEntry[] {
+  return readAiOrderingNumberedProposals(conversation)
     .slice(0, -1)
     .slice(-AI_ORDERING_MAX_EARLIER_PROPOSALS)
-    .map((proposal) => ({
+    .map(({ turnNumber, proposal }) => ({
+      turnNumber,
       operations: proposal.operations,
       results: proposal.decision?.results ?? [],
     }));
@@ -124,7 +141,9 @@ export function readAiOrderingEarlierProposals(
 export function readAiOrderingLastProposalOutcome(
   conversation: AiOrderingConversationEntity | null,
 ): AiOrderingOperationResult[] {
-  return readAiOrderingLastProposal(conversation)?.decision?.results ?? [];
+  return (
+    readAiOrderingLastProposal(conversation)?.proposal.decision?.results ?? []
+  );
 }
 
 /**

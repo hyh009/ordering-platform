@@ -532,18 +532,21 @@ export class AiOrderingService {
     results: AiOrderingOperationResult[];
     /** What that proposal proposed, so the model can read each result. */
     operations: AiOrderingOperation[];
+    /** Which turn proposed it. Absent when there was no proposal to settle. */
+    turnNumber?: number;
     settledProposal?: AiOrderingSettledProposal;
   }> {
-    const proposal = readAiOrderingLastProposal(conversation);
+    const last = readAiOrderingLastProposal(conversation);
 
-    if (!proposal) {
+    if (!last) {
       return { results: [], operations: [] };
     }
 
+    const { turnNumber, proposal } = last;
     const { operations } = proposal;
 
     if (proposal.decision) {
-      return { results: proposal.decision.results, operations };
+      return { results: proposal.decision.results, operations, turnNumber };
     }
 
     const results = buildAiOrderingSupersededResults(proposal);
@@ -561,6 +564,7 @@ export class AiOrderingService {
       return {
         results,
         operations,
+        turnNumber,
         settledProposal: { proposalId: proposal.proposalId, results },
       };
     }
@@ -571,6 +575,7 @@ export class AiOrderingService {
     return {
       results: claim.proposal?.snapshot.decision?.results ?? [],
       operations,
+      turnNumber,
     };
   }
 
@@ -659,13 +664,20 @@ export class AiOrderingService {
       ...(prompt.resolvedPrompt !== undefined
         ? { resolvedPrompt: prompt.resolvedPrompt }
         : {}),
-      ...(previousResults.length > 0
-        ? {
-            reportedOutcomes: previousResults,
-            lastProposalOperations: settled.operations,
-          }
-        : {}),
-      earlierProposals: readAiOrderingEarlierProposals(conversation),
+      // One log, oldest first, ending with the proposal just settled — so every
+      // change the model made carries the turn it was made on.
+      proposalLog: [
+        ...readAiOrderingEarlierProposals(conversation),
+        ...(settled.turnNumber !== undefined
+          ? [
+              {
+                turnNumber: settled.turnNumber,
+                operations: settled.operations,
+                results: previousResults,
+              },
+            ]
+          : []),
+      ],
     });
 
     // The proposal id is generated BEFORE the run so it can be the run's thread

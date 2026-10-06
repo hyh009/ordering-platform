@@ -85,7 +85,7 @@ describe('AI ordering history window', () => {
     ]);
   });
 
-  it('compacts a turn to message, reply and response type only', () => {
+  it('compacts a turn to its number, message, reply and response type', () => {
     const windowed = windowAiOrderingHistory(
       conversation([turn(1, { modelOutput: { secret: 'raw model output' } })]),
       10,
@@ -96,8 +96,21 @@ describe('AI ordering history window', () => {
       'message',
       'reply',
       'responseType',
+      'turnNumber',
     ]);
     expect(JSON.stringify(windowed.history)).not.toContain('raw model output');
+  });
+
+  it('numbers a windowed turn by its place in the conversation', () => {
+    const windowed = windowAiOrderingHistory(
+      conversation([turn(1), turn(2), turn(3), turn(4)]),
+      2,
+    );
+
+    // Not 1 and 2. The proposal log is rendered outside the history and names
+    // the turn that made each change, so a turn's number has to survive older
+    // turns ageing out of the window.
+    expect(windowed.history.map((entry) => entry.turnNumber)).toEqual([3, 4]);
   });
 
   it('carries the rolling summary alongside the window', () => {

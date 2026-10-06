@@ -39,16 +39,37 @@ const adds = (outcome: AiOrderingReplayOutcome, productName: string) =>
 
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
+    message: '有什麼飲料嗎',
+    expects: 'lists the drinks as a plain reply; proposes nothing',
+    check: (outcome) =>
+      outcome.responseType === 'message' && operations(outcome).length === 0,
+  },
+  {
+    message: '紅茶跟奶茶差在哪',
+    expects: 'answers the comparison; proposes nothing and asks nothing',
+    check: (outcome) =>
+      outcome.responseType === 'message' && operations(outcome).length === 0,
+  },
+  {
     message: '加點一杯紅茶',
-    expects: 'asks for sugar and ice; proposes nothing',
+    expects: 'asks for sugar and ice at once; proposes nothing',
     check: (outcome) =>
       outcome.responseType === 'choices' || outcome.responseType === 'message',
   },
   {
     message: '加點一杯無糖的紅茶',
-    expects: 'asks for ice; does not fill in a default',
+    expects: 'asks for ice only; never re-asks the sugar they stated',
     check: (outcome) =>
       outcome.responseType === 'choices' || outcome.responseType === 'message',
+  },
+  {
+    // 珍珠奶茶 carries the optional 加料; 紅茶 does not, so only this product
+    // can test that an optional choice is offered rather than skipped.
+    message: '加點一杯珍珠奶茶，半糖少冰',
+    expects:
+      'offers the optional topping with a way to decline, in one turn; proposes nothing yet',
+    check: (outcome) =>
+      outcome.responseType === 'choices' && (outcome.asked?.length ?? 0) === 1,
   },
   {
     message: '加點一碗牛肉麵',
@@ -74,9 +95,19 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   },
   {
     message: '加點一碗牛肉麵不辣，加蛋',
-    expects: 'no egg on the menu: says so, and never writes it as a note',
+    expects:
+      'no egg on the menu: says so, never writes it as a note, and never offers one',
     check: (outcome) =>
-      outcome.responseType !== null && !operations(outcome).some(hasNote),
+      outcome.responseType !== null &&
+      !operations(outcome).some(hasNote) &&
+      // Inventing an "add egg" option is the same fault as writing it in a
+      // note: the store does not sell it either way.
+      !operations(outcome).some((summary) => summary.includes('蛋')) &&
+      !(outcome.asked ?? []).some(
+        (asked) =>
+          asked.question.includes('蛋') ||
+          asked.optionLabels.some((label) => label.includes('蛋')),
+      ),
   },
   {
     message: '加點一碗牛肉麵小辣，不要蔥',
@@ -91,6 +122,7 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     message: '再加點一杯紅茶，無糖去冰',
     history: [
       {
+        turnNumber: 1,
         message: '我要一杯珍珠奶茶，半糖少冰',
         responseType: 'proposal',
         reply: '這是半糖少冰的珍珠奶茶，請確認。',
@@ -112,18 +144,21 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     message: '紅茶我要少冰',
     history: [
       {
+        turnNumber: 1,
         message: '我要一杯珍珠奶茶，半糖少冰',
         responseType: 'proposal',
         reply: '為您將珍珠奶茶加入購物車，請確認是否加入。',
       },
       {
+        turnNumber: 2,
         message: '有無糖紅茶嗎',
         responseType: 'proposal',
         reply: '有的，為您加入無糖紅茶，請確認。',
       },
     ],
-    earlierProposals: [
+    proposalLog: [
       {
+        turnNumber: 1,
         operations: [
           {
             type: 'add_item',
@@ -141,25 +176,26 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
         ],
         results: [{ operationId: 'op-1', outcome: 'accepted' }],
       },
-    ],
-    lastProposal: {
-      operations: [
-        {
-          type: 'add_item',
-          operationId: 'op-1',
-          summary: '+ 紅茶 ×1 · 無糖 · 正常冰',
-          item: {
-            productId: 'prod-black-tea',
-            quantity: 1,
-            selectedOptions: [
-              { modifierId: 'mod-sugar', optionId: 'opt-sugar-free' },
-              { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
-            ],
+      {
+        turnNumber: 2,
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '+ 紅茶 ×1 · 無糖 · 正常冰',
+            item: {
+              productId: 'prod-black-tea',
+              quantity: 1,
+              selectedOptions: [
+                { modifierId: 'mod-sugar', optionId: 'opt-sugar-free' },
+                { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+              ],
+            },
           },
-        },
-      ],
-      results: [{ operationId: 'op-1', outcome: 'superseded' }],
-    },
+        ],
+        results: [{ operationId: 'op-1', outcome: 'superseded' }],
+      },
+    ],
     expects:
       'only the black tea, now with less ice: the milk tea was accepted two turns ago',
     check: (outcome) =>

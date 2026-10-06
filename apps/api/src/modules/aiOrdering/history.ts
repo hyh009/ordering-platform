@@ -20,8 +20,8 @@ export type AiOrderingHistoryWindow = {
  * both need the originals — and only the model's view is trimmed. Do not unify
  * the two numbers.
  *
- * Each turn is reduced to the guest message, the reply they saw, and the
- * response type. The raw model output is never included: it is stored for
+ * Each turn is reduced to its number, the guest message, the reply they saw,
+ * and the response type. The raw model output is never included: it is stored for
  * offline evaluation, not to be fed back to a model.
  */
 export function windowAiOrderingHistory(
@@ -32,10 +32,13 @@ export function windowAiOrderingHistory(
     return { history: [] };
   }
 
-  const recent = conversation.turns.slice(-maxHistoryTurns);
+  const windowStart = Math.max(0, conversation.turns.length - maxHistoryTurns);
 
   return {
-    history: recent.map((turn) => ({
+    // Numbered from the conversation, not from the window, so a turn keeps the
+    // number it had when it was written and the proposal log can name it.
+    history: conversation.turns.slice(windowStart).map((turn, index) => ({
+      turnNumber: windowStart + index + 1,
       message: turn.message,
       reply: turn.response.reply,
       responseType: turn.response.type,

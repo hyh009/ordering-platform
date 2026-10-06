@@ -835,8 +835,10 @@ describe('AiOrderingService proposal lifetime', () => {
     // The failure this exists for: the history still holds "I added the milk
     // tea", the cart does not have it, and nothing used to reconcile the two —
     // so the model invented a cart item id for an item never added.
-    expect(h.firstPrompt).toContain('What happened to your last proposal');
-    expect(h.firstPrompt).toContain('did NOT change');
+    expect(h.firstPrompt).toContain('Every change you proposed');
+    expect(h.firstPrompt).toContain(
+      '[Turn 1] 加入鮮奶茶 (op-1 | add_item | product prod-milk-tea | x1): the guest ignored it — not in the cart',
+    );
   });
 
   it('tells the model what the lapsed proposal had offered', async () => {
@@ -850,7 +852,7 @@ describe('AiOrderingService proposal lifetime', () => {
     // the operation it cannot tell which product that was, so it cannot offer
     // the same change again with the guest's new request folded in.
     expect(h.firstPrompt).toContain(
-      '(op-1 | add_item | product prod-milk-tea | x1): the guest never answered',
+      '(op-1 | add_item | product prod-milk-tea | x1): the guest ignored it',
     );
   });
 
@@ -871,7 +873,9 @@ describe('AiOrderingService proposal lifetime', () => {
     // Writing again would be refused by the conditional claim anyway, but the
     // round trip should not happen at all.
     expect(h.proposalDecisions).toHaveLength(0);
-    expect(h.firstPrompt).toContain('now in the cart');
+    expect(h.firstPrompt).toContain(
+      'the guest accepted it — it is in the cart',
+    );
   });
 
   it('does not settle anything when no proposal was ever made', async () => {
@@ -893,8 +897,10 @@ describe('AiOrderingService proposal lifetime', () => {
     // Both writes race on `decision: { $exists: false }` and only one matches.
     // When the acceptance wins, what the model is told is what it executed —
     // never the no-action set this turn tried to write.
-    expect(h.firstPrompt).toContain('now in the cart');
-    expect(h.firstPrompt).not.toContain('did NOT change');
+    expect(h.firstPrompt).toContain(
+      'the guest accepted it — it is in the cart',
+    );
+    expect(h.firstPrompt).not.toContain('the guest ignored it');
   });
 });
 

@@ -84,6 +84,23 @@ function renderMenu(
 ): string {
   const lines: string[] = ['## Menu'];
 
+  // Named on the product line as well as in `## Choices`, so "which choices does
+  // this product need" is readable where the product is, rather than three ids
+  // to carry to another section and back.
+  const modifierNames = new Map(
+    menu.modifiers.map((modifier) => [
+      modifier.id,
+      localize(modifier.name, locale),
+    ]),
+  );
+  const describeModifier = (modifierId: string) => {
+    const name = modifierNames.get(modifierId);
+
+    // Id first, the way every other line writes one: the name is there to be
+    // read, not to be sent back.
+    return name ? `${code(modifierId)} (${name})` : code(modifierId);
+  };
+
   for (const group of menu.groups) {
     lines.push(
       `### ${group.category ? localize(group.category.name, locale) : 'Uncategorised'}`,
@@ -93,7 +110,7 @@ function renderMenu(
       const flags = [
         product.isSoldOut ? 'SOLD OUT' : null,
         product.modifierIds.length > 0
-          ? `choices: ${product.modifierIds.map(code).join(', ')}`
+          ? `choices: ${product.modifierIds.map(describeModifier).join(', ')}`
           : 'no choices',
       ].filter(Boolean);
 
@@ -137,7 +154,10 @@ function renderMenu(
 }
 
 function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
-  const lines: string[] = ['## Cart'];
+  const lines: string[] = [
+    '## The cart right now',
+    'Everything this cart holds at this moment, after every change below was settled. Nothing else is in it.',
+  ];
 
   const renderItems = (
     heading: string,
@@ -165,12 +185,12 @@ function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
   };
 
   renderItems(
-    '### Items you may change (added by this guest)',
+    '### Items you may change — this guest added them',
     cart.modifiableItems,
-    'none',
+    'none yet',
   );
   renderItems(
-    '### Items you may NOT change (added by other people)',
+    '### Items you may NOT change — other people sharing this cart added them',
     cart.readOnlyItems,
     'none',
   );
@@ -223,56 +243,58 @@ export function buildAiOrderingContext(
   if (input.history.length === 0) {
     historyLines.push('No earlier turns.');
   } else {
+    // Every line carries its turn number because the proposal log lives in
+    // another block and refers back to these turns by number.
     for (const turn of input.history) {
-      historyLines.push(`Guest: ${turn.message}`);
-      historyLines.push(`You (${turn.responseType}): ${turn.reply}`);
+      historyLines.push(`[Turn ${turn.turnNumber}] Guest: ${turn.message}`);
+      historyLines.push(
+        `[Turn ${turn.turnNumber}] You (${turn.responseType}): ${turn.reply}`,
+      );
     }
   }
 
+  const currentTurnNumber =
+    input.currentTurnNumber ?? (input.history.at(-1)?.turnNumber ?? 0) + 1;
+
   const currentTurnLines: string[] = [
-    '# This turn',
+    `# This turn — Turn ${currentTurnNumber}`,
     renderCart(cartContext, code),
   ];
 
-  const earlierProposals = (input.earlierProposals ?? []).filter(
-    (proposal) => proposal.operations.length > 0,
+  const proposalLog = (input.proposalLog ?? []).filter(
+    (entry) => entry.operations.length > 0,
   );
 
-  if (earlierProposals.length > 0) {
-    currentTurnLines.push('## Earlier proposals, already settled');
+  if (proposalLog.length > 0) {
+    const lastTurnNumber = proposalLog.at(-1)?.turnNumber;
+
     currentTurnLines.push(
-      'Oldest first. Each of these is finished: an accepted change is already in the cart shown above, and the others were dropped. None of them is waiting, so do not propose any of them again unless the guest asks for it now.',
+      '## Every change you proposed, and what the cart did',
+    );
+    currentTurnLines.push(
+      'Oldest first. This is what the cart actually did; where it disagrees with what you said at the time, this is right and your reply was not.',
+    );
+    currentTurnLines.push(
+      `A change that was ignored on Turn ${lastTurnNumber} may still be wanted: if the guest's message now reads that way, propose it again, altering only the part they just corrected and asking nothing you already know. A change ignored on any earlier turn is over — leave it alone unless they ask for it now.`,
     );
 
-    for (const proposal of earlierProposals) {
-      for (const operation of proposal.operations) {
-        const result = proposal.results.find(
+    for (const entry of proposalLog) {
+      for (const operation of entry.operations) {
+        const result = entry.results.find(
           (candidate) => candidate.operationId === operation.operationId,
         );
+        // Ids only on the most recent proposal, which is the only one that may
+        // be proposed again: that is what the ids are for, and spelling them out
+        // for every settled change would be the longest block in the prompt.
+        const detail =
+          entry.turnNumber === lastTurnNumber
+            ? ` (${renderProposedOperation(operation, code)})`
+            : '';
 
         currentTurnLines.push(
-          `- ${operation.summary}: ${describeSettledOutcome(result?.outcome)}`,
+          `- [Turn ${entry.turnNumber}] ${operation.summary}${detail}: ${describeOutcome(result?.outcome, result?.failureCode)}`,
         );
       }
-    }
-  }
-
-  if (input.reportedOutcomes && input.reportedOutcomes.length > 0) {
-    currentTurnLines.push('## What happened to your last proposal');
-    currentTurnLines.push(
-      'This is what the cart actually did. Where it disagrees with what you said last turn, this is right and your reply was not.',
-    );
-
-    for (const result of input.reportedOutcomes) {
-      const operation = input.lastProposalOperations?.find(
-        (candidate) => candidate.operationId === result.operationId,
-      );
-
-      currentTurnLines.push(
-        // The label first, because it names the choices in words; the ids after
-        // it are what proposing the same change again has to send.
-        `- ${operation ? `${operation.summary} (${renderProposedOperation(operation, code)})` : result.operationId}: ${describeOutcome(result.outcome, result.failureCode)}`,
-      );
     }
   }
 
@@ -357,50 +379,33 @@ function renderProposedOperation(
 }
 
 /**
- * How an EARLIER proposal's change ended, stated as a closed fact.
+ * How one proposed change ended, in as few words as carry the difference.
  *
- * Shorter than the latest proposal's wording and without its advice: "offer it
- * again" is right for the proposal the guest just walked past and wrong for one
- * from several turns ago, which has been overtaken by everything since.
- */
-function describeSettledOutcome(outcome: string | undefined): string {
-  switch (outcome) {
-    case 'accepted':
-      return 'accepted — done, already in the cart';
-    case 'rejected':
-      return 'dismissed by the guest';
-    case 'superseded':
-      return 'never answered — lapsed, not in the cart';
-    case 'no_action':
-    case 'failed':
-      return 'accepted but could not be applied — not in the cart';
-    default:
-      return 'never answered — lapsed, not in the cart';
-  }
-}
-
-/**
- * The four non-acceptances must read differently to the model. A refusal it
- * should respect, a proposal the guest never answered, one an earlier failure
- * stopped it from reaching, and one that was attempted and would not apply are
- * four different facts, and collapsing any two makes the next reply wrong.
+ * The five outcomes are not interchangeable: a refusal to respect, a proposal
+ * the guest walked past, one an earlier failure stopped short of, and one that
+ * was attempted and would not apply are four different facts, and collapsing
+ * any two makes the next reply wrong. What each one means for the NEXT turn is
+ * stated once in the section's opening lines instead of being repeated on every
+ * row, which is what these strings used to do.
  */
 function describeOutcome(
-  outcome: string,
+  outcome: string | undefined,
   failureCode: string | undefined,
 ): string {
   switch (outcome) {
     case 'accepted':
-      return 'the guest accepted it and it is now in the cart';
+      return 'the guest accepted it — it is in the cart';
     case 'rejected':
-      return 'the guest dismissed it — do not propose it again unless they ask';
+      return 'the guest refused it — not in the cart';
     case 'superseded':
-      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; if they still seem to want it, put it in your next proposal together with anything new they asked for. If their message corrects one part of it, change only that part and keep the rest exactly as it was, without asking for it again';
+      return 'the guest ignored it — not in the cart';
     case 'no_action':
-      return 'the guest accepted it but an earlier failure stopped the proposal before this one was attempted, so it is not in the cart';
+      return 'accepted, but an earlier failure stopped the proposal before it — not in the cart';
     case 'failed':
-      return `the guest accepted it but it could not be applied${failureCode ? ` (${failureCode})` : ''}`;
+      return `accepted, but it would not apply${failureCode ? ` (${failureCode})` : ''} — not in the cart`;
     default:
-      return outcome;
+      // No decision was recorded against it, which only a data fault or the
+      // instant between claiming and writing one produces.
+      return 'no recorded outcome — not in the cart';
   }
 }
