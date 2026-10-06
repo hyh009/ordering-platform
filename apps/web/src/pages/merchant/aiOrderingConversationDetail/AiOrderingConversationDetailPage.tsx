@@ -140,6 +140,83 @@ export function AiOrderingConversationDetailPage() {
                 </div>
               </details>
             ) : null}
+
+            {turn.modelTrace ? (
+              <details className="mt-2 text-xs">
+                <summary className="cursor-pointer text-muted-foreground">
+                  {tDefault(
+                    'merchant.aiOrdering.modelTrace',
+                    'What the model was given, and each call',
+                  )}
+                </summary>
+
+                <div className="mt-2 space-y-3">
+                  <div>
+                    <p className="text-muted-foreground">
+                      {tDefault(
+                        'merchant.aiOrdering.modelTraceCurrentTurn',
+                        'This turn, as sent to the model',
+                      )}
+                    </p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono">
+                      {turn.modelTrace.currentTurn}
+                    </pre>
+                  </div>
+
+                  {turn.modelTrace.calls.map((call, callIndex) => (
+                    <div key={callIndex} className="space-y-1">
+                      <p className="text-muted-foreground">
+                        {tDefault(
+                          'merchant.aiOrdering.modelTraceCall',
+                          'Call {{number}}',
+                          { number: callIndex + 1 },
+                        )}
+                        <span className="ml-2 font-mono">
+                          {call.toolNames.join(', ')}
+                        </span>
+                      </p>
+
+                      {call.feedback ? (
+                        <div>
+                          <p className="text-muted-foreground">
+                            {tDefault(
+                              'merchant.aiOrdering.modelTraceFeedback',
+                              'Told about the previous call',
+                            )}
+                          </p>
+                          <pre className="mt-1 overflow-x-auto whitespace-pre-wrap rounded border border-dashed p-2">
+                            {call.feedback}
+                          </pre>
+                        </div>
+                      ) : null}
+
+                      {call.toolArgs.map((toolCall, index) => (
+                        <div key={`${toolCall.name}-${index}`}>
+                          <p className="font-mono text-muted-foreground">
+                            {toolCall.name}
+                          </p>
+                          <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 font-mono">
+                            {toolCall.json}
+                          </pre>
+                        </div>
+                      ))}
+
+                      {call.text ? (
+                        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2">
+                          {call.text}
+                        </pre>
+                      ) : null}
+
+                      {call.error ? (
+                        <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2 text-destructive">
+                          {call.error}
+                        </pre>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </li>
         ))}
       </ol>

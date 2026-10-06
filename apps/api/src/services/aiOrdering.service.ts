@@ -21,6 +21,7 @@ import {
   createAiOrderingAgent,
 } from '@src/modules/aiOrdering/runtime/agent';
 import { getAiOrderingCheckpointer } from '@src/modules/aiOrdering/runtime/checkpointer';
+import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
 import { mapAiOrderingProviderFailure } from '@src/modules/aiOrdering/runtime/failures';
 import { generateAiOrderingSummary } from '@src/modules/aiOrdering/summary';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
@@ -368,6 +369,7 @@ export class AiOrderingService {
       // Unused on a resume: the labels were written when the proposal was made.
       locale: 'zh-TW',
       guestMessage: '',
+      onModelCall: createAiOrderingDebugTrace(`accept-${input.proposalId}`),
       newId: this.deps.newId,
       toToolSchema: (schema) => input.runtime.toToolSchema(schema),
       model: input.runtime.createChatModel(),
@@ -675,6 +677,7 @@ export class AiOrderingService {
       confirmationRequired,
       locale: store.locale.defaultLocale,
       guestMessage: request.message,
+      onModelCall: createAiOrderingDebugTrace(`turn-${proposalId}`),
       newId: (prefix) =>
         prefix === 'proposal' ? proposalId : this.deps.newId(prefix),
       toToolSchema: (schema) => runtime.toToolSchema(schema),
@@ -725,7 +728,14 @@ export class AiOrderingService {
       );
     }
 
-    const turn = this.buildTurn({ request, runtime, record });
+    const turn = this.buildTurn({
+      request,
+      runtime,
+      record,
+      currentTurn:
+        context.blocks.find((block) => block.kind === 'current_turn')?.text ??
+        '',
+    });
 
     const stored = await this.persistTurn(store, lookup, conversation, turn);
 
@@ -773,6 +783,8 @@ export class AiOrderingService {
     request: SendAiOrderingMessageRequest;
     runtime: AiOrderingRuntime;
     record: AiOrderingRunRecord;
+    /** The `current_turn` block as it was sent to the model. */
+    currentTurn: string;
   }): AiOrderingTurnSnapshot {
     const { record, request, runtime } = input;
     const response = record.response;
@@ -795,6 +807,7 @@ export class AiOrderingService {
       provider: runtime.provider,
       modelName: runtime.modelName,
       modelOutput: record.modelOutput,
+      modelTrace: { currentTurn: input.currentTurn, calls: record.calls },
       response,
       // Snapshotted so the NEXT turn can resolve what the guest is answering or
       // reporting on, without trusting anything the client sends back.

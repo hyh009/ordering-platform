@@ -39,8 +39,12 @@ import type {
   AiOrderingResponse,
   SupportedLocale,
 } from '@repo/shared';
-import type { AiOrderingTurnQualitySignals } from '@src/models/aiOrdering/model';
+import type {
+  AiOrderingModelCallRecord,
+  AiOrderingTurnQualitySignals,
+} from '@src/models/aiOrdering/model';
 import type { AiOrderingCartExecutor } from '@src/modules/aiOrdering/cartExecution';
+import type { AiOrderingModelCallObserver } from '@src/modules/aiOrdering/runtime/debugTrace';
 import type {
   AiOrderingAssembledContext,
   AiOrderingVersionConfig,
@@ -72,6 +76,8 @@ export type AiOrderingRunRecord = {
   cacheReadTokens: number;
   /** Every model call this run made, including the repair and the closing one. */
   modelCalls: number;
+  /** What each of those calls was given and returned, in order, for review. */
+  calls: AiOrderingModelCallRecord[];
 };
 
 function emptyRecord(): AiOrderingRunRecord {
@@ -87,6 +93,7 @@ function emptyRecord(): AiOrderingRunRecord {
     },
     results: null,
     cacheReadTokens: 0,
+    calls: [],
     modelCalls: 0,
   };
 }
@@ -133,6 +140,8 @@ export type AiOrderingAgentInput = {
   executor: AiOrderingCartExecutor;
   /** Epoch milliseconds the whole turn must finish by. */
   deadlineAt?: number | undefined;
+  /** Shown every model call as it happens. A debugging aid; see `debugTrace.ts`. */
+  onModelCall?: AiOrderingModelCallObserver | undefined;
 };
 
 export type AiOrderingAgent = {
@@ -366,7 +375,38 @@ export function createAiOrderingAgent(
               }),
         };
 
-        const message = await handler(callRequest);
+        const trace = {
+          callNumber: record.modelCalls,
+          messages: callRequest.messages as BaseMessage[],
+          toolNames: callRequest.tools.map((candidate) =>
+            String((candidate as { name?: unknown }).name),
+          ),
+        };
+
+        // What the review surface keeps of this call. The prompt itself is not
+        // repeated per call: only what was added for THIS call, which is the
+        // feedback on the one before it.
+        const feedback = earlier.at(-1)?.note;
+        const callRecord: AiOrderingModelCallRecord = {
+          toolNames: trace.toolNames,
+          ...(feedback !== undefined ? { feedback } : {}),
+        };
+
+        record.calls.push(callRecord);
+
+        let message: AIMessage;
+
+        try {
+          message = (await handler(callRequest)) as AIMessage;
+        } catch (error) {
+          callRecord.error =
+            error instanceof Error ? error.message : String(error);
+          input.onModelCall?.({ ...trace, error });
+          throw error;
+        }
+
+        callRecord.output = toModelOutput(message);
+        input.onModelCall?.({ ...trace, output: message });
 
         record.cacheReadTokens += readCacheReadTokens(message);
 

@@ -24,6 +24,7 @@ import {
   AI_ORDERING_MENU_FIXTURE,
 } from '@src/modules/aiOrdering/evaluation/fixture';
 import { createAiOrderingAgent } from '@src/modules/aiOrdering/runtime/agent';
+import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 
 import type { AiOrderingResponseType, SupportedLocale } from '@repo/shared';
@@ -132,6 +133,7 @@ async function replayOne(
     confirmationRequired: true,
     locale: input.locale ?? 'zh-TW',
     guestMessage: replayCase.message,
+    onModelCall: createAiOrderingDebugTrace('replay'),
     newId: (prefix) => `${prefix}-replay`,
     toToolSchema: input.toToolSchema,
     model: input.createModel(),

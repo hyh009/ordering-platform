@@ -107,6 +107,9 @@ const turnSnapshotSchema = new Schema<AiOrderingTurnSnapshot>(
     // Raw model output, stored even when validation rejected it: rejected output
     // is the most valuable row in the evaluation corpus. Untyped by definition.
     modelOutput: { type: Schema.Types.Mixed },
+    // The turn's own part of the prompt and every model call it took. Read by
+    // the review surface only; the mapper asserts its shape on the way out.
+    modelTrace: { type: Schema.Types.Mixed },
     // The hydrated response the guest saw. A discriminated union validated by the
     // shared schema before it is written. `turns.response.type` stays queryable,
     // which is what the merchant's unanswered-question listing filters on, so no

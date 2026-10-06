@@ -84,6 +84,13 @@ const envSchema = z.object({
    * sitting in the environment.
    */
   AI_ORDERING_VERSION_ID: optionalEnvString(),
+  /**
+   * A directory to write every assistant model call to, as plain text: the
+   * prompt as sent, the tools bound, and the model's answer. Unset means off.
+   *
+   * Development only. The files hold guests' own words.
+   */
+  AI_ORDERING_DEBUG_DIR: optionalEnvString(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

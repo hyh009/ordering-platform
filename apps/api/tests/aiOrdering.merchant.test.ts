@@ -99,6 +99,70 @@ describe('AI ordering merchant mapper', () => {
     });
   });
 
+  it('exposes how the turn was reached, call by call', () => {
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        turn(
+          'turn-1',
+          { type: 'message', reply: '請問冰塊要哪一種？' },
+          {
+            modelTrace: {
+              currentTurn: '# This turn\n## Guest message\n無糖紅茶',
+              calls: [
+                {
+                  toolNames: ['propose_cart_operations', 'ask_choice'],
+                  output: {
+                    toolCalls: [{ name: 'propose_cart_operations', args: {} }],
+                    text: '',
+                  },
+                },
+                {
+                  toolNames: ['propose_cart_operations', 'ask_choice'],
+                  feedback: 'the guest has not chosen modifier "ab12cd34"',
+                  // Not a recognizable reply: the call is kept, the output is not.
+                  output: { candidates: [] },
+                },
+                { toolNames: ['ask_choice'], error: '429 Too Many Requests' },
+              ],
+            },
+          },
+        ),
+      ]),
+    );
+
+    expect(detail.turns[0]?.modelTrace).toEqual({
+      currentTurn: '# This turn\n## Guest message\n無糖紅茶',
+      calls: [
+        {
+          toolNames: ['propose_cart_operations', 'ask_choice'],
+          output: {
+            toolCalls: [{ name: 'propose_cart_operations', args: {} }],
+            text: '',
+          },
+        },
+        {
+          toolNames: ['propose_cart_operations', 'ask_choice'],
+          feedback: 'the guest has not chosen modifier "ab12cd34"',
+        },
+        { toolNames: ['ask_choice'], error: '429 Too Many Requests' },
+      ],
+    });
+  });
+
+  it('omits a stored trace it does not recognize', () => {
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        turn(
+          'turn-1',
+          { type: 'message', reply: '好的。' },
+          { modelTrace: { calls: 'not a list' } },
+        ),
+      ]),
+    );
+
+    expect(detail.turns[0]).not.toHaveProperty('modelTrace');
+  });
+
   it('omits a stored output whose shape it does not recognize', () => {
     // `modelOutput` is `Mixed` in Mongo, so the stored value is whatever some
     // past or future runtime wrote. A half-understood object must not reach the

@@ -22,6 +22,7 @@ import type {
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
   AiOrderingModelOutputDto,
+  AiOrderingModelTraceDto,
   AiOrderingProposalStateDto,
   AiOrderingReviewTurnDto,
   AiOrderingUnansweredEntryDto,
@@ -80,6 +81,54 @@ function toAiOrderingModelOutputDto(
   return { toolCalls: calls, text };
 }
 
+/**
+ * The stored trace, held to its declared shape for the same reason the raw
+ * reply is: a call that does not fit is dropped, not passed through.
+ */
+function toAiOrderingModelTraceDto(
+  value: unknown,
+): AiOrderingModelTraceDto | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const { currentTurn, calls } = value as {
+    currentTurn?: unknown;
+    calls?: unknown;
+  };
+
+  if (typeof currentTurn !== 'string' || !Array.isArray(calls)) {
+    return undefined;
+  }
+
+  const trace: AiOrderingModelTraceDto = { currentTurn, calls: [] };
+
+  for (const call of calls as unknown[]) {
+    if (typeof call !== 'object' || call === null) {
+      continue;
+    }
+
+    const { toolNames, feedback, output, error } = call as {
+      toolNames?: unknown;
+      feedback?: unknown;
+      output?: unknown;
+      error?: unknown;
+    };
+    const outputDto = toAiOrderingModelOutputDto(output);
+
+    trace.calls.push({
+      toolNames: Array.isArray(toolNames)
+        ? toolNames.filter((name): name is string => typeof name === 'string')
+        : [],
+      ...(typeof feedback === 'string' ? { feedback } : {}),
+      ...(outputDto !== undefined ? { output: outputDto } : {}),
+      ...(typeof error === 'string' ? { error } : {}),
+    });
+  }
+
+  return trace;
+}
+
 export function toAiOrderingReviewTurnDto(
   turn: AiOrderingTurnSnapshot,
 ): AiOrderingReviewTurnDto {
@@ -101,6 +150,12 @@ export function toAiOrderingReviewTurnDto(
 
   if (modelOutput !== undefined) {
     dto.modelOutput = modelOutput;
+  }
+
+  const modelTrace = toAiOrderingModelTraceDto(turn.modelTrace);
+
+  if (modelTrace !== undefined) {
+    dto.modelTrace = modelTrace;
   }
 
   if (turn.quality.repairSucceeded !== undefined) {

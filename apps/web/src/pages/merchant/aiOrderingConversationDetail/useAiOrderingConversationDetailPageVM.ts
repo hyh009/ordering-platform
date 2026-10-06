@@ -37,6 +37,21 @@ export type AiOrderingReviewTurnRow = {
     toolArgs: { name: string; json: string }[];
     text: string;
   };
+  /**
+   * How the turn was reached: what the model was given for this turn, then
+   * every call it took. More than one call means an earlier answer was refused,
+   * and `feedback` is what the model was told about it.
+   */
+  modelTrace?: {
+    currentTurn: string;
+    calls: {
+      toolNames: string[];
+      feedback?: string;
+      toolArgs: { name: string; json: string }[];
+      text: string;
+      error?: string;
+    }[];
+  };
   versionId: string;
   versionFingerprint: string;
   modelName: string;
@@ -96,6 +111,22 @@ function toRow(turn: AiOrderingReviewTurn): AiOrderingReviewTurnRow {
         json: formatArgs(call.args),
       })),
       text: turn.modelOutput.text,
+    };
+  }
+
+  if (turn.modelTrace) {
+    row.modelTrace = {
+      currentTurn: turn.modelTrace.currentTurn,
+      calls: turn.modelTrace.calls.map((call) => ({
+        toolNames: call.toolNames,
+        ...(call.feedback !== undefined ? { feedback: call.feedback } : {}),
+        toolArgs: (call.output?.toolCalls ?? []).map((toolCall) => ({
+          name: toolCall.name,
+          json: formatArgs(toolCall.args),
+        })),
+        text: call.output?.text ?? '',
+        ...(call.error !== undefined ? { error: call.error } : {}),
+      })),
     };
   }
 

@@ -250,6 +250,10 @@ export const aiOrderingModel = {
       turn.modelOutput = dto.modelOutput;
     }
 
+    if (dto.modelTrace !== undefined) {
+      turn.modelTrace = dto.modelTrace;
+    }
+
     return turn;
   },
 

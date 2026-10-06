@@ -376,6 +376,26 @@ export type AiOrderingModelOutputDto = {
 };
 
 /**
+ * How a turn was reached: the turn's own part of the prompt, then every model
+ * call in order.
+ *
+ * A turn usually takes one call. More than one means the earlier answer could
+ * not be used, and `feedback` on the later call is what the model was told
+ * about it. The menu and the core instructions are not included: they are the
+ * same on every turn and are not the merchant's to read.
+ */
+export type AiOrderingModelTraceDto = {
+  /** The cart, the last proposal's outcome, and the guest's message, as sent. */
+  currentTurn: string;
+  calls: {
+    toolNames: string[];
+    feedback?: string;
+    output?: AiOrderingModelOutputDto;
+    error?: string;
+  }[];
+};
+
+/**
  * One stored turn, as the merchant sees it.
  *
  * `versionFingerprint` travels with `versionId` because a draft version's file
@@ -400,6 +420,8 @@ export type AiOrderingReviewTurnDto = {
    * to do, not what the guest was told.
    */
   modelOutput?: AiOrderingModelOutputDto;
+  /** Present on turns stored since the trace was recorded. Merchant-only. */
+  modelTrace?: AiOrderingModelTraceDto;
   repairAttempted: boolean;
   repairSucceeded?: boolean;
   droppedOperationCount: number;

@@ -18,6 +18,24 @@ import type {
  */
 export const AI_ORDERING_MAX_TURNS_PER_CONVERSATION = 50;
 
+/** One model call within a turn: what was added for it, and what came back. */
+export type AiOrderingModelCallRecord = {
+  /** The tools bound for this call. The closing call has no proposal tool. */
+  toolNames: string[];
+  /** What the model was told was wrong with its previous call. Absent on the first. */
+  feedback?: string;
+  /** Absent when the call failed before returning anything. */
+  output?: { toolCalls: { name: string; args: unknown }[]; text: string };
+  /** Why the call returned nothing: a provider error or a timeout. */
+  error?: string;
+};
+
+export type AiOrderingModelTrace = {
+  /** The `current_turn` block as sent: cart, last proposal's outcome, message. */
+  currentTurn: string;
+  calls: AiOrderingModelCallRecord[];
+};
+
 /**
  * A `choices` response the backend issued, stored so the next turn can resolve
  * `responseToPromptId` and `selectedOptionId` against the prompt that offered
@@ -127,6 +145,16 @@ export type AiOrderingTurnSnapshot = {
   modelName: string;
   /** Raw model output before validation, stored even when it was rejected. */
   modelOutput?: unknown;
+  /**
+   * What the model was working from this turn, and every call it took.
+   *
+   * Only the parts that differ from turn to turn. The core instructions are
+   * recoverable from `versionFingerprint`, the earlier turns are the rows
+   * before this one, and the menu is left out because it is the bulk of the
+   * prompt and identical on every turn: stored fifty times it would dominate
+   * the document.
+   */
+  modelTrace?: AiOrderingModelTrace;
   /** The response the guest actually saw. */
   response: AiOrderingResponse;
   /** Present only when `response.type` is `choices`. */

@@ -432,6 +432,16 @@ describe('AiOrderingService', () => {
         toolCalls: [],
         text: '珍珠奶茶是紅茶加鮮奶。',
       });
+      // And what it was working from: this turn's own block, plus each call.
+      // The menu is not in it, by design.
+      expect(turn?.modelTrace?.currentTurn).toContain('## Guest message');
+      expect(turn?.modelTrace?.currentTurn).not.toContain('## Menu');
+      expect(turn?.modelTrace?.calls).toEqual([
+        {
+          toolNames: expect.arrayContaining(['propose_cart_operations']),
+          output: { toolCalls: [], text: '珍珠奶茶是紅茶加鮮奶。' },
+        },
+      ]);
     });
 
     it('stores the quality signals, including the provider cache read', async () => {
