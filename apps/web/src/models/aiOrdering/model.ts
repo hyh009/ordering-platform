@@ -128,6 +128,14 @@ export const aiOrderingModel = {
           question: dto.question,
           inputMode: dto.inputMode,
           options: dto.options.map(deserializeChoice),
+          ...(dto.additionalQuestions !== undefined
+            ? {
+                additionalQuestions: dto.additionalQuestions.map((entry) => ({
+                  question: entry.question,
+                  options: entry.options.map(deserializeChoice),
+                })),
+              }
+            : {}),
           allowFreeText: dto.allowFreeText,
         };
 

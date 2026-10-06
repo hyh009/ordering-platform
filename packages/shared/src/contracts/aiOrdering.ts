@@ -121,6 +121,25 @@ export const aiOrderingChoicesResponseSchema = z.object({
   question: z.string().trim().min(1).max(500),
   inputMode: z.enum(aiOrderingChoiceInputModes),
   options: z.array(aiOrderingChoiceSchema).min(1).max(8),
+  /**
+   * Further questions asked in the same turn, each with its own options.
+   *
+   * A product often needs several choices at once — a drink's sugar, ice and
+   * size — and asking them one turn at a time costs the guest a round trip per
+   * choice. `question` and `options` above stay the first question, so a
+   * single-question response is unchanged. With more than one, the guest picks
+   * an option per question and answers them all in one message; that answer
+   * travels as text, so `selectedOptionId` is only ever the first question's.
+   */
+  additionalQuestions: z
+    .array(
+      z.object({
+        question: z.string().trim().min(1).max(500),
+        options: z.array(aiOrderingChoiceSchema).min(1).max(8),
+      }),
+    )
+    .max(4)
+    .optional(),
   // Always true: a guest may answer by typing instead of picking an option.
   allowFreeText: z.literal(true),
 });

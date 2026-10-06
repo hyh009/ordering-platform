@@ -42,7 +42,7 @@ export const aiOrderingToolDefinitions: readonly AiOrderingToolDefinition[] = [
     name: 'ask_choice',
     responseType: 'choices',
     description:
-      'Ask the guest one question and offer a short list of options to pick from. Only for when exactly ONE choice is missing across everything they asked for. If two or more are missing — two choices on one product, or one choice each on two products — do not call this: reply in plain text and ask for all of them at once. They may also answer by typing instead of picking.',
+      'Ask the guest for the choices that are still missing, each with a short list of options to pick from. Ask for ALL of them in this one call: the first in `question` and `options`, every other one as its own entry in `additionalQuestions`. Never ask for them one turn at a time, and never put two choices into one question. They may also answer by typing instead of picking.',
     schema: aiOrderingModelArgumentSchemas.choices,
   },
   {

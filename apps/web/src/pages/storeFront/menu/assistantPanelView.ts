@@ -28,6 +28,15 @@ export type AssistantEntryView =
       question: string;
       inputMode: AiOrderingChoiceInputMode;
       options: AiOrderingChoiceModel[];
+      /**
+       * Further questions asked in the same turn. Empty for a single question,
+       * which is answered by one tap; with any here, the guest picks an option
+       * per question and sends them together.
+       */
+      additionalQuestions: {
+        question: string;
+        options: AiOrderingChoiceModel[];
+      }[];
       promptId: string;
       /** Always true: a guest may type instead of picking. */
       allowsFreeText: boolean;
@@ -47,7 +56,11 @@ export type AssistantEntryView =
        * memory, so a reloaded transcript shows what actually happened instead
        * of telling a guest to ask again for something already in their cart.
        */
-      results?: { operationId: string; outcome: string; failureCode?: string }[];
+      results?: {
+        operationId: string;
+        outcome: string;
+        failureCode?: string;
+      }[];
     }
   | {
       id: string;
@@ -193,6 +206,7 @@ function toEntryView(
         question: response.question,
         inputMode: response.inputMode,
         options: response.options,
+        additionalQuestions: response.additionalQuestions ?? [],
         promptId: response.promptId,
         allowsFreeText: response.allowFreeText,
       };
@@ -255,7 +269,8 @@ function toProposalView(
     // answered a second time. There are no stranded rows to resume, because the
     // server reports a result for every operation including the ones a failure
     // left unattempted.
-    canApply: !proposal.isApplied && rows.some((row) => row.status === 'pending'),
+    canApply:
+      !proposal.isApplied && rows.some((row) => row.status === 'pending'),
     isApplied: proposal.isApplied,
   };
 }

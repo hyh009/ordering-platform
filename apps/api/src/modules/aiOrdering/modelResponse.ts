@@ -196,15 +196,33 @@ export const aiOrderingModelArgumentSchemas = {
       question: z.string().trim().min(1).max(500),
       inputMode: z.enum(['single_choice', 'yes_no']),
       options: z.array(modelChoiceSchema).min(1).max(8),
+      additionalQuestions: z
+        .array(
+          describeFields(
+            z.object({
+              question: z.string().trim().min(1).max(500),
+              options: z.array(modelChoiceSchema).min(1).max(8),
+            }),
+            {
+              question:
+                "One further question, about one choice only, in the guest's own language.",
+              options: 'The answers to offer for this question only.',
+            },
+          ),
+        )
+        .max(4)
+        .optional(),
     }),
     {
       reply: modelReplyDescription,
       question:
-        'The single question the guest must answer before you can continue, in their own language.',
+        'The first question the guest must answer before you can continue, in their own language. One choice only: never combine two choices in one question.',
       inputMode:
         'yes_no when the question has exactly two opposite answers, single_choice otherwise.',
       options:
-        'The answers to offer. The guest may also type something else, so these need not be exhaustive.',
+        'The answers to offer for the first question only. The guest may also type something else, so these need not be exhaustive.',
+      additionalQuestions:
+        'Every other choice that is still missing, one entry per choice, so the guest answers all of them in this one turn. Omit when only one choice is missing.',
     },
   ),
   proposal: describeFields(
@@ -280,7 +298,29 @@ export function hydrateAiOrderingResponse(
     case 'message':
       return { type: 'message', reply: modelResponse.reply };
 
-    case 'choices':
+    case 'choices': {
+      // The model tends to repeat the first question among the further ones.
+      // Two questions offering the same answers are the same question, so each
+      // set of options is kept once, first asked first.
+      const optionsKey = (options: { label: string }[]) =>
+        options
+          .map((option) => option.label)
+          .sort()
+          .join('\u0000');
+      const seen = new Set([optionsKey(modelResponse.options)]);
+      const additionalQuestions = (
+        modelResponse.additionalQuestions ?? []
+      ).filter((entry) => {
+        const key = optionsKey(entry.options);
+
+        if (seen.has(key)) {
+          return false;
+        }
+
+        seen.add(key);
+        return true;
+      });
+
       return {
         type: 'choices',
         reply: modelResponse.reply,
@@ -294,8 +334,26 @@ export function hydrateAiOrderingResponse(
             ? { description: option.description }
             : {}),
         })),
+        ...(additionalQuestions.length > 0
+          ? {
+              additionalQuestions: additionalQuestions.map(
+                (entry, questionIndex) => ({
+                  question: entry.question,
+                  options: entry.options.map((option, index) => ({
+                    // Never sent back as a selection; unique so a list can key on it.
+                    id: `question-${questionIndex + 2}-option-${index + 1}`,
+                    label: option.label,
+                    ...(option.description !== undefined
+                      ? { description: option.description }
+                      : {}),
+                  })),
+                }),
+              ),
+            }
+          : {}),
         allowFreeText: true,
       };
+    }
 
     case 'proposal':
       return {

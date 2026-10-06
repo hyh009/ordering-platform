@@ -191,6 +191,20 @@ export function useAssistantPanelVM(input: {
     await send({ message: draft });
   }, [draft, send]);
 
+  // Several questions answered at once travel as text: the picked labels in
+  // question order. No option id goes with them, because an id names one
+  // question's answer and this is an answer to all of them.
+  const answerQuestions = useCallback(
+    async (labels: string[]) => {
+      const separator = labels.some((label) => /\p{Script=Han}/u.test(label))
+        ? '、'
+        : ', ';
+
+      await send({ message: labels.join(separator) });
+    },
+    [send],
+  );
+
   const selectOption = useCallback(
     async (option: { id: string; label: string }) => {
       await send({ message: option.label, selectedOptionId: option.id });
@@ -237,6 +251,7 @@ export function useAssistantPanelVM(input: {
     canSend: draft.trim().length > 0 && !view.isSending,
     submitDraft,
     selectOption,
+    answerQuestions,
     applyProposal,
     dismissOperation,
     cartGroups,

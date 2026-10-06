@@ -9,6 +9,7 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { AssistantCartPanel } from './AssistantCartPanel';
 import { AssistantProposalCard } from './AssistantProposalCard';
 import { AssistantProposalRecord } from './AssistantProposalRecord';
+import { AssistantQuestionGroup } from './AssistantQuestionGroup';
 
 import type { useAssistantPanelVM } from './useAssistantPanelVM';
 
@@ -131,11 +132,33 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                         {entry.reply}
                       </p>
 
-                      {entry.kind === 'choices' ? (
+                      {entry.kind === 'choices' &&
+                      entry.additionalQuestions.length > 0 ? (
+                        <AssistantQuestionGroup
+                          questions={[
+                            {
+                              question: entry.question,
+                              options: entry.options,
+                            },
+                            ...entry.additionalQuestions,
+                          ]}
+                          disabled={vm.isSending}
+                          onSubmit={(labels) => {
+                            void vm.answerQuestions(labels);
+                          }}
+                        />
+                      ) : null}
+
+                      {entry.kind === 'choices' &&
+                      entry.additionalQuestions.length === 0 ? (
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">
-                            {entry.question}
-                          </p>
+                          {/* The model often words the reply and the question
+                              identically; said once is enough. */}
+                          {entry.question.trim() !== entry.reply.trim() ? (
+                            <p className="text-sm font-medium">
+                              {entry.question}
+                            </p>
+                          ) : null}
                           <div className="flex flex-wrap gap-2">
                             {entry.options.map((option) => (
                               <Button
