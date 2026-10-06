@@ -7,7 +7,6 @@ import {
 import { buildAiOrderingOperationLabel } from '@src/modules/aiOrdering/operationLabel';
 import { z } from 'zod';
 
-
 import type { AiOrderingOperation, AiOrderingResponse } from '@repo/shared';
 import type { AiOrderingLabelContext } from '@src/modules/aiOrdering/operationLabel';
 
@@ -69,9 +68,7 @@ function describeFields<Shape extends z.ZodRawShape>(
   // carries refinements, and the cart's update schema carries one. The cast is
   // because re-declaring every key with the SAME field schema cannot change the
   // shape, which zod's extend typing has no way to express.
-  return schema.safeExtend(
-    described as never,
-  ) as unknown as z.ZodObject<Shape>;
+  return schema.safeExtend(described as never) as unknown as z.ZodObject<Shape>;
 }
 
 const modelReplyDescription =
@@ -125,7 +122,7 @@ const SELECTED_OPTIONS_DESCRIPTION =
   'Every choice the product requires, as id pairs from the menu. Omit only when the product has no modifiers.';
 
 const NOTES_ON_ADD_DESCRIPTION =
-  'A free-text instruction about THIS item for the kitchen, such as a spice level, an omission, or an allergy. This is the only field that carries such a request: writing it in your reply instead does not record it.';
+  'A free-text instruction about how to prepare THIS item, such as a spice level, an omission, or an allergy. Never an extra ingredient, side, or anything else the store sells: a note has no price, so that must be an option or a separate product. This is the only field that carries a preparation request: writing it in your reply instead does not record it.';
 
 const modelAddItemSchema = describeFields(
   cartItemInputSchema.safeExtend({

@@ -35,21 +35,21 @@ export const aiOrderingToolDefinitions: readonly AiOrderingToolDefinition[] = [
     name: 'propose_cart_operations',
     responseType: 'proposal',
     description:
-      "Propose changes to the guest's cart. The guest reviews the proposal and accepts, edits, or dismisses it, so nothing is applied by calling this. Call it once with every change you are proposing.",
+      "Propose changes to the guest's cart. The guest reviews the proposal and accepts, edits, or dismisses it, so nothing is applied by calling this and your reply must not say it was. Call it once with every change the guest currently wants, across all items.",
     schema: aiOrderingModelArgumentSchemas.proposal,
   },
   {
     name: 'ask_choice',
     responseType: 'choices',
     description:
-      'Ask the guest one question and offer a short list of options to pick from. Use it when a required choice cannot be determined from what they said. They may also answer by typing instead of picking.',
+      'Ask the guest one question and offer a short list of options to pick from. Only for when exactly ONE choice is missing across everything they asked for. If two or more are missing — two choices on one product, or one choice each on two products — do not call this: reply in plain text and ask for all of them at once. They may also answer by typing instead of picking.',
     schema: aiOrderingModelArgumentSchemas.choices,
   },
   {
     name: 'report_unanswerable',
     responseType: 'unanswered',
     description:
-      'State that you cannot answer the question, with the reason. Use it when the data you were given does not contain the answer, instead of guessing.',
+      'State that you cannot answer the question, with the reason. Use it only when the data you were given does not contain the answer, instead of guessing. Never call it when your reply does answer: listing what is on the menu, or describing a product from its data, is a plain-text answer.',
     schema: aiOrderingModelArgumentSchemas.unanswered,
   },
 ];

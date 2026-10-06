@@ -121,7 +121,9 @@ function renderMenu(
     for (const option of modifier.options) {
       const flags = [
         option.isSoldOut ? 'SOLD OUT' : null,
-        option.isDefault ? 'default' : null,
+        // `isDefault` is left out on purpose. It is what the menu page
+        // preselects, and shown here it reads as the answer to a required
+        // choice the guest never made.
         option.priceAdjustment !== 0 ? `+${option.priceAdjustment}` : null,
       ].filter(Boolean);
 
@@ -345,7 +347,7 @@ function describeOutcome(
     case 'rejected':
       return 'the guest dismissed it — do not propose it again unless they ask';
     case 'superseded':
-      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; offer it again if they still seem to want it';
+      return 'the guest never answered it and the cart did NOT change — it is not in the cart, so do not treat it as done; if they still seem to want it, put it in your next proposal together with anything new they asked for';
     case 'no_action':
       return 'the guest accepted it but an earlier failure stopped the proposal before this one was attempted, so it is not in the cart';
     case 'failed':

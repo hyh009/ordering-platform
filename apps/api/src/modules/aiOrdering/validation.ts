@@ -170,7 +170,9 @@ function findSelectionProblem(
     ).length;
 
     if (count < modifier.minSelect) {
-      return `modifier "${modifierId}" requires at least ${modifier.minSelect} selection(s)`;
+      // Worded as what is missing rather than as a broken rule: the model cannot
+      // repair this by trying again, only by asking the guest.
+      return `the guest has not chosen modifier "${modifierId}", which requires at least ${modifier.minSelect} selection(s) — this has to be asked, not guessed`;
     }
 
     if (count > modifier.maxSelect) {

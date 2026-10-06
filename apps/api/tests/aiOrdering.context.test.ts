@@ -476,4 +476,14 @@ describe('AI ordering context assembly', () => {
       expect(currentTurn).toContain('did not pick any of the options');
     });
   });
+
+  it('does not tell the model which option the menu page preselects', () => {
+    const { blocks } = buildAiOrderingContext(contextInput());
+    const storeData = blocks.find((block) => block.kind === 'store_data');
+
+    // A required choice is the guest's to make; a visible default reads as the
+    // answer and the model proposes it without asking.
+    expect(storeData?.text).toContain('required');
+    expect(storeData?.text).not.toContain('default');
+  });
 });
