@@ -85,15 +85,15 @@ export function AiOrderingUnansweredPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <section className="admin-page-content">
       <div>
-        <h1 className="text-xl font-semibold">
+        <h1 className="mb-3 text-3xl leading-tight font-bold md:text-4xl">
           {tDefault(
             'merchant.aiOrdering.unansweredTitle',
             'Questions the assistant could not answer',
           )}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="max-w-2xl text-base text-muted-foreground">
           {tDefault(
             'merchant.aiOrdering.unansweredHint',
             'Entries naming a product point at a description worth improving.',
@@ -130,6 +130,6 @@ export function AiOrderingUnansweredPage() {
           />
         }
       />
-    </div>
+    </section>
   );
 }

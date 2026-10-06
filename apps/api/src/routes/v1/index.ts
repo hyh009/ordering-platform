@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import adminAiOrderingRouter from './admin/aiOrdering';
 import allergensRouter from './admin/allergens';
 import dietaryMarkersRouter from './admin/dietaryMarkers';
 import organizationsRouter from './admin/organizations/_router';
@@ -13,6 +14,7 @@ import publicRouter from './public/_router';
 const router = Router();
 
 router.use('/auth', authRouter);
+router.use('/admin/ai-ordering', adminAiOrderingRouter);
 router.use('/admin/allergens', allergensRouter);
 router.use('/admin/dietary-markers', dietaryMarkersRouter);
 router.use('/admin/organizations', organizationsRouter);

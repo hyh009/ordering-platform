@@ -456,9 +456,9 @@ export type AiOrderingReviewTurnDto = {
  * The unchanging opening of a prompt: core instructions, tool definitions, and
  * store data, each exactly as sent.
  *
- * Platform staff only. It holds the assistant's core instructions, which are
- * the platform's and not a merchant's to read, so the conversation detail
- * carries these only for a super admin.
+ * It holds the assistant's core instructions, which are the platform's and not
+ * a merchant's to read, so only the platform's own conversation read returns
+ * these. The merchant's never does.
  */
 export type AiOrderingPromptPreludeDto = {
   hash: string;
@@ -475,7 +475,7 @@ export type AiOrderingConversationDetailDto = {
   participantId: string;
   summary?: string;
   turns: AiOrderingReviewTurnDto[];
-  /** Present only for a super admin. See `AiOrderingPromptPreludeDto`. */
+  /** Present only on the platform read. See `AiOrderingPromptPreludeDto`. */
   promptPreludes?: AiOrderingPromptPreludeDto[];
   createdAt: string;
   updatedAt: string;

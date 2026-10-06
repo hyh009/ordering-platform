@@ -110,19 +110,19 @@ describe('AI ordering merchant mapper', () => {
               currentTurn: '# This turn\n## Guest message\n無糖紅茶',
               calls: [
                 {
-                  toolNames: ['propose_cart_operations', 'ask_choice'],
+                  toolNames: ['propose_cart_operations', 'ask_choices'],
                   output: {
                     toolCalls: [{ name: 'propose_cart_operations', args: {} }],
                     text: '',
                   },
                 },
                 {
-                  toolNames: ['propose_cart_operations', 'ask_choice'],
+                  toolNames: ['propose_cart_operations', 'ask_choices'],
                   feedback: 'the guest has not chosen modifier "ab12cd34"',
                   // Not a recognizable reply: the call is kept, the output is not.
                   output: { candidates: [] },
                 },
-                { toolNames: ['ask_choice'], error: '429 Too Many Requests' },
+                { toolNames: ['ask_choices'], error: '429 Too Many Requests' },
               ],
             },
           },
@@ -134,22 +134,22 @@ describe('AI ordering merchant mapper', () => {
       currentTurn: '# This turn\n## Guest message\n無糖紅茶',
       calls: [
         {
-          toolNames: ['propose_cart_operations', 'ask_choice'],
+          toolNames: ['propose_cart_operations', 'ask_choices'],
           output: {
             toolCalls: [{ name: 'propose_cart_operations', args: {} }],
             text: '',
           },
         },
         {
-          toolNames: ['propose_cart_operations', 'ask_choice'],
+          toolNames: ['propose_cart_operations', 'ask_choices'],
           feedback: 'the guest has not chosen modifier "ab12cd34"',
         },
-        { toolNames: ['ask_choice'], error: '429 Too Many Requests' },
+        { toolNames: ['ask_choices'], error: '429 Too Many Requests' },
       ],
     });
   });
 
-  it('shows the prompt prelude to platform staff only', () => {
+  it('keeps the prompt out of the merchant mapping', () => {
     const stored = conversation(
       [turn('turn-1', { type: 'message', reply: '好的。' })],
       {
@@ -374,6 +374,44 @@ describe('AI ordering merchant review service', () => {
     });
   });
 
+  it('returns the prompt only from the platform read', async () => {
+    const stored = conversation(
+      [turn('turn-1', { type: 'message', reply: '好的。' })],
+      {
+        promptPreludes: [
+          {
+            hash: 'abc123def456',
+            coreInstructions: 'You are an ordering assistant.',
+            tools: '[]',
+            storeData: '## Menu',
+            createdAt: AT,
+          },
+        ],
+      },
+    );
+    const repository = repositoryStub({
+      findById: vi.fn().mockResolvedValue(stored),
+    });
+    const service = createAiOrderingReviewService({ repository });
+
+    // Which method was called is the whole access decision: a merchant route
+    // cannot reach the prompt by passing a different argument, because there is
+    // no argument to pass.
+    await expect(
+      service.getConversation('store-1', 'ai-conversation-1'),
+    ).resolves.not.toHaveProperty('promptPreludes');
+
+    const platform = await service.getConversationWithPrompt(
+      'store-1',
+      'ai-conversation-1',
+    );
+
+    expect(platform.promptPreludes).toHaveLength(1);
+    expect(platform.promptPreludes?.[0]?.coreInstructions).toBe(
+      'You are an ordering assistant.',
+    );
+  });
+
   it('refuses a conversation id that belongs to another store', async () => {
     // The store id is part of the repository lookup, so another store's id
     // resolves to null — which must surface as not-found, never as a document.
@@ -381,9 +419,7 @@ describe('AI ordering merchant review service', () => {
     const service = createAiOrderingReviewService({ repository });
 
     await expect(
-      service.getConversation('store-1', 'ai-conversation-from-store-2', {
-        isSuperAdmin: false,
-      }),
+      service.getConversation('store-1', 'ai-conversation-from-store-2'),
     ).rejects.toMatchObject({ code: 'AI_ORDERING_CONVERSATION_NOT_FOUND' });
 
     expect(repository.findById).toHaveBeenCalledWith({

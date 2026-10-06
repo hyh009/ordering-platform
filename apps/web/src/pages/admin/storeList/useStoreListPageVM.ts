@@ -51,9 +51,17 @@ export function useStoreListPageVM(organizationId: string) {
     void navigate(PATHS.SUPER_ADMIN.STORE_CREATE_BUILD(organizationId));
   }, [navigate, organizationId]);
 
+  const goToAiConversations = useCallback(
+    (storeId: string) => {
+      void navigate(PATHS.SUPER_ADMIN.AI_CONVERSATIONS_BUILD(storeId));
+    },
+    [navigate],
+  );
+
   return {
     changeLimit,
     error,
+    goToAiConversations,
     goToCreate,
     goToPage,
     isLoading,

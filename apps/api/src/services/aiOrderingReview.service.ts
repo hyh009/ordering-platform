@@ -1,5 +1,5 @@
 /**
- * The merchant's read side of stored conversations.
+ * The read side of stored conversations, for the merchant and for the platform.
  *
  * Separate from `aiOrdering.service.ts` because the two share nothing but the
  * collection: that one runs a guest turn against a provider under a rate limit
@@ -69,11 +69,34 @@ export class AiOrderingReviewService {
     };
   }
 
+  /** What the store's own staff read: the conversation without the prompt. */
   public async getConversation(
     storeId: string,
     conversationId: string,
-    viewer: { isSuperAdmin: boolean },
   ): Promise<AiOrderingConversationDetailDto> {
+    return toAiOrderingConversationDetailDto(
+      await this.readConversation(storeId, conversationId),
+    );
+  }
+
+  /**
+   * The same conversation plus the prompt it was answered under.
+   *
+   * A separate method rather than a flag on the one above, so the surface that
+   * may read the platform's core instructions is named in the call and not
+   * decided by an argument a merchant route could also pass.
+   */
+  public async getConversationWithPrompt(
+    storeId: string,
+    conversationId: string,
+  ): Promise<AiOrderingConversationDetailDto> {
+    return toAiOrderingConversationDetailDto(
+      await this.readConversation(storeId, conversationId),
+      { includePromptPreludes: true },
+    );
+  }
+
+  private async readConversation(storeId: string, conversationId: string) {
     const conversation = await this.deps.repository.findById({
       storeId,
       conversationId,
@@ -89,11 +112,7 @@ export class AiOrderingReviewService {
       );
     }
 
-    return toAiOrderingConversationDetailDto(conversation, {
-      // The full prompt opens with the platform's core instructions, which a
-      // merchant's own staff are not shown.
-      includePromptPreludes: viewer.isSuperAdmin,
-    });
+    return conversation;
   }
 
   public async listUnanswered(

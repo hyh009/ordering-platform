@@ -299,7 +299,6 @@ router.get<
     const conversation = await aiOrderingReviewService.getConversation(
       req.params.storeId,
       req.params.conversationId,
-      { isSuperAdmin: req.user?.isSuperAdmin === true },
     );
 
     res.json({ status: 'success', data: { conversation } });

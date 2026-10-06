@@ -147,6 +147,20 @@ const TagListPage = lazyPage(
   () => import('@/pages/merchant/tagList/TagListPage'),
   'TagListPage',
 );
+const AdminAiOrderingConversationListPage = lazyPage(
+  () =>
+    import(
+      '@/pages/admin/aiOrderingConversationList/AdminAiOrderingConversationListPage'
+    ),
+  'AdminAiOrderingConversationListPage',
+);
+const AdminAiOrderingConversationDetailPage = lazyPage(
+  () =>
+    import(
+      '@/pages/admin/aiOrderingConversationDetail/AdminAiOrderingConversationDetailPage'
+    ),
+  'AdminAiOrderingConversationDetailPage',
+);
 const AiOrderingConversationListPage = lazyPage(
   () =>
     import(
@@ -242,6 +256,14 @@ export function App() {
                 <Route
                   element={<StoreCreatePage />}
                   path={PATHS.SUPER_ADMIN.STORE_CREATE}
+                />
+                <Route
+                  element={<AdminAiOrderingConversationListPage />}
+                  path={PATHS.SUPER_ADMIN.AI_CONVERSATIONS}
+                />
+                <Route
+                  element={<AdminAiOrderingConversationDetailPage />}
+                  path={PATHS.SUPER_ADMIN.AI_CONVERSATION_DETAIL}
                 />
                 <Route
                   element={<AllergenListPage />}

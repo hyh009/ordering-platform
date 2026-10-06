@@ -16,20 +16,21 @@ export function AiOrderingConversationListPage() {
   const columns: DataTableColumn<ConversationRow>[] = [
     {
       key: 'participantId',
-      header: tDefault('merchant.aiOrdering.participant', 'Guest'),
+      header: tDefault('common.aiOrdering.participant', 'Guest'),
+      className: 'pl-4',
       render: (row) => (
         <span className="font-mono text-xs">{row.participantId}</span>
       ),
     },
     {
       key: 'turnCount',
-      header: tDefault('merchant.aiOrdering.turnCount', 'Turns'),
+      header: tDefault('common.aiOrdering.turnCount', 'Turns'),
       align: 'right',
       render: (row) => row.turnCount,
     },
     {
       key: 'unansweredCount',
-      header: tDefault('merchant.aiOrdering.unansweredCount', 'Unanswered'),
+      header: tDefault('common.aiOrdering.unansweredCount', 'Unanswered'),
       align: 'right',
       render: (row) =>
         row.unansweredCount > 0 ? (
@@ -40,7 +41,7 @@ export function AiOrderingConversationListPage() {
     },
     {
       key: 'lastTurnAt',
-      header: tDefault('merchant.aiOrdering.lastTurnAt', 'Last message'),
+      header: tDefault('common.aiOrdering.lastTurnAt', 'Last message'),
       render: (row) =>
         row.lastTurnAt ? new Date(row.lastTurnAt).toLocaleString() : '—',
     },
@@ -51,12 +52,23 @@ export function AiOrderingConversationListPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">
-          {tDefault('merchant.aiOrdering.conversationsTitle', 'Assistant conversations')}
-        </h1>
-        <Button variant="outline" size="sm" onClick={vm.goToUnanswered}>
+    <section className="admin-page-content">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="mb-3 text-3xl leading-tight font-bold md:text-4xl">
+            {tDefault(
+              'merchant.aiOrdering.conversationsTitle',
+              'Assistant conversations',
+            )}
+          </h1>
+          <p className="max-w-2xl text-base text-muted-foreground">
+            {tDefault(
+              'merchant.aiOrdering.conversationsDescription',
+              'Every conversation your guests had with the ordering assistant.',
+            )}
+          </p>
+        </div>
+        <Button variant="outline" onClick={vm.goToUnanswered} type="button">
           {tDefault(
             'merchant.aiOrdering.viewUnanswered',
             'Unanswered questions',
@@ -70,7 +82,7 @@ export function AiOrderingConversationListPage() {
         isLoading={vm.isLoading}
         labels={{
           empty: tDefault(
-            'merchant.aiOrdering.conversationsEmpty',
+            'common.aiOrdering.conversationsEmpty',
             'No assistant conversations yet.',
           ),
         }}
@@ -85,6 +97,6 @@ export function AiOrderingConversationListPage() {
         }}
         rowKey={(row) => row.id}
       />
-    </div>
+    </section>
   );
 }

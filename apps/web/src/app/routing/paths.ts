@@ -20,6 +20,13 @@ export const PATHS = {
     STORE_CREATE: '/admin/organizations/:organizationId/stores/new',
     STORE_CREATE_BUILD: (orgId: string) =>
       `/admin/organizations/${orgId}/stores/new`,
+    AI_CONVERSATIONS: '/admin/stores/:storeId/ai-ordering/conversations',
+    AI_CONVERSATIONS_BUILD: (storeId: string) =>
+      `/admin/stores/${storeId}/ai-ordering/conversations`,
+    AI_CONVERSATION_DETAIL:
+      '/admin/stores/:storeId/ai-ordering/conversations/:conversationId',
+    AI_CONVERSATION_DETAIL_BUILD: (storeId: string, conversationId: string) =>
+      `/admin/stores/${storeId}/ai-ordering/conversations/${conversationId}`,
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },
