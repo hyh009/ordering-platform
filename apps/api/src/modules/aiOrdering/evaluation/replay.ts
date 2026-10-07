@@ -30,6 +30,7 @@ import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/f
 import type {
   AiOrderingResponseType,
   CartDto,
+  PublicMenuDto,
   SupportedLocale,
 } from '@repo/shared';
 import type {
@@ -67,6 +68,17 @@ export type AiOrderingReplayCase = {
    * Validation reads this same cart, so an `itemId` here is a real target.
    */
   cart?: CartDto;
+  /**
+   * The menu this case reads against, replacing the fixture's.
+   *
+   * Same reasoning as `cart`, for a behavior that only appears at a particular
+   * MENU shape — two products sharing a name stem, a category with one item.
+   * Adding such a product to the shared fixture would change the prompt of
+   * every other case at once.
+   *
+   * Validation reads this same menu, so a `productId` here is a real target.
+   */
+  menu?: PublicMenuDto;
   source?: { conversationId: string; turnId: string };
 };
 
@@ -181,11 +193,12 @@ async function replayOne(
   replayCase: AiOrderingReplayCase,
 ): Promise<AiOrderingReplayOutcome> {
   const cart = replayCase.cart ?? AI_ORDERING_CART_FIXTURE;
+  const menu = replayCase.menu ?? AI_ORDERING_MENU_FIXTURE;
   const context = buildAiOrderingContext({
     config: input.config,
     locale: input.locale ?? 'zh-TW',
     storeName: 'Replay Fixture',
-    menu: AI_ORDERING_MENU_FIXTURE,
+    menu,
     cart,
     participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     message: replayCase.message,
@@ -208,7 +221,7 @@ async function replayOne(
     config: input.config,
     context,
     validation: {
-      menu: AI_ORDERING_MENU_FIXTURE,
+      menu,
       cart,
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
