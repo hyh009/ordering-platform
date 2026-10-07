@@ -37,6 +37,35 @@ const hasNote = (summary: string) => summary.includes('“');
 const adds = (outcome: AiOrderingReplayOutcome, productName: string) =>
   operations(outcome).some((summary) => summary.includes(productName));
 
+/**
+ * Whether any proposed operation CHOSE one of these options.
+ *
+ * Used to assert the absence of a choice the guest never made. The assistant is
+ * asked only for the choices they stated: everything else is computed into the
+ * proposal's open choices and answered on the cart card, so an unstated option
+ * appearing here means the model picked it for them.
+ *
+ * Matched against the summary's option fields — `buildAiOrderingOperationLabel`
+ * joins them with ` · ` — and never against the whole line, because an option
+ * name can be part of a product name: 珍珠 is a topping AND half of 珍珠奶茶, so
+ * a substring test over the line can never be false for that drink.
+ */
+const choseAnyOption = (
+  outcome: AiOrderingReplayOutcome,
+  optionLabels: string[],
+) =>
+  operations(outcome).some((summary) =>
+    summary
+      .split(' · ')
+      // The first field is the product and the quantity, never a choice.
+      .slice(1)
+      .some((field) => optionLabels.includes(field)),
+  );
+
+const ICE_LABELS = ['正常冰', '少冰', '去冰'];
+const SUGAR_LABELS = ['全糖', '半糖', '無糖'];
+const TOPPING_LABELS = ['珍珠', '布丁', '仙草'];
+
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
     message: '有什麼飲料嗎',
@@ -57,19 +86,52 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       outcome.responseType === 'choices' || outcome.responseType === 'message',
   },
   {
+    // The guest stated the sugar and nothing else. Two wrong answers are
+    // possible and this rejects both: picking an ice level for them, and asking
+    // again for the sugar they just gave. Proposing with only the sugar set is
+    // right — the ice is an open choice the cart card asks for, which costs the
+    // guest a tap instead of another turn.
     message: '加點一杯無糖的紅茶',
-    expects: 'asks for ice only; never re-asks the sugar they stated',
-    check: (outcome) =>
-      outcome.responseType === 'choices' || outcome.responseType === 'message',
+    expects:
+      'proposes the tea with the stated sugar only; never picks an ice level, never re-asks the sugar',
+    check: (outcome) => {
+      if (outcome.responseType === 'proposal') {
+        return (
+          adds(outcome, '紅茶') &&
+          adds(outcome, '無糖') &&
+          !choseAnyOption(outcome, ICE_LABELS)
+        );
+      }
+
+      // Asking is wasteful rather than wrong, as long as it asks for the ice and
+      // not for the sugar.
+      return (
+        outcome.responseType === 'choices' &&
+        (outcome.asked ?? []).every(
+          (asked) =>
+            !SUGAR_LABELS.some((label) => asked.optionLabels.includes(label)),
+        )
+      );
+    },
   },
   {
-    // 珍珠奶茶 carries the optional 加料; 紅茶 does not, so only this product
-    // can test that an optional choice is offered rather than skipped.
+    // 珍珠奶茶 carries the optional 加料; 紅茶 does not, so only this product can
+    // test what happens to an optional choice. It used to assert that the
+    // assistant OFFERS the topping in the same turn. It no longer should: every
+    // choice the guest did not state, optional ones included, is computed into
+    // the proposal and asked on the cart card, so offering it here would be a
+    // turn spent on something a tap already covers. What stays forbidden is
+    // choosing a topping for them.
     message: '加點一杯珍珠奶茶，半糖少冰',
     expects:
-      'offers the optional topping with a way to decline, in one turn; proposes nothing yet',
+      'proposes the drink with both stated choices and no topping it chose itself',
     check: (outcome) =>
-      outcome.responseType === 'choices' && (outcome.asked?.length ?? 0) === 1,
+      outcome.responseType === 'proposal' &&
+      operations(outcome).length === 1 &&
+      adds(outcome, '珍珠奶茶') &&
+      adds(outcome, '半糖') &&
+      adds(outcome, '少冰') &&
+      !choseAnyOption(outcome, TOPPING_LABELS),
   },
   {
     message: '加點一碗牛肉麵',
