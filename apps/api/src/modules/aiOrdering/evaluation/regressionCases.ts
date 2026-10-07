@@ -1,9 +1,10 @@
 import {
   AI_ORDERING_CART_FIXTURE,
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+  AI_ORDERING_MENU_FIXTURE,
 } from '@src/modules/aiOrdering/evaluation/fixture';
 
-import type { CartDto } from '@repo/shared';
+import type { CartDto, PublicMenuDto } from '@repo/shared';
 import type {
   AiOrderingReplayCase,
   AiOrderingReplayOutcome,
@@ -28,6 +29,57 @@ import type {
  * reply says may vary, what a proposal would do to the cart may not. The model
  * is not deterministic, so one failure is a signal to rerun, not a verdict.
  */
+/**
+ * The fixture menu plus two products sharing a name stem.
+ *
+ * Nothing else in the fixture has this shape: 珍珠奶茶 and 翠玉奶綠 are merely
+ * similar, while "鐵板麵" is the whole name of neither product and the complete
+ * name of the dish both of them are. Neither carries a modifier, so the only
+ * open question is WHICH product — which is what the case is for.
+ *
+ * Taken from the live menu, where "我要鐵板麵" put both of them in the cart.
+ */
+const MENU_WITH_TWO_NOODLE_PLATES: PublicMenuDto = {
+  ...AI_ORDERING_MENU_FIXTURE,
+  groups: [
+    ...AI_ORDERING_MENU_FIXTURE.groups,
+    {
+      category: {
+        id: 'cat-light',
+        name: { 'zh-TW': '輕食', en: 'Light meals' },
+        displayOrder: 3,
+        availabilityRules: [],
+      },
+      products: [
+        {
+          id: 'prod-pepper-noodle',
+          categoryIds: ['cat-light'],
+          name: { 'zh-TW': '黑胡椒鐵板麵', en: 'Black pepper noodle plate' },
+          imageUrls: [],
+          price: 90,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-mushroom-noodle',
+          categoryIds: ['cat-light'],
+          name: { 'zh-TW': '蘑菇鐵板麵', en: 'Mushroom noodle plate' },
+          imageUrls: [],
+          price: 90,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+      ],
+    },
+  ],
+};
+
 export type AiOrderingRegressionCase = AiOrderingReplayCase & {
   /** What a correct answer looks like, for the person reading a failure. */
   expects: string;
@@ -449,5 +501,18 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
         splitSide(parts, 1, ['正常冰', '全糖'])
       );
     },
+  },
+  {
+    // Which product, not which option. Two products share the name the guest
+    // used, so there is nothing to propose yet. Observed against the live menu
+    // as BOTH of them landing in the cart: the proposal tool told the model
+    // that an unstated "choice" was no reason to hold a proposal back, and
+    // that read as covering which product too.
+    message: '我要鐵板麵',
+    menu: MENU_WITH_TWO_NOODLE_PLATES,
+    expects:
+      'asked which of the two noodle plates they meant, and nothing proposed',
+    check: (outcome) =>
+      outcome.responseType === 'choices' && operations(outcome).length === 0,
   },
 ];

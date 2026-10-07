@@ -40,7 +40,11 @@ Use this tool once the guest has said what they want.
 
 Do not use it while the guest is asking about a product, comparing options, or browsing.
 
-A choice the guest has not stated is not a reason to hold a proposal back. Leave it empty and propose anyway: the ordering page asks the guest for it on this proposal, with the store's own option list.
+A modifier choice the guest has not stated — a sugar level, an ice level, a size, a topping — is not a reason to hold a proposal back. Leave that field empty and propose anyway: the ordering page asks the guest for it on this proposal, with the store's own option list.
+
+That covers the choices ON a product, never WHICH product. If the guest's words could refer to more than one product, do not propose all matching products. Two products whose names share the word the guest used — "black pepper noodle plate" and "mushroom noodle plate" when the guest said "noodle plate" — are two possible answers, not two orders.
+
+Ask the guest which one they mean instead. Use \`ask_choices\` when the possible products can be presented as a short set of choices; otherwise ask briefly in plain text.
 
 Important rules:
 - Each entry adds one more of a product, changes an item the guest added themselves, or removes one.
