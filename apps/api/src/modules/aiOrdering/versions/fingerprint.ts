@@ -16,6 +16,16 @@
  * is asked for leaves no trace, and two runs answering in different shapes
  * compare as though they were the same version.
  *
+ * So are the TOOL NAMES AND DESCRIPTIONS. They are prompt text — the model reads
+ * them to decide which answer it is giving — and they hold the rules this module
+ * deliberately keeps out of `coreInstructions`, since a tool's own boundary
+ * belongs to that tool. Leaving them out was not a theoretical gap: rewriting
+ * one tool's description changed a regression case's outcome twice in a row
+ * while the fingerprint stayed identical, which is exactly the corpus being
+ * quietly made non-comparable. Only the name, the response type and the
+ * description are hashed here; a tool's schema is already in the answer shape
+ * above and hashing it twice would say nothing more.
+ *
  * Deliberately NOT part of the hash:
  *
  * - `versionId` — the label and the content are separate questions. Renaming a
@@ -43,6 +53,7 @@
 import { createHash } from 'node:crypto';
 
 import { aiOrderingModelArgumentSchemas } from '@src/modules/aiOrdering/modelResponse';
+import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
 import { z } from 'zod';
 
 
@@ -59,6 +70,20 @@ const MODEL_ANSWER_SHAPE = JSON.stringify(
   Object.entries(aiOrderingModelArgumentSchemas)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, schema]) => [name, z.toJSONSchema(schema, { io: 'input' })]),
+);
+
+/**
+ * Every tool as the model is asked to choose between them, serialized once.
+ *
+ * Computed at module load for the same reason as the shape above: one
+ * model-facing tool set currently serves every released version. Sorted by name
+ * so that reordering the list is not a version change, since the model is given
+ * a set and not a sequence.
+ */
+const MODEL_TOOL_SURFACE = JSON.stringify(
+  [...aiOrderingToolDefinitions]
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((tool) => [tool.name, tool.responseType, tool.description]),
 );
 
 export function aiOrderingVersionFingerprint(
@@ -78,6 +103,7 @@ export function aiOrderingVersionFingerprint(
     config.maxReplyCharacters,
     config.temperature,
     MODEL_ANSWER_SHAPE,
+    MODEL_TOOL_SURFACE,
   ]);
 
   return createHash('sha256').update(material).digest('hex').slice(0, 12);
