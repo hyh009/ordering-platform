@@ -392,7 +392,9 @@ describe('assistant proposal row failures', () => {
   it.each([
     ['PRODUCT_SOLD_OUT', 'sold-out'],
     ['PRODUCT_NOT_FOUND', 'off-menu'],
-    ['CART_ITEM_NOT_FOUND', 'off-menu'],
+    // Not `off-menu`: the product can be on the menu and the item in the cart
+    // under another id, which is what a merge leaves behind.
+    ['CART_ITEM_NOT_FOUND', 'item-gone'],
     ['MODIFIER_SELECTION_INVALID', 'options-changed'],
     ['NOT_ITEM_OWNER', 'options-changed'],
     ['ORDER_LOCKED', 'cart-closed'],
@@ -409,6 +411,17 @@ describe('assistant proposal row failures', () => {
       expect(row()?.failure?.kind).toBe(kind);
     },
   );
+
+  it('does not tell a guest a merged-away item left the menu', () => {
+    // The row the assistant proposed changing was folded into an identical
+    // line when the guest edited that line's options, so its id is gone while
+    // the product is on the menu and the item is in the cart. This shared the
+    // `off-menu` wording and stated three things that were all untrue.
+    const { row } = failedRowWith('CART_ITEM_NOT_FOUND');
+
+    expect(row()?.failure?.kind).toBe('item-gone');
+    expect(row()?.failure?.kind).not.toBe('off-menu');
+  });
 
   it('falls back rather than dropping a code it does not recognise', () => {
     // The code set is the API's whole error vocabulary, so an unmapped one is

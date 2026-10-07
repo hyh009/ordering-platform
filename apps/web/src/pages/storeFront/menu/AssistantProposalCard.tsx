@@ -31,6 +31,10 @@ const FAILURE_LABELS: Record<
     key: 'guest.assistant.rowFailure.offMenu',
     fallback: 'No longer on the menu.',
   },
+  'item-gone': {
+    key: 'guest.assistant.rowFailure.itemGone',
+    fallback: 'That item is no longer in your cart. Ask for it again.',
+  },
   'options-changed': {
     key: 'guest.assistant.rowFailure.optionsChanged',
     fallback: 'The options changed. Please choose them again.',

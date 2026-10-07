@@ -83,6 +83,7 @@ export type AssistantEntryView =
 export type AssistantRowFailureKind =
   | 'sold-out'
   | 'off-menu'
+  | 'item-gone'
   | 'options-changed'
   | 'cart-closed'
   | 'temporary'
@@ -103,7 +104,13 @@ const FAILURE_KIND_BY_CODE: Partial<Record<string, AssistantRowFailureKind>> = {
   // The id resolved against the menu when the assistant proposed it and does
   // not now — the usual cause is a proposal answered after the menu changed.
   PRODUCT_NOT_FOUND: 'off-menu',
-  CART_ITEM_NOT_FOUND: 'off-menu',
+  // The cart no longer holds that line, which is a different fact from the
+  // product leaving the menu — it shared `off-menu` and told the guest their
+  // item was off the menu while both the product and the item were still
+  // there. The usual cause is the line having merged into an identical one
+  // after the guest edited its options, so the item is in the cart under
+  // another id; deleting it in another tab reads the same from here.
+  CART_ITEM_NOT_FOUND: 'item-gone',
   MODIFIER_SELECTION_INVALID: 'options-changed',
   BAD_REQUEST: 'options-changed',
   NOT_ITEM_OWNER: 'options-changed',

@@ -73,6 +73,7 @@ const manualResources: Resource = {
           rowFailed: 'Could not be applied',
           rowFailure: {
             cartClosed: 'This cart is no longer taking changes.',
+            itemGone: 'That item is no longer in your cart. Ask for it again.',
             offMenu: 'No longer on the menu.',
             optionsChanged: 'The options changed. Please choose them again.',
             soldOut: 'Sold out. Ask the assistant for something similar.',
@@ -725,6 +726,7 @@ const manualResources: Resource = {
           rowFailed: '無法套用',
           rowFailure: {
             cartClosed: '這個購物車已經不能再修改了。',
+            itemGone: '這個品項已經不在購物車裡了，請再跟我說一次。',
             offMenu: '這項已經不在菜單上了。',
             optionsChanged: '選項有變動，請重新選一次。',
             soldOut: '這項賣完了，可以問助理有沒有類似的。',
