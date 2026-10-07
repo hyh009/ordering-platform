@@ -129,15 +129,32 @@ const SELECTED_OPTIONS_DESCRIPTION =
 /**
  * What a note IS, written in the field that carries it.
  *
- * Stated as what the store receives rather than as a list of prohibitions. A
- * note is passed along as a request and is not part of what was ordered: it has
- * no price, so nothing is charged or made for it and the store may decline it.
- * That is also why it cannot carry an ingredient or a side — the prohibition is
- * kept alongside the framing rather than replaced by it, because "a note is only
- * a request" on its own reads as permission to put anything in one.
+ * Stated as the ONE kind of thing a note admits, with a test the model can
+ * apply, rather than as a list of what to keep out. The list came first and the
+ * list is why this had to be rewritten: it named an extra ingredient, a side and
+ * anything the store sells, and a modifier choice is none of those, so nothing
+ * stopped a sweetness or a spice level from being written in a note as well as
+ * chosen properly — and a note reaches the kitchen ticket. A prohibition list
+ * can always be one case short; a closed definition cannot.
+ *
+ * The example of a spice level is gone from here for the same reason. It read as
+ * permission for exactly the duplication above wherever a store has a spice
+ * modifier, which is most of them.
+ *
+ * The closed definition turns on what a note DOES to the item: it takes away or
+ * adjusts, and never adds. An earlier version of it asked only whether the
+ * request was about how the item is prepared, which an added egg passes — the
+ * assistant wrote one into a note for a store with no egg on the menu, which is
+ * the mistake the old prohibition list did catch. Add and take away is the line
+ * the framing already draws, since nothing extra is made for a note.
+ *
+ * The framing is kept: a note is passed along as a request and is not part of
+ * what was ordered, it has no price, nothing is charged or made for it, and the
+ * store may decline it. That is what explains why so little fits, so the routing
+ * that follows reads as a consequence rather than as a rule to remember.
  */
 const NOTES_DESCRIPTION_BASE =
-  "A note passes the guest's preparation request on to the store: a spice level, an omission, an allergy. It is a request and not part of the order — it has no price, so nothing extra is charged or made for it, and the store may not be able to honor it. For that reason it can never carry an extra ingredient, a side, or anything else the store sells; those have to be an option on the product or a separate product, and if the store offers neither then it is not available at all. Say so instead of writing it in a note.";
+  "A note carries one kind of thing and nothing else: a request that takes something away from THIS item or adjusts how it is made — an ingredient left out, how done something should be, an allergy the kitchen has to know about. A note is passed to the store as a request and is not part of the order: it has no price, so nothing extra is charged or made for it, and the store may not be able to honor it. A note can never ADD anything to the item: not an extra ingredient, not an extra portion, not a side, not anything else the store sells. Nothing is made for a note, so an addition written in one is an addition the guest never gets. An addition has to be a choice on the product or a separate product in the cart, and when the store offers it neither way it is not available at all — say so in your reply and write no note. Write a note only when the guest asked for it, it puts nothing new on the plate, and no choice on this product can express it; otherwise leave the field out. A choice the product offers belongs in its own choices field, whatever it is and however the guest phrased it.";
 
 const NOTES_ON_ADD_DESCRIPTION = `${NOTES_DESCRIPTION_BASE} This is the only field that records a preparation request: writing it in your reply instead does not record it. When a change carries a note, say in your reply that it is a request the store may not be able to meet, and that the guest should confirm it with the staff.`;
 

@@ -165,11 +165,17 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   },
   {
     message: '加點一杯紅茶，半糖少冰，再加點一碗牛肉麵不辣',
-    expects: 'one proposal holding both items',
+    expects:
+      'one proposal holding both items, with every choice as a choice and no note',
     check: (outcome) =>
       operations(outcome).length === 2 &&
       adds(outcome, '紅茶') &&
-      adds(outcome, '牛肉麵'),
+      adds(outcome, '牛肉麵') &&
+      // Every choice here is one the products offer, so a note has nothing to
+      // carry. This went unasserted and the assistant wrote “半糖少冰” and
+      // “不辣” into notes beside the choices it had already made correctly —
+      // which is a preparation instruction to the kitchen, not a duplicate.
+      !operations(outcome).some(hasNote),
   },
   {
     message: '加點一碗牛肉麵不辣，加飯',
