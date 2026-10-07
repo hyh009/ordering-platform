@@ -52,7 +52,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '珍奶是什麼' }, { message: '我不能吃蔥' }],
       toToolSchema,
-      createModel: scriptedModel([
+      createChatModel: scriptedModel([
         { reply: '紅茶加鮮奶。' },
         {
           tool: {
@@ -82,7 +82,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '你好' }],
       toToolSchema,
-      createModel: scriptedModel([{ reply: '你好。' }]),
+      createChatModel: scriptedModel([{ reply: '你好。' }]),
     });
 
     // A draft version's file can change between two runs that both say the same
@@ -101,7 +101,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '來一份白飯' }],
       toToolSchema,
-      createModel: scriptedModel([
+      createChatModel: scriptedModel([
         {
           tool: {
             name: 'propose_cart_operations',
@@ -134,7 +134,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '來一份白飯' }],
       toToolSchema,
-      createModel: scriptedModel([
+      createChatModel: scriptedModel([
         {
           tool: {
             name: 'propose_cart_operations',
@@ -169,7 +169,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '你好' }, { message: '再見' }],
       toToolSchema,
-      createModel: () => fakeModel().respond(new Error('provider exploded')),
+      createChatModel: () => fakeModel().respond(new Error('provider exploded')),
     });
 
     // One bad case must not abandon the rest of the replay.
@@ -191,7 +191,7 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '第一句' }, { message: '第二句' }],
       toToolSchema,
-      createModel: () => model,
+      createChatModel: () => model,
     });
 
     // Carrying history would make an outcome depend on the one before it, and

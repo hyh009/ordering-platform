@@ -14,67 +14,16 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { BaseMessage } from '@langchain/core/messages';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
-import type { AiOrderingToolCall } from '@src/modules/aiOrdering/tools';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
 
-export type AiOrderingProviderUsage = {
-  /**
-   * Prompt tokens the provider served from its cache. The measure of whether
-   * the volatility-ordered prompt layout is actually earning its keep.
-   */
-  cacheReadTokens: number;
-  inputTokens: number;
-  outputTokens: number;
-};
-
-export type AiOrderingToolCallingModelResult = {
-  /** The tools the model called. Empty when it answered in plain text. */
-  toolCalls: AiOrderingToolCall[];
-  /** Free text the model returned alongside, or instead of, a tool call. */
-  text: string;
-  /** The underlying message, carrying usage metadata. */
-  raw?: unknown;
-};
-
 /**
- * The narrow slice of the provider this module depends on.
- *
- * Declared here rather than importing LangChain's types so tests can supply a
- * plain object and never touch the network.
- */
-export type AiOrderingToolCallingModel = {
-  invoke(
-    messages: BaseMessage[],
-    options?: { signal?: AbortSignal },
-  ): Promise<AiOrderingToolCallingModelResult>;
-};
-
-/**
- * Builds a per-turn session around a structured model.
- *
- * Usage is accumulated on the session rather than returned from each call
- * because the planner may call the model several times and the caller contract hands
- * back only the model's answer. Summing here keeps the planner's contract
- * untouched and gets the repair attempt counted, which a per-call return value
- * would have made the caller re-add by hand.
- *
- * One session per turn. Reusing one across turns would silently pool their
- * token counts.
- */
-/**
- * The budget for the next provider call.
+ * How long the NEXT provider call may take.
  *
  * Whichever is smaller: this version's per-call timeout, or what is left of the
  * turn's overall budget. Without the second half, a turn's last call could start
  * with 2 seconds left and still run for 20, pushing the turn past the deadline
- * the in-flight lock's expiry was chosen against.
- */
-/**
- * How long the NEXT provider call may take.
- *
- * Clamped to what is left of the turn's budget, not just the per-call timeout:
- * a repair that starts with 200ms left must not be given the full timeout, or
- * the turn's duration stops being a guarantee.
+ * the in-flight lock's expiry was chosen against — the turn's duration would
+ * stop being a guarantee.
  */
 export function nextAiOrderingCallTimeoutMs(
   config: AiOrderingVersionConfig,
@@ -100,8 +49,14 @@ export type AiOrderingTextModel = {
   ): Promise<{ content: unknown }>;
 };
 
-/** Shared with the provider adapters, which face the same content shape. */
-export function extractText(content: unknown): string {
+/**
+ * LangChain content, flattened to a string.
+ *
+ * Module-private: the summary caller below is the only caller. A provider file
+ * that needs the same flattening should export it again rather than reach for
+ * it, so the shared surface says what is actually shared.
+ */
+function extractText(content: unknown): string {
   if (typeof content === 'string') {
     return content;
   }

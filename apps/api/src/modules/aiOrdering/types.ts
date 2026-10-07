@@ -74,6 +74,21 @@ export type AiOrderingVersionConfig = {
   summarizeAfterAgedOutTurns: number;
   maxOperationsPerProposal: number;
   maxReplyCharacters: number;
+  /**
+   * Sampling temperature for every provider call this version makes.
+   *
+   * Versioned rather than per store or per deployment, and part of the
+   * fingerprint: it changes what the model answers, so two runs at different
+   * temperatures are not the same version being measured twice. A store has no
+   * say in it for the same reason it has no say in the prompt.
+   *
+   * It is sent explicitly rather than left to the provider's default, so the
+   * evaluation harness and production are the same configuration by
+   * construction. They were not: the suite pinned 0 while production took
+   * Gemini's default, which made every score a measurement of something we did
+   * not ship.
+   */
+  temperature: number;
   /** Budget for a single provider call. */
   timeoutMs: number;
   /**

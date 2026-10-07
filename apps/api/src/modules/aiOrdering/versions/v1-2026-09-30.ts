@@ -30,6 +30,12 @@ export const AI_ORDERING_V1_2026_09_30: AiOrderingVersionConfig = {
   summarizeAfterAgedOutTurns: 5,
   maxOperationsPerProposal: 10,
   maxReplyCharacters: 1000,
+  // Nothing this assistant does has more than one right answer: it picks ids
+  // out of a fixed menu, carries over the choices the guest stated, and leaves
+  // the rest empty. Sampling can only invent a choice nobody asked for, and the
+  // same prompt scored 10, 11 and 9 out of 14 on three consecutive runs at the
+  // provider's default.
+  temperature: 0,
   timeoutMs: 20_000,
   // Two planning calls plus a summary rebuild at 20s each, with slack for the
   // database and menu reads around them.

@@ -253,9 +253,6 @@ function harness(
             createChatModel: () => activeModel,
             toToolSchema: (schema: unknown) =>
               toGeminiToolSchema(schema as never) as Record<string, unknown>,
-            createModel: () => ({
-              invoke: async () => ({ toolCalls: [], text: '' }),
-            }),
             createSummaryCaller: () => async () => {
               summaryCalls += 1;
 
@@ -1105,9 +1102,6 @@ describe('AiOrderingService proposal decisions', () => {
           createChatModel: () => chatModel,
           toToolSchema: (schema: unknown) =>
             toGeminiToolSchema(schema as never) as Record<string, unknown>,
-          createModel: () => ({
-            invoke: async () => ({ toolCalls: [], text: '' }),
-          }),
           createSummaryCaller: () => async () => '',
         }) as never,
       getCheckpointer: async () => new MemorySaver(),

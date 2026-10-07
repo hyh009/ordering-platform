@@ -33,6 +33,11 @@
  * - `timeoutMs`, `maxTurnDurationMs` — operational budgets. They decide whether
  *   a turn completes, not what a completed turn says, and they are the settings
  *   most likely to be tuned per deployment.
+ *
+ * `temperature` IS part of the hash, on the other side of that same line: it
+ * decides what a completed turn says. A suite scored at one temperature does
+ * not describe a deployment running at another, so the two must not share a
+ * fingerprint.
  */
 
 import { createHash } from 'node:crypto';
@@ -71,6 +76,7 @@ export function aiOrderingVersionFingerprint(
     config.summarizeAfterAgedOutTurns,
     config.maxOperationsPerProposal,
     config.maxReplyCharacters,
+    config.temperature,
     MODEL_ANSWER_SHAPE,
   ]);
 

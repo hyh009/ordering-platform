@@ -167,6 +167,18 @@ describe('AI ordering version fingerprint', () => {
     ).not.toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
   });
 
+  it('changes when the sampling temperature changes', () => {
+    // Temperature sits on the other side of the line from a timeout: it decides
+    // what a completed turn SAYS, so a corpus scored at one value does not
+    // describe a deployment running at another.
+    expect(
+      aiOrderingVersionFingerprint({
+        ...AI_ORDERING_V1_2026_09_30,
+        temperature: 1,
+      }),
+    ).not.toBe(aiOrderingVersionFingerprint(AI_ORDERING_V1_2026_09_30));
+  });
+
   it('does not change when the version is renamed', () => {
     // The label and the content are separate questions. Two ids sharing a
     // prompt should share a fingerprint.

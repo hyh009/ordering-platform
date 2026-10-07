@@ -4,7 +4,6 @@ import { resolveAiOrderingProvider } from '@src/modules/aiOrdering/runtime/provi
 import { resolveAiOrderingVersion } from '@src/modules/aiOrdering/versions';
 import { logger } from '@src/utils/logger';
 
-import type { AiOrderingToolCallingModel } from '@src/modules/aiOrdering/runtime/model';
 import type { AiOrderingProviderId } from '@src/modules/aiOrdering/runtime/providers';
 import type { AiOrderingSummaryCaller } from '@src/modules/aiOrdering/summary';
 import type { AiOrderingVersionConfig } from '@src/modules/aiOrdering/types';
@@ -14,7 +13,6 @@ export type AiOrderingRuntime = {
   /** Recorded on every turn beside `modelName`: the two are one choice. */
   provider: AiOrderingProviderId;
   modelName: string;
-  createModel(): AiOrderingToolCallingModel;
   /** The chat model the agent run drives, and its tool-schema dialect. */
   createChatModel(): unknown;
   toToolSchema(schema: unknown): Record<string, unknown>;
@@ -96,19 +94,21 @@ export function resolveAiOrderingRuntime(
     config,
     provider: provider.id,
     modelName: settings.modelName,
-    createModel: () =>
-      provider.adapter.createToolCallingModel({
+    createChatModel: () =>
+      provider.adapter.createChatModel({
         apiKey,
         model: settings.modelName,
+        temperature: config.temperature,
       }),
-    createChatModel: () =>
-      provider.adapter.createChatModel({ apiKey, model: settings.modelName }),
     toToolSchema: (schema) => provider.adapter.toToolSchema(schema),
     createSummaryCaller: (deadlineAt?: number) =>
       createAiOrderingSummaryCaller({
         model: provider.adapter.createTextModel({
           apiKey,
           model: settings.modelName,
+          // The summary feeds later turns, so a sampled one makes the whole
+          // conversation irreproducible, not just the turn that wrote it.
+          temperature: config.temperature,
         }),
         config,
         ...(deadlineAt !== undefined ? { deadlineAt } : {}),

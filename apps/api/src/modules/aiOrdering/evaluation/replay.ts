@@ -86,7 +86,13 @@ export type AiOrderingReplayInput = {
    * Built per case by the caller, because one session per turn is what the
    * production path does and pooling them would pool their token counts.
    */
-  createModel: () => unknown;
+  /**
+   * The chat model to drive, un-bound: `createAgent` binds the tools. Named
+   * for what it returns, because a field called `createModel` here once read
+   * as the runtime's own `createModel` — a pre-bound wrapper the agent could
+   * not accept, which kept that dead path looking alive.
+   */
+  createChatModel: () => unknown;
   toToolSchema: (schema: unknown) => Record<string, unknown>;
   /**
    * Smallest gap between two cases, in milliseconds.
@@ -193,7 +199,7 @@ async function replayOne(
     onModelCall: createAiOrderingDebugTrace('replay'),
     newId: (prefix) => `${prefix}-replay`,
     toToolSchema: input.toToolSchema,
-    model: input.createModel(),
+    model: input.createChatModel(),
     checkpointer: new MemorySaver(),
     executor: {
       addItem: () => {

@@ -1,14 +1,10 @@
 import {
   createGeminiChatModel,
   createGeminiTextModel,
-  createGeminiToolCallingModel,
 } from '@src/modules/aiOrdering/runtime/gemini';
 import { toGeminiToolSchema } from '@src/modules/aiOrdering/runtime/geminiSchema';
 
-import type {
-  AiOrderingTextModel,
-  AiOrderingToolCallingModel,
-} from '@src/modules/aiOrdering/runtime/model';
+import type { AiOrderingTextModel } from '@src/modules/aiOrdering/runtime/model';
 
 /**
  * The providers the assistant can run against.
@@ -34,9 +30,9 @@ export type AiOrderingProviderId = (typeof aiOrderingProviderIds)[number];
 export type AiOrderingProviderAdapter = {
   /** The chat model the agent run drives. The agent binds the tools. */
   /**
-   * `temperature` is left unset on the production path, which takes the
-   * provider's default. The evaluation harness pins it to 0, because a suite
-   * scored at a sampling temperature measures the sampler as much as the prompt.
+   * `temperature` is the version's, on every path. It stays optional here
+   * because the adapter is the wire layer and an omitted value means "the
+   * provider's default"; nothing in this repository omits it.
    */
   createChatModel(input: {
     apiKey: string;
@@ -50,15 +46,11 @@ export type AiOrderingProviderAdapter = {
    * written in zod and each provider says what its own parser needs.
    */
   toToolSchema(schema: unknown): Record<string, unknown>;
-  /** The assistant's own model, with the tools bound. */
-  createToolCallingModel(input: {
-    apiKey: string;
-    model: string;
-  }): AiOrderingToolCallingModel;
   /** A plain-text model, with NO tools bound. Used to rebuild the summary. */
   createTextModel(input: {
     apiKey: string;
     model: string;
+    temperature?: number;
   }): AiOrderingTextModel;
 };
 
@@ -67,7 +59,6 @@ const adapters: Record<AiOrderingProviderId, AiOrderingProviderAdapter> = {
     createChatModel: createGeminiChatModel,
     toToolSchema: (schema) =>
       toGeminiToolSchema(schema as never) as Record<string, unknown>,
-    createToolCallingModel: createGeminiToolCallingModel,
     createTextModel: createGeminiTextModel,
   },
 };

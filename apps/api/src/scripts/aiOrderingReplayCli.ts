@@ -293,15 +293,16 @@ async function run() {
       cases,
       // The production model and the production tool dialect. Replay drives the
       // same agent; only the resume never comes.
-      createModel: () =>
+      //
+      // `temperature` comes from the version config, like production's does.
+      // It used to be pinned to 0 here, which made the suite reproducible and
+      // simultaneously made it a measurement of a configuration nobody served.
+      // Whatever the version says, both sides get.
+      createChatModel: () =>
         provider.adapter.createChatModel({
           apiKey,
           model: modelName,
-          // Scoring a suite at the provider's default sampling temperature
-          // measures the sampler as much as the prompt: the same prompt scored
-          // 10, 11 and 9 out of 14 on three consecutive runs. A comparison
-          // between two prompts needs the only difference to be the prompt.
-          temperature: 0,
+          temperature: config.temperature,
         }),
       toToolSchema: (schema) => provider.adapter.toToolSchema(schema),
     });
