@@ -1,9 +1,14 @@
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
 import { tDefault } from '@/app/i18n';
-import { sendAiOrderingMessageSchema } from '@/models/aiOrdering';
+import {
+  proposalQuantityChanges,
+  sendAiOrderingMessageSchema,
+} from '@/models/aiOrdering';
+import { exceedsProductQuantityLimit } from '@/models/cart';
 import { storeFrontAiOrderingService } from '@/services/storeFrontAiOrdering.service';
 import {
   mapStoreFrontApiError,
+  storeFrontQuantityLimitFailure,
   type StoreFrontCommandFailure,
 } from '@/services/utils/storeFrontApiError';
 
@@ -15,6 +20,7 @@ import type {
 import type { StoreFrontAiOrderingActions } from './actions';
 import type { StoreFrontAiOrderingStore } from './store';
 import type { StoreFrontCartActions } from '../cart/actions';
+import type { StoreFrontCartStore } from '../cart/store';
 import type { TenantStore } from '../tenant/store';
 
 export type AiOrderingSendResult =
@@ -78,10 +84,12 @@ export function createStoreFrontAiOrderingCommands(deps: {
   actions: StoreFrontAiOrderingActions;
   store: StoreFrontAiOrderingStore;
   cartActions: StoreFrontCartActions;
+  cartStore: StoreFrontCartStore;
   sessionStore: GuestSessionStore;
   tenantStore: TenantStore;
 }): StoreFrontAiOrderingCommands {
-  const { actions, store, cartActions, sessionStore, tenantStore } = deps;
+  const { actions, store, cartActions, cartStore, sessionStore, tenantStore } =
+    deps;
 
   const invalidRequest: StoreFrontCommandFailure = {
     status: 'failed',
@@ -232,6 +240,7 @@ export function createStoreFrontAiOrderingCommands(deps: {
       if (keptOperationIds.length === 0) return invalidRequest;
 
       const kept = new Set(keptOperationIds);
+      const cartItems = cartStore.getState().cart?.items ?? [];
       // Only the answers that belong to a row still being applied: a dismissed
       // row's answer is not part of this decision, and the server refuses an
       // answer for an operation it is not executing.
@@ -248,6 +257,24 @@ export function createStoreFrontAiOrderingCommands(deps: {
             optionIds,
           })),
         );
+
+      // Checked before sending, so a proposal that would take a product past
+      // the per-product limit is something the guest is told rather than a
+      // server error on a row. Only the rows being applied count, and they are
+      // netted: removing five and adding five of the same thing moves nothing.
+      if (
+        exceedsProductQuantityLimit(
+          cartItems,
+          proposalQuantityChanges(
+            proposal.rows
+              .filter((row) => kept.has(row.operation.operationId))
+              .map((row) => row.operation),
+            cartItems,
+          ),
+        )
+      ) {
+        return storeFrontQuantityLimitFailure();
+      }
 
       const scoped = requireScopedToken(expectedStoreId);
       if (typeof scoped !== 'string') return scoped;

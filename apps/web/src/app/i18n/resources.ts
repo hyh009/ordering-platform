@@ -119,6 +119,8 @@ const manualResources: Resource = {
           invalidInput:
             'Something in the request was invalid. Please try again.',
           orderNotFound: 'This order was not found.',
+          quantityLimit:
+            'You can order up to 99 of one item here. For more, please ask a member of staff.',
           tooManyRequests:
             'Too many requests. Please wait a moment and try again.',
         },
@@ -770,6 +772,7 @@ const manualResources: Resource = {
           notFound: '找不到資料。',
           orderLocked: '此訂單已無法變更，請洽現場人員。',
           orderNotFound: '找不到這筆訂單。',
+          quantityLimit: '同一品項一次最多可點 99 份，需要更多請洽現場人員。',
           sessionExpired: '你的點餐階段已結束。',
           storeClosed: '店家目前已關閉點餐。',
           tooManyRequests: '請求太頻繁，請稍候再試。',

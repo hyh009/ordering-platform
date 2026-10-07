@@ -6,6 +6,7 @@ import { storeFrontAiOrderingService } from '@/services/storeFrontAiOrdering.ser
 import { createStoreFrontAiOrderingActions } from './actions';
 import { createStoreFrontAiOrderingCommands } from './commands';
 import { createStoreFrontAiOrderingStore } from './store';
+import { createStoreFrontCartStore } from '../cart/store';
 import { createTenantStore } from '../tenant/store';
 
 import type { AiOrderingTurn } from '@/models/aiOrdering';
@@ -34,6 +35,7 @@ const CART = { id: 'cart-1', items: [] } as unknown as Cart;
 
 function setup() {
   const store = createStoreFrontAiOrderingStore();
+  const cartStore = createStoreFrontCartStore();
   const sessionStore = createGuestSessionStore();
   const tenantStore = createTenantStore();
   const cartActions = {
@@ -49,12 +51,14 @@ function setup() {
 
   return {
     store,
+    cartStore,
     sessionStore,
     cartActions,
     commands: createStoreFrontAiOrderingCommands({
       actions: createStoreFrontAiOrderingActions(store),
       store,
       cartActions,
+      cartStore,
       sessionStore,
       tenantStore,
     }),
@@ -342,6 +346,63 @@ describe('storefront assistant decision command', () => {
       reason: 'invalid',
     });
     expect(decideProposalMock).not.toHaveBeenCalled();
+  });
+
+  // The per-product limit: at most 99 of one product in the cart, counted
+  // across lines. `proposalTurn` adds one of `product-1` per operation.
+  function cartHolding(quantity: number): Cart {
+    return {
+      id: 'cart-1',
+      items: [{ id: 'line-1', productId: 'product-1', quantity }],
+    } as unknown as Cart;
+  }
+
+  it('applies a proposal that lands a product exactly on the limit', async () => {
+    const h = await openProposal(['op-1']);
+    h.cartStore.setState({ cart: cartHolding(98) });
+    decideProposalMock.mockResolvedValue({
+      proposalId: 'proposal-1',
+      results: [{ operationId: 'op-1', outcome: 'accepted' }],
+      cart: CART,
+    });
+
+    await expect(h.commands.applyProposal(STORE_ID)).resolves.toMatchObject({
+      status: 'applied',
+    });
+    expect(decideProposalMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a proposal that would take a product past the limit', async () => {
+    const h = await openProposal(['op-1']);
+    h.cartStore.setState({ cart: cartHolding(99) });
+
+    await expect(h.commands.applyProposal(STORE_ID)).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'quantity-limit',
+    });
+    expect(decideProposalMock).not.toHaveBeenCalled();
+    // Nothing started, so the proposal is still the guest's to change.
+    expect(h.store.getState().isApplying).toBe(false);
+    expect(h.store.getState().proposal?.isApplied).toBe(false);
+  });
+
+  it('counts only the rows still being applied towards the limit', async () => {
+    const h = await openProposal(['op-1', 'op-2']);
+    h.cartStore.setState({ cart: cartHolding(99) });
+    // op-1 adds the product that is full; op-2 adds a different one.
+    h.commands.dismissOperation('op-1');
+    decideProposalMock.mockResolvedValue({
+      proposalId: 'proposal-1',
+      results: [
+        { operationId: 'op-1', outcome: 'rejected' },
+        { operationId: 'op-2', outcome: 'accepted' },
+      ],
+      cart: CART,
+    });
+
+    await expect(h.commands.applyProposal(STORE_ID)).resolves.toMatchObject({
+      status: 'applied',
+    });
   });
 
   it('rejects a token scoped to another store before calling the service', async () => {

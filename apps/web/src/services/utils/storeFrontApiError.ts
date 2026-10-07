@@ -13,6 +13,7 @@ export type StoreFrontCommandFailureReason =
   | 'network'
   | 'not-found'
   | 'order-locked'
+  | 'quantity-limit'
   | 'rate-limited'
   | 'server'
   | 'session-store-mismatch'
@@ -55,6 +56,10 @@ const STOREFRONT_CODE_REASON: Partial<
   VALIDATION_ERROR: 'invalid',
   ORDER_TYPE_NOT_ENABLED: 'invalid',
   NOT_ITEM_OWNER: 'invalid',
+  // The server refusing a merge that would put more than a line may hold. The
+  // same thing to the guest as the per-product limit this app checks before it
+  // sends, so it lands on the same reason and the same dialog.
+  CART_ITEM_QUANTITY_LIMIT: 'quantity-limit',
   // The assistant is optional, so "off for this deployment" and "the provider
   // could not answer" land on one reason: both mean the panel cannot help right
   // now, and neither is something the guest can act on differently. Ordering
@@ -99,6 +104,11 @@ const STOREFRONT_MESSAGES: Record<
     key: 'guest.errors.orderLocked',
     fallback: 'This order can no longer be changed. Please ask the staff.',
   },
+  'quantity-limit': {
+    key: 'guest.errors.quantityLimit',
+    fallback:
+      'You can order up to 99 of one item here. For more, please ask a member of staff.',
+  },
   'not-found': {
     key: 'guest.errors.notFound',
     fallback: 'This was not found.',
@@ -133,7 +143,24 @@ const STOREFRONT_MESSAGES: Record<
   },
 };
 
-export function mapStoreFrontApiError(error: unknown): StoreFrontCommandFailure {
+/**
+ * The failure for a write this app declined to send because it would take one
+ * product past the per-product limit. Built here so it reads exactly like the
+ * server's refusal of the same thing.
+ */
+export function storeFrontQuantityLimitFailure(): StoreFrontCommandFailure {
+  const message = STOREFRONT_MESSAGES['quantity-limit'];
+
+  return {
+    status: 'failed',
+    reason: 'quantity-limit',
+    message: tDefault(message.key, message.fallback),
+  };
+}
+
+export function mapStoreFrontApiError(
+  error: unknown,
+): StoreFrontCommandFailure {
   let reason: StoreFrontApiFailureReason = classifyApiError(
     error,
     STOREFRONT_CODE_REASON,

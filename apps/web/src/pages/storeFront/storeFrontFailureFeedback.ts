@@ -47,6 +47,9 @@ export const STOREFRONT_FAILURE_PRESENTATION: Record<
   // a full-page takeover, because no storefront page loads via the assistant.
   'assistant-unavailable': { action: 'toast', load: 'page' },
   'assistant-conversation-full': { action: 'toast', load: 'page' },
+  // Something the guest has to take to a person, so it must be acknowledged
+  // rather than missed as a toast. Never the outcome of a page load.
+  'quantity-limit': { action: 'modal', load: 'page' },
   'rate-limited': { action: 'toast', load: 'page' },
   invalid: { action: 'toast', load: 'page' },
   'not-found': { action: 'toast', load: 'page' },

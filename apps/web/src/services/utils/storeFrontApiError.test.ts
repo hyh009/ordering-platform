@@ -32,6 +32,7 @@ describe('mapStoreFrontApiError', () => {
     { code: 'STORE_NOT_FOUND', reason: 'not-found' },
     { code: 'ORDER_NOT_FOUND', reason: 'not-found' },
     { code: 'CART_ITEM_NOT_FOUND', reason: 'not-found' },
+    { code: 'CART_ITEM_QUANTITY_LIMIT', reason: 'quantity-limit' },
     { code: 'PRODUCT_NOT_FOUND', reason: 'not-found' },
     { code: 'VALIDATION_ERROR', reason: 'invalid' },
     { code: 'ORDER_TYPE_NOT_ENABLED', reason: 'invalid' },

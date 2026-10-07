@@ -2,7 +2,9 @@ import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.s
 import { tDefault } from '@/app/i18n';
 import {
   cartItemInputSchema,
+  cartItemQuantityChange,
   createCartSchema,
+  exceedsProductQuantityLimit,
   joinCartSchema,
   submitCartSchema,
   updateCartItemSchema,
@@ -10,6 +12,7 @@ import {
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
 import {
   mapStoreFrontApiError,
+  storeFrontQuantityLimitFailure,
   type StoreFrontCommandFailure,
 } from '@/services/utils/storeFrontApiError';
 import type {
@@ -20,6 +23,7 @@ import type {
   UpdateCartItemRequest,
 } from '@/models/cart';
 import type { StoreFrontCartActions } from './actions';
+import type { StoreFrontCartStore } from './store';
 import type { TenantStore } from '../tenant/store';
 
 export type CartMutationResult =
@@ -86,10 +90,19 @@ export type StoreFrontCartCommands = {
 
 export function createStoreFrontCartCommands(deps: {
   cartActions: StoreFrontCartActions;
+  cartStore: StoreFrontCartStore;
   sessionStore: GuestSessionStore;
   tenantStore: TenantStore;
 }): StoreFrontCartCommands {
-  const { cartActions, sessionStore, tenantStore } = deps;
+  const { cartActions, cartStore, sessionStore, tenantStore } = deps;
+
+  // The per-product limit, checked here so every surface that adds to or edits
+  // the cart is covered by one guard instead of one per button. A refused write
+  // is never sent and never touches the store: nothing started, so there is
+  // nothing to mark failed.
+  function cartItems() {
+    return cartStore.getState().cart?.items ?? [];
+  }
 
   function failMutation(
     error: unknown,
@@ -263,6 +276,14 @@ export function createStoreFrontCartCommands(deps: {
       if (!validation.success) return invalidRequest;
       const parsed = validation.data;
 
+      if (
+        exceedsProductQuantityLimit(cartItems(), [
+          { productId: parsed.productId, delta: parsed.quantity },
+        ])
+      ) {
+        return storeFrontQuantityLimitFailure();
+      }
+
       cartActions.mutateStarted();
 
       try {
@@ -286,6 +307,18 @@ export function createStoreFrontCartCommands(deps: {
       const validation = updateCartItemSchema.safeParse(request);
       if (!validation.success) return invalidRequest;
       const parsed = validation.data;
+
+      // Only the quantity can move a product's total. An edit to the options
+      // may merge this line into an identical one, but that moves nothing
+      // between products, so a cart within the limit stays within it.
+      if (
+        exceedsProductQuantityLimit(
+          cartItems(),
+          cartItemQuantityChange(cartItems(), itemId, parsed.quantity),
+        )
+      ) {
+        return storeFrontQuantityLimitFailure();
+      }
 
       cartActions.mutateStarted();
 

@@ -54,6 +54,7 @@ export function createStoreFrontRuntime() {
   });
   const cartCommands = createStoreFrontCartCommands({
     cartActions,
+    cartStore,
     sessionStore,
     tenantStore,
   });
@@ -78,6 +79,7 @@ export function createStoreFrontRuntime() {
     actions: aiOrderingActions,
     store: aiOrderingStore,
     cartActions,
+    cartStore,
     sessionStore,
     tenantStore,
   });

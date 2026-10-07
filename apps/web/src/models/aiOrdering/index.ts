@@ -10,4 +10,5 @@ export {
 } from '@repo/shared';
 
 export { aiOrderingModel } from './model';
+export { proposalQuantityChanges } from './proposalQuantityChanges';
 export type * from './types';
