@@ -25,6 +25,7 @@ const FAILURE_SCOPE: Partial<Record<ErrorCode, 'item' | 'session'>> = {
   [ERROR_CODES.CART_ITEM_NOT_FOUND]: 'item',
   [ERROR_CODES.MODIFIER_SELECTION_INVALID]: 'item',
   [ERROR_CODES.NOT_ITEM_OWNER]: 'item',
+  [ERROR_CODES.CART_ITEM_QUANTITY_LIMIT]: 'item',
   [ERROR_CODES.BAD_REQUEST]: 'item',
   [ERROR_CODES.CART_NOT_ACTIVE]: 'session',
   [ERROR_CODES.CART_NOT_FOUND]: 'session',

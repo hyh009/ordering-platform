@@ -35,6 +35,10 @@ export const ERROR_CODES = {
   CART_NOT_ACTIVE: 'CART_NOT_ACTIVE',
   CART_ITEM_NOT_FOUND: 'CART_ITEM_NOT_FOUND',
   NOT_ITEM_OWNER: 'NOT_ITEM_OWNER',
+  // Two identical cart lines merge, and the merged line would hold more than
+  // one line may. Refused rather than clamped: clamping would quietly drop
+  // items the guest asked for.
+  CART_ITEM_QUANTITY_LIMIT: 'CART_ITEM_QUANTITY_LIMIT',
   ORDER_NOT_FOUND: 'ORDER_NOT_FOUND',
   ORDER_LOCKED: 'ORDER_LOCKED',
   ORDER_TYPE_NOT_ENABLED: 'ORDER_TYPE_NOT_ENABLED',

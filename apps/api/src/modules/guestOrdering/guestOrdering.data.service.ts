@@ -25,6 +25,8 @@ import {
 } from '@src/utils/errors';
 import mongoose from 'mongoose';
 
+import { CART_LINE_MAX_QUANTITY, mergeChangedCartItem } from './cartItemMerge';
+
 import type {
   CartDto,
   CartItemInput,
@@ -699,6 +701,29 @@ function assertActiveCartMembership(
   return participant;
 }
 
+/**
+ * Applies the merge rule to the line a write just produced.
+ *
+ * Called by both the add and the update path. Add-only merging would be half a
+ * rule: editing one line's sugar level to match another would leave two
+ * identical lines, a state adding can never produce.
+ */
+function mergeIntoIdenticalLine(
+  items: CartItemSnapshot[],
+  changedItemId: string,
+): CartItemSnapshot[] {
+  const merged = mergeChangedCartItem(items, changedItemId);
+
+  if (merged.status === 'over_limit') {
+    throw new ConflictError(
+      `A cart line cannot hold more than ${String(CART_LINE_MAX_QUANTITY)} of an item`,
+      ERROR_CODES.CART_ITEM_QUANTITY_LIMIT,
+    );
+  }
+
+  return merged.items;
+}
+
 export async function addCartItem(
   claims: GuestTokenClaims,
   request: CartItemInput,
@@ -716,7 +741,7 @@ export async function addCartItem(
       participant,
     );
 
-    const items = [...cart.items, item];
+    const items = mergeIntoIdenticalLine([...cart.items, item], item.id);
     return { items, ...computeTotals(items, cart.serviceFeeRate) };
   });
 
@@ -781,8 +806,9 @@ export async function updateCartItem(
       createdAt: existing.createdAt,
     };
 
-    const items = cart.items.map((item) =>
-      item.id === itemId ? nextItem : item,
+    const items = mergeIntoIdenticalLine(
+      cart.items.map((item) => (item.id === itemId ? nextItem : item)),
+      itemId,
     );
     return { items, ...computeTotals(items, cart.serviceFeeRate) };
   });
