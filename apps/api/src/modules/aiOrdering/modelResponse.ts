@@ -221,7 +221,7 @@ export const aiOrderingModelArgumentSchemas = {
             }),
             {
               question:
-                "One further question, about one choice only, in the guest's own language.",
+                "One further thing you need clarified, one only, in the guest's own language.",
               options: 'The answers to offer for this question only.',
             },
           ),
@@ -232,13 +232,13 @@ export const aiOrderingModelArgumentSchemas = {
     {
       reply: modelReplyDescription,
       question:
-        'The first question the guest must answer before you can continue, in their own language. One choice only: never combine two choices in one question.',
+        'The first thing you need the guest to clarify, in their own language. One thing only: never combine two into one question.',
       inputMode:
         'yes_no when the question has exactly two opposite answers, single_choice otherwise.',
       options:
         'The answers to offer for the first question only. The guest may also type something else, so these need not be exhaustive.',
       additionalQuestions:
-        'Every other choice that is still missing, one entry per choice, so the guest answers all of them in this one turn. Omit when only one choice is missing.',
+        'Every other thing you need clarified, one entry each, so the guest answers all of them in this one turn. Omit when there is only one.',
     },
   ),
   proposal: describeFields(

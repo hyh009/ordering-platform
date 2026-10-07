@@ -36,9 +36,11 @@ export const aiOrderingToolDefinitions: readonly AiOrderingToolDefinition[] = [
     responseType: 'proposal',
     description: `Propose one or more changes to the guest's current cart for their review.
 
-Use this tool once the guest has said what they want and every choice on it is settled.
+Use this tool once the guest has said what they want.
 
-Do not use it while the guest is asking about a product, comparing options, or browsing, and do not use it for a product that still has an unsettled choice — \`ask_choices\` comes first.
+Do not use it while the guest is asking about a product, comparing options, or browsing.
+
+A choice the guest has not stated is not a reason to hold a proposal back. Leave it empty and propose anyway: the ordering page asks the guest for it on this proposal, with the store's own option list.
 
 Important rules:
 - Each entry adds one more of a product, changes an item the guest added themselves, or removes one.
@@ -52,16 +54,17 @@ Important rules:
   {
     name: 'ask_choices',
     responseType: 'choices',
-    description: `Ask the guest for the choices you still need before anything can be proposed.
+    description: `Ask the guest which of several possible things they meant.
 
-Use this tool when a product the guest asked for has any choice that is not settled: a required one they have not made, or an optional one they have not mentioned.
+Use this tool only when what the guest said matches more than one thing in the store data and you cannot tell which one they mean: more than one product, or an option whose product or modifier is unclear.
+
+Do not use it for a choice the guest has simply not made. An unstated sugar level, ice level, spice level, size, or topping is never a reason to call this tool — the ordering page asks for those on the proposal itself, and asking here instead takes a turn to collect what the guest was about to be shown anyway.
 
 Do not use it to confirm something the guest already told you, to ask whether they want a product they have already asked for, or to ask anything that is not a choice between options — a plain reply is for that.
 
 Important rules:
-- Ask for every unsettled choice on every product the guest asked for in this one call: the first in \`question\` and \`options\`, each remaining one as its own entry in \`additionalQuestions\`. Never ask them one turn at a time, and never give an optional choice a turn of its own.
-- One question covers exactly one choice. Never merge two choices into a single question.
-- An optional choice's options must include a clear way to decline.
+- Ask everything you need clarified in this one call: the first in \`question\` and \`options\`, each remaining one as its own entry in \`additionalQuestions\`. Never ask them one turn at a time.
+- One question covers exactly one thing. Never merge two into a single question.
 - The guest may answer by typing instead of picking, so the options need not be exhaustive.`,
     schema: aiOrderingModelArgumentSchemas.choices,
   },
