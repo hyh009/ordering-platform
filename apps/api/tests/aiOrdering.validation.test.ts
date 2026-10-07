@@ -5,7 +5,10 @@ import {
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
 } from './fixtures/aiOrdering.js';
-import { validateAiOrderingOperations } from '../src/modules/aiOrdering/validation.js';
+import {
+  validateAiOrderingOperations,
+  validateAiOrderingShownProducts,
+} from '../src/modules/aiOrdering/validation.js';
 
 import type {
   AiOrderingModelOperation,
@@ -500,5 +503,76 @@ describe('check 6: one operation per cart line', () => {
 
     expect(result.rejections).toHaveLength(0);
     expect(result.operations).toHaveLength(3);
+  });
+});
+
+describe('AI ordering shown-product validation', () => {
+  function shown(
+    set: { categoryId?: string; productIds?: string[] },
+  ): AiOrderingModelResponse {
+    return { type: 'products', reply: 'Here they are.', ...set };
+  }
+
+  function validateShown(set: {
+    categoryId?: string;
+    productIds?: string[];
+  }) {
+    return validateAiOrderingShownProducts(shown(set), AI_ORDERING_MENU_FIXTURE);
+  }
+
+  it('accepts a category the menu holds', () => {
+    expect(validateShown({ categoryId: 'cat-drink' })).toEqual([]);
+  });
+
+  it('accepts products the menu holds', () => {
+    expect(
+      validateShown({ productIds: ['prod-black-tea', 'prod-milk-tea'] }),
+    ).toEqual([]);
+  });
+
+  it('rejects a category the menu does not hold', () => {
+    const rejections = validateShown({ categoryId: 'cat-does-not-exist' });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_category_invalid');
+  });
+
+  it('rejects a product the menu does not hold, naming it', () => {
+    const rejections = validateShown({
+      productIds: ['prod-black-tea', 'prod-phantom'],
+    });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_product_not_found');
+    // The whole set falls, not just the bad id: a shelf shown with gaps in it
+    // and no explanation is worse than being asked again.
+    expect(rejections[0]?.detail).toContain('prod-phantom');
+  });
+
+  it('rejects naming both a category and a list', () => {
+    const rejections = validateShown({
+      categoryId: 'cat-drink',
+      productIds: ['prod-black-tea'],
+    });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_set_invalid');
+    expect(rejections[0]?.detail).toContain('never both');
+  });
+
+  it('rejects naming neither', () => {
+    const rejections = validateShown({});
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_set_invalid');
+  });
+
+  it('leaves every other kind of response alone', () => {
+    expect(
+      validateAiOrderingShownProducts(
+        { type: 'message', reply: 'We open at eleven.' },
+        AI_ORDERING_MENU_FIXTURE,
+      ),
+    ).toEqual([]);
   });
 });

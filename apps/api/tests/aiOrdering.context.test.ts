@@ -849,3 +849,15 @@ describe('AI ordering context assembly', () => {
     expect(history).toContain('[Turn 5] You (proposal): 為您加入無糖紅茶。');
   });
 });
+
+describe('AI ordering menu categories', () => {
+  it('writes the id of every category, so one can be sent back', () => {
+    const menu = blockText(buildAiOrderingContext(contextInput()), 'store_data');
+
+    // `show_products` takes a category id. A heading that gave only the name
+    // left the model with nothing to send, and it named products one by one
+    // instead until it hit their bound.
+    expect(menu).toMatch(/### 飲料 \([\w-]+\)/);
+    expect(menu).toMatch(/### 主餐 \([\w-]+\)/);
+  });
+});

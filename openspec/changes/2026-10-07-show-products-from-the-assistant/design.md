@@ -106,3 +106,19 @@ exchange reads back later.
 They are part of the honest answer to "what kinds are there", and `ProductCard`
 already renders and disables them. Hiding them would make the assistant's list
 disagree with the menu page on the same screen.
+
+### 8. A category must be addressable, which it was not
+
+Found while verifying: the menu block wrote category headings by NAME only
+(`### 飲料`), while every product, modifier and option line carries its id. So
+the model had no category id to send, and `categoryId` was unusable — asked for
+twelve egg crepes it named products one by one until it hit their bound, and the
+guest got eight of twelve.
+
+Categories are now written the way every other line writes an id,
+`### code (name)`, and a category id joins the short-code codec and the decoder.
+
+The general lesson is worth keeping: a field that takes an identifier is only as
+usable as the prompt's ability to supply one. Adding the field is half the
+change; making its values visible is the other half, and nothing in the schema
+says so.

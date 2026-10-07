@@ -1,3 +1,5 @@
+import { AI_ORDERING_MAX_SHOWN_PRODUCTS } from '@repo/shared';
+
 import type { CartDto, PublicMenuDto, PublicModifierDto } from '@repo/shared';
 import type {
   AiOrderingModelResponse,
@@ -10,7 +12,11 @@ export type AiOrderingOperationRejectionCode =
   | 'modifier_invalid'
   | 'not_owned'
   | 'no_change'
-  | 'line_written_twice';
+  | 'line_written_twice'
+  /** A set of products to SHOW, named wrongly. Nothing is proposed by these. */
+  | 'shown_set_invalid'
+  | 'shown_product_not_found'
+  | 'shown_category_invalid';
 
 export type AiOrderingOperationRejection = {
   /** Index in the model's original operation list, which has no ids yet. */
@@ -343,4 +349,107 @@ export function validateAiOrderingOperations(
   });
 
   return { operations, rejections, ownershipViolationCount };
+}
+
+/**
+ * Checks a set of products the model wants to SHOW against the live menu.
+ *
+ * A join against a closed set the system owns: every id either is in this
+ * store's menu or is not, with no language to interpret. That is what makes the
+ * check worth having, and what bounds the costly direction — a rejection asks
+ * the model again rather than putting a wrong or empty shelf in front of a
+ * guest.
+ *
+ * What is deliberately NOT checked is whether these are the RIGHT products for
+ * what the guest said. No check can decide that; the prompt owns it.
+ *
+ * Returns rejections only. A shown set proposes nothing, so there is nothing to
+ * keep: either the whole set stands or the model is asked again. Showing a
+ * subset would be showing the guest a shelf with gaps in it and saying nothing.
+ */
+export function validateAiOrderingShownProducts(
+  modelResponse: AiOrderingModelResponse,
+  menu: PublicMenuDto,
+): AiOrderingOperationRejection[] {
+  if (modelResponse.type !== 'products') {
+    return [];
+  }
+
+  const { categoryId, productIds } = modelResponse;
+  const reject = (
+    code: AiOrderingOperationRejectionCode,
+    detail: string,
+  ): AiOrderingOperationRejection[] => [{ index: 0, code, detail }];
+
+  if ((categoryId === undefined) === (productIds === undefined)) {
+    return reject(
+      'shown_set_invalid',
+      categoryId === undefined
+        ? 'a set of products to show needs either a categoryId or a productIds list, and this had neither'
+        : 'a set of products to show takes either a categoryId or a productIds list, never both: name the category to show all of it, or the products to show just those',
+    );
+  }
+
+  if (categoryId !== undefined) {
+    const groups = menu.groups.filter(
+      (group) => group.category?.id === categoryId,
+    );
+    const products = groups.flatMap((group) => group.products);
+
+    if (groups.length === 0) {
+      return reject(
+        'shown_category_invalid',
+        `no category "${categoryId}" in this store's menu`,
+      );
+    }
+
+    if (products.length === 0) {
+      return reject(
+        'shown_category_invalid',
+        `category "${categoryId}" holds no products, so there is nothing to show`,
+      );
+    }
+
+    return [];
+  }
+
+  const known = new Set(
+    menu.groups.flatMap((group) => group.products.map((product) => product.id)),
+  );
+  const named = productIds ?? [];
+  const missing = named.filter((id) => !known.has(id));
+
+  if (missing.length > 0) {
+    return reject(
+      'shown_product_not_found',
+      `no product ${missing.map((id) => `"${id}"`).join(', ')} in this store's menu`,
+    );
+  }
+
+  /**
+   * A full list drawn from one larger category is a truncated category.
+   *
+   * The model reaches for `productIds` first and meets the bound, so what the
+   * guest gets is the category minus whatever did not fit — silently, with
+   * nothing on screen saying four are missing. Both conditions are needed:
+   * picking a FEW out of a category is a recommendation and is left alone, and
+   * only a list standing exactly at the bound is evidence of truncation.
+   */
+  if (named.length === AI_ORDERING_MAX_SHOWN_PRODUCTS) {
+    const owningGroup = menu.groups.find((group) =>
+      named.every((id) => group.products.some((product) => product.id === id)),
+    );
+
+    if (
+      owningGroup?.category &&
+      owningGroup.products.length > AI_ORDERING_MAX_SHOWN_PRODUCTS
+    ) {
+      return reject(
+        'shown_set_invalid',
+        `these ${String(named.length)} products are all in category "${owningGroup.category.id}", which holds ${String(owningGroup.products.length)}. Naming products one by one stops at ${String(AI_ORDERING_MAX_SHOWN_PRODUCTS)}, so this list is the category with ${String(owningGroup.products.length - named.length)} missing. Give that categoryId instead and all of them are shown.`,
+      );
+    }
+  }
+
+  return [];
 }

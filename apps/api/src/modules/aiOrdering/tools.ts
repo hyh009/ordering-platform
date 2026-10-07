@@ -68,10 +68,25 @@ Do not use it to confirm something the guest already told you, to ask whether th
 
 Important rules:
 - This call asks ONE question. When two separate things are unclear, ask about the one that blocks you most and leave the other for the next turn.
-- At most 8 options, and never a list cut short to fit: when more than 8 things could be meant, call no tool and name them in a plain reply instead, so the guest can narrow it down.
+- At most 5 options, and never a list cut short to fit: when more things could be meant than that, show them with \`show_products\` instead.
 - One question covers exactly one thing. Never merge two into a single question.
 - The guest may answer by typing instead of picking, so the options need not be exhaustive.`,
     schema: aiOrderingModelArgumentSchemas.choices,
+  },
+  {
+    name: 'show_products',
+    responseType: 'products',
+    description: `Show the guest a set of the store's products to look at.
+
+Use this tool when the guest wants to SEE what the store has rather than order one particular thing: what kinds there are, a recommendation, or a dish the store sells in several versions. It is also the answer when more things match than a question may offer — twelve kinds of one dish are twelve products to show, not five options to pick from.
+
+Give \`categoryId\` for a whole kind of thing: every product in it is shown, however many. Give \`productIds\` only when they do not form one category, since that list stops at 8 and a category does not.
+
+Important rules:
+- This shows and nothing else. The cart does not change and nothing is proposed. The guest opens a product and adds it, so never say or imply that anything has been added.
+- Say nothing about a product that the menu data does not say: the guest sees the real cards beside your words.
+- When the guest has already said which one they want, propose it instead.`,
+    schema: aiOrderingModelArgumentSchemas.products,
   },
   {
     name: 'report_unanswerable',

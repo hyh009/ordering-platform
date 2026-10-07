@@ -785,9 +785,9 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `prompts/coreInstructions.ts` — the versioned system prompt
 - `context.ts` — block assembly, cart ownership split
 - `modelResponse.ts` — model-facing schema and hydration
-- `tools.ts` — the three bound tools, and reading a tool call as an answer
+- `tools.ts` — the four bound tools, and reading a tool call as an answer
 - `outputGate.ts` — shape-only gate over untrusted output
-- `validation.ts` — the four data checks
+- `validation.ts` — the data checks on a proposal, and on a shown set of products
 - `cartExecution.ts` — running an accepted proposal's operations, and the
   item/session failure scope
 - `shortCodes.ts` — the short codes the model reads and writes in place of ids
@@ -906,9 +906,12 @@ check, not a gap in coverage of the logic.
 
 Storefront panel:
 
-- the chat panel renders each of the four response types (`message`, `choices`,
-  `proposal`, `unanswered`)
+- the chat panel renders each of the five response types (`message`, `choices`,
+  `products`, `proposal`, `unanswered`)
 - a `choices` answer offers its options AND still accepts typed input
+- a `products` answer renders a scrolling row of the menu's own product cards,
+  resolved from ids, and opens the same configuration sheet the menu page opens:
+  showing changes nothing, and the guest adds the item themselves
 - the proposal card shows one row per operation with its own dismiss control and
   a single apply at the bottom
 - after a partial failure, each row shows its own result

@@ -14,7 +14,41 @@ import type {
   AiOrderingProposalState,
   AiOrderingTurn,
 } from '@/models/aiOrdering';
+import type { PublicMenu, PublicProduct } from '@/models/storeFrontMenu';
 import type { AssistantRowFailureKind } from './assistantPanelView';
+
+function product(id: string): PublicProduct {
+  return {
+    id,
+    categoryIds: ['cat-drink'],
+    name: { 'zh-TW': id, en: id },
+    imageUrls: [],
+    price: 35,
+    tagIds: [],
+    allergenIds: [],
+    dietaryMarkerIds: [],
+    modifierIds: [],
+    isSoldOut: false,
+  };
+}
+
+const MENU = {
+  groups: [
+    {
+      category: {
+        id: 'cat-drink',
+        name: { 'zh-TW': '\u98f2\u6599', en: 'Drinks' },
+        displayOrder: 1,
+        availabilityRules: [],
+      },
+      products: [product('prod-tea'), product('prod-milk-tea')],
+    },
+  ],
+  modifiers: [],
+  tags: [],
+  allergens: [],
+  dietaryMarkers: [],
+} as unknown as PublicMenu;
 
 function setup() {
   const store = createStoreFrontAiOrderingStore();
@@ -23,7 +57,17 @@ function setup() {
   return {
     actions,
     view(isAvailable = true) {
-      return buildAssistantPanelView({ state: store.getState(), isAvailable });
+      return buildAssistantPanelView({
+        state: store.getState(),
+        isAvailable,
+        menu: MENU,
+      });
+    },
+    viewWithoutMenu() {
+      return buildAssistantPanelView({
+        state: store.getState(),
+        isAvailable: true,
+      });
     },
   };
 }
@@ -1341,5 +1385,85 @@ describe('choices that take more than one answer', () => {
         'opt-c',
       ]),
     ).toBe(false);
+  });
+});
+
+describe('assistant panel shown products', () => {
+  it('resolves shown ids into the menu\u2019s own products', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({
+        type: 'products',
+        reply: '\u9019\u4e9b\u662f\u6211\u5011\u7684\u98f2\u6599\u3002',
+        productIds: ['prod-milk-tea', 'prod-tea'],
+        categoryId: 'cat-drink',
+      }),
+    });
+
+    const entry = view().entries[0];
+
+    // In the order the response gave, not menu order: that order is the only
+    // ranking the assistant can express.
+    expect(
+      entry?.kind === 'products' && entry.products.map((item) => item.id),
+    ).toEqual(['prod-milk-tea', 'prod-tea']);
+  });
+
+  it('drops an id the menu no longer holds', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({
+        type: 'products',
+        reply: '\u9019\u4e9b\u662f\u6211\u5011\u7684\u98f2\u6599\u3002',
+        productIds: ['prod-tea', 'prod-withdrawn'],
+      }),
+    });
+
+    const entry = view().entries[0];
+
+    // A stored turn outlives the menu that produced it. One card missing is
+    // better than a card with nothing on it.
+    expect(
+      entry?.kind === 'products' && entry.products.map((item) => item.id),
+    ).toEqual(['prod-tea']);
+  });
+
+  it('shows no cards at all until the menu is loaded', () => {
+    const { actions, viewWithoutMenu } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({
+        type: 'products',
+        reply: '\u9019\u4e9b\u662f\u6211\u5011\u7684\u98f2\u6599\u3002',
+        productIds: ['prod-tea'],
+      }),
+    });
+
+    const entry = viewWithoutMenu().entries[0];
+
+    // The reply still reads; the row renders nothing rather than empty frames.
+    expect(entry?.kind === 'products' && entry.products).toEqual([]);
+    expect(entry?.kind === 'products' && entry.reply).toBeTruthy();
+  });
+
+  it('holds nothing in the dock, since cards wait on nobody', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({
+        type: 'products',
+        reply: '\u9019\u4e9b\u662f\u6211\u5011\u7684\u98f2\u6599\u3002',
+        productIds: ['prod-tea'],
+      }),
+    });
+
+    expect(view().dock).toBeNull();
+    expect(view().openPrompt).toBeNull();
   });
 });

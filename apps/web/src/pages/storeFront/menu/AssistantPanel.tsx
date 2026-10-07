@@ -9,19 +9,43 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { AssistantCartPanel } from './AssistantCartPanel';
 import { AssistantProposalCard } from './AssistantProposalCard';
 import { AssistantProposalRecord } from './AssistantProposalRecord';
+import { AssistantProductRow } from './AssistantProductRow';
 import { AssistantQuestionCard } from './AssistantQuestionCard';
 
+import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
+import type { PublicProduct } from '@/models/storeFrontMenu';
 import type { useAssistantPanelVM } from './useAssistantPanelVM';
 
 type AssistantPanelProps = {
   vm: ReturnType<typeof useAssistantPanelVM>;
+  /**
+   * Opens a shown product in the page's own configuration sheet.
+   *
+   * Handed down rather than owned here, because the sheet the menu page already
+   * opens is the one that validates choices and adds to the cart. The assistant
+   * showing a product must reach the same sheet a guest reaches by tapping it on
+   * the menu, or there would be two ways to add an item.
+   */
+  onOpenProduct: (product: PublicProduct) => void;
+  /** False while the store is shut, which disables a shown product the way the menu grid does. */
+  isStoreOpen: boolean;
+  /** The same tags and allergen marks the menu grid gives a product. */
+  describeProduct: (product: PublicProduct) => {
+    tags: TagDisplay[];
+    allergens: string[];
+  };
 };
 
 /**
  * The chat panel. Every response type is rendered from the shape the VM hands
  * over; the view resolves nothing itself.
  */
-export function AssistantPanel({ vm }: AssistantPanelProps) {
+export function AssistantPanel({
+  vm,
+  onOpenProduct,
+  isStoreOpen,
+  describeProduct,
+}: AssistantPanelProps) {
   const { tDefault } = useAppTranslation();
   const transcriptRef = useRef<HTMLDivElement>(null);
 
@@ -147,6 +171,15 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                         <p className="px-3 text-sm text-muted-foreground">
                           {entry.question}
                         </p>
+                      ) : null}
+
+                      {entry.kind === 'products' ? (
+                        <AssistantProductRow
+                          products={entry.products}
+                          describeProduct={describeProduct}
+                          isStoreOpen={isStoreOpen}
+                          onOpenProduct={onOpenProduct}
+                        />
                       ) : null}
 
                       {/* Still to be decided: the dock holds it. Decided, or

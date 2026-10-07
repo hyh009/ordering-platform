@@ -169,6 +169,16 @@ export const aiOrderingModel = {
           allowFreeText: dto.allowFreeText,
         };
 
+      case 'products':
+        return {
+          type: dto.type,
+          reply: dto.reply,
+          productIds: [...dto.productIds],
+          ...(dto.categoryId !== undefined
+            ? { categoryId: dto.categoryId }
+            : {}),
+        };
+
       case 'proposal':
         return {
           type: dto.type,

@@ -24,7 +24,10 @@ import {
   decodeAiOrderingModelResponse,
 } from '@src/modules/aiOrdering/shortCodes';
 import { aiOrderingToolDefinitions } from '@src/modules/aiOrdering/tools';
-import { validateAiOrderingOperations } from '@src/modules/aiOrdering/validation';
+import {
+  validateAiOrderingOperations,
+  validateAiOrderingShownProducts,
+} from '@src/modules/aiOrdering/validation';
 import {
   createAgent,
   createMiddleware,
@@ -427,15 +430,30 @@ export function createAiOrderingAgent(
           idCodec,
         );
 
+        const validation = validateAiOrderingOperations(
+          modelResponse,
+          input.validation,
+        );
+
         return {
           ok: true as const,
           message,
           modelOutput,
           modelResponse,
-          validation: validateAiOrderingOperations(
-            modelResponse,
-            input.validation,
-          ),
+          validation: {
+            ...validation,
+            // A shown set is checked against the same menu, and its rejections
+            // join the others so one repair path handles every kind. Unlike an
+            // operation, none of it survives partially: the set stands whole or
+            // the model is asked again.
+            rejections: [
+              ...validation.rejections,
+              ...validateAiOrderingShownProducts(
+                modelResponse,
+                input.validation.menu,
+              ),
+            ],
+          },
         };
       };
 

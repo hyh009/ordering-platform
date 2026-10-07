@@ -8,6 +8,7 @@
  * that need React — effects, handlers, command-result reactions.
  */
 
+import type { PublicMenu, PublicProduct } from '@/models/storeFrontMenu';
 import type {
   AiOrderingChoiceGroupModel,
   AiOrderingChoiceInputMode,
@@ -33,6 +34,20 @@ export type AssistantEntryView =
       promptId: string;
       /** Always true: a guest may type instead of picking. */
       allowsFreeText: boolean;
+    }
+  | {
+      id: string;
+      kind: 'products';
+      reply: string;
+      /**
+       * The products to show, resolved against the menu the page already holds.
+       *
+       * The response carries ids and nothing else, so nothing on a card can
+       * disagree with the menu page next to it. An id with no product here is
+       * dropped rather than rendered empty — a menu loaded after the turn was
+       * stored may no longer have it.
+       */
+      products: PublicProduct[];
     }
   | {
       id: string;
@@ -280,7 +295,10 @@ export type AssistantPanelView = {
 
 function toEntryView(
   entry: StoreFrontAiOrderingState['entries'][number],
-  context: { liveProposalId: string | undefined },
+  context: {
+    liveProposalId: string | undefined;
+    productsById: Map<string, PublicProduct>;
+  },
 ): AssistantEntryView {
   if (entry.role === 'guest') {
     return { id: entry.id, kind: 'guest', text: entry.message };
@@ -302,6 +320,18 @@ function toEntryView(
         options: response.options,
         promptId: response.promptId,
         allowsFreeText: response.allowFreeText,
+      };
+
+    case 'products':
+      return {
+        id: entry.id,
+        kind: 'products',
+        reply: response.reply,
+        products: response.productIds.flatMap((productId) => {
+          const product = context.productsById.get(productId);
+
+          return product ? [product] : [];
+        }),
       };
 
     case 'proposal':
@@ -514,10 +544,24 @@ function toProposalView(
 export function buildAssistantPanelView(input: {
   state: StoreFrontAiOrderingState;
   isAvailable: boolean;
+  /**
+   * The store's menu, when it is loaded. A shown set of products is ids only,
+   * and this is what turns them into cards; without it those entries render as
+   * their reply alone rather than as an empty shelf.
+   */
+  menu?: PublicMenu | null;
 }): AssistantPanelView {
   const { state } = input;
+  const productsById = new Map(
+    (input.menu?.groups ?? []).flatMap((group) =>
+      group.products.map((product) => [product.id, product] as const),
+    ),
+  );
   const entries = state.entries.map((entry) =>
-    toEntryView(entry, { liveProposalId: state.proposal?.proposalId }),
+    toEntryView(entry, {
+      liveProposalId: state.proposal?.proposalId,
+      productsById,
+    }),
   );
 
   // Only the LAST answer's prompt is open. An older question the guest scrolled

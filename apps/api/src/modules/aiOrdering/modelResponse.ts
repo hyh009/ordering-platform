@@ -1,4 +1,6 @@
 import {
+  AI_ORDERING_MAX_CHOICE_OPTIONS,
+  AI_ORDERING_MAX_SHOWN_PRODUCTS,
   aiOrderingUnansweredReasons,
   cartItemInputSchema,
   cartItemParamsSchema,
@@ -154,7 +156,7 @@ const SELECTED_OPTIONS_DESCRIPTION =
  * that follows reads as a consequence rather than as a rule to remember.
  */
 const NOTES_DESCRIPTION_BASE =
-  "A note carries one kind of thing and nothing else: a request that takes something away from THIS item or adjusts how it is made — an ingredient left out, how done something should be, an allergy the kitchen has to know about. A note is passed to the store as a request and is not part of the order: it has no price, so nothing extra is charged or made for it, and the store may not be able to honor it. A note can never ADD anything to the item: not an extra ingredient, not an extra portion, not a side, not anything else the store sells. Nothing is made for a note, so an addition written in one is an addition the guest never gets. An addition has to be a choice on the product or a separate product in the cart, and when the store offers it neither way it is not available at all — say so in your reply and write no note. Write a note only when the guest asked for it, it puts nothing new on the plate, and no choice on this product can express it; otherwise leave the field out. A choice the product offers belongs in its own choices field, whatever it is and however the guest phrased it.";
+  "A note can never ADD anything to the item: not an extra ingredient, not an extra portion, not a side, not rice, not anything else the store sells. Anything the guest wants added is a choice on the product, or a separate product added to the cart — search the menu for it before you consider a note at all, because nothing is made for a note and an addition written in one is an addition the guest never gets. When the store offers it neither way it is not available: say so in your reply and write no note. What a note DOES carry is one kind of thing: a request that takes something away from THIS item or adjusts how it is made — an ingredient left out, how done something should be, an allergy the kitchen has to know about. It is passed to the store as a request and is not part of the order: it has no price, nothing is charged for it, and the store may not be able to honor it. Write one only when the guest asked for it, it puts nothing new on the plate, and no choice on this product can express it; otherwise leave the field out. A choice the product offers belongs in its own choices field, whatever it is and however the guest phrased it.";
 
 const NOTES_ON_ADD_DESCRIPTION = `${NOTES_DESCRIPTION_BASE} This is the only field that records a preparation request: writing it in your reply instead does not record it. When a change carries a note, say in your reply that it is a request the store may not be able to meet, and that the guest should confirm it with the staff.`;
 
@@ -228,7 +230,10 @@ export const aiOrderingModelArgumentSchemas = {
       reply: modelReplySchema,
       question: z.string().trim().min(1).max(500),
       inputMode: z.enum(['single_choice', 'yes_no']),
-      options: z.array(modelChoiceSchema).min(1).max(8),
+      options: z
+        .array(modelChoiceSchema)
+        .min(1)
+        .max(AI_ORDERING_MAX_CHOICE_OPTIONS),
     }),
     {
       reply: modelReplyDescription,
@@ -237,7 +242,25 @@ export const aiOrderingModelArgumentSchemas = {
       inputMode:
         'yes_no when the question has exactly two opposite answers, single_choice otherwise.',
       options:
-        'The answers to offer, at most 8. The guest may also type something else, so these need not be exhaustive. When more than 8 things could be meant, do not list them here: that is a reason to stop listing and reply in plain text instead.',
+        'The answers to offer, at most 5, and never a list cut short to fit. The guest may also type something else, so these need not be exhaustive. When more things could be meant than fit here, show them with show_products instead: a question that offers five of twelve hides seven of the answers.',
+    },
+  ),
+  products: describeFields(
+    z.object({
+      reply: modelReplySchema,
+      categoryId: z.string().trim().min(1).max(120).optional(),
+      productIds: z
+        .array(z.string().trim().min(1).max(120))
+        .min(1)
+        .max(AI_ORDERING_MAX_SHOWN_PRODUCTS)
+        .optional(),
+    }),
+    {
+      reply: modelReplyDescription,
+      categoryId:
+        'The id of ONE category, when the guest should see what it holds. Every product in it is shown, however many there are. Use this whenever the guest is asking about a whole kind of thing.',
+      productIds:
+        'The ids of the products to show, at most 8, when they do not form one category. Supply this or categoryId, never both and never neither. Each id is copied from the menu data; a name is not an id.',
     },
   ),
   proposal: describeFields(
@@ -273,6 +296,9 @@ export const aiOrderingModelResponseSchema = z.discriminatedUnion('type', [
   }),
   aiOrderingModelArgumentSchemas.choices.extend({
     type: z.literal('choices'),
+  }),
+  aiOrderingModelArgumentSchemas.products.extend({
+    type: z.literal('products'),
   }),
   aiOrderingModelArgumentSchemas.proposal.extend({
     type: z.literal('proposal'),
@@ -329,6 +355,30 @@ export function hydrateAiOrderingResponse(
         })),
         allowFreeText: true,
       };
+
+    case 'products': {
+      // A category resolves to its products here, in menu order, so the client
+      // is handed one list and never has to know which of the two the model
+      // named. Validation has already established that the category exists and
+      // holds something, so an empty list cannot reach this point.
+      const productIds =
+        modelResponse.categoryId !== undefined
+          ? context.label.menu.groups
+              .filter((group) => group.category?.id === modelResponse.categoryId)
+              .flatMap((group) => group.products.map((product) => product.id))
+          : (modelResponse.productIds ?? []);
+
+      return {
+        type: 'products',
+        reply: modelResponse.reply,
+        productIds,
+        // Kept so the panel can name where the set came from, and so a stored
+        // turn still says whether the model picked or pointed.
+        ...(modelResponse.categoryId !== undefined
+          ? { categoryId: modelResponse.categoryId }
+          : {}),
+      };
+    }
 
     case 'proposal':
       return {

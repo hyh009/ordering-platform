@@ -40,9 +40,17 @@ export function useAssistantPanelVM(input: {
   );
 
   const state = useStore(runtime.stores.aiOrdering);
+  // Guarded by the active store the way the cart below is: another store's menu
+  // must not name the products in this conversation.
+  const rawMenu = useStore(runtime.stores.storefront, (store) => store.menu);
+  const activeMenuStoreId = useStore(
+    runtime.stores.tenant,
+    (tenant) => tenant.activeStoreId,
+  );
+  const menu = activeMenuStoreId === storeId ? rawMenu : null;
   const view = useMemo(
-    () => buildAssistantPanelView({ state, isAvailable }),
-    [state, isAvailable],
+    () => buildAssistantPanelView({ state, isAvailable, menu }),
+    [state, isAvailable, menu],
   );
 
   // The same cart the menu page and the cart page read. The assistant shows the

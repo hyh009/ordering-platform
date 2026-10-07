@@ -221,7 +221,12 @@ describe('AI ordering agent run', () => {
     // Tools are bound before a call, not passed with it, so the binding is
     // what is checked: the planning call bound them, the closing call none.
     expect(boundToolNames(bind).filter((names) => names.length > 0)).toEqual([
-      ['propose_cart_operations', 'ask_choices', 'report_unanswerable'],
+      [
+        'propose_cart_operations',
+        'ask_choices',
+        'show_products',
+        'report_unanswerable',
+      ],
     ]);
   });
 

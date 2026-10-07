@@ -104,8 +104,18 @@ function renderMenu(
   };
 
   for (const group of menu.groups) {
+    // Name first here, unlike every other line, which leads with its id.
+    // A category is addressable — `show_products` takes one — so the id has to
+    // be here; but a heading is read rather than sent, and leading with an
+    // opaque code measurably cost the section its legibility: with the code
+    // first the assistant stopped finding 白飯 as a product of its own and
+    // wrote "加飯" as a note on the noodles instead.
     lines.push(
-      `### ${group.category ? localize(group.category.name, locale) : 'Uncategorised'}`,
+      `### ${
+        group.category
+          ? `${localize(group.category.name, locale)} (${code(group.category.id)})`
+          : 'Uncategorised'
+      }`,
     );
 
     for (const product of group.products) {

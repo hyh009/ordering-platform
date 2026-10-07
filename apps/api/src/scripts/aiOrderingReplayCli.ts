@@ -174,6 +174,16 @@ function printRun(
       );
     }
 
+    if (outcome.shown) {
+      console.log(
+        `      shown: ${String(outcome.shown.productIds.length)} products${
+          outcome.shown.categoryId !== undefined
+            ? ` from ${outcome.shown.categoryId}`
+            : ''
+        }`,
+      );
+    }
+
     for (const summary of outcome.operationSummaries) {
       console.log(`      op: ${summary}`);
     }

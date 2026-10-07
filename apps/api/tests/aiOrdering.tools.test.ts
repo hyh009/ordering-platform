@@ -17,12 +17,15 @@ const BACKEND_OWNED_FIELDS = [
 ];
 
 describe('AI ordering tool definitions', () => {
-  it('binds exactly the three tools that carry an answer', () => {
-    // The fourth answer, a plain message, is what the model produces by calling
-    // no tool at all. There is deliberately no menu-retrieval tool.
+  it('binds exactly the four tools that carry an answer', () => {
+    // The fifth answer, a plain message, is what the model produces by calling
+    // no tool at all. There is deliberately no menu-retrieval tool: showing
+    // products is an answer to the guest, not the model fetching data for
+    // itself, so it ends the turn the way the others do.
     expect(aiOrderingToolDefinitions.map((tool) => tool.name)).toEqual([
       'propose_cart_operations',
       'ask_choices',
+      'show_products',
       'report_unanswerable',
     ]);
   });

@@ -12,6 +12,7 @@ import type { CartDto } from './cart.js';
 export const aiOrderingResponseTypes = [
   'message',
   'choices',
+  'products',
   'proposal',
   'unanswered',
 ] as const;
@@ -70,6 +71,28 @@ const aiOrderingSummarySchema = z.string().trim().min(1).max(240);
 
 export const AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL = 10;
 export const AI_ORDERING_MAX_MESSAGE_CHARACTERS = 1000;
+
+/**
+ * The most options one question may offer.
+ *
+ * Five, because a question is for choosing between a few readings of what the
+ * guest said — which product list they meant is a `products` response now. The
+ * bound is also a signal and not only a limit: the smaller it is, the sooner the
+ * model meets the wall that says this is the wrong answer to be giving. At eight
+ * it looked usable for a twelve-product menu, and the model duly offered eight
+ * of the twelve.
+ */
+export const AI_ORDERING_MAX_CHOICE_OPTIONS = 5;
+
+/**
+ * The most products the model may name one by one.
+ *
+ * A hand-picked list is the model deciding what is relevant, and a long one is
+ * evidence it has not decided. Past this it should be naming a category, which
+ * is a closed set the merchant authored and is shown whole — twelve kinds of one
+ * dish is exactly the case this bound must not truncate.
+ */
+export const AI_ORDERING_MAX_SHOWN_PRODUCTS = 8;
 
 export const aiOrderingChoiceSchema = z.object({
   id: aiOrderingIdSchema,
@@ -203,7 +226,10 @@ export const aiOrderingChoicesResponseSchema = z.object({
    * never a reason to open a second list — see `ask_choices` for what to do
    * instead.
    */
-  options: z.array(aiOrderingChoiceSchema).min(1).max(8),
+  options: z
+    .array(aiOrderingChoiceSchema)
+    .min(1)
+    .max(AI_ORDERING_MAX_CHOICE_OPTIONS),
   // Always true: a guest may answer by typing instead of picking an option.
   allowFreeText: z.literal(true),
 });
@@ -229,6 +255,30 @@ export const aiOrderingProposalResponseSchema = z.object({
     .max(AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL),
 });
 
+/**
+ * Products put in front of the guest to look at. Changes nothing.
+ *
+ * The assistant could ask, propose or refuse, but it could not SHOW — so every
+ * request to see what a store offers was forced into a tool built for something
+ * else, and both failures looked the same from here: twelve kinds of one dish
+ * split across two questions, and two products matching one name BOTH added to
+ * the cart because proposing was the only way to put two things on screen.
+ *
+ * Ids only. The client is already holding the menu these came from, so anything
+ * the model wrote about a product would at best agree with it and at worst
+ * contradict it on a price. A reason for showing these belongs in `reply`, where
+ * the guest reads it as the assistant speaking rather than as product data.
+ *
+ * `categoryId` is where the set came from, when it is a whole category. A
+ * category is shown whole; only a hand-picked list is bounded.
+ */
+export const aiOrderingProductsResponseSchema = z.object({
+  type: z.literal('products'),
+  reply: aiOrderingReplySchema,
+  productIds: z.array(aiOrderingIdSchema).min(1),
+  categoryId: aiOrderingIdSchema.optional(),
+});
+
 export const aiOrderingUnansweredResponseSchema = z.object({
   type: z.literal('unanswered'),
   reply: aiOrderingReplySchema,
@@ -240,6 +290,7 @@ export const aiOrderingUnansweredResponseSchema = z.object({
 export const aiOrderingResponseSchema = z.discriminatedUnion('type', [
   aiOrderingMessageResponseSchema,
   aiOrderingChoicesResponseSchema,
+  aiOrderingProductsResponseSchema,
   aiOrderingProposalResponseSchema,
   aiOrderingUnansweredResponseSchema,
 ]);
@@ -330,6 +381,9 @@ export type AiOrderingMessageResponse = z.infer<
 >;
 export type AiOrderingChoicesResponse = z.infer<
   typeof aiOrderingChoicesResponseSchema
+>;
+export type AiOrderingProductsResponse = z.infer<
+  typeof aiOrderingProductsResponseSchema
 >;
 export type AiOrderingProposalResponse = z.infer<
   typeof aiOrderingProposalResponseSchema

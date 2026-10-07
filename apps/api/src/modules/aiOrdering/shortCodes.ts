@@ -77,6 +77,11 @@ export function collectAiOrderingContextIds(
   cart: CartDto,
 ): string[] {
   return [
+    // A category is addressable too: `show_products` takes one, so its id has
+    // to survive the round trip the same way a product's does.
+    ...menu.groups.flatMap((group) =>
+      group.category ? [group.category.id] : [],
+    ),
     ...menu.groups.flatMap((group) =>
       group.products.map((product) => product.id),
     ),
@@ -113,6 +118,18 @@ export function decodeAiOrderingModelResponse(
     return modelResponse.productId === undefined
       ? modelResponse
       : { ...modelResponse, productId: codec.decode(modelResponse.productId) };
+  }
+
+  if (modelResponse.type === 'products') {
+    return {
+      ...modelResponse,
+      ...(modelResponse.categoryId !== undefined
+        ? { categoryId: codec.decode(modelResponse.categoryId) }
+        : {}),
+      ...(modelResponse.productIds !== undefined
+        ? { productIds: modelResponse.productIds.map((id) => codec.decode(id)) }
+        : {}),
+    };
   }
 
   if (modelResponse.type !== 'proposal') {

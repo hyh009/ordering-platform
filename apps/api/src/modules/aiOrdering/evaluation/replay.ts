@@ -91,6 +91,8 @@ export type AiOrderingReplayOutcome = {
   operationSummaries: string[];
   /** What a `choices` response asked and offered; absent for every other type. */
   asked?: { question: string; optionLabels: string[] }[];
+  /** What a `products` response put on screen; absent for every other type. */
+  shown?: { productIds: string[]; categoryId?: string };
   repairAttempted: boolean;
   droppedOperationCount: number;
   ownershipViolationCount: number;
@@ -293,6 +295,16 @@ async function replayOne(
       response.type === 'proposal'
         ? response.operations.map((operation) => operation.summary)
         : [],
+    ...(response.type === 'products'
+      ? {
+          shown: {
+            productIds: response.productIds,
+            ...(response.categoryId !== undefined
+              ? { categoryId: response.categoryId }
+              : {}),
+          },
+        }
+      : {}),
     ...(response.type === 'choices'
       ? {
           asked: [

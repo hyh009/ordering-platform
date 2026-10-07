@@ -223,6 +223,47 @@ describe('AI ordering output gate', () => {
       ).toBeUndefined();
     });
 
+    it('resolves a shown category to its products, in menu order', () => {
+      const hydrated = hydrateAiOrderingResponse(
+        {
+          type: 'products',
+          reply: '\u9019\u662f\u6211\u5011\u7684\u98f2\u6599\u3002',
+          categoryId: 'cat-drink',
+        },
+        hydrationContext,
+      );
+
+      // The model named a category; the client is handed one list and never has
+      // to know which of the two forms was used.
+      expect(hydrated.type === 'products' && hydrated.productIds).toEqual(
+        AI_ORDERING_MENU_FIXTURE.groups
+          .filter((group) => group.category?.id === 'cat-drink')
+          .flatMap((group) => group.products.map((product) => product.id)),
+      );
+      expect(hydrated.type === 'products' && hydrated.categoryId).toBe(
+        'cat-drink',
+      );
+    });
+
+    it('passes a hand-picked set through in the order given', () => {
+      const hydrated = hydrateAiOrderingResponse(
+        {
+          type: 'products',
+          reply: '\u9019\u5169\u7a2e\u6bd4\u8f03\u71b1\u9580\u3002',
+          productIds: ['prod-milk-tea', 'prod-black-tea'],
+        },
+        hydrationContext,
+      );
+
+      // The model's own ordering is the only ranking it can express, so it is
+      // not re-sorted into menu order.
+      expect(hydrated.type === 'products' && hydrated.productIds).toEqual([
+        'prod-milk-tea',
+        'prod-black-tea',
+      ]);
+      expect(hydrated.type === 'products' && hydrated.categoryId).toBeUndefined();
+    });
+
     it('assigns its own proposal and operation ids', () => {
       const result = gateAnswer({
         type: 'proposal',

@@ -378,10 +378,18 @@ const CART_WITH_THREE_BLACK_TEAS: CartDto = {
 
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
+    // Browsing. What this case has always been for is that NOTHING reaches the
+    // cart from a question, and that is still what it pins. Which way the
+    // drinks are named is not: a plain reply and a row of product cards are
+    // both honest answers, and the card row only became possible with
+    // `show_products`. Pinning the reply would have been pinning the absence
+    // of a tool.
     message: '有什麼飲料嗎',
-    expects: 'lists the drinks as a plain reply; proposes nothing',
+    expects: 'named the drinks, as a reply or as cards; proposed nothing',
     check: (outcome) =>
-      outcome.responseType === 'message' && operations(outcome).length === 0,
+      (outcome.responseType === 'message' ||
+        outcome.responseType === 'products') &&
+      operations(outcome).length === 0,
   },
   {
     message: '紅茶跟奶茶差在哪',
@@ -606,10 +614,15 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       !adds(outcome, '珍珠奶茶'),
   },
   {
+    // The same question worded backwards, kept because this phrasing once came
+    // back as "cannot answer". Any answer that names the drinks counts; the one
+    // thing still rejected is a refusal.
     message: '飲料有什麼',
-    expects: 'a plain answer listing the drinks, not a "cannot answer"',
+    expects: 'named the drinks somehow, rather than reporting it unanswerable',
     check: (outcome) =>
-      outcome.responseType === 'message' || outcome.responseType === 'choices',
+      outcome.responseType === 'message' ||
+      outcome.responseType === 'choices' ||
+      outcome.responseType === 'products',
   },
   {
     message: '你們有停車場嗎',
@@ -671,19 +684,19 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     },
   },
   {
-    // Twelve products answer the guest's words, more than the eight a question
-    // may offer. Observed against the live menu as the assistant splitting one
-    // question across two: the guest was then asked to answer both, and two
-    // answers travelling as one message ordered two egg crepes. The slot that
-    // allowed the split is gone; what is checked here is the answer that
-    // replaces it — say what there is in plain text and let the guest narrow
-    // it down, rather than offering eight of the twelve and hiding four.
+    // Twelve products answer the guest's words, more than a question may
+    // offer. Observed against the live menu as the assistant splitting one
+    // question across two: the guest was asked to answer both, and two answers
+    // travelling as one message ordered two egg crepes. The slot that allowed
+    // the split is gone, and offering five of the twelve would still hide
+    // seven, so the answer is to show all twelve.
     message: '我要蛋餅',
     menu: MENU_WITH_TWELVE_EGG_CREPES,
-    expects:
-      'answered in plain text that there are many kinds, proposing nothing and offering no option list',
+    expects: 'showed all twelve kinds, proposing nothing',
     check: (outcome) =>
-      outcome.responseType === 'message' && operations(outcome).length === 0,
+      outcome.responseType === 'products' &&
+      outcome.shown?.productIds.length === 12 &&
+      operations(outcome).length === 0,
   },
   {
     // Which product, not which option. Two products share the name the guest
@@ -694,8 +707,13 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     message: '我要鐵板麵',
     menu: MENU_WITH_TWO_NOODLE_PLATES,
     expects:
-      'asked which of the two noodle plates they meant, and nothing proposed',
+      'asked which of the two noodle plates they meant, or showed both, and nothing proposed',
+    // Two candidates fit in a question and fit on a shelf, so both answers are
+    // honest and neither is pinned. What is pinned is that nothing reached the
+    // cart: the live defect was BOTH of them being added.
     check: (outcome) =>
-      outcome.responseType === 'choices' && operations(outcome).length === 0,
+      (outcome.responseType === 'choices' ||
+        outcome.responseType === 'products') &&
+      operations(outcome).length === 0,
   },
 ];

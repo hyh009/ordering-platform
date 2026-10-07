@@ -8,7 +8,7 @@ import { StorefrontLoadingView } from '@/features/storeFront/components/Storefro
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
 import { ProductConfigSheet } from '@/features/storeFront/components/ProductConfigSheet';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
-import type { PublicModifier } from '@/models/storeFrontMenu';
+import type { PublicModifier, PublicProduct } from '@/models/storeFrontMenu';
 import { AssistantPanel } from './AssistantPanel';
 import { MenuCategoryTabs } from './MenuCategoryTabs';
 import { MenuStatusBanner } from './MenuStatusBanner';
@@ -74,6 +74,26 @@ export function MenuPage() {
       </div>
     );
   }
+
+  // Shared by the menu grid and the assistant's product row, so a product the
+  // assistant shows carries the same tags and allergen marks it carries on the
+  // menu. Two resolutions would be two chances for one of them to go silent
+  // about an allergen.
+  const describeProduct = (product: PublicProduct) => ({
+    tags: (product.tagIds ?? [])
+      .map((id) => vm.tagMap.get(id))
+      .filter((tag) => tag !== undefined)
+      .map((tag) => ({
+        id: tag.id,
+        label: localize(tag.name),
+        color: tag.color,
+      })) satisfies TagDisplay[],
+    allergens: (product.allergenIds ?? [])
+      .map((id) => vm.allergenMap.get(id))
+      .filter((allergen) => allergen !== undefined)
+      .map((allergen) => localize(allergen.name))
+      .filter((name) => name.length > 0),
+  });
 
   const openModifiers: PublicModifier[] = vm.openProduct
     ? vm.openProduct.modifierIds
@@ -164,19 +184,8 @@ export function MenuPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {group.products.map((product) => {
-                    const tags: TagDisplay[] = (product.tagIds ?? [])
-                      .map((id) => vm.tagMap.get(id))
-                      .filter((t) => t !== undefined)
-                      .map((t) => ({
-                        id: t.id,
-                        label: localize(t.name),
-                        color: t.color,
-                      }));
-                    const allergens = (product.allergenIds ?? [])
-                      .map((id) => vm.allergenMap.get(id))
-                      .filter((a) => a !== undefined)
-                      .map((a) => localize(a.name))
-                      .filter((name) => name.length > 0);
+                    const { tags, allergens } = describeProduct(product);
+
                     return (
                       <ProductCard
                         key={product.id}
@@ -227,7 +236,12 @@ export function MenuPage() {
       ) : null}
 
       {assistant.isAvailable && assistant.isOpen ? (
-        <AssistantPanel vm={assistant} />
+        <AssistantPanel
+          vm={assistant}
+          onOpenProduct={vm.setOpenProduct}
+          isStoreOpen={vm.isOpen}
+          describeProduct={describeProduct}
+        />
       ) : null}
 
       {vm.openProduct ? (
