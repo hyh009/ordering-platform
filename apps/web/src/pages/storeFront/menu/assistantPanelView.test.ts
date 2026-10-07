@@ -144,41 +144,6 @@ describe('assistant panel renders each response type', () => {
       allowsFreeText: true,
     });
     expect(entry?.kind === 'choices' && entry.options).toHaveLength(2);
-    expect(entry?.kind === 'choices' && entry.additionalQuestions).toEqual([]);
-  });
-
-  it('exposes every question asked in the same turn', () => {
-    const { actions, view } = setup();
-
-    actions.turnAppended({
-      id: 'a1',
-      turn: turn({
-        type: 'choices',
-        reply: 'Black tea needs two choices.',
-        promptId: 'prompt-1',
-        question: 'How sweet?',
-        inputMode: 'single_choice',
-        options: [{ id: 'option-1', label: 'Half sugar' }],
-        additionalQuestions: [
-          {
-            question: 'How much ice?',
-            options: [{ id: 'question-2-option-1', label: 'Less ice' }],
-          },
-        ],
-        allowFreeText: true,
-      }),
-    });
-
-    const entry = view().entries[0];
-
-    // Empty for a single question, so the panel can tell "tap to answer" from
-    // "pick one per question, then send".
-    expect(entry?.kind === 'choices' && entry.additionalQuestions).toEqual([
-      {
-        question: 'How much ice?',
-        options: [{ id: 'question-2-option-1', label: 'Less ice' }],
-      },
-    ]);
   });
 
   it('exposes a proposal entry beside the card it opened', () => {
@@ -819,17 +784,11 @@ describe('assistant panel dock', () => {
   function choicesTurn(promptId: string): AiOrderingTurn {
     return turn({
       type: 'choices',
-      reply: 'Black tea needs two choices.',
+      reply: 'Black tea needs a sugar level.',
       promptId,
       question: 'How sweet?',
       inputMode: 'single_choice',
       options: [{ id: 'option-1', label: 'Half sugar' }],
-      additionalQuestions: [
-        {
-          question: 'How much ice?',
-          options: [{ id: 'question-2-option-1', label: 'Less ice' }],
-        },
-      ],
       allowFreeText: true,
     });
   }
@@ -845,33 +804,25 @@ describe('assistant panel dock', () => {
     expect(view().dock).toBeNull();
   });
 
-  it('holds every question the last reply asked, in the order asked', () => {
+  it('holds the question the last reply asked', () => {
     const { actions, view } = setup();
 
     actions.turnAppended({ id: 'a1', turn: choicesTurn('prompt-1') });
 
     expect(view().dock).toEqual({
-      kind: 'questions',
+      kind: 'question',
       promptId: 'prompt-1',
-      questions: [
-        {
-          question: 'How sweet?',
-          options: [{ id: 'option-1', label: 'Half sugar' }],
-        },
-        {
-          question: 'How much ice?',
-          options: [{ id: 'question-2-option-1', label: 'Less ice' }],
-        },
-      ],
+      question: 'How sweet?',
+      options: [{ id: 'option-1', label: 'Half sugar' }],
       allowsFreeText: true,
     });
   });
 
-  it('lets go of the questions once the guest has answered', () => {
+  it('lets go of the question once the guest has answered', () => {
     const { actions, view } = setup();
 
     actions.turnAppended({ id: 'a1', turn: choicesTurn('prompt-1') });
-    actions.guestMessageAppended({ id: 'g1', message: 'Half sugar, less ice' });
+    actions.guestMessageAppended({ id: 'g1', message: 'Half sugar' });
 
     expect(view().dock).toBeNull();
   });

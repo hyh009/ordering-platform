@@ -189,26 +189,21 @@ export const aiOrderingChoicesResponseSchema = z.object({
   promptId: aiOrderingIdSchema,
   question: z.string().trim().min(1).max(500),
   inputMode: z.enum(aiOrderingChoiceInputModes),
-  options: z.array(aiOrderingChoiceSchema).min(1).max(8),
   /**
-   * Further questions asked in the same turn, each with its own options.
+   * The answers offered, for ONE question. A turn never asks two.
    *
-   * A product often needs several choices at once — a drink's sugar, ice and
-   * size — and asking them one turn at a time costs the guest a round trip per
-   * choice. `question` and `options` above stay the first question, so a
-   * single-question response is unchanged. With more than one, the guest picks
-   * an option per question and answers them all in one message; that answer
-   * travels as text, so `selectedOptionId` is only ever the first question's.
+   * Carrying further questions here was tried and removed. It was meant to
+   * collect a drink's sugar, ice and size in one turn, but a later rule sends
+   * every unstated modifier choice to the proposal page instead, so the case it
+   * existed for no longer reaches this response at all. What it did carry was a
+   * second slot the model used to PAGINATE: too many products to fit in eight
+   * options, so the rest went in a second question. The guest was then asked to
+   * answer both, and two answers travelling as one text message ordered two
+   * products when they wanted one. A cap on a list is a reason to stop listing,
+   * never a reason to open a second list — see `ask_choices` for what to do
+   * instead.
    */
-  additionalQuestions: z
-    .array(
-      z.object({
-        question: z.string().trim().min(1).max(500),
-        options: z.array(aiOrderingChoiceSchema).min(1).max(8),
-      }),
-    )
-    .max(4)
-    .optional(),
+  options: z.array(aiOrderingChoiceSchema).min(1).max(8),
   // Always true: a guest may answer by typing instead of picking an option.
   allowFreeText: z.literal(true),
 });

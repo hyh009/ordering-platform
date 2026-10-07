@@ -30,15 +30,6 @@ export type AssistantEntryView =
       question: string;
       inputMode: AiOrderingChoiceInputMode;
       options: AiOrderingChoiceModel[];
-      /**
-       * Further questions asked in the same turn. Empty for a single question,
-       * which is answered by one tap; with any here, the guest picks an option
-       * per question and sends them together.
-       */
-      additionalQuestions: {
-        question: string;
-        options: AiOrderingChoiceModel[];
-      }[];
       promptId: string;
       /** Always true: a guest may type instead of picking. */
       allowsFreeText: boolean;
@@ -242,17 +233,17 @@ export type AssistantProposalView = {
  * The one thing waiting on the guest, held above the composer rather than in
  * the transcript, so it stays on screen however far the conversation scrolls.
  *
- * At most one exists: a proposal still to be decided, or the questions the last
+ * At most one exists: a proposal still to be decided, or the question the last
  * reply asked. A proposal that has been decided, or that applies without asking,
  * is not waiting on anyone and stays in the transcript.
  */
 export type AssistantDockView =
   | { kind: 'proposal'; proposal: AssistantProposalView }
   | {
-      kind: 'questions';
+      kind: 'question';
       promptId: string;
-      /** In the order asked. Answered one at a time. */
-      questions: { question: string; options: AiOrderingChoiceModel[] }[];
+      question: string;
+      options: AiOrderingChoiceModel[];
       allowsFreeText: boolean;
     };
 
@@ -309,7 +300,6 @@ function toEntryView(
         question: response.question,
         inputMode: response.inputMode,
         options: response.options,
-        additionalQuestions: response.additionalQuestions ?? [],
         promptId: response.promptId,
         allowsFreeText: response.allowFreeText,
       };
@@ -545,12 +535,10 @@ export function buildAssistantPanelView(input: {
       ? { kind: 'proposal', proposal }
       : lastEntry?.kind === 'choices'
         ? {
-            kind: 'questions',
+            kind: 'question',
             promptId: lastEntry.promptId,
-            questions: [
-              { question: lastEntry.question, options: lastEntry.options },
-              ...lastEntry.additionalQuestions,
-            ],
+            question: lastEntry.question,
+            options: lastEntry.options,
             allowsFreeText: lastEntry.allowsFreeText,
           }
         : null;

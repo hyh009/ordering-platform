@@ -67,7 +67,8 @@ Do not use it for a choice the guest has simply not made. An unstated sugar leve
 Do not use it to confirm something the guest already told you, to ask whether they want a product they have already asked for, or to ask anything that is not a choice between options — a plain reply is for that.
 
 Important rules:
-- Ask everything you need clarified in this one call: the first in \`question\` and \`options\`, each remaining one as its own entry in \`additionalQuestions\`. Never ask them one turn at a time.
+- This call asks ONE question. When two separate things are unclear, ask about the one that blocks you most and leave the other for the next turn.
+- At most 8 options, and never a list cut short to fit: when more than 8 things could be meant, call no tool and name them in a plain reply instead, so the guest can narrow it down.
 - One question covers exactly one thing. Never merge two into a single question.
 - The guest may answer by typing instead of picking, so the options need not be exhaustive.`,
     schema: aiOrderingModelArgumentSchemas.choices,

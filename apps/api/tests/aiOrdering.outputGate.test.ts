@@ -196,40 +196,31 @@ describe('AI ordering output gate', () => {
       ).toBe(true);
     });
 
-    it('keeps each further question once, dropping a repeat of the first', () => {
-      const hydrated = hydrateAiOrderingResponse(
-        {
-          type: 'choices',
-          reply: '紅茶需要選甜度和冰塊。',
-          question: '甜度？',
-          inputMode: 'single_choice',
-          options: [{ label: '全糖' }, { label: '半糖' }],
-          additionalQuestions: [
-            // The model tends to list the first question again here.
-            {
-              question: '請選擇甜度',
-              options: [{ label: '半糖' }, { label: '全糖' }],
-            },
-            {
-              question: '冰塊？',
-              options: [{ label: '正常冰' }, { label: '去冰' }],
-            },
-          ],
-        },
-        hydrationContext,
-      );
+    it('drops a second question, since a turn asks one', () => {
+      // The slot that carried further questions is gone from the schema, so a
+      // model still sending one has its extra question stripped rather than
+      // the whole answer refused: the guest gets the question that matters,
+      // and the turn costs no repair call.
+      const result = gateAnswer({
+        type: 'choices',
+        reply: '\u7d05\u8336\u8981\u9078\u751c\u5ea6\u3002',
+        question: '\u751c\u5ea6\uff1f',
+        inputMode: 'single_choice',
+        options: [{ label: '\u5168\u7cd6' }, { label: '\u534a\u7cd6' }],
+        additionalQuestions: [
+          {
+            question: '\u51b0\u584a\uff1f',
+            options: [{ label: '\u6b63\u5e38\u51b0' }],
+          },
+        ],
+      });
 
+      expect(result.ok).toBe(true);
       expect(
-        hydrated.type === 'choices' && hydrated.additionalQuestions,
-      ).toEqual([
-        {
-          question: '冰塊？',
-          options: [
-            { id: 'question-2-option-1', label: '正常冰' },
-            { id: 'question-2-option-2', label: '去冰' },
-          ],
-        },
-      ]);
+        result.ok === true &&
+          (result.modelResponse as Record<string, unknown>)
+            .additionalQuestions,
+      ).toBeUndefined();
     });
 
     it('assigns its own proposal and operation ids', () => {

@@ -9,7 +9,7 @@ import { Spinner } from '@/shared/components/ui/spinner';
 import { AssistantCartPanel } from './AssistantCartPanel';
 import { AssistantProposalCard } from './AssistantProposalCard';
 import { AssistantProposalRecord } from './AssistantProposalRecord';
-import { AssistantQuestionStepper } from './AssistantQuestionStepper';
+import { AssistantQuestionCard } from './AssistantQuestionCard';
 
 import type { useAssistantPanelVM } from './useAssistantPanelVM';
 
@@ -133,31 +133,20 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                         {entry.reply}
                       </p>
 
-                      {/* Asked and answered: the questions stay as text so the
-                          exchange still reads back. The ones still waiting are
-                          in the dock below, and are not repeated here. */}
+                      {/* Asked and answered: the question stays as text so the
+                          exchange still reads back. One still waiting is in the
+                          dock below, and is not repeated here. The model often
+                          words the reply and the question identically; said
+                          once is enough. */}
                       {entry.kind === 'choices' &&
                       !(
-                        vm.dock?.kind === 'questions' &&
+                        vm.dock?.kind === 'question' &&
                         vm.dock.promptId === entry.promptId
-                      ) ? (
-                        <ul className="space-y-1 px-3 text-sm text-muted-foreground">
-                          {[
-                            entry.question,
-                            ...entry.additionalQuestions.map(
-                              (item) => item.question,
-                            ),
-                          ]
-                            // The model often words the reply and the question
-                            // identically; said once is enough.
-                            .filter(
-                              (question) =>
-                                question.trim() !== entry.reply.trim(),
-                            )
-                            .map((question, index) => (
-                              <li key={index}>{question}</li>
-                            ))}
-                        </ul>
+                      ) &&
+                      entry.question.trim() !== entry.reply.trim() ? (
+                        <p className="px-3 text-sm text-muted-foreground">
+                          {entry.question}
+                        </p>
                       ) : null}
 
                       {/* Still to be decided: the dock holds it. Decided, or
@@ -209,17 +198,15 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                   moving — and holds one height in between. */}
               {vm.dock ? (
                 <div className="flex max-h-[45%] shrink-0 animate-in flex-col border-t border-border p-4 duration-200 slide-in-from-bottom-4 fade-in">
-                  {vm.dock.kind === 'questions' ? (
-                    <AssistantQuestionStepper
+                  {vm.dock.kind === 'question' ? (
+                    <AssistantQuestionCard
                       key={vm.dock.promptId}
-                      questions={vm.dock.questions}
+                      question={vm.dock.question}
+                      options={vm.dock.options}
                       allowsFreeText={vm.dock.allowsFreeText}
                       disabled={vm.isSending}
-                      onAnswerOne={(option) => {
+                      onAnswer={(option) => {
                         void vm.selectOption(option);
-                      }}
-                      onAnswerAll={(labels) => {
-                        void vm.answerQuestions(labels);
                       }}
                     />
                   ) : (

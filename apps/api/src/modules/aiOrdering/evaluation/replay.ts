@@ -296,12 +296,11 @@ async function replayOne(
     ...(response.type === 'choices'
       ? {
           asked: [
-            { question: response.question, options: response.options },
-            ...(response.additionalQuestions ?? []),
-          ].map((entry) => ({
-            question: entry.question,
-            optionLabels: entry.options.map((option) => option.label),
-          })),
+            {
+              question: response.question,
+              optionLabels: response.options.map((option) => option.label),
+            },
+          ],
         }
       : {}),
   };

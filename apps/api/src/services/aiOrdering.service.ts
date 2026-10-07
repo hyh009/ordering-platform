@@ -966,14 +966,7 @@ export class AiOrderingService {
         ? {
             prompt: {
               promptId: response.promptId,
-              // Every question that was asked, so an answer typed across all
-              // of them is read against all of them on the next turn.
-              question: [
-                response.question,
-                ...(response.additionalQuestions ?? []).map(
-                  (entry) => entry.question,
-                ),
-              ].join(' / '),
+              question: response.question,
               options: response.options,
             },
           }

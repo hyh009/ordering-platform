@@ -80,6 +80,174 @@ const MENU_WITH_TWO_NOODLE_PLATES: PublicMenuDto = {
   ],
 };
 
+/**
+ * The fixture menu plus twelve products of one dish.
+ *
+ * More than the eight options a question may offer, which is the whole point:
+ * the shape that used to make the assistant split one question in two. Twelve
+ * is what the live store actually has.
+ */
+const MENU_WITH_TWELVE_EGG_CREPES: PublicMenuDto = {
+  ...AI_ORDERING_MENU_FIXTURE,
+  groups: [
+    ...AI_ORDERING_MENU_FIXTURE.groups,
+    {
+      category: {
+        id: 'cat-crepe',
+        name: { 'zh-TW': '蛋餅', en: 'Egg crepes' },
+        displayOrder: 4,
+        availabilityRules: [],
+      },
+      products: [
+        {
+          id: 'prod-crepe-1',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '原味蛋餅', en: '原味 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-2',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '火腿蛋餅', en: '火腿 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-3',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '起士蛋餅', en: '起士 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-4',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '肉鬆蛋餅', en: '肉鬆 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-5',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '培根蛋餅', en: '培根 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-6',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '玉米蛋餅', en: '玉米 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-7',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '蔬菜蛋餅', en: '蔬菜 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-8',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '鮪魚蛋餅', en: '鮪魚 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-9',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '薯餅蛋餅', en: '薯餅 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-10',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '豬肉蛋餅', en: '豬肉 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-11',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '香雞蛋餅', en: '香雞 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-crepe-12',
+          categoryIds: ['cat-crepe'],
+          name: { 'zh-TW': '辣菜圃蛋餅', en: '辣菜圃 egg crepe' },
+          imageUrls: [],
+          price: 45,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+      ],
+    },
+  ],
+};
+
 export type AiOrderingRegressionCase = AiOrderingReplayCase & {
   /** What a correct answer looks like, for the person reading a failure. */
   expects: string;
@@ -501,6 +669,21 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
         splitSide(parts, 1, ['正常冰', '全糖'])
       );
     },
+  },
+  {
+    // Twelve products answer the guest's words, more than the eight a question
+    // may offer. Observed against the live menu as the assistant splitting one
+    // question across two: the guest was then asked to answer both, and two
+    // answers travelling as one message ordered two egg crepes. The slot that
+    // allowed the split is gone; what is checked here is the answer that
+    // replaces it — say what there is in plain text and let the guest narrow
+    // it down, rather than offering eight of the twelve and hiding four.
+    message: '我要蛋餅',
+    menu: MENU_WITH_TWELVE_EGG_CREPES,
+    expects:
+      'answered in plain text that there are many kinds, proposing nothing and offering no option list',
+    check: (outcome) =>
+      outcome.responseType === 'message' && operations(outcome).length === 0,
   },
   {
     // Which product, not which option. Two products share the name the guest
