@@ -52,6 +52,9 @@ const proposalDecisionSchema = new Schema<AiOrderingProposalDecision>(
     // settled an unanswered proposal; see the entity for why the two are not
     // collapsed.
     superseded: { type: Boolean },
+    // Absent unless the guest changed a choice before accepting. `Mixed` for
+    // the same reason the proposal's own operations are; see below.
+    appliedOperations: { type: Schema.Types.Mixed },
   },
   { _id: false },
 );

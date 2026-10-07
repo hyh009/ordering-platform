@@ -6,12 +6,21 @@ import {
   AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
   AI_ORDERING_MENU_FIXTURE,
 } from './fixtures/aiOrdering.js';
+import { readAiOrderingAppliedOperations } from '../src/models/aiOrdering/model.js';
 import {
   buildAiOrderingCartContext,
   buildAiOrderingContext,
 } from '../src/modules/aiOrdering/context.js';
+import {
+  readAiOrderingEarlierProposals,
+  readAiOrderingLastProposal,
+} from '../src/modules/aiOrdering/promptResolution.js';
 import { AI_ORDERING_V1_2026_09_30 } from '../src/modules/aiOrdering/versions/index.js';
 
+import type {
+  AiOrderingConversationEntity,
+  AiOrderingTurnSnapshot,
+} from '../src/models/aiOrdering/model.js';
 import type { AiOrderingContextInput } from '../src/modules/aiOrdering/types.js';
 
 function contextInput(
@@ -502,6 +511,174 @@ describe('AI ordering context assembly', () => {
       expect(text).toContain('(op-4 | remove_own_item | item item-black-tea)');
       expect(text).toContain('- [Turn 1] + 白飯 ×1: the guest accepted');
       expect(text).not.toContain('op-1 | add_item');
+    });
+
+    describe('a proposal the guest changed before accepting', () => {
+      const teaOperation = (sugarOptionId: string, sugarLabel: string) =>
+        ({
+          type: 'add_item',
+          operationId: 'op-tea',
+          summary: `+ 紅茶 ×1 · ${sugarLabel} · 正常冰`,
+          item: {
+            productId: 'prod-black-tea',
+            quantity: 1,
+            selectedOptions: [
+              { modifierId: 'mod-sugar', optionId: sugarOptionId },
+              { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+            ],
+          },
+        }) as const;
+
+      const turnWith = (
+        index: number,
+        proposal: NonNullable<AiOrderingTurnSnapshot['proposal']>,
+      ): AiOrderingTurnSnapshot => ({
+        id: `turn-${index}`,
+        message: '來一杯紅茶',
+        versionId: AI_ORDERING_V1_2026_09_30.versionId,
+        versionFingerprint: 'test-fingerprint',
+        provider: 'gemini',
+        modelName: 'test-model',
+        response: {
+          type: 'proposal',
+          reply: '幫你加紅茶。',
+          proposalId: proposal.proposalId,
+          confirmationRequired: true,
+          operations: proposal.operations,
+        },
+        proposal,
+        quality: {
+          repairAttempted: false,
+          droppedOperationCount: 0,
+          ownershipViolationCount: 0,
+        },
+        createdAt: new Date('2026-09-30T00:00:00.000Z'),
+      });
+
+      const conversationOf = (
+        turns: AiOrderingTurnSnapshot[],
+      ): AiOrderingConversationEntity => ({
+        id: 'ai-conversation-1',
+        organizationId: 'org-1',
+        storeId: 'store-1',
+        cartId: 'cart-1',
+        participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+        turns,
+        createdAt: new Date('2026-09-30T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-30T00:00:00.000Z'),
+      });
+
+      /** The log the service builds: earlier proposals, then the last one. */
+      const logOf = (conversation: AiOrderingConversationEntity) => {
+        const last = readAiOrderingLastProposal(conversation);
+
+        return blockText(
+          buildAiOrderingContext(
+            contextInput({
+              proposalLog: [
+                ...readAiOrderingEarlierProposals(conversation),
+                ...(last
+                  ? [
+                      {
+                        turnNumber: last.turnNumber,
+                        ...readAiOrderingAppliedOperations(last.proposal),
+                        results: last.proposal.decision?.results ?? [],
+                      },
+                    ]
+                  : []),
+              ],
+            }),
+          ),
+          'current_turn',
+        );
+      };
+
+      const accepted = [
+        { operationId: 'op-tea', outcome: 'accepted' as const },
+      ];
+
+      it('shows the option that was applied, not the one that was proposed', () => {
+        // The assistant proposed no sugar; the guest switched it to half sugar
+        // on the card and accepted. The log states what is in the cart, so it
+        // has to state half sugar — the proposed line would be a false fact
+        // about the cart, with the ids to propose it again attached.
+        const text = logOf(
+          conversationOf([
+            turnWith(1, {
+              proposalId: 'proposal-1',
+              operations: [teaOperation('opt-sugar-free', '無糖')],
+              decision: {
+                decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+                results: accepted,
+                appliedOperations: [teaOperation('opt-sugar-half', '半糖')],
+              },
+            }),
+          ]),
+        );
+
+        expect(text).toContain('- [Turn 1] + 紅茶 ×1 · 半糖 · 正常冰');
+        expect(text).toContain('mod-sugar=opt-sugar-half');
+        expect(text).not.toContain('無糖');
+        expect(text).not.toContain('opt-sugar-free');
+        // Not only the right option: the model is told it was corrected, since
+        // otherwise it reads its own mistake back as something it got right.
+        expect(text).toContain(
+          'the guest changed the choices you proposed, then accepted it',
+        );
+      });
+
+      it('shows it on an earlier turn as well as on the last one', () => {
+        const text = logOf(
+          conversationOf([
+            turnWith(1, {
+              proposalId: 'proposal-1',
+              operations: [teaOperation('opt-sugar-free', '無糖')],
+              decision: {
+                decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+                results: accepted,
+                appliedOperations: [teaOperation('opt-sugar-half', '半糖')],
+              },
+            }),
+            turnWith(2, {
+              proposalId: 'proposal-2',
+              operations: [riceOperation('op-rice')],
+              decision: {
+                decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+                results: [{ operationId: 'op-rice', outcome: 'accepted' }],
+              },
+            }),
+          ]),
+        );
+
+        expect(text).toContain(
+          '- [Turn 1] + 紅茶 ×1 · 半糖 · 正常冰: the guest changed the choices you proposed',
+        );
+        expect(text).not.toContain('無糖');
+        expect(text).toContain(
+          '- [Turn 2] + 白飯 ×1 (op-rice | add_item | product prod-rice | x1): the guest accepted it — it is in the cart',
+        );
+      });
+
+      it('reads a decision stored before this was recorded as applied as proposed', () => {
+        // No `appliedOperations` on it, as on every decision written before the
+        // field existed. It still renders, and what was proposed is what stands.
+        const text = logOf(
+          conversationOf([
+            turnWith(1, {
+              proposalId: 'proposal-1',
+              operations: [teaOperation('opt-sugar-free', '無糖')],
+              decision: {
+                decidedAt: new Date('2026-09-30T00:00:00.000Z'),
+                results: accepted,
+              },
+            }),
+          ]),
+        );
+
+        expect(text).toContain(
+          '- [Turn 1] + 紅茶 ×1 · 無糖 · 正常冰 (op-tea | add_item | product prod-black-tea | x1 | choices: mod-sugar=opt-sugar-free, mod-ice=opt-ice-normal): the guest accepted it — it is in the cart',
+        );
+      });
     });
 
     it('reads an operation with no recorded outcome as not in the cart', () => {

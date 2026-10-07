@@ -314,7 +314,17 @@ export const aiOrderingMongoRepository = {
         participantId: input.participantId,
         'turns.proposal.proposalId': input.proposalId,
       },
-      { $set: { 'turns.$.proposal.decision.results': input.results } },
+      {
+        $set: {
+          'turns.$.proposal.decision.results': input.results,
+          ...(input.appliedOperations !== undefined
+            ? {
+                'turns.$.proposal.decision.appliedOperations':
+                  input.appliedOperations,
+              }
+            : {}),
+        },
+      },
     ).exec();
   },
 };

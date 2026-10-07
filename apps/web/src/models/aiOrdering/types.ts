@@ -122,6 +122,12 @@ export type AiOrderingTranscriptTurn = AiOrderingTurn & {
 /** Two states. An expired proposal is a decided one whose rows are all no-action. */
 export type AiOrderingProposalState = AiOrderingProposalStateDto;
 
+/** One operation the guest changed before accepting, described as applied. */
+export type AiOrderingAppliedSummaryModel = {
+  operationId: string;
+  summary: string;
+};
+
 /** What a decision produced, as the wire carries it. */
 export type AiOrderingProposalDecision = AiOrderingProposalDecisionData;
 
@@ -129,6 +135,8 @@ export type AiOrderingProposalDecision = AiOrderingProposalDecisionData;
 export type AiOrderingProposalDecisionResult = {
   proposalId: string;
   results: AiOrderingOperationResult[];
+  /** The lines of the operations the guest changed, as applied. */
+  appliedSummaries?: AiOrderingAppliedSummaryModel[];
   cart: Cart;
   /** Absent when the closing model call failed; the cart change still happened. */
   reply?: string;

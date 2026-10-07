@@ -130,7 +130,18 @@ export type AiOrderingHistoryTurn = {
 export type AiOrderingProposalLogEntry = {
   /** Matches the `[Turn N]` label on the history turn that proposed it. */
   turnNumber: number;
+  /**
+   * The operations as the cart was asked to apply them. Where the guest
+   * changed a choice before accepting, this is their version, not the proposed
+   * one: the log's job is to say what the cart did.
+   */
   operations: AiOrderingOperation[];
+  /**
+   * Which of them the guest changed before accepting. "You proposed this and
+   * it is in the cart" and "you proposed something else and the guest fixed
+   * it" are different facts, and the second is one the model should know.
+   */
+  adjustedOperationIds?: string[];
   /** Empty only in the window between a decision being claimed and recorded. */
   results: AiOrderingOperationResult[];
 };

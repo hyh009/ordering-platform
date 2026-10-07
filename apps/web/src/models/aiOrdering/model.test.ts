@@ -215,4 +215,32 @@ describe('aiOrderingModel.deserializeReviewTurn', () => {
       aiOrderingModel.deserializeReviewTurn(reviewTurn),
     ).not.toHaveProperty('modelOutput');
   });
+
+  it('carries what the guest changed before accepting, beside what was proposed', () => {
+    const turn = aiOrderingModel.deserializeReviewTurn({
+      ...reviewTurn,
+      guestAdjustments: [
+        {
+          operationId: 'op-1',
+          proposed: '+ 紅茶 ×1 · 無糖',
+          applied: '+ 紅茶 ×1 · 半糖',
+        },
+      ],
+    });
+
+    expect(turn.guestAdjustments).toEqual([
+      {
+        operationId: 'op-1',
+        proposed: '+ 紅茶 ×1 · 無糖',
+        applied: '+ 紅茶 ×1 · 半糖',
+      },
+    ]);
+  });
+
+  it('leaves it off a turn the guest changed nothing on', () => {
+    // Every turn stored before this was recorded arrives this way too.
+    expect(
+      aiOrderingModel.deserializeReviewTurn(reviewTurn),
+    ).not.toHaveProperty('guestAdjustments');
+  });
 });

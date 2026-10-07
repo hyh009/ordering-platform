@@ -292,7 +292,12 @@ export function buildAiOrderingContext(
             : '';
 
         currentTurnLines.push(
-          `- [Turn ${entry.turnNumber}] ${operation.summary}${detail}: ${describeOutcome(result?.outcome, result?.failureCode)}`,
+          `- [Turn ${entry.turnNumber}] ${operation.summary}${detail}: ${describeOutcome(
+            result?.outcome,
+            result?.failureCode,
+            entry.adjustedOperationIds?.includes(operation.operationId) ??
+              false,
+          )}`,
         );
       }
     }
@@ -391,10 +396,18 @@ function renderProposedOperation(
 function describeOutcome(
   outcome: string | undefined,
   failureCode: string | undefined,
+  /**
+   * The guest changed a choice on it before accepting. The line already shows
+   * their version; this says so, because otherwise the model reads its own
+   * mistake back as something it got right.
+   */
+  adjustedByGuest: boolean,
 ): string {
   switch (outcome) {
     case 'accepted':
-      return 'the guest accepted it — it is in the cart';
+      return adjustedByGuest
+        ? 'the guest changed the choices you proposed, then accepted it — it is in the cart as written here'
+        : 'the guest accepted it — it is in the cart';
     case 'rejected':
       return 'the guest refused it — not in the cart';
     case 'superseded':

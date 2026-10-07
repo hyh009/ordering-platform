@@ -47,6 +47,19 @@ export type AiOrderingReviewTurnRow = {
       error?: string;
     }[];
   };
+  /**
+   * The proposed operations the guest corrected before accepting, each beside
+   * what was applied instead. Empty on most turns.
+   *
+   * Not folded into `wasDegraded`: that flags a turn the backend had to
+   * repair or cut down, and this is a turn the GUEST had to. Both are evidence
+   * against a prompt version, but they are found by different counts.
+   */
+  guestAdjustments: {
+    operationId: string;
+    proposed: string;
+    applied: string;
+  }[];
   versionId: string;
   versionFingerprint: string;
   modelName: string;
@@ -82,6 +95,7 @@ export function toAiOrderingReviewTurnRow(
     message: turn.message,
     responseType: turn.response.type,
     reply: turn.response.reply,
+    guestAdjustments: turn.guestAdjustments ?? [],
     versionId: turn.versionId,
     versionFingerprint: turn.versionFingerprint,
     modelName: turn.modelName,

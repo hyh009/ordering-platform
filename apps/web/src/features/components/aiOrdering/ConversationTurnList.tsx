@@ -66,6 +66,12 @@ export function AiOrderingConversationTurnList({
               </Badge>
             ) : null}
 
+            {turn.guestAdjustments.length > 0 ? (
+              <Badge variant="outline">
+                {tDefault('common.aiOrdering.guestAdjusted', 'guest adjusted')}
+              </Badge>
+            ) : null}
+
             {turn.modelOutput?.toolNames.map((name) => (
               <Badge key={name} variant="secondary" className="font-mono">
                 {name}
@@ -76,6 +82,32 @@ export function AiOrderingConversationTurnList({
               {new Date(turn.createdAt).toLocaleString()}
             </span>
           </div>
+
+          {turn.guestAdjustments.length > 0 ? (
+            // Open, not behind a disclosure: the assistant choosing an option
+            // the guest then had to change is the finding on this turn.
+            <ul className="mt-2 space-y-1 text-xs">
+              {turn.guestAdjustments.map((adjustment) => (
+                <li key={adjustment.operationId}>
+                  <span className="text-muted-foreground">
+                    {tDefault(
+                      'common.aiOrdering.adjustmentProposed',
+                      'Assistant proposed',
+                    )}
+                  </span>{' '}
+                  <span className="line-through">{adjustment.proposed}</span>
+                  <span className="mx-2 text-muted-foreground">→</span>
+                  <span className="text-muted-foreground">
+                    {tDefault(
+                      'common.aiOrdering.adjustmentApplied',
+                      'guest applied',
+                    )}
+                  </span>{' '}
+                  <span className="font-medium">{adjustment.applied}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {turn.modelOutput ? (
             // Collapsed by default: the reply is what a reviewer reads, and the

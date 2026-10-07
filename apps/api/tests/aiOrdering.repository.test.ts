@@ -19,6 +19,7 @@ const mongoMocks = vi.hoisted(() => {
     update: unknown;
     options?: unknown;
   }[] = [];
+  const updateOneCalls: { filter: unknown; update: unknown }[] = [];
 
   function query(read: () => unknown) {
     return {
@@ -55,12 +56,18 @@ const mongoMocks = vi.hoisted(() => {
     );
 
     static exists = vi.fn(async () => nextExistsResult);
+
+    static updateOne = vi.fn((filter: unknown, update: unknown) => {
+      updateOneCalls.push({ filter, update });
+      return query(() => ({ matchedCount: 1 }));
+    });
   }
 
   return {
     ConversationModel,
     findOneCalls,
     findOneAndUpdateCalls,
+    updateOneCalls,
     setNextFindOneResult(value: unknown) {
       nextFindOneResult = value;
     },
@@ -76,6 +83,7 @@ const mongoMocks = vi.hoisted(() => {
       nextExistsResult = null;
       findOneCalls.length = 0;
       findOneAndUpdateCalls.length = 0;
+      updateOneCalls.length = 0;
     },
   };
 });
@@ -449,6 +457,71 @@ describe('aiOrderingMongoRepository', () => {
       // Expiry and a repeated decision are different things to tell a guest, so
       // they must not collapse into one answer here.
       expect(result).toEqual({ claimed: false, proposal: null });
+    });
+  });
+
+  describe('setProposalResults', () => {
+    const lookup = {
+      storeId: 'store-1',
+      cartId: 'cart-1',
+      participantId: 'participant-self',
+      proposalId: 'proposal-1',
+    };
+    const results = [{ operationId: 'op-1', outcome: 'accepted' as const }];
+
+    it('writes only the results when the guest changed nothing', async () => {
+      mongoMocks.reset();
+
+      await aiOrderingMongoRepository.setProposalResults({
+        ...lookup,
+        results,
+      });
+
+      // Exactly what was written before the applied version existed, so an
+      // unchanged decision is stored the same and old ones need no migration.
+      expect(mongoMocks.updateOneCalls.at(-1)?.update).toEqual({
+        $set: { 'turns.$.proposal.decision.results': results },
+      });
+    });
+
+    it('stores what the guest applied beside the results, in one update', async () => {
+      mongoMocks.reset();
+
+      const appliedOperations = [
+        {
+          type: 'add_item' as const,
+          operationId: 'op-1',
+          summary: '+ 紅茶 ×1 · 半糖',
+          item: {
+            productId: 'prod-black-tea',
+            quantity: 1,
+            selectedOptions: [
+              { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+            ],
+          },
+        },
+      ];
+
+      await aiOrderingMongoRepository.setProposalResults({
+        ...lookup,
+        results,
+        appliedOperations,
+      });
+
+      expect(mongoMocks.updateOneCalls).toHaveLength(1);
+
+      const { $set } = mongoMocks.updateOneCalls[0]?.update as {
+        $set: Record<string, unknown>;
+      };
+
+      expect($set).toEqual({
+        'turns.$.proposal.decision.results': results,
+        'turns.$.proposal.decision.appliedOperations': appliedOperations,
+      });
+      // The guarantee this is built around: what the assistant proposed is the
+      // evidence of what it got wrong, so a correction is written next to it
+      // and never over it.
+      expect(Object.keys($set)).not.toContain('turns.$.proposal.operations');
     });
   });
 });

@@ -111,7 +111,17 @@ export type AiOrderingResolvedChoice = {
 };
 
 export type AiOrderingChoiceResolution =
-  | { ok: true; operations: AiOrderingOperation[] }
+  | {
+      ok: true;
+      operations: AiOrderingOperation[];
+      /**
+       * The operations whose choices the guest left different from what was
+       * proposed. An answer that repeats the selection already there is not an
+       * adjustment, so a card that sends back every choice it showed does not
+       * make every operation look corrected.
+       */
+      adjustedOperationIds: string[];
+    }
   | { ok: false; reason: string };
 
 /**
@@ -139,6 +149,7 @@ export function resolveAiOrderingProposalChoices(
   answers: AiOrderingResolvedChoice[],
 ): AiOrderingChoiceResolution {
   const resolved: AiOrderingOperation[] = [];
+  const adjustedOperationIds: string[] = [];
 
   for (const operation of operations) {
     const forOperation = answers.filter(
@@ -176,6 +187,7 @@ export function resolveAiOrderingProposalChoices(
     }
 
     const selections: { modifierId: string; optionId: string }[] = [];
+    let adjusted = false;
 
     for (const choice of choices) {
       const answer = forOperation.find(
@@ -219,9 +231,17 @@ export function resolveAiOrderingProposalChoices(
         };
       }
 
+      if (answer && !sameOptions(final, choice.selectedOptionIds)) {
+        adjusted = true;
+      }
+
       for (const optionId of final) {
         selections.push({ modifierId: choice.modifierId, optionId });
       }
+    }
+
+    if (adjusted) {
+      adjustedOperationIds.push(operation.operationId);
     }
 
     // `choices` is dropped either way: it described what could be answered, and
@@ -249,5 +269,15 @@ export function resolveAiOrderingProposalChoices(
     } as AiOrderingOperation);
   }
 
-  return { ok: true, operations: resolved };
+  return { ok: true, operations: resolved, adjustedOperationIds };
+}
+
+/** Same options, in any order: a choice's selections are a set. */
+function sameOptions(left: string[], right: string[]): boolean {
+  const expected = new Set(right);
+
+  return (
+    left.length === expected.size &&
+    left.every((optionId) => expected.has(optionId))
+  );
 }

@@ -267,7 +267,7 @@ export function createStoreFrontAiOrderingCommands(deps: {
 
         if (!hasScopedToken(expectedStoreId, token)) return mismatchedSession;
 
-        actions.proposalDecided(decision.results);
+        actions.proposalDecided(decision.results, decision.appliedSummaries);
         // The response carries the cart the server produced, so the surface
         // unblocks on a confirmed cart rather than on a second read.
         cartActions.cartUpdated(decision.cart);

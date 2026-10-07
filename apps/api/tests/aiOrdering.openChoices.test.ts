@@ -247,6 +247,60 @@ describe('folding the guest answers back in', () => {
     ]);
   });
 
+  it('names the operations the guest left different from what was proposed', () => {
+    const result = resolveAiOrderingProposalChoices(
+      [operation([{ ...sugarChoice, selectedOptionIds: ['opt-sugar-half'] }])],
+      [answer('mod-sugar', ['opt-sugar-free'])],
+    );
+
+    // This is what gets recorded beside the proposal: the assistant chose half
+    // sugar, the guest did not want it, and that is worth knowing afterwards.
+    expect(result.ok && result.adjustedOperationIds).toEqual(['op-1']);
+  });
+
+  it('does not count an answer that repeats what was already selected', () => {
+    // A card may send back every choice it showed. Reading that as a
+    // correction would mark every accepted proposal as one the guest fixed.
+    const result = resolveAiOrderingProposalChoices(
+      [
+        operation([
+          { ...sugarChoice, selectedOptionIds: ['opt-sugar-half'] },
+          {
+            ...toppingChoice,
+            selectedOptionIds: ['opt-topping-pearl', 'opt-topping-pudding'],
+          },
+        ]),
+      ],
+      [
+        answer('mod-sugar', ['opt-sugar-half']),
+        // The same two toppings in the other order are the same answer.
+        answer('mod-topping', ['opt-topping-pudding', 'opt-topping-pearl']),
+      ],
+    );
+
+    expect(result.ok && result.adjustedOperationIds).toEqual([]);
+  });
+
+  it('counts nothing as changed when the guest answered nothing', () => {
+    const result = resolveAiOrderingProposalChoices(
+      [operation([{ ...sugarChoice, selectedOptionIds: ['opt-sugar-half'] }])],
+      [],
+    );
+
+    expect(result.ok && result.adjustedOperationIds).toEqual([]);
+  });
+
+  it('counts filling in a choice the assistant left open', () => {
+    // Not a correction of a mistake, but still not what was proposed: the
+    // record of what reached the cart has to carry the option.
+    const result = resolveAiOrderingProposalChoices(
+      [operation([sugarChoice])],
+      [answer('mod-sugar', ['opt-sugar-free'])],
+    );
+
+    expect(result.ok && result.adjustedOperationIds).toEqual(['op-1']);
+  });
+
   it('lets the guest clear an optional choice the assistant filled in', () => {
     // An empty answer is "none", and it replaces like any other answer. This is
     // how a guest declines a topping they never asked for.

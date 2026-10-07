@@ -1,3 +1,5 @@
+import { readAiOrderingAppliedOperations } from '@src/models/aiOrdering/model';
+
 import type { AiOrderingOperationResult } from '@repo/shared';
 import type {
   AiOrderingConversationEntity,
@@ -113,6 +115,11 @@ const AI_ORDERING_MAX_EARLIER_PROPOSALS = 10;
 /**
  * Every proposal before the most recent one, oldest first, with its results.
  *
+ * Each as it was APPLIED: where the guest changed a choice before accepting,
+ * the model is shown the operation that reached the cart. The proposed one is
+ * still stored, but repeating it here would state the option the guest
+ * replaced as a fact about the cart.
+ *
  * A proposal with no recorded decision here was overtaken without one being
  * written, which only a data fault produces; it is reported with no results and
  * reads as lapsed.
@@ -125,7 +132,7 @@ export function readAiOrderingEarlierProposals(
     .slice(-AI_ORDERING_MAX_EARLIER_PROPOSALS)
     .map(({ turnNumber, proposal }) => ({
       turnNumber,
-      operations: proposal.operations,
+      ...readAiOrderingAppliedOperations(proposal),
       results: proposal.decision?.results ?? [],
     }));
 }

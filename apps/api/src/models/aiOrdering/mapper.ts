@@ -16,13 +16,18 @@
  * refuses anything that does not fit.
  */
 
+import { readAiOrderingAppliedOperations } from '@src/models/aiOrdering/model';
+
 import type {
+  AiOrderingAppliedSummary,
   AiOrderingConversationDetailDto,
   AiOrderingConversationSummaryDto,
+  AiOrderingGuestAdjustmentDto,
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
   AiOrderingModelOutputDto,
   AiOrderingModelTraceDto,
+  AiOrderingOperation,
   AiOrderingPromptPreludeDto,
   AiOrderingProposalStateDto,
   AiOrderingReviewTurnDto,
@@ -166,11 +171,53 @@ export function toAiOrderingReviewTurnDto(
     dto.modelTrace = modelTrace;
   }
 
+  const guestAdjustments = toAiOrderingGuestAdjustmentDtos(turn.proposal);
+
+  if (guestAdjustments.length > 0) {
+    dto.guestAdjustments = guestAdjustments;
+  }
+
   if (turn.quality.repairSucceeded !== undefined) {
     dto.repairSucceeded = turn.quality.repairSucceeded;
   }
 
   return dto;
+}
+
+/**
+ * The operations the guest changed before accepting, each beside what was
+ * proposed.
+ *
+ * Empty for a proposal nobody changed, which includes every decision stored
+ * before the applied version was recorded: those read as applied as proposed.
+ */
+function toAiOrderingGuestAdjustmentDtos(
+  proposal: AiOrderingTurnSnapshot['proposal'],
+): AiOrderingGuestAdjustmentDto[] {
+  if (!proposal) {
+    return [];
+  }
+
+  const applied = readAiOrderingAppliedOperations(proposal);
+
+  return proposal.operations.flatMap((operation, index) => {
+    const appliedOperation = applied.operations[index];
+
+    if (
+      !appliedOperation ||
+      !applied.adjustedOperationIds.includes(operation.operationId)
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        operationId: operation.operationId,
+        proposed: operation.summary,
+        applied: appliedOperation.summary,
+      },
+    ];
+  });
 }
 
 /**
@@ -215,11 +262,36 @@ function toAiOrderingProposalStateDto(
     return { status: 'pending' };
   }
 
+  const appliedSummaries = toAiOrderingAppliedSummaries(
+    readAiOrderingAppliedOperations(proposal),
+  );
+
   return {
     status: 'decided',
     decidedAt: proposal.decision.decidedAt.toISOString(),
     results: proposal.decision.results,
+    ...(appliedSummaries.length > 0 ? { appliedSummaries } : {}),
   };
+}
+
+/**
+ * The lines of the operations the guest changed, as applied.
+ *
+ * Shared by the transcript read and the decision's own response, so a record
+ * reads the same whether the panel watched the decision or was reloaded after.
+ */
+export function toAiOrderingAppliedSummaries(applied: {
+  operations: AiOrderingOperation[];
+  adjustedOperationIds: string[];
+}): AiOrderingAppliedSummary[] {
+  return applied.operations
+    .filter((operation) =>
+      applied.adjustedOperationIds.includes(operation.operationId),
+    )
+    .map((operation) => ({
+      operationId: operation.operationId,
+      summary: operation.summary,
+    }));
 }
 
 /**

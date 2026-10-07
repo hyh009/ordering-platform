@@ -1,6 +1,7 @@
 import { aiOrderingMongoRepository } from '@src/repositories/aiOrdering/mongo.repository';
 
 import type {
+  AiOrderingOperation,
   AiOrderingOperationResult,
   AiOrderingProposalResponse,
 } from '@repo/shared';
@@ -168,6 +169,11 @@ export type AiOrderingRepository = {
    * and this settles WHAT happened, after. Doing them as one write would mean
    * either executing before the claim — which lets two requests both apply — or
    * holding the claim open across the cart calls.
+   *
+   * `appliedOperations` goes in with the results, in the one update: a reader
+   * must never find an accepted result beside the proposed version of an
+   * operation the guest changed. The proposal's own `operations` is not
+   * touched.
    */
   setProposalResults(input: SetAiOrderingProposalResultsInput): Promise<void>;
 };
@@ -178,6 +184,8 @@ export type SetAiOrderingProposalResultsInput = {
   participantId: string;
   proposalId: string;
   results: AiOrderingOperationResult[];
+  /** Left out when the guest changed nothing, so nothing is stored for it. */
+  appliedOperations?: AiOrderingOperation[];
 };
 
 export type UpdateAiOrderingSummaryInput = {

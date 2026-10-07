@@ -1221,3 +1221,240 @@ describe('AiOrderingService proposal decisions', () => {
     expect(h.cartCalls).toHaveLength(0);
   });
 });
+
+describe('AiOrderingService: what the guest applied', () => {
+  type StoredProposal = {
+    snapshot: NonNullable<AiOrderingTurnSnapshot['proposal']>;
+    response: AiOrderingTurnSnapshot['response'];
+  };
+
+  /**
+   * A whole exchange rather than a stubbed decision: the assistant proposes a
+   * black tea with no sugar, the run pauses, and the guest decides. The other
+   * decision tests cannot reach the write this is about, because nothing was
+   * ever paused under their proposal id.
+   */
+  async function proposeTea() {
+    const turns: AiOrderingTurnSnapshot[] = [];
+    const resultWrites: {
+      results: unknown;
+      appliedOperations?: unknown;
+    }[] = [];
+    const cartAdds: unknown[] = [];
+    const checkpointer = new MemorySaver();
+    const chatModel = fakeModel()
+      .respond(
+        aiOrderingModelMessageFor({
+          type: 'proposal',
+          reply: '幫你加一杯無糖紅茶。',
+          operations: [
+            {
+              type: 'add_item',
+              item: {
+                productId: 'prod-black-tea',
+                quantity: 1,
+                selectedOptions: [
+                  { modifierId: 'mod-sugar', optionId: 'opt-sugar-free' },
+                  { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+                ],
+              },
+            },
+          ],
+        }),
+      )
+      .respond(new AIMessage('加好了。'));
+
+    const stored = (proposalId: string): StoredProposal | null => {
+      const found = turns.find(
+        (candidate) => candidate.proposal?.proposalId === proposalId,
+      );
+
+      return found?.proposal
+        ? { snapshot: found.proposal, response: found.response }
+        : null;
+    };
+
+    let counter = 0;
+
+    const service = createAiOrderingService({
+      conversations: {
+        findByParticipant: vi.fn(async () => null),
+        create: vi.fn(async () => conversation()),
+        appendTurn: vi.fn(async (_id: string, turn: AiOrderingTurnSnapshot) => {
+          turns.push(turn);
+          return conversation(turns);
+        }),
+        recordProposalDecision: vi.fn(
+          async (input: { proposalId: string }) => ({
+            claimed: true,
+            proposal: stored(input.proposalId),
+          }),
+        ),
+        setProposalResults: vi.fn(
+          async (input: { results: unknown; appliedOperations?: unknown }) => {
+            resultWrites.push(input);
+          },
+        ),
+      } as never,
+      findStore: vi.fn(async () => store()),
+      getPublicMenu: vi.fn(async () => AI_ORDERING_MENU_FIXTURE),
+      getGuestCart: vi.fn(async () => AI_ORDERING_CART_FIXTURE),
+      addCartItem: vi.fn(async (_claims: unknown, item: unknown) => {
+        cartAdds.push(item);
+        return undefined as never;
+      }),
+      updateCartItem: vi.fn(async () => undefined as never),
+      removeCartItem: vi.fn(async () => undefined as never),
+      resolveRuntime: () =>
+        ({
+          config: AI_ORDERING_V1_2026_09_30,
+          provider: 'gemini',
+          modelName: 'test-model',
+          createChatModel: () => chatModel,
+          toToolSchema: (schema: unknown) =>
+            toGeminiToolSchema(schema as never) as Record<string, unknown>,
+          createSummaryCaller: () => async () => '',
+        }) as never,
+      // One saver for both calls, which is what makes the proposal resumable.
+      getCheckpointer: async () => checkpointer,
+      rateLimiter: createInMemoryAiOrderingRateLimiter({
+        maxRequestsPerWindow: 10,
+        windowMs: 60_000,
+      }),
+      newId: (prefix) => `${prefix}-${++counter}`,
+      now: () => NOW,
+    });
+
+    const sent = await service.sendMessage(claims, { message: '一杯紅茶' });
+
+    if (sent.response.type !== 'proposal') {
+      throw new Error(`expected a proposal, got ${sent.response.type}`);
+    }
+
+    const [operation] = sent.response.operations;
+
+    if (!operation) {
+      throw new Error('expected one proposed operation');
+    }
+
+    return {
+      service,
+      proposalId: sent.response.proposalId,
+      operationId: operation.operationId,
+      /** The snapshot as stored, read again on every call. */
+      storedOperations: () =>
+        stored(
+          sent.response.type === 'proposal' ? sent.response.proposalId : '',
+        )?.snapshot.operations,
+      resultWrites,
+      cartAdds,
+    };
+  }
+
+  it('records the operation as applied when the guest changed a choice', async () => {
+    const h = await proposeTea();
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+      resolvedChoices: [
+        {
+          operationId: h.operationId,
+          modifierId: 'mod-sugar',
+          optionIds: ['opt-sugar-half'],
+        },
+      ],
+    });
+
+    // The cart got the guest's version…
+    expect(h.cartAdds).toEqual([
+      expect.objectContaining({
+        selectedOptions: [
+          { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+          { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+        ],
+      }),
+    ]);
+    // …the panel is handed the line to show, so its record is right without a
+    // reload…
+    expect(decided.appliedSummaries).toEqual([
+      { operationId: h.operationId, summary: '+ 紅茶 ×1 · 半糖 · 正常冰' },
+    ]);
+    // …and so did the record, described again so the line names half sugar.
+    expect(h.resultWrites).toHaveLength(1);
+    expect(h.resultWrites[0]?.appliedOperations).toEqual([
+      expect.objectContaining({
+        operationId: h.operationId,
+        summary: '+ 紅茶 ×1 · 半糖 · 正常冰',
+        item: expect.objectContaining({
+          selectedOptions: [
+            { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+            { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+          ],
+        }),
+      }),
+    ]);
+  });
+
+  it('leaves the proposed operations exactly as the assistant made them', async () => {
+    const h = await proposeTea();
+    const before = structuredClone(h.storedOperations());
+
+    await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+      resolvedChoices: [
+        {
+          operationId: h.operationId,
+          modifierId: 'mod-sugar',
+          optionIds: ['opt-sugar-half'],
+        },
+      ],
+    });
+
+    // The guarantee this is built around. The proposal is the record of what
+    // the MODEL did, and the no-sugar it chose is the most useful thing the
+    // review surface and the replay corpus can be shown.
+    expect(h.storedOperations()).toEqual(before);
+    expect(before?.[0]).toMatchObject({
+      summary: '+ 紅茶 ×1 · 無糖 · 正常冰',
+      item: {
+        selectedOptions: [
+          { modifierId: 'mod-sugar', optionId: 'opt-sugar-free' },
+          { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+        ],
+      },
+    });
+  });
+
+  it('records nothing extra when the guest changed nothing', async () => {
+    const h = await proposeTea();
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+    });
+
+    expect(h.resultWrites).toHaveLength(1);
+    expect(h.resultWrites[0]).not.toHaveProperty('appliedOperations');
+    expect(decided).not.toHaveProperty('appliedSummaries');
+  });
+
+  it('records nothing extra when the guest sent back the same choices', async () => {
+    const h = await proposeTea();
+
+    await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+      resolvedChoices: [
+        {
+          operationId: h.operationId,
+          modifierId: 'mod-sugar',
+          optionIds: ['opt-sugar-free'],
+        },
+      ],
+    });
+
+    expect(h.resultWrites[0]).not.toHaveProperty('appliedOperations');
+  });
+});

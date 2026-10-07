@@ -98,6 +98,22 @@ export type AiOrderingProposalDecision = {
    * what tells them apart on a proposal with no operations to carry an outcome.
    */
   superseded?: boolean;
+  /**
+   * The operations the guest changed before accepting, as they were executed.
+   *
+   * Whole operations rather than the guest's answers, because every reader
+   * wants the result and none wants to redo the merge: the proposal log sends
+   * the model these ids, and the review surface prints this summary. Storing
+   * only the answers would make each of them fold the answers into the
+   * proposed operation again, with the menu as it is now rather than as it was.
+   *
+   * Only the operations that differ, and absent when none does. The proposal's
+   * own `operations` is never rewritten — it is the record of what the MODEL
+   * proposed, and a guest's correction must not erase the mistake it corrects.
+   * Absent therefore means "the proposed operations are what was applied",
+   * which is also what every decision stored before this field reads as.
+   */
+  appliedOperations?: AiOrderingOperation[];
 };
 
 /**
@@ -114,6 +130,44 @@ export type AiOrderingProposalSnapshot = {
   operations: AiOrderingOperation[];
   decision?: AiOrderingProposalDecision;
 };
+
+/**
+ * A proposal's operations as the cart was actually asked to apply them.
+ *
+ * The one place the proposed and the applied versions are merged, so the model
+ * and the reviewer cannot come to read a decision differently. The stored
+ * snapshot is left as it is; this only reads it.
+ */
+export function readAiOrderingAppliedOperations(
+  proposal: AiOrderingProposalSnapshot,
+): {
+  operations: AiOrderingOperation[];
+  /** The operations the guest changed before accepting, in proposed order. */
+  adjustedOperationIds: string[];
+} {
+  // `Mixed` in Mongo, so anything that is not a list is read as absent.
+  const stored: unknown = proposal.decision?.appliedOperations;
+  const applied = new Map(
+    (Array.isArray(stored) ? (stored as AiOrderingOperation[]) : []).map(
+      (operation) => [operation.operationId, operation],
+    ),
+  );
+  const adjustedOperationIds: string[] = [];
+
+  const operations = proposal.operations.map((operation) => {
+    const replacement = applied.get(operation.operationId);
+
+    if (!replacement) {
+      return operation;
+    }
+
+    adjustedOperationIds.push(operation.operationId);
+
+    return replacement;
+  });
+
+  return { operations, adjustedOperationIds };
+}
 
 /**
  * Per-turn signals used to compare prompt and model versions. They are the

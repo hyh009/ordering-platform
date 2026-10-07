@@ -315,10 +315,18 @@ function toEntryView(
         proposalId: response.proposalId,
         operations: response.operations.map((operation) => ({
           operationId: operation.operationId,
-          // The line without the choices: the guest may have changed them on
-          // the card, and a record that named the assistant's picks would then
-          // state something the cart does not hold.
-          summary: rowSummary(operation),
+          summary:
+            entry.proposalResults !== undefined
+              ? // Decided, so nothing can change any more and the line names
+                // the options: the guest's version where they changed one,
+                // otherwise the operation's own, which is then what was applied.
+                (entry.proposalAppliedSummaries?.find(
+                  (applied) => applied.operationId === operation.operationId,
+                )?.summary ?? operation.summary)
+              : // Still open: the card lists the choices beside this line and
+                // the guest may yet change them, so the line leaves them out
+                // rather than naming picks that might not be the final ones.
+                rowSummary(operation),
         })),
         record:
           context.liveProposalId === response.proposalId ? 'live' : 'history',

@@ -245,6 +245,14 @@ export const aiOrderingModel = {
     return {
       proposalId: dto.proposalId,
       results: dto.results,
+      ...(dto.appliedSummaries !== undefined
+        ? {
+            appliedSummaries: dto.appliedSummaries.map((applied) => ({
+              operationId: applied.operationId,
+              summary: applied.summary,
+            })),
+          }
+        : {}),
       cart: cartModel.deserialize(dto.cart),
       ...(dto.reply !== undefined ? { reply: dto.reply } : {}),
     };
@@ -298,6 +306,14 @@ export const aiOrderingModel = {
 
     if (dto.modelTrace !== undefined) {
       turn.modelTrace = dto.modelTrace;
+    }
+
+    if (dto.guestAdjustments !== undefined) {
+      turn.guestAdjustments = dto.guestAdjustments.map((adjustment) => ({
+        operationId: adjustment.operationId,
+        proposed: adjustment.proposed,
+        applied: adjustment.applied,
+      }));
     }
 
     return turn;

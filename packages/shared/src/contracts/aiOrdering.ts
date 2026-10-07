@@ -379,8 +379,27 @@ export type SendAiOrderingMessageSuccessResponse =
 export type AiOrderingProposalDecisionData = {
   proposalId: string;
   results: AiOrderingOperationResult[];
+  /** Present when the guest changed a choice. See `AiOrderingAppliedSummary`. */
+  appliedSummaries?: AiOrderingAppliedSummary[];
   cart: CartDto;
   reply?: string;
+};
+
+/**
+ * The line for an operation the guest changed before accepting, as applied.
+ *
+ * The proposal the guest already holds names the options the assistant chose.
+ * Once it is decided the record should read as what was ordered, so the
+ * operations that differ come back described again. Only those: an operation
+ * nobody changed is still described correctly by its own `summary`.
+ *
+ * A line and not the operation, because the guest's side only prints it — and
+ * unlike the review surface it is not told what was proposed instead, which is
+ * of no use to the person who made the change.
+ */
+export type AiOrderingAppliedSummary = {
+  operationId: string;
+  summary: string;
 };
 
 export type DecideAiOrderingProposalSuccessResponse =
@@ -413,6 +432,8 @@ export type AiOrderingProposalStateDto =
       status: 'decided';
       decidedAt: string;
       results: AiOrderingOperationResult[];
+      /** Present when the guest changed a choice before accepting. */
+      appliedSummaries?: AiOrderingAppliedSummary[];
     };
 
 export type AiOrderingGuestTurnDto = {
@@ -522,6 +543,22 @@ export type AiOrderingModelTraceDto = {
 };
 
 /**
+ * One proposed operation the guest corrected before accepting it.
+ *
+ * Both lines, side by side, because the difference is the finding: a turn that
+ * carries one is a turn where the assistant got a choice wrong. Summaries
+ * rather than operations — the reviewer reads what changed, and the ids are in
+ * the model output for whoever needs them.
+ */
+export type AiOrderingGuestAdjustmentDto = {
+  operationId: string;
+  /** The operation as the assistant proposed it. */
+  proposed: string;
+  /** The operation as it was applied to the cart. */
+  applied: string;
+};
+
+/**
  * One stored turn, as the merchant sees it.
  *
  * `versionFingerprint` travels with `versionId` because a draft version's file
@@ -548,6 +585,12 @@ export type AiOrderingReviewTurnDto = {
   modelOutput?: AiOrderingModelOutputDto;
   /** Present on turns stored since the trace was recorded. Merchant-only. */
   modelTrace?: AiOrderingModelTraceDto;
+  /**
+   * Present when the guest changed a proposed operation's choices before
+   * accepting it. `response` still carries the operations as the assistant
+   * proposed them; this is what was applied instead.
+   */
+  guestAdjustments?: AiOrderingGuestAdjustmentDto[];
   repairAttempted: boolean;
   repairSucceeded?: boolean;
   droppedOperationCount: number;

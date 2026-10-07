@@ -1,4 +1,5 @@
 import type {
+  AiOrderingAppliedSummaryModel,
   AiOrderingOperationOutcome,
   AiOrderingOperationResult,
   AiOrderingTranscriptTurn,
@@ -52,13 +53,20 @@ export function createStoreFrontAiOrderingActions(
   function recordProposalResults(
     proposalId: string,
     results: AiOrderingOperationResult[],
+    appliedSummaries?: AiOrderingAppliedSummaryModel[],
   ) {
     store.setState((state) => ({
       entries: state.entries.map((entry) =>
         entry.role === 'assistant' &&
         entry.response.type === 'proposal' &&
         entry.response.proposalId === proposalId
-          ? { ...entry, proposalResults: results }
+          ? {
+              ...entry,
+              proposalResults: results,
+              ...(appliedSummaries !== undefined
+                ? { proposalAppliedSummaries: appliedSummaries }
+                : {}),
+            }
           : entry,
       ),
     }));
@@ -89,7 +97,14 @@ export function createStoreFrontAiOrderingActions(
           versionId: turn.versionId,
           response: turn.response,
           ...(turn.proposal?.status === 'decided'
-            ? { proposalResults: turn.proposal.results }
+            ? {
+                proposalResults: turn.proposal.results,
+                ...(turn.proposal.appliedSummaries !== undefined
+                  ? {
+                      proposalAppliedSummaries: turn.proposal.appliedSummaries,
+                    }
+                  : {}),
+              }
             : {}),
         },
       ]);
@@ -255,7 +270,10 @@ export function createStoreFrontAiOrderingActions(
      * row rather than merging: a row is whatever the side that executed it says
      * it is, not a blend of that and what the client assumed.
      */
-    proposalDecided(results: AiOrderingOperationResult[]) {
+    proposalDecided(
+      results: AiOrderingOperationResult[],
+      appliedSummaries?: AiOrderingAppliedSummaryModel[],
+    ) {
       const byOperationId = new Map(
         results.map((result) => [result.operationId, result]),
       );
@@ -263,7 +281,7 @@ export function createStoreFrontAiOrderingActions(
       const openProposalId = store.getState().proposal?.proposalId;
 
       if (openProposalId !== undefined) {
-        recordProposalResults(openProposalId, results);
+        recordProposalResults(openProposalId, results, appliedSummaries);
       }
 
       store.setState((state) =>

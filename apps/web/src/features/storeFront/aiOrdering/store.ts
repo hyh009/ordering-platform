@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 
 import type {
+  AiOrderingAppliedSummaryModel,
   AiOrderingOperationModel,
   AiOrderingOperationResult,
   AiOrderingResponseModel,
@@ -28,6 +29,12 @@ export type AiOrderingChatEntry =
        * to ask again for something already in their cart.
        */
       proposalResults?: AiOrderingOperationResult[];
+      /**
+       * The lines of the operations the guest changed before accepting, as
+       * they were applied. Absent when they changed none, in which case each
+       * operation's own summary already says what was applied.
+       */
+      proposalAppliedSummaries?: AiOrderingAppliedSummaryModel[];
     };
 
 /**

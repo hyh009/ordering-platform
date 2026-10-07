@@ -1,8 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
 import { Command } from '@langchain/langgraph';
-import { toAiOrderingGuestConversationDto } from '@src/models/aiOrdering/mapper';
-import { AI_ORDERING_MAX_TURNS_PER_CONVERSATION } from '@src/models/aiOrdering/model';
+import {
+  toAiOrderingAppliedSummaries,
+  toAiOrderingGuestConversationDto,
+} from '@src/models/aiOrdering/mapper';
+import {
+  AI_ORDERING_MAX_TURNS_PER_CONVERSATION,
+  readAiOrderingAppliedOperations,
+} from '@src/models/aiOrdering/model';
 import { resolveAiOrderingConfirmationRequired } from '@src/modules/aiOrdering/confirmation';
 import { buildAiOrderingContext } from '@src/modules/aiOrdering/context';
 import {
@@ -10,6 +16,7 @@ import {
   windowAiOrderingHistory,
 } from '@src/modules/aiOrdering/history';
 import { resolveAiOrderingProposalChoices } from '@src/modules/aiOrdering/openChoices';
+import { buildAiOrderingOperationLabel } from '@src/modules/aiOrdering/operationLabel';
 import { buildAiOrderingPromptPrelude } from '@src/modules/aiOrdering/promptPrelude';
 import {
   buildAiOrderingSupersededResults,
@@ -289,7 +296,21 @@ export class AiOrderingService {
       );
     }
 
-    const keptOperations = resolution.operations;
+    // What the guest changed, described again: the summary on a proposed
+    // operation names the options the assistant chose, and it is read by the
+    // model on the resumed run and by everything that reads the record later.
+    const appliedOperations = await this.describeAdjustedOperations(
+      claims,
+      resolution.operations.filter((operation) =>
+        resolution.adjustedOperationIds.includes(operation.operationId),
+      ),
+    );
+    const keptOperations = resolution.operations.map(
+      (operation) =>
+        appliedOperations.find(
+          (applied) => applied.operationId === operation.operationId,
+        ) ?? operation,
+    );
     const dismissed: AiOrderingOperationResult[] = proposal.snapshot.operations
       .filter((operation) => !kept.has(operation.operationId))
       .map((operation) => ({
@@ -330,14 +351,65 @@ export class AiOrderingService {
       ...lookup,
       proposalId: request.proposalId,
       results,
+      // Beside the proposed operations, never over them: what the assistant
+      // proposed stays on record as it was. Only when something differs, so an
+      // unchanged decision is stored exactly as it always was.
+      ...(appliedOperations.length > 0 ? { appliedOperations } : {}),
     });
 
     return {
       proposalId: request.proposalId,
       results,
+      // So the record the panel keeps names what was applied without a reload.
+      ...(appliedOperations.length > 0
+        ? {
+            appliedSummaries: toAiOrderingAppliedSummaries({
+              operations: appliedOperations,
+              adjustedOperationIds: resolution.adjustedOperationIds,
+            }),
+          }
+        : {}),
       cart: await this.deps.getGuestCart(claims),
       ...(resumed.reply !== undefined ? { reply: resumed.reply } : {}),
     };
+  }
+
+  /**
+   * Rewrites the summary of each operation the guest changed, so it names the
+   * options that were applied rather than the ones that were proposed.
+   *
+   * Built by the same function that labelled the proposal, from the menu and
+   * the cart as they are BEFORE anything executes — an update is named after
+   * the cart item it touches, which has to still be there to be named.
+   *
+   * Reads nothing when the guest changed nothing, which is most decisions.
+   */
+  private async describeAdjustedOperations(
+    claims: GuestTokenClaims,
+    adjusted: AiOrderingOperation[],
+  ): Promise<AiOrderingOperation[]> {
+    if (adjusted.length === 0) {
+      return [];
+    }
+
+    const [store, menu, cart] = await Promise.all([
+      this.deps.findStore(claims.storeId),
+      this.deps.getPublicMenu(claims.storeId),
+      this.deps.getGuestCart(claims),
+    ]);
+
+    if (!store) {
+      throw new NotFoundError('Store not found', ERROR_CODES.STORE_NOT_FOUND);
+    }
+
+    return adjusted.map((operation) => ({
+      ...operation,
+      summary: buildAiOrderingOperationLabel(operation, {
+        menu,
+        cart,
+        locale: store.locale.defaultLocale,
+      }),
+    }));
   }
 
   /**
@@ -547,8 +619,14 @@ export class AiOrderingService {
     conversation: AiOrderingConversationEntity | null,
   ): Promise<{
     results: AiOrderingOperationResult[];
-    /** What that proposal proposed, so the model can read each result. */
+    /**
+     * What that proposal did, so the model can read each result: the operations
+     * as applied, which differ from the proposed ones where the guest changed a
+     * choice before accepting.
+     */
     operations: AiOrderingOperation[];
+    /** Which of those the guest changed. */
+    adjustedOperationIds: string[];
     /** Which turn proposed it. Absent when there was no proposal to settle. */
     turnNumber?: number;
     settledProposal?: AiOrderingSettledProposal;
@@ -556,14 +634,18 @@ export class AiOrderingService {
     const last = readAiOrderingLastProposal(conversation);
 
     if (!last) {
-      return { results: [], operations: [] };
+      return { results: [], operations: [], adjustedOperationIds: [] };
     }
 
     const { turnNumber, proposal } = last;
     const { operations } = proposal;
 
     if (proposal.decision) {
-      return { results: proposal.decision.results, operations, turnNumber };
+      return {
+        results: proposal.decision.results,
+        ...readAiOrderingAppliedOperations(proposal),
+        turnNumber,
+      };
     }
 
     const results = buildAiOrderingSupersededResults(proposal);
@@ -581,6 +663,7 @@ export class AiOrderingService {
       return {
         results,
         operations,
+        adjustedOperationIds: [],
         turnNumber,
         settledProposal: { proposalId: proposal.proposalId, results },
       };
@@ -591,7 +674,14 @@ export class AiOrderingService {
     // Not reported back: the client made that decision and already has them.
     return {
       results: claim.proposal?.snapshot.decision?.results ?? [],
-      operations,
+      // The applied operations are written with the results, so in that same
+      // instant these are still the proposed ones.
+      ...(claim.proposal?.snapshot.decision
+        ? readAiOrderingAppliedOperations({
+            ...proposal,
+            decision: claim.proposal.snapshot.decision,
+          })
+        : { operations, adjustedOperationIds: [] }),
       turnNumber,
     };
   }
@@ -690,6 +780,7 @@ export class AiOrderingService {
               {
                 turnNumber: settled.turnNumber,
                 operations: settled.operations,
+                adjustedOperationIds: settled.adjustedOperationIds,
                 results: previousResults,
               },
             ]

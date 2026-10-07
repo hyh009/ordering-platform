@@ -37,6 +37,11 @@ const manualResources: Resource = {
         ok: 'OK',
         or: 'or',
         retry: 'Try again',
+        aiOrdering: {
+          adjustmentApplied: 'guest applied',
+          adjustmentProposed: 'Assistant proposed',
+          guestAdjusted: 'guest adjusted',
+        },
         errors: {
           tryAgainLater: 'Try again in a moment.',
         },
@@ -587,11 +592,14 @@ const manualResources: Resource = {
       },
       common: {
         aiOrdering: {
+          adjustmentApplied: '客人改成',
+          adjustmentProposed: '助理提議',
           conversationEmpty: '這段對話沒有任何紀錄。',
           conversationTitle: '對話',
           conversationsEmpty: '目前還沒有助理對話。',
           degradedTurns: '筆有問題',
           dropped: '已捨棄',
+          guestAdjusted: '客人改過選項',
           lastTurnAt: '最後訊息',
           loading: '載入對話中…',
           modelOutput: '模型輸出',

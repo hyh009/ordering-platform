@@ -655,6 +655,108 @@ describe('assistant proposal records in the transcript', () => {
     ]);
   });
 
+  describe('once decided, a line names its options', () => {
+    const teaResponse = {
+      type: 'proposal' as const,
+      reply: 'How about this?',
+      proposalId: 'proposal-1',
+      confirmationRequired: true,
+      operations: [
+        {
+          type: 'add_item' as const,
+          operationId: 'op-tea',
+          summary: '+ Tea ×1 · No sugar',
+          summaryWithoutChoices: '+ Tea ×1',
+          item: { productId: 'product-1', quantity: 1 },
+          choices: [choice('mod-sugar', { selectedOptionIds: ['opt-a'] })],
+        },
+        {
+          type: 'add_item' as const,
+          operationId: 'op-rice',
+          summary: '+ Rice ×1',
+          item: { productId: 'product-2', quantity: 1 },
+        },
+      ],
+    };
+
+    const restored = (proposal?: AiOrderingProposalState) => ({
+      id: 'turn-1',
+      message: 'A tea and a rice please',
+      versionId: 'v1',
+      createdAt: '2026-10-01T00:00:00.000Z',
+      response: teaResponse,
+      ...(proposal ? { proposal } : {}),
+    });
+
+    const results = [
+      { operationId: 'op-tea', outcome: 'accepted' as const },
+      { operationId: 'op-rice', outcome: 'accepted' as const },
+    ];
+
+    const summariesOf = (view: ReturnType<typeof setup>['view']) => {
+      const entry = view().entries.at(-1);
+
+      return entry?.kind === 'proposal'
+        ? entry.operations.map((operation) => operation.summary)
+        : [];
+    };
+
+    it('shows the options of a line the guest left as proposed', () => {
+      const { actions, view } = setup();
+
+      actions.transcriptLoaded([
+        restored({
+          status: 'decided',
+          decidedAt: '2026-10-01T00:00:10.000Z',
+          results,
+        }),
+      ]);
+
+      // This used to read "+ Tea ×1" for good. Leaving the options out is right
+      // while they can still change; once decided it only hid what was ordered.
+      expect(summariesOf(view)).toEqual(['+ Tea ×1 · No sugar', '+ Rice ×1']);
+    });
+
+    it("shows the guest's options on a line they changed", () => {
+      const { actions, view } = setup();
+
+      actions.transcriptLoaded([
+        restored({
+          status: 'decided',
+          decidedAt: '2026-10-01T00:00:10.000Z',
+          results,
+          appliedSummaries: [
+            { operationId: 'op-tea', summary: '+ Tea ×1 · Half sugar' },
+          ],
+        }),
+      ]);
+
+      // What reached the cart, not what the assistant first suggested.
+      expect(summariesOf(view)).toEqual(['+ Tea ×1 · Half sugar', '+ Rice ×1']);
+    });
+
+    it('shows them straight after the guest applies, without a reload', () => {
+      const { actions, view } = setup();
+
+      actions.turnAppended({ id: 'a1', turn: turn(teaResponse) });
+      actions.proposalDecided(results, [
+        { operationId: 'op-tea', summary: '+ Tea ×1 · Half sugar' },
+      ]);
+
+      expect(summariesOf(view)).toEqual(['+ Tea ×1 · Half sugar', '+ Rice ×1']);
+    });
+
+    it('still leaves them off a line that is waiting to be decided', () => {
+      const { actions, view } = setup();
+
+      actions.transcriptLoaded([restored({ status: 'pending' })]);
+
+      // The card lists the choices and the guest may change them, so the line
+      // must not name picks that could turn out not to be the final ones.
+      expect(summariesOf(view)).toEqual(['+ Tea ×1', '+ Rice ×1']);
+    });
+  });
+
   it('demotes a live proposal to history once the next turn arrives', () => {
     const { actions, view } = setup();
 

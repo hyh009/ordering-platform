@@ -482,3 +482,153 @@ describe('AI ordering merchant review service', () => {
     });
   });
 });
+
+describe('a proposal the guest changed before accepting, as a reviewer reads it', () => {
+  const tea = (sugarOptionId: string, sugarLabel: string) =>
+    ({
+      type: 'add_item',
+      operationId: 'op-tea',
+      summary: `+ 紅茶 ×1 · ${sugarLabel}`,
+      item: {
+        productId: 'prod-black-tea',
+        quantity: 1,
+        selectedOptions: [{ modifierId: 'mod-sugar', optionId: sugarOptionId }],
+      },
+    }) as const;
+
+  const rice = {
+    type: 'add_item',
+    operationId: 'op-rice',
+    summary: '+ 白飯 ×1',
+    item: { productId: 'prod-rice', quantity: 1 },
+  } as const;
+
+  const proposalTurn = (
+    decision: NonNullable<AiOrderingTurnSnapshot['proposal']>['decision'],
+  ) => {
+    const operations = [tea('opt-sugar-free', '無糖'), rice];
+
+    return turn(
+      'turn-1',
+      {
+        type: 'proposal',
+        reply: '幫你加紅茶和白飯。',
+        proposalId: 'proposal-1',
+        confirmationRequired: true,
+        operations,
+      },
+      {
+        proposal: {
+          proposalId: 'proposal-1',
+          operations,
+          ...(decision ? { decision } : {}),
+        },
+      },
+    );
+  };
+
+  const results = [
+    { operationId: 'op-tea', outcome: 'accepted' as const },
+    { operationId: 'op-rice', outcome: 'accepted' as const },
+  ];
+
+  it('shows what the assistant proposed beside what the guest applied', () => {
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        proposalTurn({
+          decidedAt: AT,
+          results,
+          appliedOperations: [tea('opt-sugar-half', '半糖')],
+        }),
+      ]),
+    );
+
+    // One line for the operation that differs, and none for the rice nobody
+    // touched: this is a list of what the assistant got wrong, not a second
+    // copy of the proposal.
+    expect(detail.turns[0]?.guestAdjustments).toEqual([
+      {
+        operationId: 'op-tea',
+        proposed: '+ 紅茶 ×1 · 無糖',
+        applied: '+ 紅茶 ×1 · 半糖',
+      },
+    ]);
+  });
+
+  it('still shows the proposal as the assistant made it', () => {
+    const detail = toAiOrderingConversationDetailDto(
+      conversation([
+        proposalTurn({
+          decidedAt: AT,
+          results,
+          appliedOperations: [tea('opt-sugar-half', '半糖')],
+        }),
+      ]),
+    );
+    const response = detail.turns[0]?.response;
+
+    // The correction is added to the record; it does not replace the mistake.
+    expect(response?.type === 'proposal' && response.operations[0]).toEqual(
+      tea('opt-sugar-free', '無糖'),
+    );
+  });
+
+  it('reports nothing for a decision the guest did not change', () => {
+    expect(
+      toAiOrderingConversationDetailDto(
+        conversation([proposalTurn({ decidedAt: AT, results })]),
+      ).turns[0],
+    ).not.toHaveProperty('guestAdjustments');
+  });
+
+  it('reports nothing for a proposal nobody has answered', () => {
+    expect(
+      toAiOrderingConversationDetailDto(conversation([proposalTurn(undefined)]))
+        .turns[0],
+    ).not.toHaveProperty('guestAdjustments');
+  });
+
+  it("gives the guest's own transcript the applied line, and nothing about the proposed one", () => {
+    const dto = toAiOrderingGuestConversationDto(
+      conversation([
+        proposalTurn({
+          decidedAt: AT,
+          results,
+          appliedOperations: [tea('opt-sugar-half', '半糖')],
+        }),
+      ]),
+    );
+
+    // Only the operation that differs: the rice is still described correctly
+    // by the proposal the guest already has.
+    expect(dto.turns[0]?.proposal).toMatchObject({
+      status: 'decided',
+      appliedSummaries: [
+        { operationId: 'op-tea', summary: '+ 紅茶 ×1 · 半糖' },
+      ],
+    });
+  });
+
+  it("leaves it off the guest's transcript when they changed nothing", () => {
+    expect(
+      toAiOrderingGuestConversationDto(
+        conversation([proposalTurn({ decidedAt: AT, results })]),
+      ).turns[0]?.proposal,
+    ).not.toHaveProperty('appliedSummaries');
+  });
+
+  it('ignores a stored value that is not a list of operations', () => {
+    // `Mixed` in Mongo, so the shape is not guaranteed on the way out.
+    expect(
+      toAiOrderingConversationDetailDto(
+        conversation([
+          proposalTurn({
+            decidedAt: AT,
+            results,
+            appliedOperations: 'not operations' as never,
+          }),
+        ]),
+      ).turns[0],
+    ).not.toHaveProperty('guestAdjustments');
+  });
+});
