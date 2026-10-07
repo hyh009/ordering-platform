@@ -158,12 +158,26 @@ export type AiOrderingResolvedPrompt = {
   selectedOption?: AiOrderingChoice;
 };
 
+/** One choice standing on a cart line, with the ids needed to restate it. */
+export type AiOrderingContextSelection = {
+  modifierId: string;
+  modifierName: string;
+  optionId: string;
+  optionName: string;
+};
+
 export type AiOrderingContextItem = {
   itemId: string;
   productId: string;
   productName: string;
   quantity: number;
-  selectedOptionLabels: string[];
+  /**
+   * Ids, not just labels, because an update to this line has to send the
+   * COMPLETE set of choices back. Labels alone left the model to recover each
+   * id by matching a name through the menu, and getting one wrong is a rejected
+   * proposal rather than a worse answer.
+   */
+  selectedOptions: AiOrderingContextSelection[];
   notes?: string;
 };
 

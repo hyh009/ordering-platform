@@ -243,6 +243,24 @@ describe('AI ordering context assembly', () => {
       expect(changeableSection).not.toContain('item-other-beef');
     });
 
+    it('writes the id of every choice standing on a cart line', () => {
+      const currentTurn = blockText(
+        buildAiOrderingContext(contextInput()),
+        'current_turn',
+      );
+      const line = currentTurn
+        .split('\n')
+        .find((candidate) => candidate.includes('珍珠奶茶'));
+
+      // An update restates the COMPLETE set of choices, so a line that gave
+      // only names left the model to recover each id by matching that name
+      // through the menu. One wrong match is a rejected proposal, not a
+      // clumsier answer — this is the cart's half of the errand the product
+      // line already removed.
+      expect(line).toMatch(/mod-sugar \(甜度\): opt-sugar-half \(半糖\)/);
+      expect(line).toMatch(/mod-ice \(冰塊\): opt-ice-less \(少冰\)/);
+    });
+
     it('still lets the model read the whole cart', () => {
       const currentTurn = blockText(
         buildAiOrderingContext(contextInput()),

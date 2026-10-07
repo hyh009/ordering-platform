@@ -38,10 +38,12 @@ function toContextItem(
     productId: item.productId,
     productName: localize(item.productName, locale),
     quantity: item.quantity,
-    selectedOptionLabels: item.selectedOptions.map(
-      (option) =>
-        `${localize(option.modifierName, locale)}: ${localize(option.optionName, locale)}`,
-    ),
+    selectedOptions: item.selectedOptions.map((option) => ({
+      modifierId: option.modifierId,
+      modifierName: localize(option.modifierName, locale),
+      optionId: option.optionId,
+      optionName: localize(option.optionName, locale),
+    })),
     ...(item.notes !== undefined ? { notes: item.notes } : {}),
   };
 }
@@ -172,9 +174,17 @@ function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
     }
 
     for (const item of items) {
+      // Every id is written the way the menu writes one — code first, name in
+      // brackets to be read. A change to this line restates the whole set of
+      // choices, so the set is spelled out here in the form it is sent back in.
       const choices =
-        item.selectedOptionLabels.length > 0
-          ? ` | ${item.selectedOptionLabels.join(', ')}`
+        item.selectedOptions.length > 0
+          ? ` | ${item.selectedOptions
+              .map(
+                (option) =>
+                  `${code(option.modifierId)} (${option.modifierName}): ${code(option.optionId)} (${option.optionName})`,
+              )
+              .join(', ')}`
           : '';
       const notes = item.notes ? ` | note: ${item.notes}` : '';
 
