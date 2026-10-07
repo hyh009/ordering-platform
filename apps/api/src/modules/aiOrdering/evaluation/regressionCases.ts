@@ -65,6 +65,7 @@ const choseAnyOption = (
 const ICE_LABELS = ['正常冰', '少冰', '去冰'];
 const SUGAR_LABELS = ['全糖', '半糖', '無糖'];
 const TOPPING_LABELS = ['珍珠', '布丁', '仙草'];
+const SPICE_LABELS = ['不辣', '小辣', '大辣'];
 
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
@@ -80,10 +81,19 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       outcome.responseType === 'message' && operations(outcome).length === 0,
   },
   {
+    // The guest stated no choice at all. This used to expect the assistant to
+    // ask for the sugar and the ice together. It must now propose with both
+    // left empty: the cart card asks for them from the store's own option list,
+    // which costs the guest a tap instead of a turn. Asking is the failure here,
+    // and so is filling either one in.
     message: '加點一杯紅茶',
-    expects: 'asks for sugar and ice at once; proposes nothing',
+    expects:
+      'proposes the tea with no choice of its own; neither sugar nor ice is picked',
     check: (outcome) =>
-      outcome.responseType === 'choices' || outcome.responseType === 'message',
+      outcome.responseType === 'proposal' &&
+      operations(outcome).length === 1 &&
+      adds(outcome, '紅茶') &&
+      !choseAnyOption(outcome, [...SUGAR_LABELS, ...ICE_LABELS]),
   },
   {
     // The guest stated the sugar and nothing else. Two wrong answers are
@@ -131,13 +141,27 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       adds(outcome, '珍珠奶茶') &&
       adds(outcome, '半糖') &&
       adds(outcome, '少冰') &&
-      !choseAnyOption(outcome, TOPPING_LABELS),
+      !choseAnyOption(outcome, TOPPING_LABELS) &&
+      // The guest asked for nothing a note could carry, so any note here is
+      // invented. Caught live: the assistant copied their whole message into
+      // the note, which would have reached the store as a preparation request.
+      !operations(outcome).some(hasNote),
   },
   {
+    // 辣度 is a REQUIRED modifier, which makes this the sharp version of the
+    // case above: a required choice no longer holds a proposal back, and
+    // validation no longer rejects one that is missing it. The guest answers it
+    // on the card, and cannot apply the proposal until they have. What stays
+    // forbidden is the assistant answering it for them — 不辣 is the plausible
+    // guess, and a guess on a required choice is the one this asserts against.
     message: '加點一碗牛肉麵',
-    expects: 'asks for the spice level',
+    expects:
+      'proposes the noodles with the required spice level left unanswered',
     check: (outcome) =>
-      outcome.responseType === 'choices' || outcome.responseType === 'message',
+      outcome.responseType === 'proposal' &&
+      operations(outcome).length === 1 &&
+      adds(outcome, '牛肉麵') &&
+      !choseAnyOption(outcome, SPICE_LABELS),
   },
   {
     message: '加點一杯紅茶，半糖少冰，再加點一碗牛肉麵不辣',

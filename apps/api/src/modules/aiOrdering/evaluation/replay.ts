@@ -100,8 +100,17 @@ export type AiOrderingReplayInput = {
   minIntervalMs?: number;
 };
 
-/** Default pace: 15 requests a minute with room for the occasional repair. */
-const AI_ORDERING_REPLAY_MIN_INTERVAL_MS = 5_000;
+/**
+ * Default pace: the free tier allows 15 requests a minute.
+ *
+ * Paced for a repair on EVERY case, not an occasional one. A repair fires
+ * immediately after the call it repairs, so a case can cost two requests back
+ * to back; 5s between cases was paced for one call each and ran out of quota on
+ * a run where 4 of 14 cases needed a repair. At 10s a minute holds six cases,
+ * so twelve requests at the worst, and the suite takes about two and a half
+ * minutes.
+ */
+const AI_ORDERING_REPLAY_MIN_INTERVAL_MS = 10_000;
 
 const sleep = (ms: number) =>
   new Promise((resolve) => {
