@@ -12,6 +12,7 @@ import {
   handleStoreFrontFailure,
   handleStorefrontLoadFailure,
 } from '../storeFrontFailureFeedback';
+import { useCartItemEditor } from '../useCartItemEditor';
 import { createCartPageCommands } from './cartPage.commands';
 
 export function useCartPageVM() {
@@ -150,6 +151,13 @@ export function useCartPageVM() {
     [commands, storeId],
   );
 
+  const cartItemEditor = useCartItemEditor({
+    storeId,
+    cart,
+    participantId,
+    commands,
+  });
+
   const goToMenu = useCallback(() => {
     void navigate(PATHS.STOREFRONT.MENU_BUILD(storeId));
   }, [navigate, storeId]);
@@ -197,6 +205,7 @@ export function useCartPageVM() {
     totalItems,
     removeItem,
     changeQuantity,
+    ...cartItemEditor,
     submit,
     goToMenu,
     goToOrder,

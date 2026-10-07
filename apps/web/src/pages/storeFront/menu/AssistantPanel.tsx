@@ -276,6 +276,9 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                 onChangeQuantity={(item, quantity) => {
                   void vm.changeCartItemQuantity(item, quantity);
                 }}
+                onEdit={(item) => {
+                  void vm.startCartItemEdit(item);
+                }}
                 onRemove={(item) => {
                   void vm.removeCartItem(item);
                 }}
@@ -315,6 +318,9 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                 isApplying={vm.isApplying}
                 onChangeQuantity={(item, quantity) => {
                   void vm.changeCartItemQuantity(item, quantity);
+                }}
+                onEdit={(item) => {
+                  void vm.startCartItemEdit(item);
                 }}
                 onRemove={(item) => {
                   void vm.removeCartItem(item);

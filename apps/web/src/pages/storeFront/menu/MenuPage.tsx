@@ -6,13 +6,13 @@ import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
 import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
+import { ProductConfigSheet } from '@/features/storeFront/components/ProductConfigSheet';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
 import type { PublicModifier } from '@/models/storeFrontMenu';
 import { AssistantPanel } from './AssistantPanel';
 import { MenuCategoryTabs } from './MenuCategoryTabs';
 import { MenuStatusBanner } from './MenuStatusBanner';
 import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
-import { ProductConfigSheet } from './ProductConfigSheet';
 import { useAssistantPanelVM } from './useAssistantPanelVM';
 import { useMenuPageVM } from './useMenuPageVM';
 import { useScrollSpyTabs } from './useScrollSpyTabs';
@@ -239,6 +239,23 @@ export function MenuPage() {
           onClose={() => vm.setOpenProduct(null)}
           onConfirm={(request) => {
             void vm.addItem(request);
+          }}
+        />
+      ) : null}
+
+      {assistant.editingCartItem ? (
+        <ProductConfigSheet
+          // Rendered after the assistant panel so it opens above it: the edit
+          // control lives in the panel's cart. Keyed by the item, so what was
+          // picked for one never opens on another.
+          key={assistant.editingCartItem.item.id}
+          product={assistant.editingCartItem.product}
+          modifiers={assistant.editingCartItem.modifiers}
+          editing={assistant.editingCartItem.initial}
+          isMutating={assistant.isMutatingCart}
+          onClose={assistant.cancelCartItemEdit}
+          onConfirm={(request) => {
+            void assistant.saveCartItemEdit(request);
           }}
         />
       ) : null}

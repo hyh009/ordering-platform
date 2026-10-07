@@ -1,6 +1,7 @@
 import { useAppTranslation } from '@/app/i18n';
 import { OrderTotals } from '@/features/storeFront/components/OrderTotals';
 import { ParticipantOrderSection } from '@/features/storeFront/components/ParticipantOrderSection';
+import { ProductConfigSheet } from '@/features/storeFront/components/ProductConfigSheet';
 import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
@@ -80,6 +81,7 @@ export function CartPage() {
               isCurrentUser={group.isCurrentUser}
               isMutating={vm.isMutating}
               onChangeQuantity={vm.changeQuantity}
+              onEdit={vm.startCartItemEdit}
               onRemove={vm.removeItem}
             />
           ))}
@@ -122,6 +124,21 @@ export function CartPage() {
             </span>
           </button>
         </div>
+      ) : null}
+
+      {vm.editingCartItem ? (
+        <ProductConfigSheet
+          // Keyed by the item, so what was picked for one never opens on another.
+          key={vm.editingCartItem.item.id}
+          product={vm.editingCartItem.product}
+          modifiers={vm.editingCartItem.modifiers}
+          editing={vm.editingCartItem.initial}
+          isMutating={vm.isMutating}
+          onClose={vm.cancelCartItemEdit}
+          onConfirm={(request) => {
+            void vm.saveCartItemEdit(request);
+          }}
+        />
       ) : null}
     </div>
   );

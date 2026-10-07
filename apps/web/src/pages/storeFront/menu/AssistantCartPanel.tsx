@@ -19,6 +19,7 @@ type AssistantCartPanelProps = {
   /** True while an accepted proposal is still being applied to the cart. */
   isApplying: boolean;
   onChangeQuantity: (item: CartItem, quantity: number) => void;
+  onEdit: (item: CartItem) => void;
   onRemove: (item: CartItem) => void;
   onSubmit: () => void;
 };
@@ -42,6 +43,7 @@ export function AssistantCartPanel({
   isMutating,
   isApplying,
   onChangeQuantity,
+  onEdit,
   onRemove,
   onSubmit,
 }: AssistantCartPanelProps) {
@@ -70,7 +72,9 @@ export function AssistantCartPanel({
             items={group.items}
             isCurrentUser={group.isCurrentUser}
             isMutating={isMutating}
-            {...(group.isCurrentUser ? { onChangeQuantity, onRemove } : {})}
+            {...(group.isCurrentUser
+              ? { onChangeQuantity, onEdit, onRemove }
+              : {})}
           />
         ))}
       </div>

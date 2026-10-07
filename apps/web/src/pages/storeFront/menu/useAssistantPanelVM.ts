@@ -9,6 +9,7 @@ import { getStoreFrontRuntime } from '@/features/storeFront/runtime';
 import { groupCartItemsByParticipant } from '@/models/cart';
 
 import { handleStoreFrontFailure } from '../storeFrontFailureFeedback';
+import { useCartItemEditor } from '../useCartItemEditor';
 import { buildAssistantPanelView } from './assistantPanelView';
 import { createMenuPageCommands } from './menuPage.commands';
 
@@ -29,6 +30,14 @@ export function useAssistantPanelVM(input: {
   const { tDefault } = useAppTranslation();
   const runtime = getStoreFrontRuntime();
   const commands = useMemo(() => createMenuPageCommands(runtime), [runtime]);
+
+  const cartItemEditorCommands = useMemo(
+    () => ({
+      ensureMenuLoaded: commands.ensureMenuLoaded,
+      updateItem: commands.updateCartItem,
+    }),
+    [commands],
+  );
 
   const state = useStore(runtime.stores.aiOrdering);
   const view = useMemo(
@@ -90,6 +99,16 @@ export function useAssistantPanelVM(input: {
     },
     [commands, storeId],
   );
+
+  // Changing an item's options from the cart beside the conversation. The same
+  // editor the cart page opens, so a wrong sugar level is a tap here instead of
+  // another message to the assistant.
+  const cartItemEditor = useCartItemEditor({
+    storeId,
+    cart,
+    participantId,
+    commands: cartItemEditorCommands,
+  });
 
   /**
    * Submitting is the guest's own action, reusing the cart page's confirmation and
@@ -271,6 +290,7 @@ export function useAssistantPanelVM(input: {
     isCartEmpty,
     isMutatingCart,
     changeCartItemQuantity,
+    ...cartItemEditor,
     removeCartItem,
     submitCart,
   };

@@ -31,6 +31,16 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
       return runtime.commands.cart.updateItem(storeId, itemId, request);
     },
 
+    // The option picker for a cart item needs the product's choices. The menu
+    // is usually in the store already; this loads it when a page was opened
+    // without it.
+    async ensureMenuLoaded(storeId: string) {
+      if (runtime.stores.storefront.getState().menu) {
+        return { status: 'loaded' as const };
+      }
+      return runtime.commands.storefront.loadStoreWithMenu(storeId);
+    },
+
     removeCartItem(storeId: string, itemId: string) {
       return runtime.commands.cart.removeItem(storeId, itemId);
     },
