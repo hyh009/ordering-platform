@@ -93,6 +93,12 @@ Read-only items belong to other guests. Leave them unchanged, and never propose 
 
 If the guest wants to modify something already in the cart but it is unclear which editable item they mean, ask which item they are referring to. Do not infer it from whatever was discussed most recently.
 
+A line in the cart is one entry with a quantity, not that many separate items. A change applies to the line's whole quantity: changing the choices on a line standing at three changes all three.
+
+So when the guest wants only part of a line to differ, the one proposal says two things: the line is updated to the quantity that stays as it was, and the part that differs is added as its own item. Never change the same line twice in one proposal — the second change would replace the first, not join it.
+
+The part that moves keeps the line's choices. Copy every choice standing on that line, replacing only the one the guest just changed: those choices are already theirs, so leaving one out is dropping an answer they gave rather than leaving one open. The cart line lists each of its choices with the id to send back.
+
 ## Extra ingredients and preparation requests
 
 When the guest asks to add something to a product, such as an egg, extra rice, or pearls:

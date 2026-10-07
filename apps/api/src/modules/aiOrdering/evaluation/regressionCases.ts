@@ -1,3 +1,9 @@
+import {
+  AI_ORDERING_CART_FIXTURE,
+  AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+} from '@src/modules/aiOrdering/evaluation/fixture';
+
+import type { CartDto } from '@repo/shared';
 import type {
   AiOrderingReplayCase,
   AiOrderingReplayOutcome,
@@ -62,10 +68,93 @@ const choseAnyOption = (
       .some((field) => optionLabels.includes(field)),
   );
 
+/**
+ * Each proposed operation reduced to the quantity and the choices it names.
+ *
+ * Splitting a line has two correct shapes: the line can keep the part that
+ * stays while the rest is added, or the line can become the changed part while
+ * the remainder is added. The guest's cart is the same either way, so a check
+ * that pins one shape fails a right answer. These checks assert the cart the
+ * two operations would produce, and only that one is an update and one an add.
+ *
+ * An update names only what it CHANGES, so an operation that leaves the choices
+ * alone reports none — which is why a carried choice is asserted only on a side
+ * that had to restate the set anyway.
+ */
+const splitParts = (outcome: AiOrderingReplayOutcome) =>
+  operations(outcome).map((summary) => {
+    const fields = summary.split(' · ');
+    const head = fields[0] ?? '';
+
+    return {
+      isAdd: head.startsWith('+'),
+      quantity: Number(/×(\d+)/.exec(head)?.[1] ?? '0'),
+      options: fields.slice(1),
+    };
+  });
+
+/** Whether one side of a split stands at this quantity with these choices. */
+const splitSide = (
+  parts: ReturnType<typeof splitParts>,
+  quantity: number,
+  options: string[],
+) =>
+  parts.some(
+    (part) =>
+      part.quantity === quantity &&
+      options.every((option) => part.options.includes(option)),
+  );
+
+/** One update and one add: the two halves a split is made of. */
+const isOneUpdateAndOneAdd = (parts: ReturnType<typeof splitParts>) =>
+  parts.length === 2 && parts.filter((part) => part.isAdd).length === 1;
+
 const ICE_LABELS = ['正常冰', '少冰', '去冰'];
 const SUGAR_LABELS = ['全糖', '半糖', '無糖'];
 const TOPPING_LABELS = ['珍珠', '布丁', '仙草'];
 const SPICE_LABELS = ['不辣', '小辣', '大辣'];
+
+/**
+ * The fixture cart with the guest's own black teas standing as ONE line of
+ * three, which is what the cart does with three identical adds.
+ *
+ * Needed as its own cart because the shape is the whole point: a line at more
+ * than one is the only way to ask for part of a line to change, and putting
+ * such a line in the shared fixture would move every other case's prompt.
+ */
+const CART_WITH_THREE_BLACK_TEAS: CartDto = {
+  ...AI_ORDERING_CART_FIXTURE,
+  items: [
+    ...AI_ORDERING_CART_FIXTURE.items,
+    {
+      id: 'item-own-black-tea-x3',
+      productId: 'prod-black-tea',
+      productName: { 'zh-TW': '紅茶', en: 'Black tea' },
+      quantity: 3,
+      unitPrice: 35,
+      selectedOptions: [
+        {
+          modifierId: 'mod-sugar',
+          modifierName: { 'zh-TW': '甜度', en: 'Sweetness' },
+          optionId: 'opt-sugar-full',
+          optionName: { 'zh-TW': '全糖', en: 'Full sugar' },
+          priceAdjustment: 0,
+        },
+        {
+          modifierId: 'mod-ice',
+          modifierName: { 'zh-TW': '冰塊', en: 'Ice' },
+          optionId: 'opt-ice-normal',
+          optionName: { 'zh-TW': '正常冰', en: 'Regular ice' },
+          priceAdjustment: 0,
+        },
+      ],
+      addedByParticipantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+      participantDisplayName: 'Ana',
+      totalItemPrice: 105,
+      createdAt: AI_ORDERING_CART_FIXTURE.items[0]?.createdAt ?? '',
+    },
+  ],
+};
 
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
@@ -306,5 +395,59 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     message: '你們有停車場嗎',
     expects: 'reported as unanswerable: the store data says nothing about it',
     check: (outcome) => outcome.responseType === 'unanswered',
+  },
+  {
+    // Part of a line, not all of it. An operation applies to a whole line, so
+    // the only correct answer is two of them: the line drops to two, and the
+    // changed cup is added as its own. Observed against the real assistant as
+    // a request it could not carry out at all.
+    message: '三杯紅茶其中一杯改半糖',
+    cart: CART_WITH_THREE_BLACK_TEAS,
+    expects:
+      'two operations: the black tea line down to 2, and one half-sugar black tea added',
+    check: (outcome) => {
+      const parts = splitParts(outcome);
+
+      return (
+        outcome.responseType === 'proposal' &&
+        isOneUpdateAndOneAdd(parts) &&
+        // The sugar is a choice, so it belongs in the choices. A note repeating
+        // it — or worse, repeating the whole message — reaches the kitchen
+        // ticket as a preparation instruction nobody asked for.
+        !operations(outcome).some(hasNote) &&
+        // One cup is half sugar, two are not.
+        splitSide(parts, 1, ['半糖']) &&
+        splitSide(parts, 2, []) &&
+        !parts.some(
+          (part) => part.quantity === 2 && part.options.includes('半糖'),
+        )
+      );
+    },
+  },
+  {
+    // The same split, but the part that moves has to KEEP the choices it is not
+    // changing. Taken from a real conversation ("我要兩杯小的一杯大的") where the
+    // line's choices were shown by name only, so restating them meant matching
+    // each name back through the menu to recover its id.
+    // The product is named because the fixture cart holds a milk tea as well,
+    // which makes a bare "two of these" genuinely ambiguous — a different
+    // behavior, and not the one this case is for.
+    message: '購物車那三杯紅茶，我要兩杯去冰一杯正常冰',
+    cart: CART_WITH_THREE_BLACK_TEAS,
+    expects:
+      'the line drops to 1, and two black teas are added with no ice — still full sugar, which the guest never changed',
+    check: (outcome) => {
+      const parts = splitParts(outcome);
+
+      // Both sides change the ice, so both have to restate the whole set of
+      // choices — which is where full sugar is either carried or dropped.
+      return (
+        outcome.responseType === 'proposal' &&
+        isOneUpdateAndOneAdd(parts) &&
+        !operations(outcome).some(hasNote) &&
+        splitSide(parts, 2, ['去冰', '全糖']) &&
+        splitSide(parts, 1, ['正常冰', '全糖'])
+      );
+    },
   },
 ];

@@ -27,7 +27,11 @@ import { createAiOrderingAgent } from '@src/modules/aiOrdering/runtime/agent';
 import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
 import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
 
-import type { AiOrderingResponseType, SupportedLocale } from '@repo/shared';
+import type {
+  AiOrderingResponseType,
+  CartDto,
+  SupportedLocale,
+} from '@repo/shared';
 import type {
   AiOrderingContextInput,
   AiOrderingHistoryTurn,
@@ -49,6 +53,20 @@ export type AiOrderingReplayCase = {
    * Scripted for the same reason, and each entry names its own turn.
    */
   proposalLog?: NonNullable<AiOrderingContextInput['proposalLog']>;
+  /**
+   * The cart this case reads against, replacing the fixture's.
+   *
+   * Most cases share one cart so that a prompt edit is compared on identical
+   * input. A behavior that only appears at a particular cart SHAPE — a line
+   * standing at more than one, an item of another guest's — cannot be written
+   * that way: adding the line to the shared fixture would change the prompt of
+   * every other case at the same time, and the suite's totals would stop being
+   * comparable across runs. Such a case carries its own cart instead, and still
+   * depends on nothing but itself.
+   *
+   * Validation reads this same cart, so an `itemId` here is a real target.
+   */
+  cart?: CartDto;
   source?: { conversationId: string; turnId: string };
 };
 
@@ -162,12 +180,13 @@ async function replayOne(
   input: AiOrderingReplayInput,
   replayCase: AiOrderingReplayCase,
 ): Promise<AiOrderingReplayOutcome> {
+  const cart = replayCase.cart ?? AI_ORDERING_CART_FIXTURE;
   const context = buildAiOrderingContext({
     config: input.config,
     locale: input.locale ?? 'zh-TW',
     storeName: 'Replay Fixture',
     menu: AI_ORDERING_MENU_FIXTURE,
-    cart: AI_ORDERING_CART_FIXTURE,
+    cart,
     participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     message: replayCase.message,
     // Each case is replayed cold. Carrying history from one case into the next
@@ -190,7 +209,7 @@ async function replayOne(
     context,
     validation: {
       menu: AI_ORDERING_MENU_FIXTURE,
-      cart: AI_ORDERING_CART_FIXTURE,
+      cart,
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
     confirmationRequired: true,
