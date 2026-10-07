@@ -171,6 +171,7 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                           proposal={vm.proposal}
                           isApplying={vm.isApplying}
                           onDismissOperation={vm.dismissOperation}
+                          onAnswerChoice={vm.answerProposalChoice}
                           onApply={() => {
                             void vm.applyProposal();
                           }}
@@ -226,6 +227,7 @@ export function AssistantPanel({ vm }: AssistantPanelProps) {
                       proposal={vm.dock.proposal}
                       isApplying={vm.isApplying}
                       onDismissOperation={vm.dismissOperation}
+                      onAnswerChoice={vm.answerProposalChoice}
                       onApply={() => {
                         void vm.applyProposal();
                       }}

@@ -10,6 +10,7 @@ import type {
   AiOrderingReviewTurnDtoType,
   AiOrderingUnansweredEntry,
   AiOrderingUnansweredEntryDtoType,
+  AiOrderingChoiceGroupModel,
   AiOrderingChoiceModel,
   AiOrderingOperationModel,
   AiOrderingResponseDtoType,
@@ -82,6 +83,12 @@ function deserializeOperation(
         summary: dto.summary,
         itemId: dto.itemId,
         item,
+        ...(dto.choices !== undefined
+          ? { choices: deserializeChoiceGroups(dto.choices) }
+          : {}),
+        ...(dto.summaryWithoutChoices !== undefined
+          ? { summaryWithoutChoices: dto.summaryWithoutChoices }
+          : {}),
       };
     }
 
@@ -103,9 +110,40 @@ function deserializeOperation(
         operationId: dto.operationId,
         summary: dto.summary,
         item,
+        ...(dto.choices !== undefined
+          ? { choices: deserializeChoiceGroups(dto.choices) }
+          : {}),
+        ...(dto.summaryWithoutChoices !== undefined
+          ? { summaryWithoutChoices: dto.summaryWithoutChoices }
+          : {}),
       };
     }
   }
+}
+
+/**
+ * The choices an operation carries, kept field by field like everything else.
+ *
+ * Carried through because the guest answers and changes them on the proposal
+ * card and the answers go back out with the decision: an option id dropped here
+ * would be an option the guest cannot pick.
+ */
+function deserializeChoiceGroups(
+  choices: AiOrderingChoiceGroupModel[],
+): AiOrderingChoiceGroupModel[] {
+  return choices.map((choice) => ({
+    modifierId: choice.modifierId,
+    label: choice.label,
+    isRequired: choice.isRequired,
+    minSelect: choice.minSelect,
+    maxSelect: choice.maxSelect,
+    options: choice.options.map((option) => ({
+      optionId: option.optionId,
+      label: option.label,
+      priceAdjustment: option.priceAdjustment,
+    })),
+    selectedOptionIds: [...choice.selectedOptionIds],
+  }));
 }
 
 export const aiOrderingModel = {

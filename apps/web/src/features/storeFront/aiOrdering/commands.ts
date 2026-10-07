@@ -58,6 +58,20 @@ export type StoreFrontAiOrderingCommands = {
    */
   applyProposal(expectedStoreId: string): Promise<AiOrderingApplyResult>;
   dismissOperation(operationId: string): void;
+  /**
+   * Records the guest's answer to one choice on the open proposal, whether it
+   * fills a choice that was open or changes one that already had an answer.
+   *
+   * Synchronous and requestless on purpose: the options came down with the
+   * proposal, so answering is local until the guest applies. It is a command
+   * rather than a bare action because the panel is a view and views do not
+   * reach actions.
+   */
+  answerProposalChoice(input: {
+    operationId: string;
+    modifierId: string;
+    optionIds: string[];
+  }): void;
 };
 
 export function createStoreFrontAiOrderingCommands(deps: {
@@ -114,6 +128,10 @@ export function createStoreFrontAiOrderingCommands(deps: {
   return {
     dismissOperation(operationId) {
       actions.operationDismissed(operationId);
+    },
+
+    answerProposalChoice(input) {
+      actions.proposalChoiceAnswered(input);
     },
 
     async loadConversation(expectedStoreId) {
@@ -213,6 +231,24 @@ export function createStoreFrontAiOrderingCommands(deps: {
 
       if (keptOperationIds.length === 0) return invalidRequest;
 
+      const kept = new Set(keptOperationIds);
+      // Only the answers that belong to a row still being applied: a dismissed
+      // row's answer is not part of this decision, and the server refuses an
+      // answer for an operation it is not executing.
+      //
+      // An empty answer is sent too. An answer replaces what was selected, so
+      // "none" is how the guest takes back an optional extra the assistant
+      // added; dropping it here would silently keep the extra.
+      const resolvedChoices = Object.entries(proposal.choiceAnswers)
+        .filter(([operationId]) => kept.has(operationId))
+        .flatMap(([operationId, byModifier]) =>
+          Object.entries(byModifier).map(([modifierId, optionIds]) => ({
+            operationId,
+            modifierId,
+            optionIds,
+          })),
+        );
+
       const scoped = requireScopedToken(expectedStoreId);
       if (typeof scoped !== 'string') return scoped;
       const token = scoped;
@@ -222,7 +258,11 @@ export function createStoreFrontAiOrderingCommands(deps: {
       try {
         const decision = await storeFrontAiOrderingService.decideProposal(
           token,
-          { proposalId: proposal.proposalId, keptOperationIds },
+          {
+            proposalId: proposal.proposalId,
+            keptOperationIds,
+            ...(resolvedChoices.length > 0 ? { resolvedChoices } : {}),
+          },
         );
 
         if (!hasScopedToken(expectedStoreId, token)) return mismatchedSession;

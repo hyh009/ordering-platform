@@ -219,6 +219,17 @@ export function useAssistantPanelVM(input: {
     [commands],
   );
 
+  const answerProposalChoice = useCallback(
+    (input: {
+      operationId: string;
+      modifierId: string;
+      optionIds: string[];
+    }) => {
+      commands.answerAssistantProposalChoice(input);
+    },
+    [commands],
+  );
+
   // Auto-apply, when the store AND the active version both allow it. The server
   // resolved that into `showsConfirmationControls`; the panel never decides it.
   // The ref keeps one proposal from being applied twice as the store re-renders.
@@ -254,6 +265,7 @@ export function useAssistantPanelVM(input: {
     answerQuestions,
     applyProposal,
     dismissOperation,
+    answerProposalChoice,
     cartGroups,
     cartTotals,
     isCartEmpty,

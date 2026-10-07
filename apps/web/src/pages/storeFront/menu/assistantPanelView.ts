@@ -9,8 +9,10 @@
  */
 
 import type {
+  AiOrderingChoiceGroupModel,
   AiOrderingChoiceInputMode,
   AiOrderingChoiceModel,
+  AiOrderingOperationModel,
   AiOrderingUnansweredReason,
 } from '@/models/aiOrdering';
 import type {
@@ -131,25 +133,100 @@ const FAILURE_KIND_BY_CODE: Partial<Record<string, AssistantRowFailureKind>> = {
  */
 export type AssistantProposalRecord = 'live' | 'history';
 
+/**
+ * One choice on a proposed item, in the shape the card's picker takes.
+ *
+ * The same shape whether the guest is being asked for it or has chosen to
+ * change it, which is what lets the card have one picker instead of two.
+ */
+export type AssistantChoicePickerView = {
+  operationId: string;
+  /** The item the choice belongs to, so the guest knows what they are answering for. */
+  itemSummary: string;
+  modifierId: string;
+  label: string;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  /** More than one option may be picked, so a tap toggles and the guest confirms. */
+  isMultiSelect: boolean;
+  options: { id: string; label: string; priceAdjustment: number }[];
+  /**
+   * What is selected now: the guest's answer where they gave one, otherwise
+   * what the assistant proposed.
+   */
+  selectedOptionIds: string[];
+};
+
+/**
+ * A choice that already has an answer, shown on its row as text the guest can
+ * tap to change. `selectedLabels` is empty for an optional choice the guest
+ * declined, which is an answer and stays changeable like any other.
+ */
+export type AssistantRowChoiceView = AssistantChoicePickerView & {
+  selectedLabels: string[];
+};
+
 export type AssistantProposalRowView = {
   operationId: string;
+  /**
+   * The operation's line. For an item that carries choices it is the line
+   * WITHOUT them: `choices` below says what is selected, and it is the one that
+   * follows the guest's edits.
+   */
   summary: string;
   status: AiOrderingProposalRowStatus;
   /** Present only on a `failed` row, and only once the reason is known. */
   failure?: { kind: AssistantRowFailureKind };
   /** A row can only be dismissed while it is still undecided. */
   canDismiss: boolean;
+  /** The answered choices, in the order the guest was or would be asked. */
+  choices: AssistantRowChoiceView[];
+  /** Choices can only be changed while the row is still undecided. */
+  canEditChoices: boolean;
+};
+
+/**
+ * The choice the guest is being asked for now.
+ *
+ * Reported one at a time rather than as a list: the guest answers these in the
+ * card, and showing every open choice on every row at once is the pile of
+ * decisions this is meant to avoid. The order is the backend's — required
+ * before optional, grouped by the item they belong to — so finishing one drink
+ * comes before starting the next.
+ */
+export type AssistantOpenChoiceView = AssistantChoicePickerView & {
+  /** How many are still waiting, including this one. */
+  remainingCount: number;
 };
 
 export type AssistantProposalView = {
   proposalId: string;
   rows: AssistantProposalRowView[];
   /**
+   * The choice the guest is being asked for now, or null when none is left.
+   *
+   * An optional choice counts as answered once it has been skipped, so the
+   * queue always empties. A choice that already has an answer — the guest's or
+   * the assistant's — is never queued; it is on its row, changeable.
+   */
+  openChoice: AssistantOpenChoiceView | null;
+  /**
    * Whether the guest decides. Resolved server-side from the store setting AND
    * the active version's permission — the panel only reports it.
    */
   showsConfirmationControls: boolean;
-  /** False once every row is dismissed, or once the proposal has been applied. */
+  /**
+   * True while the proposal is still the guest's to decide: not applied, and at
+   * least one row not dismissed. Distinct from `canApply`, which also waits on
+   * the required choices — a proposal with one of those open is still waiting
+   * on the guest, just not on the button yet.
+   */
+  isAwaitingDecision: boolean;
+  /**
+   * False once every row is dismissed, once the proposal has been applied, or
+   * while a required choice is unanswered.
+   */
   canApply: boolean;
   isApplied: boolean;
 };
@@ -238,7 +315,10 @@ function toEntryView(
         proposalId: response.proposalId,
         operations: response.operations.map((operation) => ({
           operationId: operation.operationId,
-          summary: operation.summary,
+          // The line without the choices: the guest may have changed them on
+          // the card, and a record that named the assistant's picks would then
+          // state something the cart does not hold.
+          summary: rowSummary(operation),
         })),
         record:
           context.liveProposalId === response.proposalId ? 'live' : 'history',
@@ -259,37 +339,169 @@ function toEntryView(
   }
 }
 
+function rowSummary(operation: AiOrderingOperationModel): string {
+  return operation.type === 'remove_own_item'
+    ? operation.summary
+    : (operation.summaryWithoutChoices ?? operation.summary);
+}
+
+/**
+ * Adds or removes one option of a multi-select choice.
+ *
+ * At the maximum a further option is ignored rather than swapped in: which of
+ * the picked ones to drop is not something to guess, so the guest unpicks one.
+ */
+export function toggleChoiceOption(
+  choice: { maxSelect: number },
+  selectedOptionIds: string[],
+  optionId: string,
+): string[] {
+  if (selectedOptionIds.includes(optionId)) {
+    return selectedOptionIds.filter((id) => id !== optionId);
+  }
+
+  return selectedOptionIds.length >= choice.maxSelect
+    ? selectedOptionIds
+    : [...selectedOptionIds, optionId];
+}
+
+/** Whether a multi-select choice may be confirmed with what is picked so far. */
+export function canConfirmChoice(
+  choice: { minSelect: number; maxSelect: number },
+  selectedOptionIds: string[],
+): boolean {
+  return (
+    selectedOptionIds.length >= choice.minSelect &&
+    selectedOptionIds.length <= choice.maxSelect
+  );
+}
+
+type RowChoices = {
+  /** Already answered, by the guest or by the assistant. */
+  answered: AssistantRowChoiceView[];
+  /** Still waiting on the guest. */
+  open: AssistantChoicePickerView[];
+};
+
+/**
+ * Splits a row's choices into the ones that have an answer and the ones still
+ * waiting for one.
+ *
+ * "Answered" is decided per choice and by nothing else, so changing one answer
+ * cannot send another back to the queue.
+ */
+function splitRowChoices(
+  operation: AiOrderingOperationModel,
+  answers: Record<string, string[]>,
+): RowChoices {
+  const choices: AiOrderingChoiceGroupModel[] =
+    operation.type === 'remove_own_item' ? [] : (operation.choices ?? []);
+  const split: RowChoices = { answered: [], open: [] };
+
+  for (const choice of choices) {
+    const answer = answers[choice.modifierId];
+    const selected = answer ?? choice.selectedOptionIds;
+    // A required choice is answered when enough is selected, whoever selected
+    // it. An optional one is also answered by the guest saying "none", which is
+    // why an explicit empty answer counts and an untouched empty one does not.
+    const isAnswered = choice.isRequired
+      ? selected.length >= choice.minSelect
+      : answer !== undefined || selected.length > 0;
+    const offered = choice.options.filter((option) =>
+      selected.includes(option.optionId),
+    );
+    const picker: AssistantChoicePickerView = {
+      operationId: operation.operationId,
+      itemSummary: rowSummary(operation),
+      modifierId: choice.modifierId,
+      label: choice.label,
+      isRequired: choice.isRequired,
+      minSelect: choice.minSelect,
+      maxSelect: choice.maxSelect,
+      isMultiSelect: choice.maxSelect > 1,
+      options: choice.options.map((option) => ({
+        id: option.optionId,
+        label: option.label,
+        priceAdjustment: option.priceAdjustment,
+      })),
+      // Only what can still be picked. A selection that has since sold out is
+      // not on the list, and counting it would spend one of the guest's picks
+      // on something they cannot see.
+      selectedOptionIds: offered.map((option) => option.optionId),
+    };
+
+    if (isAnswered) {
+      split.answered.push({
+        ...picker,
+        selectedLabels: offered.map((option) => option.label),
+      });
+    } else {
+      split.open.push(picker);
+    }
+  }
+
+  return split;
+}
+
 function toProposalView(
   proposal: NonNullable<StoreFrontAiOrderingState['proposal']>,
 ): AssistantProposalView {
+  const openChoices: AssistantChoicePickerView[] = [];
+
   const rows: AssistantProposalRowView[] = proposal.rows.map((row) => {
     const kind =
       row.status === 'failed' && row.failureCode !== undefined
         ? (FAILURE_KIND_BY_CODE[row.failureCode] ?? 'unknown')
         : undefined;
+    const choices = splitRowChoices(
+      row.operation,
+      proposal.choiceAnswers[row.operation.operationId] ?? {},
+    );
+
+    // Only rows that are actually being applied are asked about: a dismissed
+    // row's choices are not going anywhere, so asking for them would be asking
+    // for nothing.
+    if (row.status === 'pending') {
+      openChoices.push(...choices.open);
+    }
 
     return {
       operationId: row.operation.operationId,
-      summary: row.operation.summary,
+      summary: rowSummary(row.operation),
       status: row.status,
       // Undecided is the only dismissable state. Once the proposal is decided
       // every row has a result, and a decided proposal cannot be answered again.
       canDismiss: row.status === 'pending',
+      choices: choices.answered,
+      canEditChoices: row.status === 'pending' && !proposal.isApplied,
       ...(kind !== undefined ? { failure: { kind } } : {}),
     };
   });
 
+  const [next] = openChoices;
+  const hasUnansweredRequired = openChoices.some((choice) => choice.isRequired);
+  // Gated on `isApplied` again, now that it means something it did not before:
+  // the proposal has been decided, and a decided proposal cannot be answered a
+  // second time. There are no stranded rows to resume, because the server
+  // reports a result for every operation including the ones a failure left
+  // unattempted.
+  const isAwaitingDecision =
+    !proposal.isApplied && rows.some((row) => row.status === 'pending');
+
   return {
     proposalId: proposal.proposalId,
     rows,
-    showsConfirmationControls: proposal.confirmationRequired,
-    // Gated on `isApplied` again, now that it means something it did not
-    // before: the proposal has been decided, and a decided proposal cannot be
-    // answered a second time. There are no stranded rows to resume, because the
-    // server reports a result for every operation including the ones a failure
-    // left unattempted.
-    canApply:
-      !proposal.isApplied && rows.some((row) => row.status === 'pending'),
+    openChoice:
+      next && !proposal.isApplied
+        ? { ...next, remainingCount: openChoices.length }
+        : null,
+    // A required choice still open means the proposal is not applicable at all,
+    // whatever the store's confirmation setting says. The server refuses it too,
+    // so this is the button agreeing with the guarantee rather than being it.
+    showsConfirmationControls:
+      proposal.confirmationRequired || hasUnansweredRequired,
+    isAwaitingDecision,
+    canApply: isAwaitingDecision && !hasUnansweredRequired,
     isApplied: proposal.isApplied,
   };
 }
@@ -311,7 +523,10 @@ export function buildAssistantPanelView(input: {
 
   const proposal = state.proposal ? toProposalView(state.proposal) : null;
   const dock: AssistantDockView | null =
-    proposal?.showsConfirmationControls && proposal.canApply
+    // `isAwaitingDecision`, not `canApply`: a proposal with a required choice
+    // still open cannot be applied yet, but it is waiting on the guest all the
+    // same, and its picker has to stay where the rest of the card will be.
+    proposal?.showsConfirmationControls && proposal.isAwaitingDecision
       ? { kind: 'proposal', proposal }
       : lastEntry?.kind === 'choices'
         ? {

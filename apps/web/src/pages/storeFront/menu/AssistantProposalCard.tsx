@@ -1,9 +1,13 @@
-import { Check, X } from 'lucide-react';
+import { useState } from 'react';
+import { Check, Pencil, X } from 'lucide-react';
 
 import { useAppTranslation } from '@/app/i18n';
 import { Button } from '@/shared/components/ui/button';
 
+import { canConfirmChoice, toggleChoiceOption } from './assistantPanelView';
+
 import type {
+  AssistantChoicePickerView,
   AssistantProposalView,
   AssistantRowFailureKind,
 } from './assistantPanelView';
@@ -49,6 +53,11 @@ type AssistantProposalCardProps = {
   proposal: AssistantProposalView;
   isApplying: boolean;
   onDismissOperation: (operationId: string) => void;
+  onAnswerChoice: (input: {
+    operationId: string;
+    modifierId: string;
+    optionIds: string[];
+  }) => void;
   onApply: () => void;
 };
 
@@ -57,14 +66,46 @@ type AssistantProposalCardProps = {
  * with its own dismiss control, and a single apply at the bottom. Per-row dismiss
  * is what makes "mostly right" usable — the guest keeps three of four changes
  * instead of rejecting all of them and retyping.
+ *
+ * A choice the assistant left open is asked here, ONE at a time, between the
+ * rows and the apply button. One at a time because the alternative is a wall of
+ * pickers on every row, and because the next question often depends on how the
+ * last one felt. Answering costs no request: the options arrived with the
+ * proposal, so this is a tap rather than another turn of conversation.
+ *
+ * A choice that already has an answer sits on its row as text. Tapping it puts
+ * THAT choice in the same picker, ahead of whatever was being asked, and
+ * answering puts the queue back. So there is still one picker, and correcting a
+ * sugar level the assistant guessed is a tap instead of an argument with it.
  */
 export function AssistantProposalCard({
   proposal,
   isApplying,
   onDismissOperation,
+  onAnswerChoice,
   onApply,
 }: AssistantProposalCardProps) {
   const { tDefault } = useAppTranslation();
+
+  // Which answered choice the guest has opened to change. Which option is
+  // selected is not kept here: that is the proposal's state and goes through
+  // `onAnswerChoice`. This is only "which picker is showing".
+  const [editing, setEditing] = useState<{
+    operationId: string;
+    modifierId: string;
+  } | null>(null);
+
+  // Looked up on every render rather than stored, so a row that has since been
+  // dismissed or applied simply stops being editable and the queue takes over.
+  const edited = editing
+    ? proposal.rows
+        .find(
+          (row) =>
+            row.operationId === editing.operationId && row.canEditChoices,
+        )
+        ?.choices.find((choice) => choice.modifierId === editing.modifierId)
+    : undefined;
+  const picker = edited ?? proposal.openChoice;
 
   return (
     // A column with a scrolling list, so in a height-limited container the rows
@@ -121,6 +162,66 @@ export function AssistantProposalCard({
               )}
             </div>
 
+            {row.choices.length > 0 ? (
+              <ul className="flex flex-wrap gap-1.5">
+                {row.choices.map((choice) => {
+                  const text = tDefault(
+                    'guest.assistant.choiceValue',
+                    '{{label}}: {{value}}',
+                    {
+                      label: choice.label,
+                      value:
+                        choice.selectedLabels.length > 0
+                          ? choice.selectedLabels.join(' / ')
+                          : tDefault('guest.assistant.choiceNone', 'None'),
+                    },
+                  );
+                  const isEditing =
+                    edited?.operationId === choice.operationId &&
+                    edited.modifierId === choice.modifierId;
+
+                  return (
+                    <li key={choice.modifierId}>
+                      {row.canEditChoices ? (
+                        <button
+                          type="button"
+                          aria-pressed={isEditing}
+                          aria-label={tDefault(
+                            'guest.assistant.changeChoice',
+                            'Change {{choice}}',
+                            { choice: text },
+                          )}
+                          disabled={isApplying}
+                          className={
+                            isEditing
+                              ? 'flex items-center gap-1 rounded-full border border-storefront-primary px-2 py-0.5 text-xs text-storefront-primary'
+                              : 'flex items-center gap-1 rounded-full border border-storefront-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted'
+                          }
+                          onClick={() => {
+                            setEditing(
+                              isEditing
+                                ? null
+                                : {
+                                    operationId: choice.operationId,
+                                    modifierId: choice.modifierId,
+                                  },
+                            );
+                          }}
+                        >
+                          {text}
+                          <Pencil size={10} strokeWidth={2} />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {text}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+
             {/* The reason sits under its own row rather than in the status
                 column: it is a sentence, and squeezing it beside the summary
                 would wrap both into something unreadable on a phone. */}
@@ -140,6 +241,29 @@ export function AssistantProposalCard({
         ))}
       </ul>
 
+      {picker ? (
+        <ChoicePicker
+          // Keyed by the choice, so the picks made for one never carry over to
+          // the next one shown in the same place.
+          key={`${picker.operationId}:${picker.modifierId}`}
+          choice={picker}
+          // Only the queue has a count. A choice opened to change is not one of
+          // the ones still waiting.
+          remainingCount={
+            edited ? 1 : (proposal.openChoice?.remainingCount ?? 1)
+          }
+          disabled={isApplying}
+          onAnswer={(optionIds) => {
+            onAnswerChoice({
+              operationId: picker.operationId,
+              modifierId: picker.modifierId,
+              optionIds,
+            });
+            setEditing(null);
+          }}
+        />
+      ) : null}
+
       {proposal.showsConfirmationControls && proposal.canApply ? (
         <Button
           variant="storefront"
@@ -150,6 +274,129 @@ export function AssistantProposalCard({
           {tDefault('guest.assistant.applyProposal', 'Add these to my cart')}
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+type ChoicePickerProps = {
+  choice: AssistantChoicePickerView;
+  remainingCount: number;
+  disabled: boolean;
+  onAnswer: (optionIds: string[]) => void;
+};
+
+/**
+ * The card's one picker: a single choice and its options.
+ *
+ * A choice that takes one answer is answered by the tap. One that takes several
+ * toggles, and is answered by the button, because there is no telling from a
+ * tap whether the guest is finished. What is ticked before that button is a
+ * draft and lives here; the rules for it — the maximum, when it may be
+ * confirmed — are the view's.
+ */
+function ChoicePicker({
+  choice,
+  remainingCount,
+  disabled,
+  onAnswer,
+}: ChoicePickerProps) {
+  const { tDefault } = useAppTranslation();
+  const [draft, setDraft] = useState(choice.selectedOptionIds);
+  const selected = choice.isMultiSelect ? draft : choice.selectedOptionIds;
+
+  return (
+    <div className="mt-3 shrink-0 border-t border-storefront-border pt-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="text-sm font-medium">
+          {choice.label}
+          {choice.isRequired ? null : (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              {tDefault('guest.assistant.choiceOptional', 'optional')}
+            </span>
+          )}
+          {choice.isMultiSelect ? (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              {tDefault('guest.assistant.choiceMax', 'up to {{count}}', {
+                count: choice.maxSelect,
+              })}
+            </span>
+          ) : null}
+        </span>
+        {remainingCount > 1 ? (
+          <span className="text-xs text-muted-foreground">
+            {tDefault('guest.assistant.choicesRemaining', '{{count}} left', {
+              count: remainingCount,
+            })}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="mb-2 text-xs text-muted-foreground">{choice.itemSummary}</p>
+
+      <div className="flex flex-wrap gap-2">
+        {choice.options.map((option) => {
+          const isSelected = selected.includes(option.id);
+
+          return (
+            <Button
+              key={option.id}
+              type="button"
+              variant={isSelected ? 'storefront' : 'outline'}
+              size="sm"
+              aria-pressed={isSelected}
+              disabled={disabled}
+              onClick={() => {
+                if (choice.isMultiSelect) {
+                  setDraft(toggleChoiceOption(choice, draft, option.id));
+                } else {
+                  onAnswer([option.id]);
+                }
+              }}
+            >
+              {option.label}
+              {option.priceAdjustment !== 0 ? (
+                <span className="ml-1 text-xs opacity-70">
+                  +{option.priceAdjustment}
+                </span>
+              ) : null}
+            </Button>
+          );
+        })}
+
+        {/* Declining is an answer, and it is the one an optional choice needs:
+            without it the queue would never empty and the guest could not
+            reach the button. It also clears an extra the assistant added. */}
+        {choice.isMultiSelect || choice.isRequired ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={() => {
+              onAnswer([]);
+            }}
+          >
+            {tDefault('guest.assistant.declineChoice', 'No thanks')}
+          </Button>
+        )}
+
+        {choice.isMultiSelect ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled || !canConfirmChoice(choice, draft)}
+            onClick={() => {
+              onAnswer(draft);
+            }}
+          >
+            {/* Confirming nothing is declining, and reads as that. */}
+            {draft.length === 0 && !choice.isRequired
+              ? tDefault('guest.assistant.declineChoice', 'No thanks')
+              : tDefault('guest.assistant.confirmChoice', 'Done')}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

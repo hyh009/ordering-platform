@@ -75,6 +75,18 @@ export type AiOrderingPendingProposal = {
   /** Resolved server-side. The client never decides this. */
   confirmationRequired: boolean;
   rows: AiOrderingProposalRow[];
+  /**
+   * What the guest has answered on this proposal, by operation id and then
+   * modifier id. An entry overrides what the operation's own choice says is
+   * selected; an empty list is the answer "none".
+   *
+   * Held on the proposal rather than beside it so it cannot outlive the thing
+   * it answers: a new proposal replaces the whole object, and stale answers
+   * cannot be sent with it. Answering costs no request — the options were
+   * already delivered with the proposal — so this is the only place an answer
+   * lives until the guest applies.
+   */
+  choiceAnswers: Record<string, Record<string, string[]>>;
   /** True once apply has run, so the panel shows results instead of controls. */
   isApplied: boolean;
 };

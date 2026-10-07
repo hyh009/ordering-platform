@@ -1,5 +1,7 @@
 import type {
   AiOrderingChoice,
+  AiOrderingChoiceGroup,
+  AiOrderingChoiceGroupOption,
   AiOrderingConversationDetailDto,
   AiOrderingGuestConversationDto,
   AiOrderingGuestTurnDto,
@@ -62,6 +64,8 @@ export type AiOrderingTurnDtoType = AiOrderingTurnResponseData;
 
 export type AiOrderingChoiceModel = AiOrderingChoice;
 export type AiOrderingOperationModel = AiOrderingOperation;
+export type AiOrderingChoiceGroupModel = AiOrderingChoiceGroup;
+export type AiOrderingChoiceGroupOptionModel = AiOrderingChoiceGroupOption;
 export type AiOrderingMessageModel = AiOrderingMessageResponse;
 export type AiOrderingChoicesModel = AiOrderingChoicesResponse;
 export type AiOrderingProposalModel = AiOrderingProposalResponse;

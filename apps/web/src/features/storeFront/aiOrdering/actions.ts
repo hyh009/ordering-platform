@@ -110,6 +110,7 @@ export function createStoreFrontAiOrderingActions(
                 operation,
                 status: 'pending' as const,
               })),
+              choiceAnswers: {},
               isApplied: false,
             }
           : null;
@@ -189,10 +190,43 @@ export function createStoreFrontAiOrderingActions(
                   operation,
                   status: 'pending',
                 })),
+                choiceAnswers: {},
                 isApplied: false,
               }
             : null,
       });
+    },
+
+    /**
+     * Records the guest's answer to one choice on the proposal. It replaces any
+     * earlier answer to the same choice and leaves every other one alone, so
+     * changing a sugar level does not reopen the ice.
+     *
+     * No request: the options came with the proposal, so answering is local
+     * until they apply. That is what makes picking a sugar level a tap rather
+     * than another model call, which is what it used to cost.
+     */
+    proposalChoiceAnswered(input: {
+      operationId: string;
+      modifierId: string;
+      optionIds: string[];
+    }) {
+      store.setState((state) =>
+        state.proposal
+          ? {
+              proposal: {
+                ...state.proposal,
+                choiceAnswers: {
+                  ...state.proposal.choiceAnswers,
+                  [input.operationId]: {
+                    ...state.proposal.choiceAnswers[input.operationId],
+                    [input.modifierId]: input.optionIds,
+                  },
+                },
+              },
+            }
+          : {},
+      );
     },
 
     operationDismissed(operationId: string) {

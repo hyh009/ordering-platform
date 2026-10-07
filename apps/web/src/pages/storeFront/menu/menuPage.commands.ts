@@ -61,5 +61,13 @@ export function createMenuPageCommands(runtime: StoreFrontRuntime) {
     dismissAssistantOperation(operationId: string) {
       runtime.commands.aiOrdering.dismissOperation(operationId);
     },
+
+    answerAssistantProposalChoice(input: {
+      operationId: string;
+      modifierId: string;
+      optionIds: string[];
+    }) {
+      runtime.commands.aiOrdering.answerProposalChoice(input);
+    },
   };
 }

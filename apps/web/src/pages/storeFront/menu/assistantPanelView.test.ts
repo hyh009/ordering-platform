@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { createStoreFrontAiOrderingActions } from '@/features/storeFront/aiOrdering/actions';
 import { createStoreFrontAiOrderingStore } from '@/features/storeFront/aiOrdering/store';
 
-import { buildAssistantPanelView } from './assistantPanelView';
+import {
+  buildAssistantPanelView,
+  canConfirmChoice,
+  toggleChoiceOption,
+} from './assistantPanelView';
 
 import type {
+  AiOrderingChoiceGroupModel,
   AiOrderingProposalState,
   AiOrderingTurn,
 } from '@/models/aiOrdering';
@@ -30,19 +35,56 @@ function turn(response: AiOrderingTurn['response']): AiOrderingTurn {
 function proposalTurn(options: {
   confirmationRequired: boolean;
   operationIds: string[];
+  /** Choices per operation id, for the ones that have any. */
+  choices?: Record<string, AiOrderingChoiceGroupModel[]>;
 }): AiOrderingTurn {
   return turn({
     type: 'proposal',
     reply: 'Here is what I would change.',
     proposalId: 'proposal-1',
     confirmationRequired: options.confirmationRequired,
-    operations: options.operationIds.map((operationId, index) => ({
-      type: 'add_item',
-      operationId,
-      summary: `Add item ${String(index + 1)}`,
-      item: { productId: `product-${String(index + 1)}`, quantity: 1 },
-    })),
+    operations: options.operationIds.map((operationId, index) => {
+      const choices = options.choices?.[operationId];
+
+      return {
+        type: 'add_item',
+        operationId,
+        summary: `Add item ${String(index + 1)}`,
+        item: { productId: `product-${String(index + 1)}`, quantity: 1 },
+        ...(choices
+          ? {
+              choices,
+              summaryWithoutChoices: `Add item ${String(index + 1)}`,
+            }
+          : {}),
+      };
+    }),
   });
+}
+
+function choice(
+  modifierId: string,
+  options: {
+    isRequired?: boolean;
+    optionIds?: string[];
+    /** What the assistant already selected. Nothing, unless given. */
+    selectedOptionIds?: string[];
+    maxSelect?: number;
+  } = {},
+): AiOrderingChoiceGroupModel {
+  return {
+    modifierId,
+    label: `Choice ${modifierId}`,
+    isRequired: options.isRequired ?? true,
+    minSelect: options.isRequired === false ? 0 : 1,
+    maxSelect: options.maxSelect ?? 1,
+    options: (options.optionIds ?? ['opt-a', 'opt-b']).map((optionId) => ({
+      optionId,
+      label: `Option ${optionId}`,
+      priceAdjustment: 0,
+    })),
+    selectedOptionIds: options.selectedOptionIds ?? [],
+  };
 }
 
 describe('assistant panel entry point', () => {
@@ -230,12 +272,18 @@ describe('assistant proposal card', () => {
         summary: 'Add item 1',
         status: 'pending',
         canDismiss: true,
+        // These items offer no choices, so there is nothing to show or change.
+        choices: [],
+        canEditChoices: true,
       },
       {
         operationId: 'op-2',
         summary: 'Add item 2',
         status: 'pending',
         canDismiss: true,
+        // These items offer no choices, so there is nothing to show or change.
+        choices: [],
+        canEditChoices: true,
       },
     ]);
   });
@@ -762,5 +810,470 @@ describe('assistant panel dock', () => {
     });
 
     expect(view().dock).toBeNull();
+  });
+});
+
+describe('choices a proposal left open', () => {
+  it('asks for one choice at a time, grouped by the item it belongs to', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+        choices: {
+          'op-1': [choice('mod-sugar'), choice('mod-ice')],
+          'op-2': [choice('mod-spice')],
+        },
+      }),
+    });
+
+    // One, not three. A wall of pickers across every row is the pile of
+    // decisions this exists to avoid.
+    expect(view().proposal?.openChoice).toMatchObject({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      itemSummary: 'Add item 1',
+      remainingCount: 3,
+    });
+  });
+
+  it('moves to the next choice once one is answered', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: {
+          'op-1': [choice('mod-sugar'), choice('mod-ice')],
+        },
+      }),
+    });
+
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      optionIds: ['opt-a'],
+    });
+
+    expect(view().proposal?.openChoice).toMatchObject({
+      modifierId: 'mod-ice',
+      remainingCount: 1,
+    });
+  });
+
+  it('withholds apply until every required choice is answered', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: { 'op-1': [choice('mod-sugar')] },
+      }),
+    });
+
+    expect(view().proposal?.canApply).toBe(false);
+
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      optionIds: ['opt-a'],
+    });
+
+    expect(view().proposal?.canApply).toBe(true);
+    expect(view().proposal?.openChoice).toBeNull();
+  });
+
+  it('counts a declined optional choice as answered', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: {
+          'op-1': [choice('mod-topping', { isRequired: false })],
+        },
+      }),
+    });
+
+    // Optional, so it never blocked apply — but it still has to leave the queue
+    // or the guest would be asked about it forever.
+    expect(view().proposal?.canApply).toBe(true);
+
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-topping',
+      optionIds: [],
+    });
+
+    expect(view().proposal?.openChoice).toBeNull();
+  });
+
+  it('stops asking for the choices of a row the guest dismissed', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+        choices: {
+          'op-1': [choice('mod-sugar')],
+          'op-2': [choice('mod-spice')],
+        },
+      }),
+    });
+
+    actions.operationDismissed('op-1');
+
+    // Nothing is going anywhere for op-1, so asking for its sugar level would
+    // be asking for nothing.
+    expect(view().proposal?.openChoice).toMatchObject({
+      operationId: 'op-2',
+      modifierId: 'mod-spice',
+      remainingCount: 1,
+    });
+  });
+
+  it('shows the confirm controls even when the store applies automatically', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: false,
+        operationIds: ['op-1'],
+        choices: { 'op-1': [choice('mod-sugar')] },
+      }),
+    });
+
+    // Otherwise the panel would auto-apply a proposal the server will refuse,
+    // and the guest would see an error for a choice nobody asked them to make.
+    expect(view().proposal?.showsConfirmationControls).toBe(true);
+    expect(view().proposal?.canApply).toBe(false);
+  });
+});
+
+describe('choices a proposal already has an answer for', () => {
+  const answeredProposal = () =>
+    proposalTurn({
+      confirmationRequired: true,
+      operationIds: ['op-1'],
+      choices: {
+        'op-1': [
+          // The assistant picked a sugar level; the guest never stated the ice.
+          choice('mod-sugar', { selectedOptionIds: ['opt-a'] }),
+          choice('mod-ice'),
+          choice('mod-topping', { isRequired: false }),
+        ],
+      },
+    });
+
+  it('shows an answered choice on its row, changeable, and does not ask for it', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: answeredProposal() });
+
+    const proposal = view().proposal;
+
+    expect(proposal?.rows[0]?.canEditChoices).toBe(true);
+    expect(proposal?.rows[0]?.choices).toMatchObject([
+      {
+        operationId: 'op-1',
+        modifierId: 'mod-sugar',
+        selectedOptionIds: ['opt-a'],
+        selectedLabels: ['Option opt-a'],
+        // Everything the picker needs to change it comes with it.
+        options: [{ id: 'opt-a' }, { id: 'opt-b' }],
+      },
+    ]);
+    // The queue starts at the first choice with NO answer. Asking for the sugar
+    // again would be asking the guest to confirm a guess one tap at a time.
+    expect(proposal?.openChoice).toMatchObject({
+      modifierId: 'mod-ice',
+      remainingCount: 2,
+    });
+  });
+
+  it('changing an answered choice replaces it and does not re-queue the others', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: answeredProposal() });
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-ice',
+      optionIds: ['opt-b'],
+    });
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-topping',
+      optionIds: [],
+    });
+
+    expect(view().proposal?.openChoice).toBeNull();
+
+    // Now the guest corrects the sugar the assistant picked.
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      optionIds: ['opt-b'],
+    });
+
+    const proposal = view().proposal;
+
+    expect(proposal?.openChoice).toBeNull();
+    expect(proposal?.canApply).toBe(true);
+    expect(
+      proposal?.rows[0]?.choices.map((entry) => [
+        entry.modifierId,
+        entry.selectedOptionIds,
+      ]),
+    ).toEqual([
+      ['mod-sugar', ['opt-b']],
+      ['mod-ice', ['opt-b']],
+      ['mod-topping', []],
+    ]);
+  });
+
+  it('changing an answered choice leaves the queue where it was', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: answeredProposal() });
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      optionIds: ['opt-b'],
+    });
+
+    // Still the ice, still two left: the edit answered nothing in the queue and
+    // put nothing back into it.
+    expect(view().proposal?.openChoice).toMatchObject({
+      modifierId: 'mod-ice',
+      remainingCount: 2,
+    });
+  });
+
+  it('still withholds apply while a required choice has no answer', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: answeredProposal() });
+
+    // One required choice came answered; the other did not, and that one blocks.
+    expect(view().proposal?.canApply).toBe(false);
+
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-ice',
+      optionIds: ['opt-a'],
+    });
+
+    // The optional topping is still in the queue, and does not block.
+    expect(view().proposal?.canApply).toBe(true);
+    expect(view().proposal?.openChoice?.modifierId).toBe('mod-topping');
+  });
+
+  it('can be applied straight away when the assistant answered every required choice', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: {
+          'op-1': [choice('mod-sugar', { selectedOptionIds: ['opt-a'] })],
+        },
+      }),
+    });
+
+    expect(view().proposal?.canApply).toBe(true);
+    expect(view().proposal?.openChoice).toBeNull();
+  });
+
+  it('keeps a declined optional choice on the row so it can be taken back', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: {
+          'op-1': [
+            // The assistant added a topping nobody asked for.
+            choice('mod-topping', {
+              isRequired: false,
+              selectedOptionIds: ['opt-a'],
+            }),
+          ],
+        },
+      }),
+    });
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-topping',
+      optionIds: [],
+    });
+
+    expect(view().proposal?.rows[0]?.choices).toMatchObject([
+      { modifierId: 'mod-topping', selectedOptionIds: [], selectedLabels: [] },
+    ]);
+    expect(view().proposal?.openChoice).toBeNull();
+  });
+
+  it('stops offering changes once the row is dismissed or the proposal applied', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+        choices: {
+          'op-1': [choice('mod-sugar', { selectedOptionIds: ['opt-a'] })],
+          'op-2': [choice('mod-spice', { selectedOptionIds: ['opt-a'] })],
+        },
+      }),
+    });
+    actions.operationDismissed('op-1');
+
+    const rows = view().proposal?.rows;
+
+    // Still shown as text — it is what the row was — but no longer changeable.
+    expect(rows?.[0]?.choices).toHaveLength(1);
+    expect(rows?.[0]?.canEditChoices).toBe(false);
+    expect(rows?.[1]?.canEditChoices).toBe(true);
+  });
+
+  it('uses the line without the choices, so an edit cannot contradict it', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: turn({
+        type: 'proposal',
+        reply: 'Here is what I would change.',
+        proposalId: 'proposal-1',
+        confirmationRequired: true,
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '+ Tea ×1 · No sugar',
+            summaryWithoutChoices: '+ Tea ×1',
+            item: { productId: 'product-1', quantity: 1 },
+            choices: [choice('mod-sugar', { selectedOptionIds: ['opt-a'] })],
+          },
+        ],
+      }),
+    });
+
+    expect(view().proposal?.rows[0]?.summary).toBe('+ Tea ×1');
+    expect(view().proposal?.rows[0]?.choices[0]?.itemSummary).toBe('+ Tea ×1');
+
+    const entry = view().entries.at(-1);
+
+    expect(entry?.kind === 'proposal' && entry.operations[0]?.summary).toBe(
+      '+ Tea ×1',
+    );
+  });
+
+  it('keeps a proposal with a required choice open in the dock', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: { 'op-1': [choice('mod-sugar')] },
+      }),
+    });
+
+    // It cannot be applied yet, but it is waiting on the guest all the same.
+    // Leaving the dock here would put the picker in the transcript and move the
+    // card the moment the last choice was answered.
+    expect(view().proposal?.canApply).toBe(false);
+    expect(view().dock?.kind).toBe('proposal');
+  });
+});
+
+describe('choices that take more than one answer', () => {
+  const toppings = () =>
+    proposalTurn({
+      confirmationRequired: true,
+      operationIds: ['op-1'],
+      choices: {
+        'op-1': [
+          choice('mod-topping', {
+            isRequired: false,
+            maxSelect: 2,
+            optionIds: ['opt-a', 'opt-b', 'opt-c'],
+          }),
+        ],
+      },
+    });
+
+  it('marks the choice as one that toggles', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: toppings() });
+
+    expect(view().proposal?.openChoice).toMatchObject({
+      isMultiSelect: true,
+      maxSelect: 2,
+    });
+  });
+
+  it('shows every option the guest confirmed', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({ id: 'a1', turn: toppings() });
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-topping',
+      optionIds: ['opt-a', 'opt-c'],
+    });
+
+    expect(view().proposal?.rows[0]?.choices[0]?.selectedLabels).toEqual([
+      'Option opt-a',
+      'Option opt-c',
+    ]);
+    expect(view().proposal?.openChoice).toBeNull();
+  });
+
+  it('toggles an option on and off, and stops at the maximum', () => {
+    const limit = { maxSelect: 2 };
+
+    expect(toggleChoiceOption(limit, [], 'opt-a')).toEqual(['opt-a']);
+    expect(toggleChoiceOption(limit, ['opt-a'], 'opt-a')).toEqual([]);
+    // A third is ignored rather than swapped in: which one to drop is not
+    // something to guess.
+    expect(toggleChoiceOption(limit, ['opt-a', 'opt-b'], 'opt-c')).toEqual([
+      'opt-a',
+      'opt-b',
+    ]);
+  });
+
+  it('confirms only within the minimum and the maximum', () => {
+    expect(canConfirmChoice({ minSelect: 0, maxSelect: 2 }, [])).toBe(true);
+    expect(canConfirmChoice({ minSelect: 1, maxSelect: 2 }, [])).toBe(false);
+    expect(canConfirmChoice({ minSelect: 1, maxSelect: 2 }, ['opt-a'])).toBe(
+      true,
+    );
+    expect(
+      canConfirmChoice({ minSelect: 0, maxSelect: 2 }, [
+        'opt-a',
+        'opt-b',
+        'opt-c',
+      ]),
+    ).toBe(false);
   });
 });
