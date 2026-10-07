@@ -87,12 +87,71 @@ export const aiOrderingChoiceSchema = z.object({
  * `type` is the first property of every variant so an incremental parser can
  * identify the shape before the rest arrives.
  */
+/**
+ * One option the guest may pick for a choice on a proposed item.
+ *
+ * The label comes from the menu, localized by the backend, and never from the
+ * model: it is menu data, so writing it is code's job. That is also what keeps
+ * an internal id out of anything the guest reads.
+ */
+export const aiOrderingChoiceGroupOptionSchema = z.object({
+  optionId: aiOrderingIdSchema,
+  label: z.string().trim().min(1).max(120),
+  /** Added to the item's price by picking this option. Zero when it is free. */
+  priceAdjustment: z.number(),
+});
+
+/**
+ * One choice a proposed item's product offers, with what is selected for it now.
+ *
+ * EVERY choice is carried, answered or not. It used to be only the unanswered
+ * ones, which left a choice the assistant had filled in impossible to see or
+ * correct: the guest's only way to change a sugar level they never asked for
+ * was to argue with the assistant about it.
+ *
+ * Computed by the backend from the menu and the selections on the operation,
+ * never declared by the model: "which choices exist and which are settled" is
+ * derivable, so the model is not asked for it and cannot get it wrong. An
+ * optional choice appears here too, which is what makes offering it structural
+ * rather than a rule the model has to remember.
+ */
+export const aiOrderingChoiceGroupSchema = z.object({
+  modifierId: aiOrderingIdSchema,
+  /** The choice's name from the menu, localized. */
+  label: z.string().trim().min(1).max(120),
+  /**
+   * Whether the guest has to answer this one before the proposal can be
+   * applied. False for an optional choice, which may be left unanswered.
+   */
+  isRequired: z.boolean(),
+  /** How many options may be picked. `maxSelect` is 1 for a plain choice. */
+  minSelect: z.number().int().min(0),
+  maxSelect: z.number().int().min(1),
+  /** What the guest may pick. Sold-out options are left out. */
+  options: z.array(aiOrderingChoiceGroupOptionSchema).min(1),
+  /**
+   * What is selected for this choice as the operation stands. Empty when
+   * nothing is, which for a required choice means the guest still has to answer.
+   */
+  selectedOptionIds: z.array(aiOrderingIdSchema),
+});
+
 export const aiOrderingOperationSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('add_item'),
     operationId: aiOrderingIdSchema,
     summary: aiOrderingSummarySchema,
     item: cartItemInputSchema,
+    /** Every choice the product offers. Absent when it offers none. */
+    choices: z.array(aiOrderingChoiceGroupSchema).optional(),
+    /**
+     * `summary` with the choices left out, present together with `choices`.
+     *
+     * For a surface that shows the choices itself and lets the guest change
+     * them: `summary` names the options the assistant proposed, so beside an
+     * edited choice it would say one thing while the card says another.
+     */
+    summaryWithoutChoices: aiOrderingSummarySchema.optional(),
   }),
   z.object({
     type: z.literal('update_own_item'),
@@ -100,6 +159,16 @@ export const aiOrderingOperationSchema = z.discriminatedUnion('type', [
     summary: aiOrderingSummarySchema,
     itemId: cartItemParamsSchema.shape.itemId,
     item: updateCartItemSchema,
+    /** Every choice the product offers. Absent when it offers none. */
+    choices: z.array(aiOrderingChoiceGroupSchema).optional(),
+    /**
+     * `summary` with the choices left out, present together with `choices`.
+     *
+     * For a surface that shows the choices itself and lets the guest change
+     * them: `summary` names the options the assistant proposed, so beside an
+     * edited choice it would say one thing while the card says another.
+     */
+    summaryWithoutChoices: aiOrderingSummarySchema.optional(),
   }),
   z.object({
     type: z.literal('remove_own_item'),
@@ -152,6 +221,11 @@ export const aiOrderingProposalResponseSchema = z.object({
    * Resolved server-side from the store setting AND the active version's own
    * permission. The client renders dismiss and apply controls when true, and
    * applies immediately when false; it never resolves this itself.
+   *
+   * It does not override `choices`. An operation with a required choice still
+   * unanswered cannot be applied until the guest answers it, however this is
+   * set — the server refuses it — so a client that applies immediately still
+   * has to collect those answers first.
    */
   confirmationRequired: z.boolean(),
   operations: z
@@ -203,6 +277,31 @@ export const decideAiOrderingProposalSchema = z.object({
   keptOperationIds: z
     .array(aiOrderingIdSchema)
     .max(AI_ORDERING_MAX_OPERATIONS_PER_PROPOSAL),
+  /**
+   * The answers the guest gave on the proposal card: a choice that was left
+   * open, filled in, or one the assistant had answered, changed.
+   *
+   * This does not weaken the rule above. A caller still cannot add an operation
+   * or alter one freely: it can only answer a choice the server itself listed
+   * on that operation, and only from the options the server itself sent. Each
+   * entry is checked against the `choices` recorded with that proposal, so an
+   * id that was never offered is rejected the same way an invented operation
+   * would be.
+   *
+   * An answer REPLACES whatever was selected for that choice. An empty answer
+   * therefore clears it, which is how a guest declines an optional extra the
+   * assistant added on their behalf.
+   */
+  resolvedChoices: z
+    .array(
+      z.object({
+        operationId: aiOrderingIdSchema,
+        modifierId: aiOrderingIdSchema,
+        optionIds: z.array(aiOrderingIdSchema).max(10),
+      }),
+    )
+    .max(40)
+    .optional(),
 });
 
 /**
@@ -226,6 +325,10 @@ export const aiOrderingTurnResponseDataSchema = z.object({
 });
 
 export type AiOrderingChoice = z.infer<typeof aiOrderingChoiceSchema>;
+export type AiOrderingChoiceGroup = z.infer<typeof aiOrderingChoiceGroupSchema>;
+export type AiOrderingChoiceGroupOption = z.infer<
+  typeof aiOrderingChoiceGroupOptionSchema
+>;
 export type AiOrderingOperation = z.infer<typeof aiOrderingOperationSchema>;
 export type AiOrderingMessageResponse = z.infer<
   typeof aiOrderingMessageResponseSchema

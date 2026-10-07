@@ -9,6 +9,7 @@ import {
   planAiOrderingSummarization,
   windowAiOrderingHistory,
 } from '@src/modules/aiOrdering/history';
+import { resolveAiOrderingProposalChoices } from '@src/modules/aiOrdering/openChoices';
 import { buildAiOrderingPromptPrelude } from '@src/modules/aiOrdering/promptPrelude';
 import {
   buildAiOrderingSupersededResults,
@@ -270,9 +271,25 @@ export class AiOrderingService {
     }
 
     const kept = new Set(request.keptOperationIds);
-    const keptOperations = proposal.snapshot.operations.filter((operation) =>
-      kept.has(operation.operationId),
+    const resolution = resolveAiOrderingProposalChoices(
+      proposal.snapshot.operations.filter((operation) =>
+        kept.has(operation.operationId),
+      ),
+      request.resolvedChoices ?? [],
     );
+
+    if (!resolution.ok) {
+      // The card blocks the button, so reaching this means the request did not
+      // come from the card. Reported as a bad request rather than executed
+      // partially: an item must not land in the cart missing a choice its
+      // product requires.
+      throw new BadRequestError(
+        'That proposal cannot be applied as answered.',
+        ERROR_CODES.AI_ORDERING_PROPOSAL_CHOICE_INVALID,
+      );
+    }
+
+    const keptOperations = resolution.operations;
     const dismissed: AiOrderingOperationResult[] = proposal.snapshot.operations
       .filter((operation) => !kept.has(operation.operationId))
       .map((operation) => ({

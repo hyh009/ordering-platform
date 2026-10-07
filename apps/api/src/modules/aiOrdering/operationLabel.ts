@@ -17,7 +17,12 @@
  * beats one that is fluent and false.
  */
 
-import type { AiOrderingOperation, CartDto, PublicMenuDto, SupportedLocale } from '@repo/shared';
+import type {
+  AiOrderingOperation,
+  CartDto,
+  PublicMenuDto,
+  SupportedLocale,
+} from '@repo/shared';
 
 export type AiOrderingLabelContext = {
   menu: PublicMenuDto;
@@ -67,12 +72,20 @@ function optionLabels(
 export function buildAiOrderingOperationLabel(
   operation: AiOrderingOperation,
   context: AiOrderingLabelContext,
+  /**
+   * `omitChoices` leaves the selected options out, for a surface that lists the
+   * choices itself and lets the guest change them. Everything else is the same
+   * line, so the two cannot drift apart.
+   */
+  options: { omitChoices?: boolean } = {},
 ): string {
   switch (operation.type) {
     case 'add_item': {
       const parts = [
         `+ ${productName(operation.item.productId, context)} ×${String(operation.item.quantity)}`,
-        ...optionLabels(operation.item.selectedOptions, context),
+        ...(options.omitChoices
+          ? []
+          : optionLabels(operation.item.selectedOptions, context)),
       ];
 
       if (operation.item.notes !== undefined) {
@@ -92,10 +105,11 @@ export function buildAiOrderingOperationLabel(
         changes.push(`×${String(operation.item.quantity)}`);
       }
 
-      if (operation.item.selectedOptions !== undefined) {
-        changes.push(
-          ...optionLabels(operation.item.selectedOptions, context),
-        );
+      if (
+        operation.item.selectedOptions !== undefined &&
+        !options.omitChoices
+      ) {
+        changes.push(...optionLabels(operation.item.selectedOptions, context));
       }
 
       if (operation.item.notes === null) {

@@ -56,17 +56,39 @@ describe('AI ordering operation validation', () => {
   });
 
   describe('check 3: option selections satisfy the product rules', () => {
-    it('rejects a required choice that was not made', () => {
-      // Beef noodle requires a spice level; omitting it would fail on accept.
+    it('keeps an operation whose required choice the guest has not made', () => {
+      // Beef noodle requires a spice level, and the guest not having chosen one
+      // is the normal case: the model is asked only for what they stated, and
+      // the rest is offered to them on the proposal card. Rejecting here used to
+      // be what forced the model to decide "ask or propose", which is the one
+      // judgment it could not make reliably.
       const result = validate({
         type: 'add_item',
         summary: 'Add beef noodles',
         item: { productId: 'prod-beef-noodle', quantity: 1 },
       });
 
+      expect(result.operations).toHaveLength(1);
+      expect(result.rejections).toHaveLength(0);
+    });
+
+    it('still rejects a choice that was made wrongly', () => {
+      // Incomplete is not invalid, but wrong is: the guest can answer an open
+      // choice and cannot repair a selection that does not exist.
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add beef noodles',
+        item: {
+          productId: 'prod-beef-noodle',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-spice', optionId: 'opt-spice-nope' },
+          ],
+        },
+      });
+
       expect(result.operations).toHaveLength(0);
       expect(result.rejections[0]?.code).toBe('modifier_invalid');
-      expect(result.rejections[0]?.detail).toContain('mod-spice');
     });
 
     it('rejects a sold-out option', () => {

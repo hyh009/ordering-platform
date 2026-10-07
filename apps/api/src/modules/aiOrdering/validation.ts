@@ -124,6 +124,10 @@ function indexMenu(menu: PublicMenuDto) {
 /**
  * Checks a set of option selections against the product's own modifier rules.
  * Returns a human-readable reason, or `null` when the selections are valid.
+ *
+ * Incomplete is not invalid. The model is asked only for the choices the guest
+ * actually stated, so a product whose choices are not all answered is the normal
+ * case and not an error; what is rejected is a selection that is wrong.
  */
 function findSelectionProblem(
   productModifierIds: string[],
@@ -169,12 +173,12 @@ function findSelectionProblem(
       (selection) => selection.modifierId === modifierId,
     ).length;
 
-    if (count < modifier.minSelect) {
-      // Worded as what is missing rather than as a broken rule: the model cannot
-      // repair this by trying again, only by asking the guest.
-      return `the guest has not chosen modifier "${modifierId}", which requires at least ${modifier.minSelect} selection(s) — this has to be asked, not guessed`;
-    }
-
+    // A choice the guest has not made is NOT rejected here. It is reported to
+    // them as an open choice on the proposal and answered in the cart card,
+    // which is a tap instead of another model call — and it is why offering an
+    // optional choice no longer depends on the model remembering to. Only the
+    // guest can settle a choice, so the only thing checked here is that nothing
+    // was settled WRONGLY. `describeProposalChoices` reports what is left.
     if (count > modifier.maxSelect) {
       return `modifier "${modifierId}" allows at most ${modifier.maxSelect} selection(s)`;
     }
@@ -187,9 +191,10 @@ function findSelectionProblem(
  * Validates proposed operations against real menu and cart state.
  *
  * Four checks, all in-memory against data the caller already loaded to build the
- * model's context: the product exists, it is not sold out, the option selections
- * satisfy the product's modifier rules, and any change targets an item this
- * guest added.
+ * model's context: the product exists, it is not sold out, every option
+ * selection the model DID make is legal for the product, and any change targets
+ * an item this guest added. A choice left unanswered is not a rejection: see
+ * `findSelectionProblem`.
  *
  * Why a proposal is validated BEFORE the guest sees it: in a confirm-then-accept
  * flow the accept button is a promise. An accept that fails is the worst outcome

@@ -54,6 +54,10 @@ export const ERROR_CODES = {
   // that their proposal expired, and a guest who waited that they already acted.
   AI_ORDERING_PROPOSAL_ALREADY_DECIDED: 'AI_ORDERING_PROPOSAL_ALREADY_DECIDED',
   AI_ORDERING_PROPOSAL_EXPIRED: 'AI_ORDERING_PROPOSAL_EXPIRED',
+  // An answer to a choice the proposal left open that the server never offered:
+  // an option that was not on the list, or a required choice left unanswered.
+  // The card cannot produce this, so it means the request did not come from it.
+  AI_ORDERING_PROPOSAL_CHOICE_INVALID: 'AI_ORDERING_PROPOSAL_CHOICE_INVALID',
   NETWORK_ERROR: 'NETWORK_ERROR',
   INVALID_API_RESPONSE: 'INVALID_API_RESPONSE',
 } as const;

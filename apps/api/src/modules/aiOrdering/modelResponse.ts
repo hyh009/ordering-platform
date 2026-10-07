@@ -4,10 +4,15 @@ import {
   cartItemParamsSchema,
   updateCartItemSchema,
 } from '@repo/shared';
+import { describeProposalChoices } from '@src/modules/aiOrdering/openChoices';
 import { buildAiOrderingOperationLabel } from '@src/modules/aiOrdering/operationLabel';
 import { z } from 'zod';
 
-import type { AiOrderingOperation, AiOrderingResponse } from '@repo/shared';
+import type {
+  AiOrderingChoiceGroup,
+  AiOrderingOperation,
+  AiOrderingResponse,
+} from '@repo/shared';
 import type { AiOrderingLabelContext } from '@src/modules/aiOrdering/operationLabel';
 
 /**
@@ -119,7 +124,7 @@ const modelSelectedOptionsSchema = z
   .max(50);
 
 const SELECTED_OPTIONS_DESCRIPTION =
-  'Every choice the product requires, as id pairs from the menu. Omit only when the product has no modifiers.';
+  'Only the choices the guest has actually stated, as id pairs from the menu. Leave out every choice they have not made: the ordering page asks them for those, so you do not have to and must never pick one for them. Omit the field entirely when they have stated none.';
 
 /**
  * What a note IS, written in the field that carries it.
@@ -377,11 +382,22 @@ export function hydrateAiOrderingResponse(
             ...operation,
             operationId: `op-${String(index + 1)}`,
           } as AiOrderingOperation;
+          const choices = describeChoicesForOperation(hydrated, context.label);
 
           return {
             ...hydrated,
             // Backend-authored, like every other field the model may not emit.
             summary: buildAiOrderingOperationLabel(hydrated, context.label),
+            ...(choices.length > 0
+              ? {
+                  choices,
+                  summaryWithoutChoices: buildAiOrderingOperationLabel(
+                    hydrated,
+                    context.label,
+                    { omitChoices: true },
+                  ),
+                }
+              : {}),
           };
         }),
       };
@@ -396,4 +412,46 @@ export function hydrateAiOrderingResponse(
           : {}),
       };
   }
+}
+
+/**
+ * Every choice the product behind a proposed operation offers, with what will
+ * be selected for each once the operation runs.
+ *
+ * A removal has nothing to choose. An update describes the item as it will BE:
+ * the options it sets when it sets them, otherwise the ones the cart item
+ * already carries — an update's `selectedOptions` replaces the whole set, so
+ * those are the only two states there are. Describing the result rather than
+ * the change is what lets the guest correct a choice on an item whose quantity
+ * is all the assistant meant to touch.
+ */
+function describeChoicesForOperation(
+  operation: AiOrderingOperation,
+  label: AiOrderingLabelContext,
+): AiOrderingChoiceGroup[] {
+  if (operation.type === 'remove_own_item') {
+    return [];
+  }
+
+  if (operation.type === 'update_own_item') {
+    const item = label.cart.items.find(
+      (candidate) => candidate.id === operation.itemId,
+    );
+
+    return item
+      ? describeProposalChoices({
+          productId: item.productId,
+          selections: operation.item.selectedOptions ?? item.selectedOptions,
+          menu: label.menu,
+          locale: label.locale,
+        })
+      : [];
+  }
+
+  return describeProposalChoices({
+    productId: operation.item.productId,
+    selections: operation.item.selectedOptions ?? [],
+    menu: label.menu,
+    locale: label.locale,
+  });
 }
