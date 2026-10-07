@@ -9,7 +9,8 @@ export type AiOrderingOperationRejectionCode =
   | 'product_sold_out'
   | 'modifier_invalid'
   | 'not_owned'
-  | 'no_change';
+  | 'no_change'
+  | 'line_written_twice';
 
 export type AiOrderingOperationRejection = {
   /** Index in the model's original operation list, which has no ids yet. */
@@ -190,11 +191,11 @@ function findSelectionProblem(
 /**
  * Validates proposed operations against real menu and cart state.
  *
- * Four checks, all in-memory against data the caller already loaded to build the
+ * Five checks, all in-memory against data the caller already loaded to build the
  * model's context: the product exists, it is not sold out, every option
- * selection the model DID make is legal for the product, and any change targets
- * an item this guest added. A choice left unanswered is not a rejection: see
- * `findSelectionProblem`.
+ * selection the model DID make is legal for the product, any change targets an
+ * item this guest added, and no two operations write to the same cart line. A
+ * choice left unanswered is not a rejection: see `findSelectionProblem`.
  *
  * Why a proposal is validated BEFORE the guest sees it: in a confirm-then-accept
  * flow the accept button is a promise. An accept that fails is the worst outcome
@@ -221,6 +222,13 @@ export function validateAiOrderingOperations(
   const operations: AiOrderingModelOperation[] = [];
   const rejections: AiOrderingOperationRejection[] = [];
   let ownershipViolationCount = 0;
+  /**
+   * Cart lines a surviving operation already writes to.
+   *
+   * Only the survivors count: if the first operation on a line was rejected,
+   * the second is the only one left and is free to stand.
+   */
+  const writtenItemIds = new Set<string>();
 
   modelResponse.operations.forEach((operation, index) => {
     const reject = (
@@ -275,7 +283,23 @@ export function validateAiOrderingOperations(
       return;
     }
 
+    // A cart line is one entry with a quantity, so two operations on the same
+    // line are two writes to one row: the later one wins and the earlier is
+    // reported `accepted` to a guest it never happened for. Seen when the model
+    // was asked to change part of a line and answered with the line set to one
+    // quantity and then to another, which would have dropped a cup the guest
+    // asked for. The detail names the shape that does work, because the repair
+    // attempt is the model's only chance to read it.
+    if (writtenItemIds.has(operation.itemId)) {
+      reject(
+        'line_written_twice',
+        `cart item "${operation.itemId}" is already changed by an earlier operation in this proposal. A change applies to the line's whole quantity. To give part of a line something different, use ONE update that leaves the rest on this line, and add the part that differs as a separate add_item.`,
+      );
+      return;
+    }
+
     if (operation.type === 'remove_own_item') {
+      writtenItemIds.add(operation.itemId);
       operations.push(operation);
       return;
     }
@@ -314,6 +338,7 @@ export function validateAiOrderingOperations(
       }
     }
 
+    writtenItemIds.add(operation.itemId);
     operations.push(operation);
   });
 

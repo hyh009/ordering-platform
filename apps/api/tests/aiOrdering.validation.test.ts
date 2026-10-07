@@ -394,3 +394,111 @@ describe('check 5: the operation changes something', () => {
     expect(result.rejections).toHaveLength(2);
   });
 });
+
+describe('check 6: one operation per cart line', () => {
+  it('rejects a second change to a line an earlier operation already changes', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    // The later write would win and the earlier would still be reported
+    // accepted, so the guest would be told about a change that never happened.
+    expect(result.operations).toHaveLength(1);
+    expect(result.operations[0]).toMatchObject({ item: { quantity: 1 } });
+    expect(result.rejections).toHaveLength(1);
+    expect(result.rejections[0]?.code).toBe('line_written_twice');
+  });
+
+  it('rejects removing a line another operation in the same proposal changes', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      { type: 'remove_own_item', itemId: 'item-own-rice' },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    expect(result.rejections[0]?.code).toBe('line_written_twice');
+  });
+
+  it('tells the model the shape that works instead', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    // The repair attempt is the only place the model reads this, and the
+    // request behind the mistake — part of a line differing from the rest —
+    // has an answer. A rejection that only says no produces the same mistake.
+    expect(result.rejections[0]?.detail).toContain('whole quantity');
+    expect(result.rejections[0]?.detail).toContain('add_item');
+  });
+
+  it('leaves the second operation free when the first was rejected', () => {
+    const result = validate(
+      // Rice already stands at two, so this changes nothing and does not count
+      // as a write to the line.
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 2 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    expect(result.operations[0]).toMatchObject({ item: { quantity: 5 } });
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('keeps operations on different lines, and an add beside an update', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-milk-tea',
+        item: { quantity: 2 },
+      },
+      // The second half of splitting a line: an add carries no itemId, so no
+      // number of adds can collide with the update beside them.
+      {
+        type: 'add_item',
+        item: {
+          productId: 'prod-rice',
+          quantity: 1,
+          selectedOptions: [],
+        },
+      },
+    );
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(3);
+  });
+});
