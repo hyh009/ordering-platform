@@ -24,6 +24,14 @@ type ProductCardProps = {
   allergens: string[];
   onSelect: (product: PublicProduct) => void;
   disabled?: boolean;
+  /**
+   * Whether the card carries the product's photo. The menu grid gives a card a
+   * full column and shows it; a card in a narrow place — the assistant's
+   * horizontal row — turns it off, because a photo plus a name plus a price in
+   * that width wraps the name one character to a line. The photo is not lost:
+   * opening the card shows it.
+   */
+  showImage?: boolean;
 };
 
 export function ProductCard({
@@ -32,13 +40,14 @@ export function ProductCard({
   allergens = [],
   onSelect,
   disabled,
+  showImage = true,
 }: ProductCardProps) {
   const localize = useLocalizedText();
   const { tDefault } = useAppTranslation();
 
   const soldOut = product.isSoldOut;
   const isDisabled = disabled || soldOut;
-  const imageSrc = product.imageUrls[0];
+  const imageSrc = showImage ? product.imageUrls[0] : undefined;
 
   return (
     <div

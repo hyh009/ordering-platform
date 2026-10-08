@@ -4,6 +4,8 @@ import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
 
 import type { PublicProduct } from '@/models/storeFrontMenu';
 
+import { bindWheelToScrollX } from './wheelToScrollX';
+
 /**
  * The products one reply showed, as cards the guest can scroll and open.
  *
@@ -38,7 +40,15 @@ export function AssistantProductRow({
   }
 
   return (
-    <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1">
+    // The scrollbar is hidden the way the category tabs hide theirs: a desktop
+    // track drawn under four cards reads as a divider in the transcript, and
+    // the cards already show they continue by being cut off at the edge. The
+    // wheel is mapped sideways so the one input that cannot swipe can still
+    // reach them.
+    <div
+      ref={bindWheelToScrollX}
+      className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {products.map((product) => {
         const { tags, allergens } = describeProduct(product);
 
@@ -49,6 +59,7 @@ export function AssistantProductRow({
               tags={tags}
               allergens={allergens}
               disabled={!isStoreOpen}
+              showImage={false}
               onSelect={onOpenProduct}
             />
           </div>

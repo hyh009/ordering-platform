@@ -52,6 +52,7 @@ export function ProductConfigSheet(props: ProductConfigSheetProps) {
   const localize = useLocalizedText();
   const config = useProductConfig(product, modifiers, props.editing);
   const isEditing = props.editing !== undefined;
+  const imageSrc = product.imageUrls[0];
 
   const ordered = orderModifiersRequiredFirst(modifiers);
   const firstUnsatisfied = (skipId?: string) =>
@@ -238,6 +239,17 @@ export function ProductConfigSheet(props: ProductConfigSheetProps) {
 
       <div className="relative flex max-h-[85vh] w-full flex-col rounded-t-2xl bg-background lg:mx-auto lg:max-w-lg lg:rounded-2xl lg:shadow-xl">
         <div className="flex-1 overflow-y-auto p-4">
+          {/* The photo, for a product being added: this is where a card that
+              has no room for one sends the guest to see it. Left out while
+              editing, like the description — that sheet opens on one choice the
+              guest came to fix, not on the product again. */}
+          {imageSrc && !isEditing ? (
+            <img
+              src={imageSrc}
+              alt={localize(product.name)}
+              className="mb-3 aspect-[3/2] w-full rounded-xl bg-storefront-border object-cover"
+            />
+          ) : null}
           <h2 className="text-lg font-bold">{localize(product.name)}</h2>
           {product.description && !isEditing ? (
             <p className="mt-1 text-sm text-muted-foreground">
