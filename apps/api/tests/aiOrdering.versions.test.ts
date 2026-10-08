@@ -76,9 +76,16 @@ describe('AI ordering core instructions', () => {
     expect(V1_CORE_INSTRUCTIONS.toLowerCase()).toContain('never use a name');
   });
 
-  it('tells the model it cannot submit an order', () => {
+  it('gives the model somewhere to go when the guest wants to check out', () => {
+    // Saying only that it cannot submit an order left the model with no route,
+    // and it took the one tool that acts: a checkout request came back as a
+    // proposal to add a drink carrying the note “確認點餐”. What is pinned now
+    // is the route, not the prohibition.
     expect(V1_CORE_INSTRUCTIONS.toLowerCase()).toContain(
-      'placing, submitting, paying for, or cancelling the final order is done by the guest',
+      'tell them to press the submit button on the ordering page, and call no tool',
+    );
+    expect(V1_CORE_INSTRUCTIONS.toLowerCase()).toContain(
+      'the guest places, submits, pays for and cancels the order themselves',
     );
   });
 });

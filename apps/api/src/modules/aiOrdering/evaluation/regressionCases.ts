@@ -248,6 +248,88 @@ const MENU_WITH_TWELVE_EGG_CREPES: PublicMenuDto = {
   ],
 };
 
+/**
+ * The fixture menu plus a dish whose add-on is ALSO a product on its own.
+ *
+ * Taken from the live menu, where "蛋餅加雞塊" put the crepe in the cart with no
+ * nugget on it and no nugget beside it. The guest's words name a thing the store
+ * sells twice over — as a topping on this product and as a product of its own —
+ * and either reading puts a nugget in the cart. Only silence is wrong.
+ */
+const MENU_WITH_NUGGET_BOTH_WAYS: PublicMenuDto = {
+  ...AI_ORDERING_MENU_FIXTURE,
+  groups: [
+    ...AI_ORDERING_MENU_FIXTURE.groups,
+    {
+      category: {
+        id: 'cat-snack',
+        name: { 'zh-TW': '點心', en: 'Snacks' },
+        displayOrder: 3,
+        availabilityRules: [],
+      },
+      products: [
+        {
+          id: 'prod-plain-crepe',
+          categoryIds: ['cat-snack'],
+          name: { 'zh-TW': '原味蛋餅', en: 'Plain egg crepe' },
+          imageUrls: [],
+          price: 35,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: ['mod-crepe-topping'],
+          isSoldOut: false,
+        },
+        {
+          id: 'prod-nugget',
+          categoryIds: ['cat-snack'],
+          name: { 'zh-TW': '雞塊', en: 'Chicken nuggets' },
+          imageUrls: [],
+          price: 40,
+          tagIds: [],
+          allergenIds: [],
+          dietaryMarkerIds: [],
+          modifierIds: [],
+          isSoldOut: false,
+        },
+      ],
+    },
+  ],
+  modifiers: [
+    ...AI_ORDERING_MENU_FIXTURE.modifiers,
+    {
+      id: 'mod-crepe-topping',
+      name: { 'zh-TW': '加料', en: 'Add-ons' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 3,
+      options: [
+        {
+          id: 'opt-crepe-nugget',
+          name: { 'zh-TW': '雞塊', en: 'Chicken nuggets' },
+          priceAdjustment: 20,
+          isDefault: false,
+          isSoldOut: false,
+        },
+        {
+          id: 'opt-crepe-cheese',
+          name: { 'zh-TW': '起士', en: 'Cheese' },
+          priceAdjustment: 10,
+          isDefault: false,
+          isSoldOut: false,
+        },
+        {
+          id: 'opt-crepe-ham',
+          name: { 'zh-TW': '火腿', en: 'Ham' },
+          priceAdjustment: 10,
+          isDefault: false,
+          isSoldOut: false,
+        },
+      ],
+    },
+  ],
+};
+
 export type AiOrderingRegressionCase = AiOrderingReplayCase & {
   /** What a correct answer looks like, for the person reading a failure. */
   expects: string;
@@ -715,5 +797,33 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       (outcome.responseType === 'choices' ||
         outcome.responseType === 'products') &&
       operations(outcome).length === 0,
+  },
+  {
+    // A stated add-on that the store sells both ways: as a topping on the crepe
+    // and as a product of its own. Either reading is accepted — what is
+    // rejected is the crepe going in alone, with the nugget the guest asked for
+    // left as an open choice nobody answered.
+    menu: MENU_WITH_NUGGET_BOTH_WAYS,
+    message: '我要一份原味蛋餅加雞塊',
+    expects:
+      "the nugget reaches the cart: as the crepe's add-on, or as a product beside it",
+    check: (outcome) =>
+      outcome.responseType === 'proposal' && adds(outcome, '雞塊'),
+  },
+  {
+    // Checking out is not a cart change. Live, this turn proposed adding a
+    // black tea carrying the note “確認點餐” — the intent written into the one
+    // tool that does anything, and from there onto the kitchen's ticket. The
+    // cart already holds black tea, which is the product it reached for.
+    //
+    // Read against that cart for the same reason: a checkout request is only
+    // tempting to answer with an operation when there is something to operate
+    // on. Nothing about the reply's wording is pinned — only that the cart is
+    // left alone.
+    cart: CART_WITH_THREE_BLACK_TEAS,
+    message: '我要結帳',
+    expects:
+      'answers in words and proposes nothing: checking out is not a cart change',
+    check: (outcome) => operations(outcome).length === 0,
   },
 ];
