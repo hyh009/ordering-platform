@@ -146,8 +146,12 @@ function printRun(
     ].filter(Boolean);
 
     const expected = regressionByMessage.get(outcome.message);
+    // A turn that never came back cannot have answered correctly. Without this,
+    // a check written as an absence — "nothing was proposed" — reads a provider
+    // error as the behavior it was pinning, and a run that reached no model at
+    // all reports passes. A daily quota running out mid-suite is what showed it.
     const verdict = expected
-      ? expected.check(outcome)
+      ? outcome.failure === undefined && expected.check(outcome)
         ? 'PASS  '
         : 'FAIL  '
       : '';
