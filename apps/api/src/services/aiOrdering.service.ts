@@ -9,32 +9,28 @@ import {
   AI_ORDERING_MAX_TURNS_PER_CONVERSATION,
   readAiOrderingAppliedOperations,
 } from '@src/models/aiOrdering/model';
-import { resolveAiOrderingConfirmationRequired } from '@src/modules/aiOrdering/confirmation';
-import { buildAiOrderingContext } from '@src/modules/aiOrdering/context';
-import {
-  planAiOrderingSummarization,
-  windowAiOrderingHistory,
-} from '@src/modules/aiOrdering/history';
-import { resolveAiOrderingProposalChoices } from '@src/modules/aiOrdering/openChoices';
-import { buildAiOrderingOperationLabel } from '@src/modules/aiOrdering/operationLabel';
-import { buildAiOrderingPromptPrelude } from '@src/modules/aiOrdering/promptPrelude';
-import {
-  buildAiOrderingSupersededResults,
-  readAiOrderingEarlierProposals,
-  readAiOrderingLastProposal,
-  resolveAiOrderingPrompt,
-} from '@src/modules/aiOrdering/promptResolution';
-import { createRedisAiOrderingRateLimiter } from '@src/modules/aiOrdering/rateLimit.redis';
-import { resolveAiOrderingRuntime } from '@src/modules/aiOrdering/runtime';
 import {
   AI_ORDERING_PROPOSAL_TOOL,
+  aiOrderingVersionFingerprint,
+  buildAiOrderingContext,
+  buildAiOrderingOperationLabel,
+  buildAiOrderingPromptPrelude,
+  buildAiOrderingSupersededResults,
   createAiOrderingAgent,
-} from '@src/modules/aiOrdering/runtime/agent';
-import { getAiOrderingCheckpointer } from '@src/modules/aiOrdering/runtime/checkpointer';
-import { createAiOrderingDebugTrace } from '@src/modules/aiOrdering/runtime/debugTrace';
-import { mapAiOrderingProviderFailure } from '@src/modules/aiOrdering/runtime/failures';
-import { generateAiOrderingSummary } from '@src/modules/aiOrdering/summary';
-import { aiOrderingVersionFingerprint } from '@src/modules/aiOrdering/versions/fingerprint';
+  createAiOrderingDebugTrace,
+  createRedisAiOrderingRateLimiter,
+  generateAiOrderingSummary,
+  getAiOrderingCheckpointer,
+  mapAiOrderingProviderFailure,
+  planAiOrderingSummarization,
+  readAiOrderingEarlierProposals,
+  readAiOrderingLastProposal,
+  resolveAiOrderingConfirmationRequired,
+  resolveAiOrderingProposalChoices,
+  resolveAiOrderingPrompt,
+  resolveAiOrderingRuntime,
+  windowAiOrderingHistory,
+} from '@src/modules/aiOrdering';
 import { aiOrderingRepository } from '@src/repositories/aiOrdering/repository';
 import { storeRepository } from '@src/repositories/store/repository';
 import { guestOrderingService } from '@src/services/guestOrdering.service';
@@ -70,9 +66,11 @@ import type {
   AiOrderingTurnSnapshot,
 } from '@src/models/aiOrdering/model';
 import type { StoreEntity } from '@src/models/store/model';
-import type { AiOrderingRateLimiter } from '@src/modules/aiOrdering/rateLimit';
-import type { AiOrderingRuntime } from '@src/modules/aiOrdering/runtime';
-import type { AiOrderingRunRecord } from '@src/modules/aiOrdering/runtime/agent';
+import type {
+  AiOrderingRateLimiter,
+  AiOrderingRunRecord,
+  AiOrderingRuntime,
+} from '@src/modules/aiOrdering';
 import type {
   AiOrderingRepository,
   AiOrderingStoredProposal,

@@ -6,7 +6,7 @@ import { sortProductsByCategoryOrder } from '@src/models/product/order';
 import { toPublicModifierDto } from '@src/models/productModifier/mapper';
 import { toPublicStoreDto } from '@src/models/store/mapper';
 import { toPublicTagDto } from '@src/models/tag/mapper';
-import { isAiOrderingEnabled } from '@src/modules/aiOrdering/runtime/index';
+import { isAiOrderingEnabled } from '@src/modules/aiOrdering';
 import { allergenRepository } from '@src/repositories/allergen/repository';
 import { categoryRepository } from '@src/repositories/category/repository';
 import { dietaryMarkerRepository } from '@src/repositories/dietaryMarker/repository';
