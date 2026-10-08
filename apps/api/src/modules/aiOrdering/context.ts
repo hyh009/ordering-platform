@@ -141,10 +141,16 @@ function renderMenu(
   lines.push('## Choices');
 
   for (const modifier of menu.modifiers) {
-    const required = modifier.minSelect > 0 ? 'required' : 'optional';
-
+    // Only the ceiling. `required` and `minSelect` are left out for the reason
+    // `isDefault` is: a floor the model cannot satisfy reads as a field it must
+    // fill, and it filled them — a guest who said only "no sugar" was proposed
+    // a temperature and a size as well. Both belong to the surfaces that CAN
+    // act on them: the card queues the unanswered required choices and blocks
+    // its button, and the server checks the floor again when the answers come
+    // back. The ceiling stays because the model can break it: picking more than
+    // a modifier allows is rejected in validation.
     lines.push(
-      `- ${code(modifier.id)} | ${localize(modifier.name, locale)} | ${required} | pick ${modifier.minSelect}-${modifier.maxSelect}`,
+      `- ${code(modifier.id)} | ${localize(modifier.name, locale)} | pick up to ${modifier.maxSelect}`,
     );
 
     for (const option of modifier.options) {

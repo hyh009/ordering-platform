@@ -130,14 +130,20 @@ describe('AI ordering context assembly', () => {
       expect(storeData).toMatch(/opt-spice-hot.*SOLD OUT/);
     });
 
-    it('states which choices are required and how many may be picked', () => {
+    it('states how many of a choice may be picked, and never how few', () => {
       const storeData = blockText(
         buildAiOrderingContext(contextInput()),
         'store_data',
       );
 
-      expect(storeData).toMatch(/mod-sugar.*required.*pick 1-1/);
-      expect(storeData).toMatch(/mod-topping.*optional.*pick 0-3/);
+      // The ceiling only. A floor is something the model cannot satisfy — only
+      // the guest can answer a choice — and shown here it read as a field to
+      // fill, which is what put a temperature on a guest who asked for no
+      // sugar. The card and the server hold the floor instead.
+      expect(storeData).toMatch(/mod-sugar.*pick up to 1/);
+      expect(storeData).toMatch(/mod-topping.*pick up to 3/);
+      expect(storeData).not.toContain('required');
+      expect(storeData).not.toContain('optional');
     });
   });
 
@@ -813,9 +819,9 @@ describe('AI ordering context assembly', () => {
     const { blocks } = buildAiOrderingContext(contextInput());
     const storeData = blocks.find((block) => block.kind === 'store_data');
 
-    // A required choice is the guest's to make; a visible default reads as the
-    // answer and the model proposes it without asking.
-    expect(storeData?.text).toContain('required');
+    // A choice is the guest's to make; a visible default reads as the answer
+    // and the model proposes it without asking. The same went for the word
+    // `required`, which is why neither is sent any more.
     expect(storeData?.text).not.toContain('default');
   });
 
