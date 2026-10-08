@@ -182,10 +182,10 @@ describe('AI ordering agent run', () => {
     expect(response.confirmationRequired).toBe(true);
   });
 
-  it('executes once on approval and lets the model answer what happened', async () => {
-    const model = fakeModel()
-      .respondWithTools([proposalCall()])
-      .respond(new AIMessage('Added one steamed rice.'));
+  it('executes once on approval and ends there when everything was accepted', async () => {
+    // Only the planning response is queued: a closing call would find the
+    // queue empty and throw, so this pins the absence as well as the count.
+    const model = fakeModel().respondWithTools([proposalCall()]);
     const { agent, record, messages } = build(model, cart);
 
     await agent.invoke({ messages }, threadConfig);
@@ -198,18 +198,51 @@ describe('AI ordering agent run', () => {
     expect(record.results).toEqual([
       { operationId: 'op-1', outcome: 'accepted' },
     ]);
-    // One planning call, one closing call. The closing one is the feature: the
-    // assistant speaks to the outcome in the same exchange.
-    expect(record.modelCalls).toBe(2);
+    // The planning call and nothing else. The loop would have gone back to the
+    // model to narrate an outcome the guest never reads, on the one tap that
+    // should be instant.
+    expect(record.modelCalls).toBe(1);
     expect(record.phase).toBe('closing');
   });
 
-  it('binds no tools on the closing call, so a decided run cannot propose again', async () => {
+  it('lets the model answer what happened when an operation failed', async () => {
+    const failing = executor({
+      addItem: vi.fn(async () => {
+        throw new Error('sold out');
+      }),
+    });
     const model = fakeModel()
       .respondWithTools([proposalCall()])
-      .respond(new AIMessage('Added one steamed rice.'));
+      .respond(new AIMessage('That one sold out, sorry.'));
+    const { agent, record, messages } = build(model, failing);
+
+    await agent.invoke({ messages }, threadConfig);
+    await agent.invoke(
+      new Command({ resume: { decisions: [{ type: 'approve' }] } }),
+      threadConfig,
+    );
+
+    // The case the closing call exists for: what the per-row statuses show is
+    // that one thing failed, not what to do about it.
+    expect(record.results).toEqual([
+      expect.objectContaining({ operationId: 'op-1', outcome: 'failed' }),
+    ]);
+    expect(record.modelCalls).toBe(2);
+  });
+
+  it('binds no tools on the closing call, so a decided run cannot propose again', async () => {
+    // Read against a failed operation, because that is the only run that still
+    // calls the model after executing.
+    const failing = executor({
+      addItem: vi.fn(async () => {
+        throw new Error('sold out');
+      }),
+    });
+    const model = fakeModel()
+      .respondWithTools([proposalCall()])
+      .respond(new AIMessage('That one sold out, sorry.'));
     const bind = vi.spyOn(model, 'bindTools');
-    const { agent, messages } = build(model, cart);
+    const { agent, messages } = build(model, failing);
 
     await agent.invoke({ messages }, threadConfig);
     await agent.invoke(

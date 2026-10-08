@@ -291,6 +291,35 @@ export function createAiOrderingAgent(
 
   const planningMiddleware = createMiddleware({
     name: 'AiOrderingPlanning',
+    /**
+     * End the run after an execution that went exactly as proposed, instead of
+     * calling the model to say so.
+     *
+     * The loop returns to the model after a tool result because that is what an
+     * agent loop does, not because this turn needs it: the guest reads the
+     * reply the PROPOSAL carried, and the sentence produced here is dropped by
+     * the surface that receives it. Paying a model round trip for it taxed the
+     * one interaction that should be instant — the tap that puts an item in the
+     * cart — and a provider failing during it took the whole decision with it.
+     *
+     * Only when everything was accepted. A failure is the case the sentence
+     * exists for: "two went in, the third sold out" is not something the
+     * per-row statuses say as well, and it is worth a call.
+     */
+    beforeModel: {
+      canJumpTo: ['end'],
+      hook: () => {
+        if (record.phase !== 'closing') {
+          return;
+        }
+
+        const executed = record.results ?? [];
+
+        return executed.every((result) => result.outcome === 'accepted')
+          ? { jumpTo: 'end' as const }
+          : undefined;
+      },
+    },
     wrapModelCall: async (request, handler) => {
       // The closing call after an execution. No tools: the cart has already
       // changed, and a second proposal inside a decided run is exactly what

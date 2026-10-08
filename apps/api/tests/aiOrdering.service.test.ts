@@ -1234,7 +1234,9 @@ describe('AiOrderingService: what the guest applied', () => {
    * decision tests cannot reach the write this is about, because nothing was
    * ever paused under their proposal id.
    */
-  async function proposeTea(options: { closingFails?: boolean } = {}) {
+  async function proposeTea(
+    options: { closingFails?: boolean; cartFails?: boolean } = {},
+  ) {
     const turns: AiOrderingTurnSnapshot[] = [];
     const resultWrites: {
       results: unknown;
@@ -1307,6 +1309,11 @@ describe('AiOrderingService: what the guest applied', () => {
       getGuestCart: vi.fn(async () => AI_ORDERING_CART_FIXTURE),
       addCartItem: vi.fn(async (_claims: unknown, item: unknown) => {
         cartAdds.push(item);
+
+        if (options.cartFails) {
+          throw new Error('sold out');
+        }
+
         return undefined as never;
       }),
       updateCartItem: vi.fn(async () => undefined as never),
@@ -1399,6 +1406,43 @@ describe('AiOrderingService: what the guest applied', () => {
           ],
         }),
       }),
+    ]);
+  });
+
+  it('does not call the model again when every operation was accepted', async () => {
+    const h = await proposeTea();
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+    });
+
+    expect(decided.results).toEqual([
+      { operationId: h.operationId, outcome: 'accepted' },
+    ]);
+    // The harness has a closing reply queued. Its absence here is the model
+    // never having been asked — and the run ending at the tool must not pass
+    // the tool's own `operationId: outcome` line off as something to read.
+    expect(decided.reply).toBeUndefined();
+  });
+
+  it('answers what happened when an operation failed', async () => {
+    const h = await proposeTea({ cartFails: true });
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+    });
+
+    // The one case the closing call is kept for, end to end: the outcome is
+    // recorded, and the sentence the model wrote about it reaches the caller.
+    expect(decided.results).toEqual([
+      expect.objectContaining({ operationId: h.operationId, outcome: 'failed' }),
+    ]);
+    expect(decided.reply).toBe('加好了。');
+    expect(h.resultWrites).toHaveLength(1);
+    expect(h.resultWrites[0]?.results).toEqual([
+      expect.objectContaining({ operationId: h.operationId, outcome: 'failed' }),
     ]);
   });
 

@@ -521,8 +521,14 @@ export class AiOrderingService {
     try {
       const result = await agent.invoke(resume, config);
       const last = result.messages?.at(-1);
+      // Only the model's own words. A run that ended at the tool — which is
+      // every run whose operations all went through — leaves the tool's result
+      // last, and that is a line of `operationId: outcome` written for the
+      // model, not for the guest.
       const reply =
-        typeof last?.content === 'string' ? last.content : undefined;
+        last?.getType() === 'ai' && typeof last.content === 'string'
+          ? last.content
+          : undefined;
 
       return {
         results: record.results,
