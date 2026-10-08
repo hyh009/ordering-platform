@@ -483,36 +483,65 @@ export class AiOrderingService {
       );
     }
 
-    const result = await agent.invoke(
-      new Command({
-        resume: {
-          decisions: [
-            {
-              type: 'edit',
-              editedAction: {
-                name: AI_ORDERING_PROPOSAL_TOOL,
-                // The WHOLE call, rebuilt from the stored proposal with only
-                // the kept operations. A partial set of arguments is rejected
-                // by the interrupt without a word, and the tool never runs.
-                args: {
-                  ...input.proposal.response,
-                  operations: input.keptOperations,
-                },
+    const resume = new Command({
+      resume: {
+        decisions: [
+          {
+            type: 'edit',
+            editedAction: {
+              name: AI_ORDERING_PROPOSAL_TOOL,
+              // The WHOLE call, rebuilt from the stored proposal with only
+              // the kept operations. A partial set of arguments is rejected
+              // by the interrupt without a word, and the tool never runs.
+              args: {
+                ...input.proposal.response,
+                operations: input.keptOperations,
               },
             },
-          ],
-        },
-      }),
-      config,
-    );
+          },
+        ],
+      },
+    });
 
-    const last = result.messages?.at(-1);
-    const reply = typeof last?.content === 'string' ? last.content : undefined;
+    /**
+     * One invoke, two halves: the tool body writes the cart, and the model is
+     * then called once more to say what happened.
+     *
+     * Only the first half is the decision. The second produces a sentence the
+     * panel does not even render, and letting it fail the request cost a guest
+     * their cart change ON RECORD: the proposal was already claimed, the
+     * results were never written, and the next turn would have been told
+     * nothing was applied while the items sat in the cart.
+     *
+     * `record.results` is what tells the halves apart. The tool body sets it
+     * before it returns, so a non-null value means the cart was written and
+     * whatever threw came after it. Null means nothing executed, and that is a
+     * real failure the guest has to be told about.
+     */
+    try {
+      const result = await agent.invoke(resume, config);
+      const last = result.messages?.at(-1);
+      const reply =
+        typeof last?.content === 'string' ? last.content : undefined;
 
-    return {
-      results: record.results,
-      ...(reply !== undefined && reply.length > 0 ? { reply } : {}),
-    };
+      return {
+        results: record.results,
+        ...(reply !== undefined && reply.length > 0 ? { reply } : {}),
+      };
+    } catch (error) {
+      if (record.results === null) {
+        throw error;
+      }
+
+      // Never silent: the cart changed and the assistant went quiet, which is
+      // invisible from the outside precisely because the request now succeeds.
+      logger.error(
+        { err: error, proposalId: input.proposalId },
+        'ai ordering closing call failed after the cart was written',
+      );
+
+      return { results: record.results };
+    }
   }
 
   /**

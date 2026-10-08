@@ -1234,7 +1234,7 @@ describe('AiOrderingService: what the guest applied', () => {
    * decision tests cannot reach the write this is about, because nothing was
    * ever paused under their proposal id.
    */
-  async function proposeTea() {
+  async function proposeTea(options: { closingFails?: boolean } = {}) {
     const turns: AiOrderingTurnSnapshot[] = [];
     const resultWrites: {
       results: unknown;
@@ -1262,7 +1262,13 @@ describe('AiOrderingService: what the guest applied', () => {
           ],
         }),
       )
-      .respond(new AIMessage('加好了。'));
+      .respond(
+        options.closingFails
+          ? // The cart write has already happened by the time this call is
+            // made, so a provider failing here is a failure after the decision.
+            new Error('provider unavailable')
+          : new AIMessage('加好了。'),
+      );
 
     const stored = (proposalId: string): StoredProposal | null => {
       const found = turns.find(
@@ -1394,6 +1400,30 @@ describe('AiOrderingService: what the guest applied', () => {
         }),
       }),
     ]);
+  });
+
+  it('applies the decision even when the closing model call fails', async () => {
+    const h = await proposeTea({ closingFails: true });
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [h.operationId],
+    });
+
+    // The cart was written before the model was asked to say so, and the
+    // decision stands on the write. Letting the sentence fail the request left
+    // the proposal claimed with no results while the tea sat in the cart, and
+    // the next turn would have been told nothing was applied.
+    expect(h.cartAdds).toHaveLength(1);
+    expect(decided.results).toEqual([
+      { operationId: h.operationId, outcome: 'accepted' },
+    ]);
+    expect(h.resultWrites).toHaveLength(1);
+    expect(h.resultWrites[0]?.results).toEqual([
+      { operationId: h.operationId, outcome: 'accepted' },
+    ]);
+    // The one thing actually lost. The panel does not render it anyway.
+    expect(decided.reply).toBeUndefined();
   });
 
   it('leaves the proposed operations exactly as the assistant made them', async () => {
