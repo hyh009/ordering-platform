@@ -1,95 +1,175 @@
 Four slices in dependency order: shared contract, api, web, by hand. Each ends
 with its own verification per `docs/agent/workflows/verification.md`.
 
-Nothing from the reverted first version is reused. `statedOptions`,
-`optionCarries`, `AI_ORDERING_MAX_STATED_OPTIONS` and the sheet preselection are
-gone on purpose — do not reintroduce them as part of this change.
+Nothing from either earlier version is reused. `statedOptions`, `optionCarries`,
+`AI_ORDERING_MAX_STATED_OPTIONS`, the sheet preselection, and the
+`ask_which_product` tool with its `productQuestion` response type are all gone
+on purpose — do not reintroduce any of them as part of this change.
 
 ## 1. Shared contract
 
-- [ ] 1.1 Add `aiOrderingProductQuestionResponseSchema` to
-  `packages/shared/src/contracts/aiOrdering.ts`: `type: 'productQuestion'`,
-  `reply`, a question, and `productIds`. Bound it the way the `products`
-  variant is bound, NOT by `AI_ORDERING_MAX_CHOICE_OPTIONS` (design decision 7),
-  and say why in the comment
-- [ ] 1.2 Add it to `aiOrderingResponseSchema`'s union and export its type
-- [ ] 1.3 Add `selectedProductId` to `sendAiOrderingMessageSchema`, its own
-  field beside `selectedOptionId`, with a comment saying the two are not
-  interchangeable because they validate against different parts of the menu
-  (design decision 4)
+- [ ] 1.1 Add the shown set's identifier to `aiOrderingProductsResponseSchema`
+  in `packages/shared/src/contracts/aiOrdering.ts`, issued by the backend like
+  `proposalId` is, so a pick has something to answer against
+- [ ] 1.2 Add the request a pick sends: the shown set's identifier and the
+  chosen product's identifier. Model it on `decideAiOrderingProposalSchema` —
+  ids only, no content, so a caller can neither pick a product the set never
+  presented nor alter what the assistant will be told
+- [ ] 1.3 Add the shown set's settled state to whatever the client reads to
+  know a set is no longer pickable, with the four cases distinguished (picked,
+  answered in words, superseded, lapsed)
 - [ ] 1.4 Verification: `pnpm --filter @repo/shared run build`
 
-## 2. API
+## 2. API — the interrupt
 
-- [ ] 2.1 Add the `ask_which_product` tool in `tools.ts` with its argument
-  schema in `modelResponse.ts`: product ids and a question. Keep the
-  description short — a long addition to one tool's description has twice
-  measurably changed behaviour on unrelated cases
-- [ ] 2.2 State the asking-versus-showing distinction in exactly ONE place.
-  `show_products` is not edited (design decision 2), so the distinction belongs
-  in the new tool's description: use this when which one they want has to be
-  settled before anything can be proposed
-- [ ] 2.3 Validate the product ids against the live menu in `validation.ts`,
-  reusing the shown-set rejection path. A sold-out product is left out, as in
-  the shown set
-- [ ] 2.4 Add the product ids to `collectAiOrderingContextIds` and the decoder
-  in `shortCodes.ts`, so they are short-coded like every other id
-- [ ] 2.5 Render a picked product into the next turn's context in `context.ts`,
-  the way an answered choice already is: which question it answers, and the
-  product by code and name. A typed answer renders as "they did not pick any of
-  the products and typed this instead", mirroring the existing choice wording
-- [ ] 2.6 Accept `selectedProductId` through the turn service, validating it
-  belongs to the question identified by `responseToPromptId`. A pick naming a
-  product that question never presented is rejected
-- [ ] 2.7 Print the question and its products on the replay outcome line so a
-  regression case is readable at a glance
-- [ ] 2.8 Regression case: `我要蛋餅加雞塊` against the twelve-crepe fixture
-  expects a product question presenting all twelve, nothing proposed. Pin that
-  `蛋餅有哪幾種` still answers with `products` and no question — the two must not
-  collapse into one
-- [ ] 2.9 Regression case with a `proposalLog`/`history` override standing in
-  for the pick: the follow-up turn proposes the chosen crepe WITH the nugget,
-  from history alone and with no option field (design decision 5)
-- [ ] 2.10 Verification: `pnpm --filter api test`, typecheck, lint, and a replay
+- [ ] 2.1 In `runtime/agent.ts`, stop `planningMiddleware` discarding
+  `show_products`'s tool call. Rewrite it to a hydrated call the way the
+  proposal's already is, with the backend-issued set id as the tool call id, so
+  the interrupt, the client and the tool all read one set of ids. Its stub body
+  `async () => ''` stays as it is — that is where the resume lands
+- [ ] 2.2 Add it to `humanInTheLoopMiddleware({ interruptOn })` beside
+  `AI_ORDERING_PROPOSAL_TOOL`. On its own this does nothing, which is worth
+  knowing while reading the diff: the middleware interrupts on a PENDING tool
+  call, so 2.1 is what makes 2.2 take effect. Leave `ask_choices` and
+  `report_unanswerable` discarded as they are — only the two tools the guest
+  acts on interrupt
+- [ ] 2.3 Leave the middleware ORDER alone and say so in the commit: planning is
+  listed after the interrupt precisely so its rewrite happens first. The
+  existing comment explains it and is now load-bearing for a second tool
+- [ ] 2.4 Update the comment that currently explains why non-proposal responses
+  must NOT reach a tool node, and the `answerTools` doc comment that calls them
+  output-channel tools where nothing executes — `show_products` stops being one. It is the reasoning being inverted, so it should
+  say what is now true and why, not be deleted
+- [ ] 2.5 Verification: the existing interrupt tests pin the runtime shape of
+  the middleware; extend them to cover two interrupting tools
+
+## 3. API — resume, storage, context
+
+- [ ] 3.1 Add the shown-set snapshot to `AiOrderingTurnSnapshot` in
+  `models/aiOrdering/model.ts`, beside `prompt?` and `proposal?`: the set id and
+  the product ids presented. Say in the comment why it exists — resolving the
+  pick against the guest's own conversation is what makes another guest's set
+  unreachable (design decision 5)
+- [ ] 3.2 Add its decision record, with the four cases named rather than
+  inferred from absence, reusing the wording the proposal decision established
+  for `superseded` (design decision 6)
+- [ ] 3.3 Accept a pick: validate the set id belongs to this guest's
+  conversation and is unsettled, validate the product id against the STORED set
+  and not the live menu, then resume the paused run with the product as the tool
+  result
+- [ ] 3.4 Record the resumed run's response as a NEW turn, linked to the shown
+  set it answers (design decision 4). Do not make `response` a list
+- [ ] 3.5 Settle a standing shown set as superseded when the guest sends a
+  message instead, releasing the paused run, through the path that already
+  supersedes a proposal
+- [ ] 3.6 Refuse a second pick on a settled set with a distinguishable reason,
+  the way a second decision on a proposal is refused — "already answered" and
+  "lapsed" must stay separable
+- [ ] 3.7 Render a picked product into the resumed call's context the way an
+  answered choice already is, so the model sees which set it answers and which
+  product by code and name
+- [ ] 3.8 Print the shown set and the pick on the replay outcome line
+- [ ] 3.9 Regression case: `我要蛋餅加雞塊` against the twelve-crepe fixture
+  expects a shown set of all twelve with nothing proposed, and the reply asking
+  which one. Pin that `蛋餅有哪幾種` still answers with the same response type —
+  the two must stay one path
+- [ ] 3.10 Regression case for the resume: with the pick supplied as the tool
+  result, the next model call proposes the chosen crepe WITH the nugget, from
+  context alone and with no option field (design decision 9)
+- [ ] 3.11 Verification: `pnpm --filter api test`, typecheck, lint, and a replay
   run of the new cases plus the full `--suite regression` once the daily model
-  quota allows. Record the before/after counts; the standing baseline is 19 of
-  20 at fingerprint `bc0d9296179a`
+  quota allows. Record before/after; the standing baseline is 19 of 20 at
+  fingerprint `bc0d9296179a`
 
-## 3. Web
+## 3b. API — the closing sentence
 
-- [ ] 3.1 Carry the new response through `src/models/aiOrdering` like every
-  other variant — no raw DTO past the model layer
-- [ ] 3.2 Add a `productQuestion` entry to `assistantPanelView.ts` beside the
-  `products` entry: same resolution of ids to products, plus the question and
-  whether it is still answerable
-- [ ] 3.3 Render it with the existing card row, but with picking behaviour
-  instead of sheet-opening behaviour. Factor the row so both callers share the
-  scrolling and the cards and differ only in what a tap does — do not copy it
-- [ ] 3.4 Wire the pick through the page VM's existing send path, carrying
-  `responseToPromptId` and `selectedProductId`, so it is one turn and one
-  pending state like a typed message
-- [ ] 3.5 Show the picked product in the transcript as the guest's turn
-- [ ] 3.6 Make an unanswerable question's cards unpickable with a stated reason:
-  store shut, sold out, session ended, or superseded by a later turn (design
-  decision 10)
-- [ ] 3.7 Keep the composer usable while a product question is open, so a typed
-  answer still works (design decision 11), and pin it in a test
-- [ ] 3.8 Tests: the view entry resolves and drops products the same way the
-  `products` entry does; a tap sends one turn with the product id and the prompt
-  id; a browse tap still opens the sheet and sends nothing; a superseded
-  question is unpickable
-- [ ] 3.9 Verification: `pnpm --filter web test`, typecheck, lint, and the
+- [ ] 3b.1 Remove the `beforeModel` / `canJumpTo: ['end']` hook added in
+  `cf3777f` from `planningMiddleware`, so a decided run calls the model again
+  whether or not anything failed (design decision 13). Keep the `wrapModelCall`
+  behaviour that binds NO tools on the closing call — a second proposal inside a
+  decided run is still exactly what must not happen
+- [ ] 3b.2 Leave the service's `last?.getType() === 'ai'` guard in place. It
+  stops being load-bearing once every decided run ends on an AI message, but it
+  is correct and cheap, and it keeps a run that ends at the tool from handing the
+  guest a line of `operationId: outcome`
+- [ ] 3b.3 Store the closing sentence on `AiOrderingProposalDecision` in
+  `models/aiOrdering/model.ts`, beside `results` and `appliedOperations`.
+  Without it a reload keeps the row statuses and loses the explanation (design
+  decision 14)
+- [ ] 3b.4 Return it on the guest's restored transcript, so a reloaded
+  conversation reads the same as the live one
+- [ ] 3b.5 Report the dismissed operations to the model without executing them
+  (design decision 17): pass the dismissed set to `createAiOrderingAgent` beside
+  the executor, and have the proposal tool's returned result name every
+  operation in the proposal with its outcome. The tool still EXECUTES only what
+  it is given in `operations`
+- [ ] 3b.6 Rewrite the `resumeProposal` comment that says the closing sentence
+  is not rendered. Keep its conclusion — `6914fef` still holds — and change its
+  reason (design decision 18)
+- [ ] 3b.7 Test the three speaking cases for what the model is TOLD, not only
+  that it was called: all accepted, a kept subset where the dismissed row is
+  still named as rejected, and a failure carrying its `failureCode`
+- [ ] 3b.8 Leave the two silent cases silent, and pin each with a test:
+  dismissing every operation still makes no cart call and no model call, and a
+  guest who types instead still settles the proposal as `superseded` with the
+  model told on the next turn (design decision 15)
+- [ ] 3b.9 Restore the closing-call tests that `cf3777f` rewrote to run against
+  a failed operation only. Three outcomes call the model now — all accepted, a
+  kept subset all accepted, and a failure — so each is worth a case, and pin
+  that the closing call is bound no tools
+- [ ] 3b.10 Verification: `pnpm --filter api test`, typecheck, lint
+
+## 4. Web
+
+- [ ] 4.1 Carry the shown set's id and settled state through
+  `src/models/aiOrdering` like every other field — no raw DTO past the model
+  layer
+- [ ] 4.2 Change the card's tap in the assistant panel from opening the
+  configuration sheet to sending the pick. Remove the panel's route into
+  `ProductConfigSheet`; the menu grid's route is untouched (design decision 8)
+- [ ] 4.3 Wire the pick through the page VM so it shares the pending state a
+  sent message has: the panel shows the assistant working, and a second tap
+  cannot start a second resume
+- [ ] 4.4 Make a settled set's cards untappable with its reason shown: picked
+  from, answered in words, superseded, lapsed, store shut, or the product sold
+  out (design decision 10)
+- [ ] 4.5 Keep the composer usable while a set is standing, so a typed answer
+  still works, and pin it in a test
+- [ ] 4.6 Tests: a tap sends one pick carrying the set id and the product id; a
+  second tap does nothing; a settled set is untappable; a typed message while a
+  set stands settles it in the view
+- [ ] 4.7 Render the decision's `reply`, which the storefront drops today:
+  `commands.ts` passes only `results` and `appliedSummaries` to
+  `proposalDecided`, and the action takes no third argument. Carry it through
+  the action and the store, and show it in the transcript as the assistant's
+  word on what became of the proposal (design decision 14)
+- [ ] 4.8 Show it on a restored transcript too, from the stored decision, so a
+  reload does not keep the row statuses and lose the sentence
+- [ ] 4.9 Tests: a decision carrying a reply renders it; a decision without one
+  renders nothing extra; a reload shows the stored sentence
+- [ ] 4.10 Verification: `pnpm --filter web test`, typecheck, lint, and the
   frontend architecture validation guide
 
-## 4. By hand
+## 5. By hand
 
-- [ ] 4.1 Against a store with a twelve-product category and a shared add-on
-  modifier: ask for the dish with the add-on, confirm a question is asked with
-  all twelve presented, tap one, confirm a proposal arrives carrying the add-on,
-  confirm it, and confirm the cart line matches
-- [ ] 4.2 Ask `蛋餅有哪幾種` on the same store and confirm the old path is
-  unchanged: tap opens the sheet, no turn is sent, nothing is proposed, and it
-  is noticeably faster than 4.1
-- [ ] 4.3 Tap a product whose kind does not offer the stated add-on, and confirm
-  the assistant says so rather than proposing something the product cannot carry
-- [ ] 4.4 Answer a product question by typing, and confirm it is understood
+- [ ] 5.1 Against a store with a twelve-product category and a shared add-on
+  modifier: ask for the dish with the add-on, confirm all twelve are shown with
+  the assistant asking which, tap one, confirm a proposal arrives carrying the
+  add-on, set a choice on the proposal card, confirm it, and confirm the cart
+  line matches
+- [ ] 5.2 Tap a kind that does not offer the stated add-on, and confirm the
+  assistant says so rather than proposing something the product cannot carry
+- [ ] 5.3 Ask `蛋餅有哪幾種`, tap a card, and confirm the browse case now also
+  goes through the proposal card. Note how much slower it feels than today —
+  this is the cost design decision 8 accepted, and it is worth seeing
+- [ ] 5.4 Answer a shown set by typing, and confirm it is understood and the
+  cards stop being tappable
+- [ ] 5.5 Show products, reload the page, and confirm the set comes back with
+  its real state: still pickable if nothing settled it, and not pickable with a
+  reason if something did
+- [ ] 5.6 Accept a proposal whose operations all succeed, and confirm the
+  assistant now says what it did. Note how much slower the tap feels than
+  before — this is what design decision 13 gave up, and it is worth seeing
+- [ ] 5.7 Accept a proposal with one operation that fails, and confirm the
+  sentence explains what the row statuses cannot — then reload and confirm the
+  sentence is still there
