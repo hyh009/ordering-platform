@@ -78,8 +78,6 @@ in it, with no upper bound.
 - **WHEN** the assistant names a category holding more than eight products
 - **THEN** every product in it is shown
 
-## MODIFIED Requirements
-
 ### Requirement: Asking the guest which thing they meant
 
 The assistant SHALL ask the guest to choose only when what they said matches
