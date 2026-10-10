@@ -338,6 +338,10 @@ export class AiOrderingService {
       proposalId: request.proposalId,
       proposal,
       keptOperations,
+      // Reported to the model, never executed. The resume edits the pending
+      // call down to the kept operations, so this is the only thing that tells
+      // the assistant the guest took a row out.
+      dismissedOperationIds: dismissed.map((result) => result.operationId),
     });
 
     const results = this.orderResults(proposal.snapshot.operations, [
@@ -353,6 +357,9 @@ export class AiOrderingService {
       // proposed stays on record as it was. Only when something differs, so an
       // unchanged decision is stored exactly as it always was.
       ...(appliedOperations.length > 0 ? { appliedOperations } : {}),
+      // Stored, not only returned: the guest reads it, and a reload would
+      // otherwise keep the per-operation outcomes and lose the explanation.
+      ...(resumed.reply !== undefined ? { reply: resumed.reply } : {}),
     });
 
     return {
@@ -444,6 +451,7 @@ export class AiOrderingService {
     proposalId: string;
     proposal: AiOrderingStoredProposal;
     keptOperations: AiOrderingOperation[];
+    dismissedOperationIds: string[];
   }): Promise<{ results: AiOrderingOperationResult[] | null; reply?: string }> {
     const { agent, record } = createAiOrderingAgent({
       config: input.runtime.config,
@@ -465,6 +473,7 @@ export class AiOrderingService {
       model: input.runtime.createChatModel(),
       checkpointer: await this.deps.getCheckpointer(),
       executor: this.createCartExecutor(input.claims),
+      dismissedOperationIds: input.dismissedOperationIds,
     });
 
     const config = { configurable: { thread_id: input.proposalId } };
@@ -505,11 +514,12 @@ export class AiOrderingService {
      * One invoke, two halves: the tool body writes the cart, and the model is
      * then called once more to say what happened.
      *
-     * Only the first half is the decision. The second produces a sentence the
-     * panel does not even render, and letting it fail the request cost a guest
-     * their cart change ON RECORD: the proposal was already claimed, the
-     * results were never written, and the next turn would have been told
-     * nothing was applied while the items sat in the cart.
+     * Only the first half is the decision. The second produces the sentence the
+     * guest reads, which makes losing it a real loss — and makes losing the
+     * recorded decision along with it a worse one. Letting a failure here fail
+     * the request cost a guest their cart change ON RECORD: the proposal was
+     * already claimed, the results were never written, and the next turn would
+     * have been told nothing was applied while the items sat in the cart.
      *
      * `record.results` is what tells the halves apart. The tool body sets it
      * before it returns, so a non-null value means the cart was written and
@@ -519,10 +529,10 @@ export class AiOrderingService {
     try {
       const result = await agent.invoke(resume, config);
       const last = result.messages?.at(-1);
-      // Only the model's own words. A run that ended at the tool — which is
-      // every run whose operations all went through — leaves the tool's result
-      // last, and that is a line of `operationId: outcome` written for the
-      // model, not for the guest.
+      // Only the model's own words. No decided run ends at the tool any more,
+      // so this no longer carries a case — but a run that did would leave the
+      // tool's result last, and that is a line of `operationId: outcome`
+      // written for the model, not for the guest.
       const reply =
         last?.getType() === 'ai' && typeof last.content === 'string'
           ? last.content

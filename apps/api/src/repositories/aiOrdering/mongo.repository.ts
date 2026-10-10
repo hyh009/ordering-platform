@@ -323,6 +323,9 @@ export const aiOrderingMongoRepository = {
                   input.appliedOperations,
               }
             : {}),
+          ...(input.reply !== undefined
+            ? { 'turns.$.proposal.decision.reply': input.reply }
+            : {}),
         },
       },
     ).exec();

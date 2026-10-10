@@ -271,6 +271,11 @@ function toAiOrderingProposalStateDto(
     decidedAt: proposal.decision.decidedAt.toISOString(),
     results: proposal.decision.results,
     ...(appliedSummaries.length > 0 ? { appliedSummaries } : {}),
+    // So a reloaded transcript reads the same as the live one did, instead of
+    // keeping the outcomes and losing what the guest was told about them.
+    ...(proposal.decision.reply !== undefined
+      ? { reply: proposal.decision.reply }
+      : {}),
   };
 }
 

@@ -483,6 +483,14 @@ export type AiOrderingProposalStateDto =
       results: AiOrderingOperationResult[];
       /** Present when the guest changed a choice before accepting. */
       appliedSummaries?: AiOrderingAppliedSummary[];
+      /**
+       * What the assistant said about the decision.
+       *
+       * Absent when it said nothing — dismissing every operation is answered
+       * with nothing, since there is no outcome to report — and on every
+       * decision recorded before the assistant answered a decision at all.
+       */
+      reply?: string;
     };
 
 export type AiOrderingGuestTurnDto = {

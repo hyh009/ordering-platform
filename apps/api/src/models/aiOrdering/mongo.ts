@@ -55,6 +55,9 @@ const proposalDecisionSchema = new Schema<AiOrderingProposalDecision>(
     // Absent unless the guest changed a choice before accepting. `Mixed` for
     // the same reason the proposal's own operations are; see below.
     appliedOperations: { type: Schema.Types.Mixed },
+    // Absent when nothing was attempted, and on every decision stored before
+    // the assistant answered a decision at all.
+    reply: { type: String },
   },
   { _id: false },
 );

@@ -141,6 +141,18 @@ export type AiOrderingAgentInput = {
   model: unknown;
   checkpointer: BaseCheckpointSaver;
   executor: AiOrderingCartExecutor;
+  /**
+   * The operations the guest removed from the proposal before accepting it.
+   *
+   * Reported by the proposal tool and never executed. The resume rewrites the
+   * pending call to the kept operations only, so without this the model sees a
+   * proposal of one operation where it made two, and cannot mention the row the
+   * guest took out — the outcome inferred from absence that
+   * `AiOrderingProposalDecision.results` already refuses to allow anywhere else.
+   *
+   * Empty on a first run, where nothing has been decided yet.
+   */
+  dismissedOperationIds?: string[] | undefined;
   /** Epoch milliseconds the whole turn must finish by. */
   deadlineAt?: number | undefined;
   /** Shown every model call as it happens. A debugging aid; see `debugTrace.ts`. */
@@ -228,14 +240,20 @@ export function createAiOrderingAgent(
       // proposes again inside a run that has already been decided.
       record.phase = 'closing';
 
-      return results
-        .map(
+      // Every operation the proposal had, not only the ones that ran. The
+      // dismissed ones were edited out of this call before it was resumed, so
+      // this line is the model's only way to know the guest removed them.
+      return [
+        ...results.map(
           (result) =>
             `${result.operationId}: ${result.outcome}${
               result.failureCode ? ` (${result.failureCode})` : ''
             }`,
-        )
-        .join('\n');
+        ),
+        ...(input.dismissedOperationIds ?? []).map(
+          (operationId) => `${operationId}: rejected (removed by the guest)`,
+        ),
+      ].join('\n');
     },
     {
       name: AI_ORDERING_PROPOSAL_TOOL,
@@ -291,35 +309,6 @@ export function createAiOrderingAgent(
 
   const planningMiddleware = createMiddleware({
     name: 'AiOrderingPlanning',
-    /**
-     * End the run after an execution that went exactly as proposed, instead of
-     * calling the model to say so.
-     *
-     * The loop returns to the model after a tool result because that is what an
-     * agent loop does, not because this turn needs it: the guest reads the
-     * reply the PROPOSAL carried, and the sentence produced here is dropped by
-     * the surface that receives it. Paying a model round trip for it taxed the
-     * one interaction that should be instant — the tap that puts an item in the
-     * cart — and a provider failing during it took the whole decision with it.
-     *
-     * Only when everything was accepted. A failure is the case the sentence
-     * exists for: "two went in, the third sold out" is not something the
-     * per-row statuses say as well, and it is worth a call.
-     */
-    beforeModel: {
-      canJumpTo: ['end'],
-      hook: () => {
-        if (record.phase !== 'closing') {
-          return;
-        }
-
-        const executed = record.results ?? [];
-
-        return executed.every((result) => result.outcome === 'accepted')
-          ? { jumpTo: 'end' as const }
-          : undefined;
-      },
-    },
     wrapModelCall: async (request, handler) => {
       // The closing call after an execution. No tools: the cart has already
       // changed, and a second proposal inside a decided run is exactly what

@@ -83,41 +83,41 @@ on purpose — do not reintroduce any of them as part of this change.
 
 ## 3b. API — the closing sentence
 
-- [ ] 3b.1 Remove the `beforeModel` / `canJumpTo: ['end']` hook added in
+- [x] 3b.1 Remove the `beforeModel` / `canJumpTo: ['end']` hook added in
   `cf3777f` from `planningMiddleware`, so a decided run calls the model again
   whether or not anything failed (design decision 13). Keep the `wrapModelCall`
   behaviour that binds NO tools on the closing call — a second proposal inside a
   decided run is still exactly what must not happen
-- [ ] 3b.2 Leave the service's `last?.getType() === 'ai'` guard in place. It
+- [x] 3b.2 Leave the service's `last?.getType() === 'ai'` guard in place. It
   stops being load-bearing once every decided run ends on an AI message, but it
   is correct and cheap, and it keeps a run that ends at the tool from handing the
   guest a line of `operationId: outcome`
-- [ ] 3b.3 Store the closing sentence on `AiOrderingProposalDecision` in
+- [x] 3b.3 Store the closing sentence on `AiOrderingProposalDecision` in
   `models/aiOrdering/model.ts`, beside `results` and `appliedOperations`.
   Without it a reload keeps the row statuses and loses the explanation (design
   decision 14)
-- [ ] 3b.4 Return it on the guest's restored transcript, so a reloaded
+- [x] 3b.4 Return it on the guest's restored transcript, so a reloaded
   conversation reads the same as the live one
-- [ ] 3b.5 Report the dismissed operations to the model without executing them
+- [x] 3b.5 Report the dismissed operations to the model without executing them
   (design decision 17): pass the dismissed set to `createAiOrderingAgent` beside
   the executor, and have the proposal tool's returned result name every
   operation in the proposal with its outcome. The tool still EXECUTES only what
   it is given in `operations`
-- [ ] 3b.6 Rewrite the `resumeProposal` comment that says the closing sentence
+- [x] 3b.6 Rewrite the `resumeProposal` comment that says the closing sentence
   is not rendered. Keep its conclusion — `6914fef` still holds — and change its
   reason (design decision 18)
-- [ ] 3b.7 Test the three speaking cases for what the model is TOLD, not only
+- [x] 3b.7 Test the three speaking cases for what the model is TOLD, not only
   that it was called: all accepted, a kept subset where the dismissed row is
   still named as rejected, and a failure carrying its `failureCode`
-- [ ] 3b.8 Leave the two silent cases silent, and pin each with a test:
+- [x] 3b.8 Leave the two silent cases silent, and pin each with a test:
   dismissing every operation still makes no cart call and no model call, and a
   guest who types instead still settles the proposal as `superseded` with the
   model told on the next turn (design decision 15)
-- [ ] 3b.9 Restore the closing-call tests that `cf3777f` rewrote to run against
+- [x] 3b.9 Restore the closing-call tests that `cf3777f` rewrote to run against
   a failed operation only. Three outcomes call the model now — all accepted, a
   kept subset all accepted, and a failure — so each is worth a case, and pin
   that the closing call is bound no tools
-- [ ] 3b.10 Verification: `pnpm --filter api test`, typecheck, lint
+- [x] 3b.10 Verification: `pnpm --filter api test`, typecheck, lint
 
 ## 4. Web
 

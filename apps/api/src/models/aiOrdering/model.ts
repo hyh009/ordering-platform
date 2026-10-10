@@ -114,6 +114,18 @@ export type AiOrderingProposalDecision = {
    * which is also what every decision stored before this field reads as.
    */
   appliedOperations?: AiOrderingOperation[];
+  /**
+   * What the assistant said about the decision, in the guest's language.
+   *
+   * Stored because the guest reads it, and a reload would otherwise keep the
+   * per-operation outcomes and lose the explanation: a transcript that
+   * remembers what happened and forgets what it was told.
+   *
+   * Absent when nothing was attempted — dismissing every operation is recorded
+   * and answered with nothing, since there is no outcome to report — and on
+   * every decision stored before this field existed.
+   */
+  reply?: string;
 };
 
 /**

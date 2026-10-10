@@ -791,6 +791,11 @@ describe('AiOrderingService proposal lifetime', () => {
     expect(h.proposalDecisions[0]?.decision.results).toEqual([
       { operationId: 'op-1', outcome: 'superseded' },
     ]);
+    // And the assistant says nothing about it here. Nothing was attempted, and
+    // the model is told on the NEXT turn through the proposal log — the guest
+    // asked something else, and the answer to that is the turn they are
+    // waiting for.
+    expect(h.proposalDecisions[0]?.decision.reply).toBeUndefined();
   });
 
   it('reports the settled proposal back to the panel', async () => {
@@ -1241,6 +1246,7 @@ describe('AiOrderingService: what the guest applied', () => {
     const resultWrites: {
       results: unknown;
       appliedOperations?: unknown;
+      reply?: unknown;
     }[] = [];
     const cartAdds: unknown[] = [];
     const checkpointer = new MemorySaver();
@@ -1409,7 +1415,7 @@ describe('AiOrderingService: what the guest applied', () => {
     ]);
   });
 
-  it('does not call the model again when every operation was accepted', async () => {
+  it('answers what happened when every operation was accepted', async () => {
     const h = await proposeTea();
 
     const decided = await h.service.decideProposal(claims, {
@@ -1420,10 +1426,30 @@ describe('AiOrderingService: what the guest applied', () => {
     expect(decided.results).toEqual([
       { operationId: h.operationId, outcome: 'accepted' },
     ]);
-    // The harness has a closing reply queued. Its absence here is the model
-    // never having been asked — and the run ending at the tool must not pass
-    // the tool's own `operationId: outcome` line off as something to read.
+    // A clean apply used to end at the tool to save the round trip. The guest
+    // confirmed something and reads what the assistant says about it, so the
+    // model is asked here too — and what it wrote is stored, not only returned,
+    // or a reload keeps the outcome and loses the explanation.
+    expect(decided.reply).toBe('加好了。');
+    expect(h.resultWrites).toHaveLength(1);
+    expect(h.resultWrites[0]?.reply).toBe('加好了。');
+  });
+
+  it('says nothing when the guest dismissed every operation', async () => {
+    const h = await proposeTea();
+
+    const decided = await h.service.decideProposal(claims, {
+      proposalId: h.proposalId,
+      keptOperationIds: [],
+    });
+
+    // Nothing was attempted, so there is no outcome to report and the model is
+    // never asked. The harness has a reply queued; its absence is the point.
+    expect(decided.results).toEqual([
+      { operationId: h.operationId, outcome: 'rejected' },
+    ]);
     expect(decided.reply).toBeUndefined();
+    expect(h.cartAdds).toHaveLength(0);
   });
 
   it('answers what happened when an operation failed', async () => {

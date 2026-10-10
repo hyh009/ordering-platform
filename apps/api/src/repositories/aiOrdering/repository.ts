@@ -186,6 +186,8 @@ export type SetAiOrderingProposalResultsInput = {
   results: AiOrderingOperationResult[];
   /** Left out when the guest changed nothing, so nothing is stored for it. */
   appliedOperations?: AiOrderingOperation[];
+  /** What the assistant said about the decision. Left out when it said nothing. */
+  reply?: string;
 };
 
 export type UpdateAiOrderingSummaryInput = {

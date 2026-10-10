@@ -91,6 +91,7 @@ function build(
     deadlineAt?: number;
     guestMessage?: string;
     validation?: AiOrderingValidationInput;
+    dismissedOperationIds?: string[];
   } = {},
 ) {
   let sequence = 0;
@@ -182,10 +183,14 @@ describe('AI ordering agent run', () => {
     expect(response.confirmationRequired).toBe(true);
   });
 
-  it('executes once on approval and ends there when everything was accepted', async () => {
-    // Only the planning response is queued: a closing call would find the
-    // queue empty and throw, so this pins the absence as well as the count.
-    const model = fakeModel().respondWithTools([proposalCall()]);
+  it('lets the model answer what happened when everything was accepted', async () => {
+    // The run used to end at the tool here, to save the round trip. It calls
+    // the model again now: the guest confirmed something and reads what the
+    // assistant says about it, and the per-row statuses report outcomes rather
+    // than a sentence.
+    const model = fakeModel()
+      .respondWithTools([proposalCall()])
+      .respond(new AIMessage('白飯幫你加好了。'));
     const { agent, record, messages } = build(model, cart);
 
     await agent.invoke({ messages }, threadConfig);
@@ -198,11 +203,39 @@ describe('AI ordering agent run', () => {
     expect(record.results).toEqual([
       { operationId: 'op-1', outcome: 'accepted' },
     ]);
-    // The planning call and nothing else. The loop would have gone back to the
-    // model to narrate an outcome the guest never reads, on the one tap that
-    // should be instant.
-    expect(record.modelCalls).toBe(1);
+    expect(record.modelCalls).toBe(2);
     expect(record.phase).toBe('closing');
+  });
+
+  it('tells the model what the guest dismissed, without executing it', async () => {
+    // The resume edits the pending call down to the kept operations, so the
+    // dismissed row is gone from everything the model can see. Reported here or
+    // the assistant answers a guest who just removed the milk tea as though it
+    // had never been mentioned.
+    const model = fakeModel()
+      .respondWithTools([proposalCall()])
+      .respond(new AIMessage('白飯加好了，奶茶幫你拿掉了。'));
+    const { agent, record, messages } = build(model, cart, {
+      dismissedOperationIds: ['op-2'],
+    });
+
+    await agent.invoke({ messages }, threadConfig);
+    await agent.invoke(
+      new Command({ resume: { decisions: [{ type: 'approve' }] } }),
+      threadConfig,
+    );
+
+    // Reported, not run: one operation reached the cart.
+    expect(cart.addItem).toHaveBeenCalledTimes(1);
+    expect(record.results).toEqual([
+      { operationId: 'op-1', outcome: 'accepted' },
+    ]);
+
+    const closing = model.calls.at(-1);
+    const toolResult = JSON.stringify(closing);
+
+    expect(toolResult).toContain('op-1: accepted');
+    expect(toolResult).toContain('op-2: rejected (removed by the guest)');
   });
 
   it('lets the model answer what happened when an operation failed', async () => {
@@ -228,21 +261,24 @@ describe('AI ordering agent run', () => {
       expect.objectContaining({ operationId: 'op-1', outcome: 'failed' }),
     ]);
     expect(record.modelCalls).toBe(2);
+
+    // And the reason reaches the model, not just the fact. Without the code it
+    // can only say something went wrong, which is the answer the guest already
+    // has from the row.
+    expect(JSON.stringify(model.calls.at(-1))).toContain(
+      `op-1: failed (${String(record.results?.[0]?.failureCode)})`,
+    );
   });
 
   it('binds no tools on the closing call, so a decided run cannot propose again', async () => {
-    // Read against a failed operation, because that is the only run that still
-    // calls the model after executing.
-    const failing = executor({
-      addItem: vi.fn(async () => {
-        throw new Error('sold out');
-      }),
-    });
+    // Read against a clean apply, which calls the model again like every other
+    // decided run now. Unbinding is what makes a second proposal inside a
+    // decided run unrepresentable rather than policed.
     const model = fakeModel()
       .respondWithTools([proposalCall()])
-      .respond(new AIMessage('That one sold out, sorry.'));
+      .respond(new AIMessage('白飯幫你加好了。'));
     const bind = vi.spyOn(model, 'bindTools');
-    const { agent, messages } = build(model, failing);
+    const { agent, messages } = build(model, cart);
 
     await agent.invoke({ messages }, threadConfig);
     await agent.invoke(
