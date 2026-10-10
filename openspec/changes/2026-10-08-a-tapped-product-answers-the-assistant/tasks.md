@@ -8,17 +8,17 @@ on purpose — do not reintroduce any of them as part of this change.
 
 ## 1. Shared contract
 
-- [ ] 1.1 Add the shown set's identifier to `aiOrderingProductsResponseSchema`
+- [x] 1.1 Add the shown set's identifier to `aiOrderingProductsResponseSchema`
   in `packages/shared/src/contracts/aiOrdering.ts`, issued by the backend like
   `proposalId` is, so a pick has something to answer against
-- [ ] 1.2 Add the request a pick sends: the shown set's identifier and the
+- [x] 1.2 Add the request a pick sends: the shown set's identifier and the
   chosen product's identifier. Model it on `decideAiOrderingProposalSchema` —
   ids only, no content, so a caller can neither pick a product the set never
   presented nor alter what the assistant will be told
-- [ ] 1.3 Add the shown set's settled state to whatever the client reads to
+- [x] 1.3 Add the shown set's settled state to whatever the client reads to
   know a set is no longer pickable, with the four cases distinguished (picked,
   answered in words, superseded, lapsed)
-- [ ] 1.4 Verification: `pnpm --filter @repo/shared run build`
+- [x] 1.4 Verification: `pnpm --filter @repo/shared run build`
 
 ## 2. API — the interrupt
 
@@ -147,6 +147,13 @@ on purpose — do not reintroduce any of them as part of this change.
   reload does not keep the row statuses and lose the sentence
 - [x] 4.9 Tests: a decision carrying a reply renders it; a decision without one
   renders nothing extra; a reload shows the stored sentence
+- [x] 4.9b Name the choices a proposal is still waiting on, written by the
+  panel from the operation's own `choices` and NOT asked of the assistant. The
+  picker asks one at a time, which leaves the guest unable to see how much is
+  left — with one choice open it shows no count at all. Style it as the panel's
+  own words, not as a reply, and do not add a matching rule to the proposal
+  tool's description: one owner is what stops the guest reading the same thing
+  twice (design decision 19)
 - [ ] 4.10 Verification: `pnpm --filter web test`, typecheck, lint, and the
   frontend architecture validation guide
 

@@ -245,6 +245,22 @@ export function AssistantProposalCard({
         ))}
       </ul>
 
+      {/* What is still waiting, named. The picker below asks one at a time,
+          which is right for answering and leaves the guest unable to see how
+          much is left — with a single choice open it shows no count at all.
+
+          Written here, from the proposal's own choices, and deliberately not
+          asked of the assistant: it has to be exactly right, and one owner is
+          what stops the guest reading the same thing twice. Styled as the
+          panel's own words rather than as a reply, for the same reason. */}
+      {proposal.openChoiceLabels.length > 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {tDefault('guest.assistant.choicesToPick', 'Still to choose: {{labels}}', {
+            labels: proposal.openChoiceLabels.join('、'),
+          })}
+        </p>
+      ) : null}
+
       {picker ? (
         <ChoicePicker
           // Keyed by the choice, so the picks made for one never carry over to

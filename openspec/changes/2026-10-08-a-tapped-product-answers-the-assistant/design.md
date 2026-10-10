@@ -318,3 +318,35 @@ The conclusion it supports does NOT change — `6914fef` is still right, and a
 provider error after the cart was written must still not lose the decision. Only
 the reason changes: the sentence now reaches the guest, which makes losing it a
 real loss and makes losing the recorded decision with it a worse one.
+
+
+### 19. A fact about the controls on screen is written by the panel, not the assistant
+
+The assistant leaves a choice it was not told — a sugar level, an ice level, a
+size — for the guest to answer on the proposal. The card asks them one at a
+time, which is right for answering and leaves the guest unable to see how much
+is left: with a single choice open it shows a picker and no count at all, and
+the guest cannot tell whether the assistant is waiting on them or has stopped.
+
+So the panel names what is still waiting, derived from the operation's own
+`choices`. It must be exactly right — a sentence that names a choice that is
+not open, or misses one that is, is worse than no sentence — and it costs
+nothing to derive. This is the division the rest of the feature follows, and the
+precedent is already in the main spec: a proposal's per-operation label is
+produced by the system.
+
+Two consequences, both deliberate:
+
+The proposal tool's description gains NO matching rule. Two owners for one
+sentence is how the guest ends up reading the same thing twice, once as
+interface and once as a reply.
+
+And it is styled as the panel's own words rather than as the assistant's. The
+panel already draws that line — a reply sits in a bubble, derived text sits
+plain and muted — so an assistant that mentions a choice anyway reads as
+agreeing with the interface rather than as a second voice.
+
+The closing sentence after a decision stays the assistant's, by the same test:
+whether the guest wants anything else is conversation, not a fact about a
+control. The two never appear together — one belongs to a proposal still
+waiting, the other to one already decided.

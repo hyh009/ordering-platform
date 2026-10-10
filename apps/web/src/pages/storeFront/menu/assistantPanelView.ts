@@ -233,6 +233,20 @@ export type AssistantProposalView = {
    */
   openChoice: AssistantOpenChoiceView | null;
   /**
+   * The names of every choice still waiting, in the order they will be asked.
+   *
+   * The picker asks one at a time, which is right for answering and wrong for
+   * knowing how much is left: with one choice open it shows a picker and no
+   * count at all, and the guest cannot tell whether the assistant is waiting on
+   * them or has simply stopped.
+   *
+   * Written by the panel from what is open, never by the assistant. Naming the
+   * remaining choices is a fact about the controls on screen, so it must be
+   * exactly right and cost nothing — and keeping one owner is what stops the
+   * guest reading the same thing twice, once as interface and once as a reply.
+   */
+  openChoiceLabels: string[];
+  /**
    * Whether the guest decides. Resolved server-side from the store setting AND
    * the active version's permission — the panel only reports it.
    */
@@ -541,6 +555,9 @@ function toProposalView(
       next && !proposal.isApplied
         ? { ...next, remainingCount: openChoices.length }
         : null,
+    openChoiceLabels: proposal.isApplied
+      ? []
+      : openChoices.map((choice) => choice.label),
     // A required choice still open means the proposal is not applicable at all,
     // whatever the store's confirmation setting says. The server refuses it too,
     // so this is the button agreeing with the guarantee rather than being it.

@@ -987,6 +987,69 @@ describe('choices a proposal left open', () => {
     });
   });
 
+  it('names every choice still waiting, not only the one being asked', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1', 'op-2'],
+        choices: {
+          'op-1': [choice('mod-sugar'), choice('mod-ice')],
+          'op-2': [choice('mod-spice')],
+        },
+      }),
+    });
+
+    // The picker asks one at a time, which leaves the guest unable to see how
+    // much is left — and with a single choice open it shows no count at all.
+    expect(view().proposal?.openChoiceLabels).toEqual([
+      'Choice mod-sugar',
+      'Choice mod-ice',
+      'Choice mod-spice',
+    ]);
+  });
+
+  it('drops a choice from the waiting list once it is answered', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: {
+          'op-1': [choice('mod-sugar'), choice('mod-ice')],
+        },
+      }),
+    });
+
+    actions.proposalChoiceAnswered({
+      operationId: 'op-1',
+      modifierId: 'mod-sugar',
+      optionIds: ['opt-a'],
+    });
+
+    expect(view().proposal?.openChoiceLabels).toEqual(['Choice mod-ice']);
+  });
+
+  it('names nothing to pick once the proposal is applied', () => {
+    const { actions, view } = setup();
+
+    actions.turnAppended({
+      id: 'a1',
+      turn: proposalTurn({
+        confirmationRequired: true,
+        operationIds: ['op-1'],
+        choices: { 'op-1': [choice('mod-sugar')] },
+      }),
+    });
+    actions.proposalDecided([{ operationId: 'op-1', outcome: 'accepted' }]);
+
+    expect(view().proposal?.openChoiceLabels).toEqual([]);
+  });
+
   it('moves to the next choice once one is answered', () => {
     const { actions, view } = setup();
 
