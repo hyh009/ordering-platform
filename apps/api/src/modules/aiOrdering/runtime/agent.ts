@@ -159,6 +159,28 @@ export type AiOrderingAgentInput = {
   onModelCall?: AiOrderingModelCallObserver | undefined;
 };
 
+/**
+ * What the model is asked for after an execution, and only then.
+ *
+ * It already said what it was ABOUT to do when it proposed. This call is for
+ * what came of it, which is a different sentence — and the guest is reading
+ * both, one under the other.
+ *
+ * The outcomes are given as data in the tool result; this says what to do with
+ * them. `rejected (removed by the guest)` is worth naming out loud, because the
+ * guest just did it and an assistant that does not mention it reads as not
+ * having noticed.
+ */
+const CLOSING_NOTE = [
+  'The changes you proposed have now been carried out. The result of each one is in the tool result above.',
+  'Tell the guest what happened, in the language they wrote in. Keep it to one or two short sentences.',
+  'Do not repeat the sentence you wrote when you proposed: they have already read it, directly above yours.',
+  'Say what was actually done. Name anything the guest removed, and anything that failed together with the reason given.',
+  'Never say that something was added, changed or removed when its result does not say so.',
+  'You cannot change the cart again in this turn, so do not offer to change it now.',
+  'Then offer the next step in one short clause: whether they would like anything else, or are ready to send the order. Do not explain how sending works unless they ask.',
+].join('\n');
+
 export type AiOrderingAgent = {
   record: AiOrderingRunRecord;
   agent: ReturnType<typeof createAgent>;
@@ -319,6 +341,16 @@ export function createAiOrderingAgent(
         const closing = await handler({
           ...request,
           tools: [],
+          // Without this the model has no idea its job changed: it sees its own
+          // conversation, a line of outcomes, and nothing asking for anything
+          // new — so it repeats the sentence it wrote when it PROPOSED, word
+          // for word, and the guest reads the same thing twice.
+          //
+          // Injected per call rather than written into the core instructions,
+          // like the repair notes are. A decided run reaches this once; the
+          // core block is the cached prefix of every turn, and a rule about one
+          // call does not belong in it.
+          messages: [...request.messages, new HumanMessage(CLOSING_NOTE)],
           modelSettings: { ...request.modelSettings, signal: callSignal() },
         });
         record.cacheReadTokens += readCacheReadTokens(closing);

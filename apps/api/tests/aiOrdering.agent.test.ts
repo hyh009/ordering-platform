@@ -207,6 +207,32 @@ describe('AI ordering agent run', () => {
     expect(record.phase).toBe('closing');
   });
 
+  it('asks the closing call for what happened, not for the proposal again', async () => {
+    // Without this the model sees its own conversation, a line of outcomes and
+    // nothing asking for anything new, so it repeats the sentence it wrote when
+    // it proposed — which the guest then reads twice, one under the other.
+    const model = fakeModel()
+      .respondWithTools([proposalCall()])
+      .respond(new AIMessage('白飯幫你加好了。'));
+    const { agent, messages } = build(model, cart);
+
+    await agent.invoke({ messages }, threadConfig);
+    await agent.invoke(
+      new Command({ resume: { decisions: [{ type: 'approve' }] } }),
+      threadConfig,
+    );
+
+    const closing = JSON.stringify(model.calls.at(-1));
+
+    expect(closing).toContain('have now been carried out');
+    expect(closing).toContain('Do not repeat the sentence you wrote when you');
+    // And a next step, which is what gives this call something worth saying
+    // when one line went in cleanly and there is nothing else to report.
+    expect(closing).toContain('offer the next step');
+    // The checkout route itself lives in the core instructions and stays there.
+    expect(closing).not.toContain('submit button');
+  });
+
   it('tells the model what the guest dismissed, without executing it', async () => {
     // The resume edits the pending call down to the kept operations, so the
     // dismissed row is gone from everything the model can see. Reported here or
