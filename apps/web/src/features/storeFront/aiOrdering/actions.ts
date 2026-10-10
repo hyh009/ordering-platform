@@ -54,6 +54,7 @@ export function createStoreFrontAiOrderingActions(
     proposalId: string,
     results: AiOrderingOperationResult[],
     appliedSummaries?: AiOrderingAppliedSummaryModel[],
+    reply?: string,
   ) {
     store.setState((state) => ({
       entries: state.entries.map((entry) =>
@@ -66,6 +67,7 @@ export function createStoreFrontAiOrderingActions(
               ...(appliedSummaries !== undefined
                 ? { proposalAppliedSummaries: appliedSummaries }
                 : {}),
+              ...(reply !== undefined ? { proposalReply: reply } : {}),
             }
           : entry,
       ),
@@ -103,6 +105,11 @@ export function createStoreFrontAiOrderingActions(
                   ? {
                       proposalAppliedSummaries: turn.proposal.appliedSummaries,
                     }
+                  : {}),
+                // From the stored decision, so a reload does not keep the row
+                // statuses and lose what the guest was told about them.
+                ...(turn.proposal.reply !== undefined
+                  ? { proposalReply: turn.proposal.reply }
                   : {}),
               }
             : {}),
@@ -273,6 +280,7 @@ export function createStoreFrontAiOrderingActions(
     proposalDecided(
       results: AiOrderingOperationResult[],
       appliedSummaries?: AiOrderingAppliedSummaryModel[],
+      reply?: string,
     ) {
       const byOperationId = new Map(
         results.map((result) => [result.operationId, result]),
@@ -281,7 +289,12 @@ export function createStoreFrontAiOrderingActions(
       const openProposalId = store.getState().proposal?.proposalId;
 
       if (openProposalId !== undefined) {
-        recordProposalResults(openProposalId, results, appliedSummaries);
+        recordProposalResults(
+          openProposalId,
+          results,
+          appliedSummaries,
+          reply,
+        );
       }
 
       store.setState((state) =>

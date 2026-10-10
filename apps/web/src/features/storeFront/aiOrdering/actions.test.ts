@@ -221,6 +221,38 @@ describe('storefront assistant actions', () => {
     ]);
   });
 
+  it('keeps what the assistant said about the decision', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalDecided(
+      [{ operationId: 'op-1', outcome: 'accepted' }],
+      undefined,
+      '紅茶加好了，奶茶幫你拿掉了。',
+    );
+
+    // The statuses say what became of each row; this says what that means. The
+    // API has produced it for a while and the panel threw it away.
+    const entry = store.getState().entries[0];
+
+    expect(entry?.role === 'assistant' && entry.proposalReply).toBe(
+      '紅茶加好了，奶茶幫你拿掉了。',
+    );
+  });
+
+  it('records no sentence when the decision carried none', () => {
+    const { store, actions } = setup();
+
+    actions.turnAppended({ id: 'assistant-1', turn: proposalTurn });
+    actions.proposalDecided([{ operationId: 'op-1', outcome: 'rejected' }]);
+
+    // Dismissing everything attempts nothing, so there is no outcome to report
+    // and the assistant is never asked. Nothing extra must appear.
+    const entry = store.getState().entries[0];
+
+    expect(entry?.role === 'assistant' && entry.proposalReply).toBeUndefined();
+  });
+
   it('marks a proposal the next message settled', () => {
     const { store, actions } = setup();
 

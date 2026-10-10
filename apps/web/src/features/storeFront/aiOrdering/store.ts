@@ -35,6 +35,15 @@ export type AiOrderingChatEntry =
        * operation's own summary already says what was applied.
        */
       proposalAppliedSummaries?: AiOrderingAppliedSummaryModel[];
+      /**
+       * What the assistant said about the decision, once it was made.
+       *
+       * Beside the row statuses rather than instead of them: the statuses say
+       * what became of each operation, and this says what that means. Absent
+       * when nothing was attempted — dismissing every row is answered with
+       * nothing, since there is no outcome to report.
+       */
+      proposalReply?: string;
     };
 
 /**

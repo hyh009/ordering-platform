@@ -208,6 +208,18 @@ export function AssistantPanel({
                             : {})}
                         />
                       ) : null}
+
+                      {/* What the assistant said once the guest decided, after
+                          the rows rather than before them: the exchange reads
+                          in the order it happened — it offered, the guest
+                          answered, it said what came of it. Styled as its own
+                          words, because they are. */}
+                      {entry.kind === 'proposal' &&
+                      entry.decidedReply !== undefined ? (
+                        <p className="rounded-xl bg-muted px-3 py-2 text-sm">
+                          {entry.decidedReply}
+                        </p>
+                      ) : null}
                     </div>
                   );
                 })}

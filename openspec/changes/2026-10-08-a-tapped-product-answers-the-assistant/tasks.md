@@ -138,14 +138,14 @@ on purpose — do not reintroduce any of them as part of this change.
 - [ ] 4.6 Tests: a tap sends one pick carrying the set id and the product id; a
   second tap does nothing; a settled set is untappable; a typed message while a
   set stands settles it in the view
-- [ ] 4.7 Render the decision's `reply`, which the storefront drops today:
+- [x] 4.7 Render the decision's `reply`, which the storefront drops today:
   `commands.ts` passes only `results` and `appliedSummaries` to
   `proposalDecided`, and the action takes no third argument. Carry it through
   the action and the store, and show it in the transcript as the assistant's
   word on what became of the proposal (design decision 14)
-- [ ] 4.8 Show it on a restored transcript too, from the stored decision, so a
+- [x] 4.8 Show it on a restored transcript too, from the stored decision, so a
   reload does not keep the row statuses and lose the sentence
-- [ ] 4.9 Tests: a decision carrying a reply renders it; a decision without one
+- [x] 4.9 Tests: a decision carrying a reply renders it; a decision without one
   renders nothing extra; a reload shows the stored sentence
 - [ ] 4.10 Verification: `pnpm --filter web test`, typecheck, lint, and the
   frontend architecture validation guide

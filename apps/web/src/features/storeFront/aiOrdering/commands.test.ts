@@ -237,6 +237,28 @@ describe('storefront assistant decision command', () => {
     expect(rows[1]?.failureCode).toBe('PRODUCT_SOLD_OUT');
   });
 
+  it('passes the assistant\'s sentence on to the transcript', async () => {
+    const h = await openProposal(['op-1']);
+
+    decideProposalMock.mockResolvedValue({
+      proposalId: 'proposal-1',
+      results: [{ operationId: 'op-1', outcome: 'accepted' }],
+      cart: CART,
+      reply: '紅茶加好了。',
+    });
+
+    await h.commands.applyProposal(STORE_ID);
+
+    // The field has been on the response for a while and this command dropped
+    // it, so the one case the closing model call exists for produced a sentence
+    // nobody read.
+    const entry = h.store.getState().entries.at(-1);
+
+    expect(entry?.role === 'assistant' && entry.proposalReply).toBe(
+      '紅茶加好了。',
+    );
+  });
+
   it('takes the cart from the decision rather than reading it again', async () => {
     const h = await openProposal(['op-1']);
 

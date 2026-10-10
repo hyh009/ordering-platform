@@ -642,6 +642,44 @@ describe('assistant proposal records in the transcript', () => {
     expect(view().proposal).toBeNull();
   });
 
+  it('restores what the assistant said about a decision', () => {
+    const { actions, view } = setup();
+
+    actions.transcriptLoaded([
+      restoredTurn('turn-1', 'proposal-1', {
+        status: 'decided',
+        decidedAt: '2026-10-01T00:00:10.000Z',
+        results: [{ operationId: 'proposal-1-op', outcome: 'accepted' }],
+        reply: '紅茶加好了。',
+      }),
+    ]);
+
+    const entry = view().entries.at(-1);
+
+    // A reload used to keep the row statuses and lose the sentence: a
+    // transcript that remembers the outcome and forgets the explanation.
+    expect(entry?.kind === 'proposal' && entry.decidedReply).toBe('紅茶加好了。');
+    // And it stays separate from what the assistant said when it PROPOSED,
+    // which is still the entry's own reply.
+    expect(entry?.kind === 'proposal' && entry.reply).not.toBe('紅茶加好了。');
+  });
+
+  it('restores a decision that carried no sentence without inventing one', () => {
+    const { actions, view } = setup();
+
+    actions.transcriptLoaded([
+      restoredTurn('turn-1', 'proposal-1', {
+        status: 'decided',
+        decidedAt: '2026-10-01T00:00:10.000Z',
+        results: [{ operationId: 'proposal-1-op', outcome: 'rejected' }],
+      }),
+    ]);
+
+    const entry = view().entries.at(-1);
+
+    expect(entry?.kind === 'proposal' && entry.decidedReply).toBeUndefined();
+  });
+
   it('marks an earlier restored proposal as history', () => {
     const { actions, view } = setup();
 

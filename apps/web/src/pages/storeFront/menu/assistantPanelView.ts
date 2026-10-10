@@ -69,6 +69,14 @@ export type AssistantEntryView =
         outcome: string;
         failureCode?: string;
       }[];
+      /**
+       * What the assistant said once the proposal was decided.
+       *
+       * Separate from `reply`, which is what it said when it PROPOSED. Both are
+       * shown, in the order they were said: a guest who confirms reads "請確認
+       * 是否加入" and then what happened. Absent when nothing was attempted.
+       */
+      decidedReply?: string;
     }
   | {
       id: string;
@@ -361,6 +369,9 @@ function toEntryView(
         // including one restored after a reload.
         ...(entry.proposalResults !== undefined
           ? { results: entry.proposalResults }
+          : {}),
+        ...(entry.proposalReply !== undefined
+          ? { decidedReply: entry.proposalReply }
           : {}),
       };
 
