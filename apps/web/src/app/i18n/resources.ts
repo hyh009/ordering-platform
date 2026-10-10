@@ -37,19 +37,70 @@ const manualResources: Resource = {
         ok: 'OK',
         or: 'or',
         retry: 'Try again',
+        aiOrdering: {
+          adjustmentApplied: 'guest applied',
+          adjustmentProposed: 'Assistant proposed',
+          guestAdjusted: 'guest adjusted',
+        },
         errors: {
           tryAgainLater: 'Try again in a moment.',
         },
       },
       guest: {
+        assistant: {
+          applyProposal: 'Add these to my cart',
+          applying: 'Updating your cart…',
+          backToChat: 'Back to chat',
+          cartEmpty:
+            'Nothing in your cart yet. Anything you accept will show up here.',
+          changeChoice: 'Change {{choice}}',
+          choiceMax: 'up to {{count}}',
+          choiceNone: 'None',
+          choiceOptional: 'optional',
+          choiceValue: '{{label}}: {{value}}',
+          choicesRemaining: '{{count}} left',
+          choicesToPick: 'Still to choose: {{labels}}',
+          confirmChoice: 'Done',
+          declineChoice: 'No thanks',
+          dismissOperation: 'Remove this change',
+          emptyHint: 'Ask about a dish, or describe what you feel like eating.',
+          freeTextHint: 'Or just type what you want instead.',
+          inputPlaceholder: 'Ask or order something…',
+          loading: 'Loading your conversation…',
+          open: 'Ask the assistant',
+          rowApplied: 'Added',
+          rowDismissed: 'Removed',
+          rowFailed: 'Could not be applied',
+          rowFailure: {
+            cartClosed: 'This cart is no longer taking changes.',
+            itemGone: 'That item is no longer in your cart. Ask for it again.',
+            offMenu: 'No longer on the menu.',
+            optionsChanged: 'The options changed. Please choose them again.',
+            soldOut: 'Sold out. Ask the assistant for something similar.',
+            temporary: 'Could not reach the store. You can try again.',
+            unknown: 'Something went wrong. You can try again.',
+          },
+          rowNotAttempted: 'Not attempted',
+          rowPending: 'Not applied',
+          rowUnanswered: 'Not answered',
+          send: 'Send',
+          thinking: 'Thinking…',
+          title: 'Ordering assistant',
+          viewCart: 'Cart',
+        },
         cart: {
+          choiceMissing: 'Choose',
           currentUserBadge: 'Me',
+          editItem: 'Change this item',
+          editUnavailable:
+            'This item is no longer on the menu, so it cannot be changed. You can still remove it.',
           empty: 'Your cart is empty.',
           emptyParticipant: 'No items yet. Go choose what you would like.',
           itemCount: 'items',
           items: 'items',
           noOrders: 'No items yet',
           participants: 'people',
+          saveItemChanges: 'Save changes',
           submit: 'Submit order',
           submitConfirm: 'Submit',
           submitConfirmMessage:
@@ -62,9 +113,17 @@ const manualResources: Resource = {
           title: 'Cart',
         },
         errors: {
+          assistantConversationFull:
+            'This assistant conversation has reached its limit.',
+          assistantUnavailable:
+            'The ordering assistant is unavailable right now.',
           invalidInput:
             'Something in the request was invalid. Please try again.',
           orderNotFound: 'This order was not found.',
+          quantityLimit:
+            'You can order up to 99 of one item here. For more, please ask a member of staff.',
+          tooManyRequests:
+            'Too many requests. Please wait a moment and try again.',
         },
         header: {
           language: 'Language',
@@ -256,6 +315,20 @@ const manualResources: Resource = {
   'zh-TW': {
     translation: {
       admin: {
+        aiOrdering: {
+          conversationDescription:
+            '這段對話的每一回合，以及它們是在什麼 prompt 下被回答的。',
+          conversationsDescription:
+            '這間店家的顧客與點餐助理的每一段對話，以及每一段背後的 prompt。',
+          conversationsTitle: '助理對話紀錄',
+          promptCoreInstructions: '主要指示',
+          promptPrelude: '每一回合都會送出的 prompt',
+          promptStoreData: '店家資料',
+          promptTools: '工具',
+          promptMissing:
+            '這些回合沒有存下 prompt。只有在 prompt 儲存上線之後產生的回合才會有。',
+          promptSection: '這些回合背後的 prompt',
+        },
         allergens: {
           create: '建立過敏原',
           createTitle: '建立過敏原',
@@ -419,8 +492,10 @@ const manualResources: Resource = {
         store: {
           errors: {
             businessHours: '請檢查營業時間中的無效時間值。',
-            businessHourSame: '營業時間的開始時間和結束時間不能相同。全天營業請使用 24 小時選項。',
-            businessHourTimes: '請同時設定開始時間和結束時間，或將此日期設為未營業。',
+            businessHourSame:
+              '營業時間的開始時間和結束時間不能相同。全天營業請使用 24 小時選項。',
+            businessHourTimes:
+              '請同時設定開始時間和結束時間，或將此日期設為未營業。',
             defaultLocale: '請選擇預設語言。',
             displayName: '必須填寫顯示名稱 ({{locale}})。',
             serviceFeeRate: '服務費率必須介於 0 到 1 之間。',
@@ -462,6 +537,7 @@ const manualResources: Resource = {
           page: '載入中…',
         },
         navigation: {
+          aiConversations: '助理對話',
           allergens: '過敏原',
           apiHealth: 'API 健康狀態',
           businessClosed: '休息中',
@@ -523,6 +599,33 @@ const manualResources: Resource = {
         },
       },
       common: {
+        aiOrdering: {
+          adjustmentApplied: '客人改成',
+          adjustmentProposed: '助理提議',
+          conversationEmpty: '這段對話沒有任何紀錄。',
+          conversationTitle: '對話',
+          conversationsEmpty: '目前還沒有助理對話。',
+          degradedTurns: '筆有問題',
+          dropped: '已捨棄',
+          guestAdjusted: '客人改過選項',
+          lastTurnAt: '最後訊息',
+          loading: '載入對話中…',
+          modelOutput: '模型輸出',
+          modelOutputEmpty: '模型什麼都沒有回。',
+          modelTrace: '模型收到的內容與每次呼叫',
+          modelTraceCall: '第 {{number}} 次呼叫',
+          modelTraceCurrentTurn: '這一回合送給模型的內容',
+          modelTraceFeedback: '被告知上一次呼叫的問題',
+          modelTraceHistory: '送給模型的對話紀錄',
+          modelTracePrelude: '開頭使用的 prompt',
+          ownershipViolations: '越權',
+          participant: '客人',
+          repairFailed: '修正失敗',
+          repaired: '已修正',
+          turnCount: '訊息數',
+          turnsSection: '對話回合',
+          unansweredCount: '無法回答',
+        },
         actions: {
           back: '返回',
           cancel: '取消',
@@ -598,14 +701,58 @@ const manualResources: Resource = {
         yes: '是',
       },
       guest: {
+        assistant: {
+          applyProposal: '加入購物車',
+          applying: '正在更新購物車…',
+          backToChat: '回到對話',
+          cartEmpty: '購物車還是空的。你接受的項目會出現在這裡。',
+          changeChoice: '更改{{choice}}',
+          choiceMax: '最多選 {{count}} 項',
+          choiceNone: '不加',
+          choiceOptional: '選填',
+          choiceValue: '{{label}}：{{value}}',
+          choicesRemaining: '還有 {{count}} 項',
+          choicesToPick: '請選擇：{{labels}}',
+          confirmChoice: '選好了',
+          declineChoice: '不用了',
+          dismissOperation: '移除這項變更',
+          emptyHint: '可以問我餐點的事，或是描述你想吃什麼。',
+          freeTextHint: '也可以直接輸入你想要的。',
+          inputPlaceholder: '想問什麼或想點什麼…',
+          loading: '正在載入你的對話…',
+          open: '問問點餐助理',
+          rowApplied: '已加入',
+          rowDismissed: '已移除',
+          rowFailed: '無法套用',
+          rowFailure: {
+            cartClosed: '這個購物車已經不能再修改了。',
+            itemGone: '這個品項已經不在購物車裡了，請再跟我說一次。',
+            offMenu: '這項已經不在菜單上了。',
+            optionsChanged: '選項有變動，請重新選一次。',
+            soldOut: '這項賣完了，可以問助理有沒有類似的。',
+            temporary: '連不上店家，可以再試一次。',
+            unknown: '發生了一些問題，可以再試一次。',
+          },
+          rowNotAttempted: '未嘗試',
+          rowPending: '未套用',
+          rowUnanswered: '你沒有回應',
+          send: '送出',
+          thinking: '思考中…',
+          title: '點餐助理',
+          viewCart: '購物車',
+        },
         cart: {
+          choiceMissing: '請選擇',
           currentUserBadge: '我',
+          editItem: '更改這個品項',
+          editUnavailable: '這個品項已不在菜單上，無法更改，但仍可以移除。',
           empty: '你的購物車是空的。',
           emptyParticipant: '還沒點餐呢！快去選擇你的餐點',
           itemCount: '項商品',
           items: '項',
           noOrders: '尚未點餐',
           participants: '人',
+          saveItemChanges: '儲存變更',
           submit: '送出訂單',
           submitConfirm: '送出',
           submitConfirmMessage: '你的訂單會送到廚房。付款前仍可以繼續加點。',
@@ -617,6 +764,8 @@ const manualResources: Resource = {
           title: '購物車',
         },
         errors: {
+          assistantConversationFull: '這段對話已達上限。',
+          assistantUnavailable: '點餐助理目前無法使用。',
           cartNotActive: '此購物車已失效。',
           invalidInput: '請求內容有誤，請再試一次。',
           invalidJoinCode: '此邀請已失效。',
@@ -625,8 +774,10 @@ const manualResources: Resource = {
           notFound: '找不到資料。',
           orderLocked: '此訂單已無法變更，請洽現場人員。',
           orderNotFound: '找不到這筆訂單。',
+          quantityLimit: '同一品項一次最多可點 99 份，需要更多請洽現場人員。',
           sessionExpired: '你的點餐階段已結束。',
           storeClosed: '店家目前已關閉點餐。',
+          tooManyRequests: '請求太頻繁，請稍候再試。',
         },
         header: {
           language: '語言',
@@ -670,7 +821,8 @@ const manualResources: Resource = {
           joinOrder: '加入訂單',
           open: '營業中',
           openOrderBlockConfirm: '確定',
-          openOrderBlockMessage: '你有進行中的訂單。請先恢復訂單付款或完成後，再開始或加入其他訂單。',
+          openOrderBlockMessage:
+            '你有進行中的訂單。請先恢復訂單付款或完成後，再開始或加入其他訂單。',
           openOrderBlockTitle: '請先完成目前的訂單',
           previousOrderEnded: '你先前的訂單已結束。',
           previousOrderPending: '你先前的訂單仍在進行中',
@@ -773,14 +925,18 @@ const manualResources: Resource = {
           learnMore: '查看流程',
           signIn: '登入管理平台',
         },
-        description: '支援店家菜單、顧客共同點餐、商家訂單追蹤與平台管理的多租戶點餐平台。',
+        description:
+          '支援店家菜單、顧客共同點餐、商家訂單追蹤與平台管理的多租戶點餐平台。',
         eyebrow: '點餐平台',
         highlights: {
-          groupDescription: '內用群組可用加入代碼邀請其他人，大家一起加點到同一份訂單。',
+          groupDescription:
+            '內用群組可用加入代碼邀請其他人，大家一起加點到同一份訂單。',
           groupTitle: '共同購物車',
-          qrDescription: '顧客開啟店家連結，選擇點餐方式，直接用自己的手機開始點餐。',
+          qrDescription:
+            '顧客開啟店家連結，選擇點餐方式，直接用自己的手機開始點餐。',
           qrTitle: '每桌都能用 QR Code 點餐',
-          storeDescription: '商家可在平台管理菜單、供應狀態、店家圖片與即時訂單。',
+          storeDescription:
+            '商家可在平台管理菜單、供應狀態、店家圖片與即時訂單。',
           storeTitle: '包含店家營運管理',
         },
         steps: {
@@ -793,6 +949,26 @@ const manualResources: Resource = {
         title: '為現代店家營運打造的線上點餐平台',
       },
       merchant: {
+        aiOrdering: {
+          actionableOnPage: '筆在本頁。',
+          allReasons: '全部原因',
+          askedAt: '詢問時間',
+          conversationDescription: '這段對話的每一回合，以及模型收到的內容。',
+          conversationsDescription: '顧客與點餐助理的每一段對話。',
+          conversationsTitle: '助理對話紀錄',
+          product: '商品',
+          question: '問題',
+          reason: {
+            missingProductInfo: '缺少商品資訊',
+            outOfScope: '超出範圍',
+            unclearRequest: '問題不明確',
+          },
+          reasonColumn: '原因',
+          unansweredEmpty: '助理回答了所有被問到的問題。',
+          unansweredHint: '有指到商品的項目，代表那個商品的說明值得補強。',
+          unansweredTitle: '助理無法回答的問題',
+          viewUnanswered: '無法回答的問題',
+        },
         categories: {
           active: '顯示',
           activeOnly: '顯示',
@@ -1102,6 +1278,12 @@ const manualResources: Resource = {
         },
       },
       store: {
+        assistant: {
+          autoApplyHint:
+            '只有在目前啟用的助理版本也允許時才會生效。客人之後仍可自行調整購物車。',
+          autoApplyLabel: '助理的變更不經確認直接套用',
+          sectionTitle: '點餐助理',
+        },
         businessHours: {
           allDay: '24 小時營業',
         },

@@ -44,12 +44,22 @@ export type StoreOperation = {
   guestOrderingDurationMinutes?: number;
 };
 
+/**
+ * Ordering-assistant settings. Absent on stores that never enabled the
+ * assistant, and kept out of `StoreOperation` so assistant configuration stays
+ * separable from the ordering rules.
+ */
+export type StoreAssistantSettings = {
+  autoApplyCartOperations: boolean;
+};
+
 export type StoreEntity = {
   id: string;
   organizationId: string;
   profile: StoreProfile;
   locale: StoreLocale;
   operation: StoreOperation;
+  assistant?: StoreAssistantSettings;
   status: StoreStatus;
   createdAt: Date;
   updatedAt: Date;

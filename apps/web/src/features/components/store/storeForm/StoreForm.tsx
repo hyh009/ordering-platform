@@ -442,6 +442,57 @@ export function StoreForm({
         />
       </section>
 
+      {/* Ordering assistant */}
+      <section className="grid gap-4">
+        <h4 className="border-b border-border pb-2 text-sm font-semibold">
+          {tDefault('store.assistant.sectionTitle', 'Ordering assistant')}
+        </h4>
+
+        <Field
+          label={tDefault(
+            'store.assistant.autoApplyLabel',
+            'Apply assistant changes without asking',
+          )}
+          renderControl={
+            <div className="flex items-start gap-3">
+              <button
+                aria-checked={form.values.autoApplyCartOperations}
+                className={cn(
+                  'relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none',
+                  form.values.autoApplyCartOperations
+                    ? 'bg-primary'
+                    : 'bg-muted',
+                )}
+                disabled={form.isSubmitting}
+                role="switch"
+                type="button"
+                onClick={() => {
+                  form.setField(
+                    'autoApplyCartOperations',
+                    !form.values.autoApplyCartOperations,
+                  );
+                }}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform',
+                    form.values.autoApplyCartOperations
+                      ? 'translate-x-4'
+                      : 'translate-x-0',
+                  )}
+                />
+              </button>
+              <p className="text-xs text-muted-foreground">
+                {tDefault(
+                  'store.assistant.autoApplyHint',
+                  'Turning this on only takes effect if the active assistant version also allows it. Guests can always edit their cart afterwards.',
+                )}
+              </p>
+            </div>
+          }
+        />
+      </section>
+
       {!hideFooter && (
         <div className="flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="ghost">

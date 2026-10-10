@@ -147,6 +147,39 @@ const TagListPage = lazyPage(
   () => import('@/pages/merchant/tagList/TagListPage'),
   'TagListPage',
 );
+const AdminAiOrderingConversationListPage = lazyPage(
+  () =>
+    import(
+      '@/pages/admin/aiOrderingConversationList/AdminAiOrderingConversationListPage'
+    ),
+  'AdminAiOrderingConversationListPage',
+);
+const AdminAiOrderingConversationDetailPage = lazyPage(
+  () =>
+    import(
+      '@/pages/admin/aiOrderingConversationDetail/AdminAiOrderingConversationDetailPage'
+    ),
+  'AdminAiOrderingConversationDetailPage',
+);
+const AiOrderingConversationListPage = lazyPage(
+  () =>
+    import(
+      '@/pages/merchant/aiOrderingConversationList/AiOrderingConversationListPage'
+    ),
+  'AiOrderingConversationListPage',
+);
+const AiOrderingConversationDetailPage = lazyPage(
+  () =>
+    import(
+      '@/pages/merchant/aiOrderingConversationDetail/AiOrderingConversationDetailPage'
+    ),
+  'AiOrderingConversationDetailPage',
+);
+const AiOrderingUnansweredPage = lazyPage(
+  () =>
+    import('@/pages/merchant/aiOrderingUnanswered/AiOrderingUnansweredPage'),
+  'AiOrderingUnansweredPage',
+);
 
 export function App() {
   return (
@@ -223,6 +256,14 @@ export function App() {
                 <Route
                   element={<StoreCreatePage />}
                   path={PATHS.SUPER_ADMIN.STORE_CREATE}
+                />
+                <Route
+                  element={<AdminAiOrderingConversationListPage />}
+                  path={PATHS.SUPER_ADMIN.AI_CONVERSATIONS}
+                />
+                <Route
+                  element={<AdminAiOrderingConversationDetailPage />}
+                  path={PATHS.SUPER_ADMIN.AI_CONVERSATION_DETAIL}
                 />
                 <Route
                   element={<AllergenListPage />}
@@ -311,6 +352,18 @@ export function App() {
                   path={PATHS.MERCHANT.MODIFIER_DETAIL}
                 />
                 <Route element={<TagListPage />} path={PATHS.MERCHANT.TAGS} />
+                <Route
+                  element={<AiOrderingConversationListPage />}
+                  path={PATHS.MERCHANT.AI_CONVERSATIONS}
+                />
+                <Route
+                  element={<AiOrderingConversationDetailPage />}
+                  path={PATHS.MERCHANT.AI_CONVERSATION_DETAIL}
+                />
+                <Route
+                  element={<AiOrderingUnansweredPage />}
+                  path={PATHS.MERCHANT.AI_UNANSWERED}
+                />
               </Route>
 
               <Route element={<NotFoundPage embedded />} path="/merchant/*" />

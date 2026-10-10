@@ -1,0 +1,578 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  AI_ORDERING_CART_FIXTURE,
+  AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+  AI_ORDERING_MENU_FIXTURE,
+} from './fixtures/aiOrdering.js';
+import {
+  validateAiOrderingOperations,
+  validateAiOrderingShownProducts,
+} from '../src/modules/aiOrdering/validation.js';
+
+import type {
+  AiOrderingModelOperation,
+  AiOrderingModelResponse,
+} from '../src/modules/aiOrdering/modelResponse.js';
+
+const input = {
+  menu: AI_ORDERING_MENU_FIXTURE,
+  cart: AI_ORDERING_CART_FIXTURE,
+  participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
+};
+
+function proposal(
+  ...operations: AiOrderingModelOperation[]
+): AiOrderingModelResponse {
+  return { type: 'proposal', reply: 'Here you go.', operations };
+}
+
+function validate(...operations: AiOrderingModelOperation[]) {
+  return validateAiOrderingOperations(proposal(...operations), input);
+}
+
+describe('AI ordering operation validation', () => {
+  describe('check 1: the product exists', () => {
+    it('rejects a product that is not on this store menu', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add a phantom',
+        item: { productId: 'prod-does-not-exist', quantity: 1 },
+      });
+
+      expect(result.operations).toHaveLength(0);
+      expect(result.rejections[0]?.code).toBe('product_not_found');
+    });
+  });
+
+  describe('check 2: the product is available', () => {
+    it('rejects a sold-out product', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add the cutlet',
+        item: { productId: 'prod-fried-chicken', quantity: 1 },
+      });
+
+      expect(result.operations).toHaveLength(0);
+      expect(result.rejections[0]?.code).toBe('product_sold_out');
+    });
+  });
+
+  describe('check 3: option selections satisfy the product rules', () => {
+    it('keeps an operation whose required choice the guest has not made', () => {
+      // Beef noodle requires a spice level, and the guest not having chosen one
+      // is the normal case: the model is asked only for what they stated, and
+      // the rest is offered to them on the proposal card. Rejecting here used to
+      // be what forced the model to decide "ask or propose", which is the one
+      // judgment it could not make reliably.
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add beef noodles',
+        item: { productId: 'prod-beef-noodle', quantity: 1 },
+      });
+
+      expect(result.operations).toHaveLength(1);
+      expect(result.rejections).toHaveLength(0);
+    });
+
+    it('still rejects a choice that was made wrongly', () => {
+      // Incomplete is not invalid, but wrong is: the guest can answer an open
+      // choice and cannot repair a selection that does not exist.
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add beef noodles',
+        item: {
+          productId: 'prod-beef-noodle',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-spice', optionId: 'opt-spice-nope' },
+          ],
+        },
+      });
+
+      expect(result.operations).toHaveLength(0);
+      expect(result.rejections[0]?.code).toBe('modifier_invalid');
+    });
+
+    it('rejects a sold-out option', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add hot beef noodles',
+        item: {
+          productId: 'prod-beef-noodle',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-spice', optionId: 'opt-spice-hot' },
+          ],
+        },
+      });
+
+      expect(result.operations).toHaveLength(0);
+      expect(result.rejections[0]?.code).toBe('modifier_invalid');
+      expect(result.rejections[0]?.detail).toContain('sold out');
+    });
+
+    it('rejects an option that belongs to another product', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add spicy rice',
+        item: {
+          productId: 'prod-rice',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-spice', optionId: 'opt-spice-mild' },
+          ],
+        },
+      });
+
+      expect(result.rejections[0]?.code).toBe('modifier_invalid');
+    });
+
+    it('rejects more selections than a modifier allows', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add a very sweet tea',
+        item: {
+          productId: 'prod-black-tea',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-sugar', optionId: 'opt-sugar-full' },
+            { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+            { modifierId: 'mod-ice', optionId: 'opt-ice-normal' },
+          ],
+        },
+      });
+
+      expect(result.rejections[0]?.code).toBe('modifier_invalid');
+      expect(result.rejections[0]?.detail).toContain('at most');
+    });
+
+    it('accepts a product whose optional modifier is simply omitted', () => {
+      // Toppings are min 0: not choosing any is valid.
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add a milk tea',
+        item: {
+          productId: 'prod-milk-tea',
+          quantity: 1,
+          selectedOptions: [
+            { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+            { modifierId: 'mod-ice', optionId: 'opt-ice-less' },
+          ],
+        },
+      });
+
+      expect(result.rejections).toHaveLength(0);
+      expect(result.operations).toHaveLength(1);
+    });
+
+    it('accepts a product with no modifiers at all', () => {
+      const result = validate({
+        type: 'add_item',
+        summary: 'Add rice',
+        item: { productId: 'prod-rice', quantity: 1 },
+      });
+
+      expect(result.rejections).toHaveLength(0);
+      expect(result.operations).toHaveLength(1);
+    });
+  });
+
+  describe('check 4: the item belongs to this guest', () => {
+    it("rejects changing another participant's item", () => {
+      const result = validate({
+        type: 'update_own_item',
+        summary: 'Make the beef noodles two',
+        itemId: 'item-other-beef',
+        item: { quantity: 2 },
+      });
+
+      expect(result.operations).toHaveLength(0);
+      expect(result.rejections[0]?.code).toBe('not_owned');
+      expect(result.ownershipViolationCount).toBe(1);
+    });
+
+    it("rejects removing another participant's item", () => {
+      const result = validate({
+        type: 'remove_own_item',
+        summary: 'Remove the beef noodles',
+        itemId: 'item-other-beef',
+      });
+
+      expect(result.rejections[0]?.code).toBe('not_owned');
+      expect(result.ownershipViolationCount).toBe(1);
+    });
+
+    it('rejects an item that is not in the cart at all', () => {
+      const result = validate({
+        type: 'remove_own_item',
+        summary: 'Remove something',
+        itemId: 'item-never-existed',
+      });
+
+      expect(result.rejections[0]?.code).toBe('not_owned');
+    });
+
+    it('accepts changing the guest own item', () => {
+      // Three, not two: the fixture item is already at two, and an update to the
+      // value an item already holds is rejected as changing nothing.
+      const result = validate({
+        type: 'update_own_item',
+        summary: 'Make it three',
+        itemId: 'item-own-rice',
+        item: { quantity: 3 },
+      });
+
+      expect(result.rejections).toHaveLength(0);
+      expect(result.operations).toHaveLength(1);
+    });
+
+    it('validates option changes on an owned item too', () => {
+      const result = validate({
+        type: 'update_own_item',
+        summary: 'Make the tea hot',
+        itemId: 'item-own-milk-tea',
+        item: {
+          selectedOptions: [
+            { modifierId: 'mod-spice', optionId: 'opt-spice-mild' },
+          ],
+        },
+      });
+
+      expect(result.rejections[0]?.code).toBe('modifier_invalid');
+    });
+  });
+
+  describe('partial results', () => {
+    it('keeps the valid operations and reports only the invalid ones', () => {
+      const result = validate(
+        {
+          type: 'add_item',
+          summary: 'Add rice',
+          item: { productId: 'prod-rice', quantity: 1 },
+        },
+        {
+          type: 'add_item',
+          summary: 'Add the sold-out cutlet',
+          item: { productId: 'prod-fried-chicken', quantity: 1 },
+        },
+      );
+
+      expect(result.operations).toHaveLength(1);
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0]?.index).toBe(1);
+    });
+
+    it('counts every ownership violation as a version quality signal', () => {
+      const result = validate(
+        {
+          type: 'remove_own_item',
+          summary: 'Remove the beef',
+          itemId: 'item-other-beef',
+        },
+        {
+          type: 'update_own_item',
+          summary: 'Change the beef',
+          itemId: 'item-other-beef',
+          item: { quantity: 3 },
+        },
+      );
+
+      expect(result.ownershipViolationCount).toBe(2);
+    });
+  });
+
+  it('passes non-proposal responses through untouched', () => {
+    const result = validateAiOrderingOperations(
+      { type: 'message', reply: 'It is a milk tea.' },
+      input,
+    );
+
+    expect(result.operations).toHaveLength(0);
+    expect(result.rejections).toHaveLength(0);
+  });
+});
+
+describe('check 5: the operation changes something', () => {
+  it('rejects a quantity the item already has', () => {
+    // The shape this change came from: valid against the menu, valid against
+    // the cart, and completely pointless. It reached the guest as an action and
+    // reported success.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2 },
+    });
+
+    expect(result.operations).toHaveLength(0);
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('rejects the same options in a different order', () => {
+    const current = AI_ORDERING_CART_FIXTURE.items.find(
+      (item) => item.id === 'item-own-milk-tea',
+    );
+
+    if (!current) throw new Error('fixture item missing');
+
+    const reversed = [...current.selectedOptions].reverse().map((option) => ({
+      modifierId: option.modifierId,
+      optionId: option.optionId,
+    }));
+
+    // Order carries no meaning in a selection, so reordering is not a change.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-milk-tea',
+      item: { selectedOptions: reversed },
+    });
+
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('rejects clearing a note on an item that has none', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { notes: null },
+    });
+
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('keeps an operation that changes one field and repeats another', () => {
+    // A redundant field alongside a real change is still a change. The check
+    // fires only when EVERY supplied field already matches.
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2, notes: '少鹽' },
+    });
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(1);
+  });
+
+  it('keeps an operation that only adds a note', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { notes: '加辣' },
+    });
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(1);
+  });
+
+  it('tells the model what was empty rather than only that it was wrong', () => {
+    const result = validate({
+      type: 'update_own_item',
+      itemId: 'item-own-rice',
+      item: { quantity: 2 },
+    });
+
+    // This detail becomes the repair note. "Try again" without saying what was
+    // empty is how a model repeats itself.
+    expect(result.rejections[0]?.detail).toContain('changes nothing');
+    expect(result.rejections[0]?.detail).toContain('already');
+  });
+
+  it('degrades a proposal of only no-ops to a reply, not an empty proposal', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 2 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { notes: null },
+      },
+    );
+
+    // Nothing survives, so there is no proposal to show. What the guest reads
+    // instead is the planning middleware's concern, not validation's.
+    expect(result.operations).toHaveLength(0);
+    expect(result.rejections).toHaveLength(2);
+  });
+});
+
+describe('check 6: one operation per cart line', () => {
+  it('rejects a second change to a line an earlier operation already changes', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    // The later write would win and the earlier would still be reported
+    // accepted, so the guest would be told about a change that never happened.
+    expect(result.operations).toHaveLength(1);
+    expect(result.operations[0]).toMatchObject({ item: { quantity: 1 } });
+    expect(result.rejections).toHaveLength(1);
+    expect(result.rejections[0]?.code).toBe('line_written_twice');
+  });
+
+  it('rejects removing a line another operation in the same proposal changes', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      { type: 'remove_own_item', itemId: 'item-own-rice' },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    expect(result.rejections[0]?.code).toBe('line_written_twice');
+  });
+
+  it('tells the model the shape that works instead', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    // The repair attempt is the only place the model reads this, and the
+    // request behind the mistake — part of a line differing from the rest —
+    // has an answer. A rejection that only says no produces the same mistake.
+    expect(result.rejections[0]?.detail).toContain('whole quantity');
+    expect(result.rejections[0]?.detail).toContain('add_item');
+  });
+
+  it('leaves the second operation free when the first was rejected', () => {
+    const result = validate(
+      // Rice already stands at two, so this changes nothing and does not count
+      // as a write to the line.
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 2 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 5 },
+      },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    expect(result.operations[0]).toMatchObject({ item: { quantity: 5 } });
+    expect(result.rejections[0]?.code).toBe('no_change');
+  });
+
+  it('keeps operations on different lines, and an add beside an update', () => {
+    const result = validate(
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-rice',
+        item: { quantity: 1 },
+      },
+      {
+        type: 'update_own_item',
+        itemId: 'item-own-milk-tea',
+        item: { quantity: 2 },
+      },
+      // The second half of splitting a line: an add carries no itemId, so no
+      // number of adds can collide with the update beside them.
+      {
+        type: 'add_item',
+        item: {
+          productId: 'prod-rice',
+          quantity: 1,
+          selectedOptions: [],
+        },
+      },
+    );
+
+    expect(result.rejections).toHaveLength(0);
+    expect(result.operations).toHaveLength(3);
+  });
+});
+
+describe('AI ordering shown-product validation', () => {
+  function shown(
+    set: { categoryId?: string; productIds?: string[] },
+  ): AiOrderingModelResponse {
+    return { type: 'products', reply: 'Here they are.', ...set };
+  }
+
+  function validateShown(set: {
+    categoryId?: string;
+    productIds?: string[];
+  }) {
+    return validateAiOrderingShownProducts(shown(set), AI_ORDERING_MENU_FIXTURE);
+  }
+
+  it('accepts a category the menu holds', () => {
+    expect(validateShown({ categoryId: 'cat-drink' })).toEqual([]);
+  });
+
+  it('accepts products the menu holds', () => {
+    expect(
+      validateShown({ productIds: ['prod-black-tea', 'prod-milk-tea'] }),
+    ).toEqual([]);
+  });
+
+  it('rejects a category the menu does not hold', () => {
+    const rejections = validateShown({ categoryId: 'cat-does-not-exist' });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_category_invalid');
+  });
+
+  it('rejects a product the menu does not hold, naming it', () => {
+    const rejections = validateShown({
+      productIds: ['prod-black-tea', 'prod-phantom'],
+    });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_product_not_found');
+    // The whole set falls, not just the bad id: a shelf shown with gaps in it
+    // and no explanation is worse than being asked again.
+    expect(rejections[0]?.detail).toContain('prod-phantom');
+  });
+
+  it('rejects naming both a category and a list', () => {
+    const rejections = validateShown({
+      categoryId: 'cat-drink',
+      productIds: ['prod-black-tea'],
+    });
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_set_invalid');
+    expect(rejections[0]?.detail).toContain('never both');
+  });
+
+  it('rejects naming neither', () => {
+    const rejections = validateShown({});
+
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]?.code).toBe('shown_set_invalid');
+  });
+
+  it('leaves every other kind of response alone', () => {
+    expect(
+      validateAiOrderingShownProducts(
+        { type: 'message', reply: 'We open at eleven.' },
+        AI_ORDERING_MENU_FIXTURE,
+      ),
+    ).toEqual([]);
+  });
+});

@@ -1,21 +1,29 @@
 import { useMemo } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Sparkles } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { ProductCard } from '@/features/storeFront/components/ProductCard';
 import type { TagDisplay } from '@/features/storeFront/components/ProductCard';
 import { StorefrontErrorView } from '@/features/storeFront/components/StorefrontErrorView';
 import { StorefrontLoadingView } from '@/features/storeFront/components/StorefrontLoadingView';
 import { StorefrontPageHeader } from '@/features/storeFront/components/StorefrontPageHeader';
+import { ProductConfigSheet } from '@/features/storeFront/components/ProductConfigSheet';
 import { useLocalizedText } from '@/features/storeFront/components/useLocalizedText';
-import type { PublicModifier } from '@/models/storeFrontMenu';
+import type { PublicModifier, PublicProduct } from '@/models/storeFrontMenu';
+import { AssistantPanel } from './AssistantPanel';
 import { MenuCategoryTabs } from './MenuCategoryTabs';
 import { MenuStatusBanner } from './MenuStatusBanner';
-import { ProductConfigSheet } from './ProductConfigSheet';
+import { useStoreFrontStoreId } from '../useStoreFrontStoreId';
+import { useAssistantPanelVM } from './useAssistantPanelVM';
 import { useMenuPageVM } from './useMenuPageVM';
 import { useScrollSpyTabs } from './useScrollSpyTabs';
 
 export function MenuPage() {
   const vm = useMenuPageVM();
+  const storeId = useStoreFrontStoreId();
+  const assistant = useAssistantPanelVM({
+    storeId,
+    isAvailable: vm.isAssistantAvailable,
+  });
   const { tDefault } = useAppTranslation();
   const localize = useLocalizedText();
 
@@ -66,6 +74,26 @@ export function MenuPage() {
       </div>
     );
   }
+
+  // Shared by the menu grid and the assistant's product row, so a product the
+  // assistant shows carries the same tags and allergen marks it carries on the
+  // menu. Two resolutions would be two chances for one of them to go silent
+  // about an allergen.
+  const describeProduct = (product: PublicProduct) => ({
+    tags: (product.tagIds ?? [])
+      .map((id) => vm.tagMap.get(id))
+      .filter((tag) => tag !== undefined)
+      .map((tag) => ({
+        id: tag.id,
+        label: localize(tag.name),
+        color: tag.color,
+      })) satisfies TagDisplay[],
+    allergens: (product.allergenIds ?? [])
+      .map((id) => vm.allergenMap.get(id))
+      .filter((allergen) => allergen !== undefined)
+      .map((allergen) => localize(allergen.name))
+      .filter((name) => name.length > 0),
+  });
 
   const openModifiers: PublicModifier[] = vm.openProduct
     ? vm.openProduct.modifierIds
@@ -156,19 +184,8 @@ export function MenuPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {group.products.map((product) => {
-                    const tags: TagDisplay[] = (product.tagIds ?? [])
-                      .map((id) => vm.tagMap.get(id))
-                      .filter((t) => t !== undefined)
-                      .map((t) => ({
-                        id: t.id,
-                        label: localize(t.name),
-                        color: t.color,
-                      }));
-                    const allergens = (product.allergenIds ?? [])
-                      .map((id) => vm.allergenMap.get(id))
-                      .filter((a) => a !== undefined)
-                      .map((a) => localize(a.name))
-                      .filter((name) => name.length > 0);
+                    const { tags, allergens } = describeProduct(product);
+
                     return (
                       <ProductCard
                         key={product.id}
@@ -207,6 +224,26 @@ export function MenuPage() {
         </div>
       ) : null}
 
+      {assistant.isAvailable && !assistant.isOpen ? (
+        <button
+          type="button"
+          onClick={assistant.open}
+          aria-label={tDefault('guest.assistant.open', 'Ask the assistant')}
+          className="fixed bottom-24 right-4 z-sticky flex size-12 items-center justify-center rounded-full bg-storefront-primary text-storefront-text shadow-lg transition-opacity hover:opacity-90 active:opacity-80"
+        >
+          <Sparkles size={20} strokeWidth={2} />
+        </button>
+      ) : null}
+
+      {assistant.isAvailable && assistant.isOpen ? (
+        <AssistantPanel
+          vm={assistant}
+          onOpenProduct={vm.setOpenProduct}
+          isStoreOpen={vm.isOpen}
+          describeProduct={describeProduct}
+        />
+      ) : null}
+
       {vm.openProduct ? (
         <ProductConfigSheet
           product={vm.openProduct}
@@ -216,6 +253,23 @@ export function MenuPage() {
           onClose={() => vm.setOpenProduct(null)}
           onConfirm={(request) => {
             void vm.addItem(request);
+          }}
+        />
+      ) : null}
+
+      {assistant.editingCartItem ? (
+        <ProductConfigSheet
+          // Rendered after the assistant panel so it opens above it: the edit
+          // control lives in the panel's cart. Keyed by the item, so what was
+          // picked for one never opens on another.
+          key={assistant.editingCartItem.item.id}
+          product={assistant.editingCartItem.product}
+          modifiers={assistant.editingCartItem.modifiers}
+          editing={assistant.editingCartItem.initial}
+          isMutating={assistant.isMutatingCart}
+          onClose={assistant.cancelCartItemEdit}
+          onConfirm={(request) => {
+            void assistant.saveCartItemEdit(request);
           }}
         />
       ) : null}

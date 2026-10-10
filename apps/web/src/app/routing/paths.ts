@@ -20,6 +20,13 @@ export const PATHS = {
     STORE_CREATE: '/admin/organizations/:organizationId/stores/new',
     STORE_CREATE_BUILD: (orgId: string) =>
       `/admin/organizations/${orgId}/stores/new`,
+    AI_CONVERSATIONS: '/admin/stores/:storeId/ai-ordering/conversations',
+    AI_CONVERSATIONS_BUILD: (storeId: string) =>
+      `/admin/stores/${storeId}/ai-ordering/conversations`,
+    AI_CONVERSATION_DETAIL:
+      '/admin/stores/:storeId/ai-ordering/conversations/:conversationId',
+    AI_CONVERSATION_DETAIL_BUILD: (storeId: string, conversationId: string) =>
+      `/admin/stores/${storeId}/ai-ordering/conversations/${conversationId}`,
     ALLERGENS: '/admin/allergens',
     DIETARY_MARKERS: '/admin/dietary-markers',
   },
@@ -61,5 +68,10 @@ export const PATHS = {
     MODIFIER_DETAIL: '/merchant/modifiers/:modifierId',
     MODIFIER_DETAIL_BUILD: (id: string) => `/merchant/modifiers/${id}`,
     TAGS: '/merchant/tags',
+    AI_CONVERSATIONS: '/merchant/ai-ordering/conversations',
+    AI_CONVERSATION_DETAIL: '/merchant/ai-ordering/conversations/:conversationId',
+    AI_CONVERSATION_DETAIL_BUILD: (conversationId: string) =>
+      `/merchant/ai-ordering/conversations/${conversationId}`,
+    AI_UNANSWERED: '/merchant/ai-ordering/unanswered',
   },
 } as const;

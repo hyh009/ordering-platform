@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAppTranslation } from '@/app/i18n';
 import type { StoreLocaleDto } from '@/models/store';
 import { LocalizedStringInput } from '@/shared/components/LocalizedStringInput';
@@ -23,9 +23,17 @@ export function ProductBasicInfoFields({ form, locale }: Props) {
   // and only commit to form state once the text is a valid whole number.
   const [priceText, setPriceText] = useState(String(form.values.price));
 
-  useEffect(() => {
+  // Resync during render rather than in an effect: an effect would commit a
+  // render with the stale text and then immediately re-render, which is the
+  // cascading update `react-hooks/set-state-in-effect` flags. Comparing against
+  // the previous prop value is React's documented way to adjust state when a
+  // prop changes.
+  const [lastSyncedPrice, setLastSyncedPrice] = useState(form.values.price);
+
+  if (lastSyncedPrice !== form.values.price) {
+    setLastSyncedPrice(form.values.price);
     setPriceText(String(form.values.price));
-  }, [form.values.price]);
+  }
 
   return (
     <div className="grid gap-5 rounded-lg border border-border p-4">

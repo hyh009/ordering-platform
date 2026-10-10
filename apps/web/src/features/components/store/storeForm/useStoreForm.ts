@@ -23,6 +23,15 @@ export type StoreFormValues = {
   serviceFeeRate: number;
   businessHours: BusinessHourFormValue[];
   orderModes: OrderModeFormValue[];
+  /**
+   * Whether the store lets the assistant's validated cart operations apply
+   * without asking the guest to confirm.
+   *
+   * The effective behavior is this AND the active assistant version's own
+   * permission, resolved server-side: turning this on cannot widen a version
+   * that does not allow it.
+   */
+  autoApplyCartOperations: boolean;
 };
 
 export type StoreFormFieldErrors = Partial<
@@ -53,6 +62,9 @@ export const defaultStoreFormValues: StoreFormValues = {
     { type: 'dine_in', isEnabled: true, checkoutMode: 'pay_later' },
     { type: 'takeaway', isEnabled: true, checkoutMode: 'pay_first' },
   ],
+  // Off by default. A guest confirming each change is the safe side of this
+  // setting, and the merchant opts out deliberately.
+  autoApplyCartOperations: false,
 };
 
 export type StoreFormVM = {

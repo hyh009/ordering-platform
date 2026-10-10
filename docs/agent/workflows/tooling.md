@@ -5,7 +5,7 @@ Use this guide when changing TypeScript, ESLint, Prettier, or package-level tool
 ## Ownership
 
 - Root `package.json` owns shared tool versions for TypeScript, ESLint, Prettier, and shared ESLint packages.
-- Root `pnpm.overrides` pins shared tool versions when needed.
+- Root `pnpm-workspace.yaml` `overrides` pins shared tool versions when needed.
 - App-specific ESLint behavior stays in the app config:
   - `apps/api/eslint.config.mjs`
   - `apps/web/eslint.config.js`

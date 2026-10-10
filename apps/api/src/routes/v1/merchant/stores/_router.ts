@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import storeRouter from './[storeId]';
+import aiOrderingRouter from './[storeId]/aiOrdering';
 import categoriesRouter from './[storeId]/categories';
 import ordersRouter from './[storeId]/orders';
 import productModifiersRouter from './[storeId]/productModifier';
@@ -11,6 +12,7 @@ import collectionRouter from './index';
 const router = Router();
 
 router.use('/', collectionRouter);
+router.use('/:storeId/ai-ordering', aiOrderingRouter);
 router.use('/:storeId/categories', categoriesRouter);
 router.use('/:storeId/orders', ordersRouter);
 router.use('/:storeId/products', productsRouter);

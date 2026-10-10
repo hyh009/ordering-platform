@@ -1,6 +1,9 @@
 import { createGuestSessionActions } from '@/app/global/guestSession/guestSession.actions';
 import { createGuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
 import { createGuestSessionStore } from '@/app/global/guestSession/guestSession.store';
+import { createStoreFrontAiOrderingActions } from './aiOrdering/actions';
+import { createStoreFrontAiOrderingCommands } from './aiOrdering/commands';
+import { createStoreFrontAiOrderingStore } from './aiOrdering/store';
 import { createStoreFrontCartActions } from './cart/actions';
 import { createStoreFrontCartCommands } from './cart/commands';
 import { createStoreFrontCartStore } from './cart/store';
@@ -27,6 +30,7 @@ export function createStoreFrontRuntime() {
   const orderStore = createStoreFrontOrderStore();
   const tenantStore = createTenantStore();
   const orderHistoryStore = createStoreFrontOrderHistoryStore();
+  const aiOrderingStore = createStoreFrontAiOrderingStore();
 
   const sessionActions = createGuestSessionActions(sessionStore);
   const storefrontActions = createStorefrontActions(storefrontStore);
@@ -35,12 +39,14 @@ export function createStoreFrontRuntime() {
   const tenantActions = createTenantActions(tenantStore);
   const orderHistoryActions =
     createStoreFrontOrderHistoryActions(orderHistoryStore);
+  const aiOrderingActions = createStoreFrontAiOrderingActions(aiOrderingStore);
   const guestSessionCommands = createGuestSessionCommands(
     sessionActions,
     sessionStore,
   );
   const sessionWorkflowCommands = createStoreFrontSessionWorkflowCommands({
     guestSessionCommands,
+    aiOrderingActions,
     cartActions,
     orderActions,
     sessionStore,
@@ -48,10 +54,12 @@ export function createStoreFrontRuntime() {
   });
   const cartCommands = createStoreFrontCartCommands({
     cartActions,
+    cartStore,
     sessionStore,
     tenantStore,
   });
   const tenantWorkflowCommands = createTenantWorkflowCommands({
+    aiOrderingActions,
     cartActions,
     guestSessionCommands,
     orderActions,
@@ -61,6 +69,18 @@ export function createStoreFrontRuntime() {
   });
   const orderHistoryCommands = createStoreFrontOrderHistoryCommands({
     actions: orderHistoryActions,
+    tenantStore,
+  });
+  // The assistant proposes and the BACKEND applies, so there is no cart write
+  // path here. The decision response carries the resulting cart, which is handed
+  // to the cart actions the same way the SSE stream hands over a cart it was
+  // pushed — there is one cart store and one way into it.
+  const aiOrderingCommands = createStoreFrontAiOrderingCommands({
+    actions: aiOrderingActions,
+    store: aiOrderingStore,
+    cartActions,
+    cartStore,
+    sessionStore,
     tenantStore,
   });
   const sessionStreamCommands = createStoreFrontSessionStreamCommands({
@@ -79,6 +99,7 @@ export function createStoreFrontRuntime() {
       order: orderStore,
       tenant: tenantStore,
       orderHistory: orderHistoryStore,
+      aiOrdering: aiOrderingStore,
     },
     commands: {
       session: sessionWorkflowCommands,
@@ -88,6 +109,7 @@ export function createStoreFrontRuntime() {
         tenantStore,
       }),
       cart: createStoreFrontCartWorkflowCommands({
+        aiOrderingActions,
         cartCommands,
         guestSessionCommands,
         orderActions,
@@ -102,6 +124,7 @@ export function createStoreFrontRuntime() {
       }),
       orderHistory: orderHistoryCommands,
       sessionStream: sessionStreamCommands,
+      aiOrdering: aiOrderingCommands,
     },
   };
 }

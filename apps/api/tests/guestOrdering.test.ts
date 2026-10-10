@@ -502,6 +502,10 @@ describe('public store and menu', () => {
     ]);
     expect(store.organizationId).toBeUndefined();
     expect(store.status).toBeUndefined();
+    // The suite boots with the AI variables unset, which is the deployment
+    // default. The storefront hides the assistant entry point on this flag, so
+    // it has to be present and false rather than absent.
+    expect(store.assistantEnabled).toBe(false);
   });
 
   it('returns 404 for a disabled store', async () => {
@@ -752,6 +756,295 @@ describe('cart lifecycle', () => {
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('PRODUCT_SOLD_OUT');
+  });
+});
+
+describe('identical cart lines merge', () => {
+  type Line = { id: string; quantity: number; totalItemPrice: number };
+
+  function toppings() {
+    return seedModifier({
+      name: { en: 'Toppings' },
+      selectionType: 'multiple_choice',
+      minSelect: 0,
+      maxSelect: 2,
+    });
+  }
+
+  async function add(token: string, body: Record<string, unknown>) {
+    return request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(token))
+      .send(body);
+  }
+
+  async function patch(
+    token: string,
+    itemId: string,
+    body: Record<string, unknown>,
+  ) {
+    return request(app)
+      .patch(`/api/v1/public/guest/cart/items/${itemId}`)
+      .set(auth(token))
+      .send(body);
+  }
+
+  it('merges an added line into an identical one, keeping the earliest id', async () => {
+    const modifier = seedModifier();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+    const item = {
+      productId: product.id,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    };
+
+    const first = await add(guestToken, { ...item, quantity: 2 });
+    const firstId = (first.body.data.cart.items as Line[])[0]?.id;
+    const second = await add(guestToken, { ...item, quantity: 3 });
+
+    expect(second.status).toBe(200);
+    const items = second.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe(firstId);
+    expect(items[0]?.quantity).toBe(5);
+    expect(items[0]?.totalItemPrice).toBe(1000);
+    expect(second.body.data.cart.subtotal).toBe(1000);
+  });
+
+  it('merges on update, when an edit makes a later line match an earlier one', async () => {
+    const modifier = seedModifier();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+
+    const first = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+    const earlierId = (first.body.data.cart.items as Line[])[0]?.id;
+    const second = await add(guestToken, {
+      productId: product.id,
+      quantity: 2,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    });
+    const laterId = (second.body.data.cart.items as Line[])[1]?.id ?? '';
+
+    // The guest edits the LATER line, which disappears into the earlier one.
+    const response = await patch(guestToken, laterId, {
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+
+    expect(response.status).toBe(200);
+    const items = response.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe(earlierId);
+    expect(items[0]?.quantity).toBe(3);
+  });
+
+  it('keeps the earlier line when the EARLIER one is edited to match a later one', async () => {
+    const modifier = seedModifier();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+
+    const first = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+    const earlierId = (first.body.data.cart.items as Line[])[0]?.id ?? '';
+    await add(guestToken, {
+      productId: product.id,
+      quantity: 2,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    });
+
+    const response = await patch(guestToken, earlierId, {
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    });
+
+    const items = response.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe(earlierId);
+    expect(items[0]?.quantity).toBe(3);
+    // The surviving line carries the options it was just edited to.
+    expect(items[0]?.totalItemPrice).toBe(600);
+  });
+
+  it('matches options as a set, whatever order they were sent in', async () => {
+    const modifier = toppings();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [
+        { modifierId: modifier.id, optionId: 'option-mild' },
+        { modifierId: modifier.id, optionId: 'option-extra' },
+      ],
+    });
+    const response = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [
+        { modifierId: modifier.id, optionId: 'option-extra' },
+        { modifierId: modifier.id, optionId: 'option-mild' },
+      ],
+    });
+
+    const items = response.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.quantity).toBe(2);
+  });
+
+  it('does not merge lines whose options differ', async () => {
+    const modifier = seedModifier();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+    const response = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    });
+
+    expect(response.body.data.cart.items).toHaveLength(2);
+  });
+
+  it('does not merge lines whose notes differ', async () => {
+    const product = seedProduct();
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, { productId: product.id, quantity: 1 });
+    const noted = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      notes: 'no scallions',
+    });
+    expect(noted.body.data.cart.items).toHaveLength(2);
+
+    // The same note again does merge — and only with the line that has it.
+    const again = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      notes: '  no scallions ',
+    });
+    const items = again.body.data.cart.items as Line[];
+    expect(items.map((item) => item.quantity)).toEqual([1, 2]);
+  });
+
+  it('merges when removing a note makes the line match one without a note', async () => {
+    const product = seedProduct();
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, { productId: product.id, quantity: 1 });
+    const noted = await add(guestToken, {
+      productId: product.id,
+      quantity: 1,
+      notes: 'no scallions',
+    });
+    const notedId = (noted.body.data.cart.items as Line[])[1]?.id ?? '';
+
+    const response = await patch(guestToken, notedId, { notes: null });
+
+    const items = response.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.quantity).toBe(2);
+  });
+
+  it("never merges one guest's line into another's", async () => {
+    const product = seedProduct();
+    const owner = await createDineInCart('Amy');
+    await add(owner.guestToken, { productId: product.id, quantity: 1 });
+
+    const joinResponse = await request(app)
+      .post(`/api/v1/public/stores/${STORE_ID}/carts/join`)
+      .send({
+        joinCode: owner.cart.joinCode,
+        avatarKey: 'dog',
+        displayName: 'Ben',
+      });
+    const joinerToken = joinResponse.body.data.guestToken as string;
+
+    const response = await add(joinerToken, {
+      productId: product.id,
+      quantity: 1,
+    });
+
+    const items = response.body.data.cart.items as (Line & {
+      addedByParticipantId: string;
+    })[];
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.quantity)).toEqual([1, 1]);
+    expect(items[0]?.addedByParticipantId).toBe(owner.participantId);
+    expect(items[1]?.addedByParticipantId).not.toBe(owner.participantId);
+  });
+
+  it('rejects a merge past 99 instead of clamping it, and changes nothing', async () => {
+    const product = seedProduct();
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, { productId: product.id, quantity: 60 });
+    const response = await add(guestToken, {
+      productId: product.id,
+      quantity: 40,
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('CART_ITEM_QUANTITY_LIMIT');
+
+    const cart = await request(app)
+      .get('/api/v1/public/guest/cart')
+      .set(auth(guestToken));
+    const items = cart.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.quantity).toBe(60);
+  });
+
+  it('merges to exactly 99', async () => {
+    const product = seedProduct();
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, { productId: product.id, quantity: 60 });
+    const response = await add(guestToken, {
+      productId: product.id,
+      quantity: 39,
+    });
+
+    expect(response.status).toBe(200);
+    const items = response.body.data.cart.items as Line[];
+    expect(items).toHaveLength(1);
+    expect(items[0]?.quantity).toBe(99);
+  });
+
+  it('rejects an edit whose merge would pass 99', async () => {
+    const modifier = seedModifier();
+    const product = seedProduct({ modifierIds: [modifier.id] });
+    const { guestToken } = await createDineInCart();
+
+    await add(guestToken, {
+      productId: product.id,
+      quantity: 60,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+    const second = await add(guestToken, {
+      productId: product.id,
+      quantity: 40,
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-extra' }],
+    });
+    const laterId = (second.body.data.cart.items as Line[])[1]?.id ?? '';
+
+    const response = await patch(guestToken, laterId, {
+      selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('CART_ITEM_QUANTITY_LIMIT');
   });
 });
 

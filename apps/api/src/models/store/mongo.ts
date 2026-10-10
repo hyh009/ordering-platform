@@ -14,6 +14,7 @@ import { model, models, Schema } from 'mongoose';
 
 import type {
   BusinessHour,
+  StoreAssistantSettings,
   StoreEntity,
   StoreLocale,
   StoreOrderMode,
@@ -219,6 +220,15 @@ const storeSchema = new Schema<StoreEntity>(
     operation: {
       type: storeOperationSchema,
       required: true,
+    },
+    // Optional and unset by default: a store that never configured the
+    // assistant has no assistant block at all, and the effective behavior is
+    // resolved against the active version's permission anyway.
+    assistant: {
+      type: new Schema<StoreAssistantSettings>(
+        { autoApplyCartOperations: { type: Boolean, required: true } },
+        { _id: false },
+      ),
     },
     status: {
       type: String,

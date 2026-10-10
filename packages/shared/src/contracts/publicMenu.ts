@@ -29,6 +29,18 @@ export type PublicStoreDto = {
   serviceFeeRate: number;
   /** Enabled order modes only. */
   orderModes: PublicStoreOrderModeDto[];
+  /**
+   * Whether the ordering assistant is available at all. A deployment-level fact
+   * (the provider, model and prompt version are configured), not a store
+   * setting — the store's own assistant setting only governs whether validated
+   * operations may apply without confirmation.
+   *
+   * It rides on the store response because the storefront already fetches that
+   * on load, and the entry point has to be absent BEFORE the guest can send
+   * anything: discovering the assistant is off from a refused request would mean
+   * showing a control that does nothing.
+   */
+  assistantEnabled: boolean;
 };
 
 export type PublicCategoryDto = {

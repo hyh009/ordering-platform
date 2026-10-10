@@ -1,4 +1,5 @@
 import type { GuestSessionCommands } from '@/app/global/guestSession/guestSession.commands';
+import type { StoreFrontAiOrderingActions } from '../aiOrdering/actions';
 import type { StoreFrontCartActions } from '../cart/actions';
 import type { StoreFrontOrderActions } from '../order/actions';
 import type { StorefrontActions } from '../storefront/actions';
@@ -10,6 +11,7 @@ export type TenantWorkflowCommands = {
 };
 
 export function createTenantWorkflowCommands(deps: {
+  aiOrderingActions: StoreFrontAiOrderingActions;
   cartActions: StoreFrontCartActions;
   guestSessionCommands: GuestSessionCommands;
   orderActions: StoreFrontOrderActions;
@@ -27,6 +29,7 @@ export function createTenantWorkflowCommands(deps: {
         deps.storefrontActions.storefrontCleared();
         deps.cartActions.cartCleared();
         deps.orderActions.orderCleared();
+        deps.aiOrderingActions.conversationCleared();
         deps.guestSessionCommands.deactivateSession();
         deps.tenantActions.storeActivated(storeId);
       });

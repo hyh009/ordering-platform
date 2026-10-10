@@ -61,6 +61,11 @@ export type UpdateStoreInput = {
         guestOrderingDurationMinutes?: number | null | undefined;
       }
     | undefined;
+  assistant?:
+    | {
+        autoApplyCartOperations?: boolean | undefined;
+      }
+    | undefined;
   status?: StoreStatus | undefined;
 };
 
@@ -206,6 +211,16 @@ export class StoreService {
         operation.guestOrderingDurationMinutes =
           input.operation.guestOrderingDurationMinutes;
       repoInput.operation = operation;
+    }
+
+    if (input.assistant !== undefined) {
+      const assistant: NonNullable<
+        Parameters<typeof storeRepository.update>[1]['assistant']
+      > = {};
+      if (input.assistant.autoApplyCartOperations !== undefined)
+        assistant.autoApplyCartOperations =
+          input.assistant.autoApplyCartOperations;
+      repoInput.assistant = assistant;
     }
 
     if (input.status !== undefined) repoInput.status = input.status;

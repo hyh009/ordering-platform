@@ -1,5 +1,5 @@
 import { useLocation, useParams } from 'react-router';
-import { Plus, Store } from 'lucide-react';
+import { MessagesSquare, Plus, Store } from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import { PATHS } from '@/app/routing/paths';
 import type { StoreListItem as StoreModel } from '@/models/store';
@@ -102,6 +102,23 @@ export function StoreListPage() {
       header: tDefault('common.fields.updatedAt', 'Last updated'),
       cellClassName: 'text-sm text-muted-foreground',
       render: (store) => new Date(store.updatedAt).toLocaleDateString(),
+    },
+    {
+      key: 'aiOrdering',
+      header: '',
+      align: 'right',
+      render: (store) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            vm.goToAiConversations(store.id);
+          }}
+        >
+          <MessagesSquare className="mr-2 h-4 w-4" />
+          {tDefault('admin.aiOrdering.conversationsTitle', 'Assistant conversations')}
+        </Button>
+      ),
     },
   ];
 

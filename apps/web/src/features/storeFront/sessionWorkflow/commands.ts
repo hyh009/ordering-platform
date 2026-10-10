@@ -7,6 +7,7 @@ import {
   mapStoreFrontApiError,
   type StoreFrontCommandFailure,
 } from '@/services/utils/storeFrontApiError';
+import type { StoreFrontAiOrderingActions } from '../aiOrdering/actions';
 import type { StoreFrontCartActions } from '../cart/actions';
 import type { StoreFrontOrderActions } from '../order/actions';
 import type { TenantStore } from '../tenant/store';
@@ -39,6 +40,7 @@ export type StoreFrontSessionWorkflowCommands = {
 
 export function createStoreFrontSessionWorkflowCommands(deps: {
   guestSessionCommands: GuestSessionCommands;
+  aiOrderingActions: StoreFrontAiOrderingActions;
   cartActions: StoreFrontCartActions;
   orderActions: StoreFrontOrderActions;
   sessionStore: GuestSessionStore;
@@ -46,6 +48,7 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
 }): StoreFrontSessionWorkflowCommands {
   const {
     guestSessionCommands,
+    aiOrderingActions,
     cartActions,
     orderActions,
     sessionStore,
@@ -63,6 +66,11 @@ export function createStoreFrontSessionWorkflowCommands(deps: {
     if (tenantStore.getState().activeStoreId === storeId) {
       cartActions.cartCleared();
       orderActions.orderCleared();
+      // The assistant transcript belongs to the cart the ended session held, so
+      // it goes with the cart. Leaving it behind is what used to show the next
+      // order the previous order's conversation, against a cart that no longer
+      // exists.
+      aiOrderingActions.conversationCleared();
     }
   }
 

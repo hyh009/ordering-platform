@@ -1,0 +1,41 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All artifacts must be written in English.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Project: multi-tenant ordering platform (pnpm workspace).
+  - apps/api: Express + TypeScript API, MongoDB.
+  - apps/web: React + Vite frontend.
+  - packages/shared: cross-app API contracts, DTOs, and schemas.
+
+  The implementation contract lives in docs/agent/. Before planning, read
+  docs/agent/index.yaml and open only the guides relevant to the change
+  (e.g. backend/architecture.md, frontend/architecture.md,
+  workflows/shared-contracts.md). Reference those guides from artifacts
+  instead of restating them. Existing feature docs live in docs/features/.
+
+  Key constraints:
+  - Frontend flow: View -> Page VM Hook -> Page Commands -> Feature Actions
+    -> Feature Store | Service -> API. Raw API DTOs must not leak past
+    services; map through src/models/<domain>.
+  - Soft delete for users/organizations; lifecycle state stays separate
+    from deletion state. Super admin is `isSuperAdmin`.
+  - "shared" means project-wide cross-domain reuse only.
+  - New frontend i18n keys use English default strings.
+
+rules:
+  design:
+    - Name the docs/agent guides the design follows and call out any intentional deviation.
+    - State whether packages/shared contracts change.
+  tasks:
+    - Group tasks by slice (shared contracts, api, web) in dependency order.
+    - End each slice with its verification step per docs/agent/workflows/verification.md.
+
+operations:
+  apply:
+    guidance:
+      - Follow the docs/agent guides named in design.md; run the narrowest lint/test/build for each touched slice.
+      - For frontend code, also run docs/agent/frontend/architecture-validation.md.
+      - Do not start dev servers or create commits unless the user asks.

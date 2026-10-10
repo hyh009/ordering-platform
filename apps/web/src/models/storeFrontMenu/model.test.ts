@@ -13,6 +13,7 @@ function storeDto(partial: Partial<PublicStoreDto> = {}): PublicStoreDto {
     businessHours: [],
     serviceFeeRate: 0,
     orderModes: [],
+    assistantEnabled: false,
     ...partial,
   };
 }
@@ -28,5 +29,17 @@ describe('storeFrontMenuModel', () => {
 
     expect(store.logoUrl).toBe('https://example.com/logo.png');
     expect(store.bannerUrl).toBe('https://example.com/banner.png');
+  });
+
+  it('carries the assistant enablement flag', () => {
+    // The storefront hides the assistant entry point entirely on false, so the
+    // flag has to survive deserialize rather than read as `undefined`.
+    expect(
+      storeFrontMenuModel.deserializeStore(storeDto({ assistantEnabled: true }))
+        .assistantEnabled,
+    ).toBe(true);
+    expect(
+      storeFrontMenuModel.deserializeStore(storeDto()).assistantEnabled,
+    ).toBe(false);
   });
 });

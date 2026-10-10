@@ -45,12 +45,29 @@ export type StoreOperationDto = {
   guestOrderingDurationMinutes?: number;
 };
 
+/**
+ * Ordering-assistant settings. Kept in its own block rather than inside
+ * `operation` so assistant configuration stays separable from the ordering
+ * rules, and absent entirely on stores that never enable the assistant.
+ */
+export type StoreAssistantSettingsDto = {
+  /**
+   * Whether the store permits the assistant's validated cart operations to be
+   * applied without asking the guest to confirm. The effective behavior is this
+   * setting AND the active assistant version's own permission, resolved
+   * server-side — a store cannot opt into automatic application on a version
+   * that does not allow it.
+   */
+  autoApplyCartOperations: boolean;
+};
+
 export type StoreDto = {
   id: string;
   organizationId: string;
   profile: StoreProfileDto;
   locale: StoreLocaleDto;
   operation: StoreOperationDto;
+  assistant?: StoreAssistantSettingsDto;
   status: StoreStatus;
   createdAt: string;
   updatedAt: string;
@@ -204,6 +221,11 @@ export const updateStoreSchema = z
           .max(720)
           .nullable()
           .optional(),
+      })
+      .optional(),
+    assistant: z
+      .object({
+        autoApplyCartOperations: z.boolean().optional(),
       })
       .optional(),
     status: z.enum(storeStatuses).optional(),

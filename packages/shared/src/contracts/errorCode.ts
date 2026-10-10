@@ -35,12 +35,33 @@ export const ERROR_CODES = {
   CART_NOT_ACTIVE: 'CART_NOT_ACTIVE',
   CART_ITEM_NOT_FOUND: 'CART_ITEM_NOT_FOUND',
   NOT_ITEM_OWNER: 'NOT_ITEM_OWNER',
+  // Two identical cart lines merge, and the merged line would hold more than
+  // one line may. Refused rather than clamped: clamping would quietly drop
+  // items the guest asked for.
+  CART_ITEM_QUANTITY_LIMIT: 'CART_ITEM_QUANTITY_LIMIT',
   ORDER_NOT_FOUND: 'ORDER_NOT_FOUND',
   ORDER_LOCKED: 'ORDER_LOCKED',
   ORDER_TYPE_NOT_ENABLED: 'ORDER_TYPE_NOT_ENABLED',
   STORE_NOT_OPEN: 'STORE_NOT_OPEN',
   PRODUCT_SOLD_OUT: 'PRODUCT_SOLD_OUT',
   MODIFIER_SELECTION_INVALID: 'MODIFIER_SELECTION_INVALID',
+  TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
+  AI_ORDERING_DISABLED: 'AI_ORDERING_DISABLED',
+  AI_ORDERING_UNAVAILABLE: 'AI_ORDERING_UNAVAILABLE',
+  AI_ORDERING_CONVERSATION_FULL: 'AI_ORDERING_CONVERSATION_FULL',
+  AI_ORDERING_PROMPT_NOT_FOUND: 'AI_ORDERING_PROMPT_NOT_FOUND',
+  AI_ORDERING_CONVERSATION_NOT_FOUND: 'AI_ORDERING_CONVERSATION_NOT_FOUND',
+  AI_ORDERING_PROPOSAL_NOT_FOUND: 'AI_ORDERING_PROPOSAL_NOT_FOUND',
+  // Kept distinct from AI_ORDERING_PROPOSAL_EXPIRED on purpose: one means the
+  // guest already answered this proposal, the other means they never did and the
+  // chance has passed. Collapsing them would tell a guest who double-submitted
+  // that their proposal expired, and a guest who waited that they already acted.
+  AI_ORDERING_PROPOSAL_ALREADY_DECIDED: 'AI_ORDERING_PROPOSAL_ALREADY_DECIDED',
+  AI_ORDERING_PROPOSAL_EXPIRED: 'AI_ORDERING_PROPOSAL_EXPIRED',
+  // An answer to a choice the proposal left open that the server never offered:
+  // an option that was not on the list, or a required choice left unanswered.
+  // The card cannot produce this, so it means the request did not come from it.
+  AI_ORDERING_PROPOSAL_CHOICE_INVALID: 'AI_ORDERING_PROPOSAL_CHOICE_INVALID',
   NETWORK_ERROR: 'NETWORK_ERROR',
   INVALID_API_RESPONSE: 'INVALID_API_RESPONSE',
 } as const;

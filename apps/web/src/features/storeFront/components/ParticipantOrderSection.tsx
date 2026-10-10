@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, ShoppingBag, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  ShoppingBag,
+  Trash2,
+} from 'lucide-react';
 import { useAppTranslation } from '@/app/i18n';
 import {
   getOrderingParticipantDisplayName,
@@ -18,6 +24,8 @@ export interface ParticipantOrderSectionProps {
   isCurrentUser: boolean;
   isMutating?: boolean;
   onChangeQuantity?: (item: CartItem, qty: number) => void;
+  /** Opens the item's options, notes and quantity for changing. */
+  onEdit?: (item: CartItem) => void;
   onRemove?: (item: CartItem) => void;
 }
 
@@ -27,6 +35,7 @@ export function ParticipantOrderSection({
   isCurrentUser,
   isMutating = false,
   onChangeQuantity,
+  onEdit,
   onRemove,
 }: ParticipantOrderSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -99,6 +108,20 @@ export function ParticipantOrderSection({
                     <span className="font-semibold text-storefront-text">
                       {formatPrice(item.totalItemPrice)}
                     </span>
+                    {isCurrentUser && onEdit ? (
+                      <button
+                        type="button"
+                        aria-label={tDefault(
+                          'guest.cart.editItem',
+                          'Change this item',
+                        )}
+                        disabled={isMutating}
+                        className="text-storefront-text-muted hover:text-storefront-text disabled:opacity-40"
+                        onClick={() => onEdit(item)}
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    ) : null}
                     {isCurrentUser && onRemove ? (
                       <button
                         type="button"
