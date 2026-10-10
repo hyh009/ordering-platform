@@ -25,7 +25,12 @@ import type {
   AiOrderingResponse,
   AiOrderingResponseType,
   AiOrderingSettledProposal,
+  AiOrderingSettledShownSet,
+  AiOrderingShownSetOutcome,
+  AiOrderingShownSetStateDto,
   AiOrderingTurnResponseData,
+  PickAiOrderingShownProductRequest,
+  PickAiOrderingShownProductSuccessResponse,
   AiOrderingUnansweredReason,
   AiOrderingUnansweredResponse,
   SendAiOrderingMessageRequest,
@@ -54,9 +59,12 @@ export type {
   SendAiOrderingMessageSuccessResponse,
   DecideAiOrderingProposalRequest,
   DecideAiOrderingProposalSuccessResponse,
+  PickAiOrderingShownProductRequest,
+  PickAiOrderingShownProductSuccessResponse,
 };
 
-export type { AiOrderingSettledProposal };
+export type { AiOrderingSettledProposal, AiOrderingSettledShownSet };
+export type { AiOrderingShownSetOutcome };
 
 export type AiOrderingChoiceDtoType = AiOrderingChoice;
 export type AiOrderingResponseDtoType = AiOrderingResponse;
@@ -92,6 +100,14 @@ export type AiOrderingTurn = {
    * instant — so this comes back from the turn rather than being inferred.
    */
   settledProposal?: AiOrderingSettledProposal;
+  /**
+   * What the server recorded for the shown set this turn ended.
+   *
+   * The same argument as `settledProposal`, for the surface the guest was
+   * looking at: a tap and a typed answer both end a standing set, and only the
+   * server knows which it decided this was.
+   */
+  settledShownSet?: AiOrderingSettledShownSet;
 };
 
 export type AiOrderingGuestTurnDtoType = AiOrderingGuestTurnDto;
@@ -117,10 +133,26 @@ export type AiOrderingTranscriptTurn = AiOrderingTurn & {
    * to ask again for something already in their cart.
    */
   proposal?: AiOrderingProposalState;
+  /**
+   * Present exactly when the turn showed products carrying a set id.
+   *
+   * Without it a reloaded panel cannot tell a set already picked from one still
+   * waiting to be — the same hole the proposal state closed, on the surface
+   * where the guest taps.
+   */
+  shownSet?: AiOrderingShownSetState;
 };
 
 /** Two states. An expired proposal is a decided one whose rows are all no-action. */
 export type AiOrderingProposalState = AiOrderingProposalStateDto;
+
+/**
+ * Pending, or settled with a named outcome.
+ *
+ * The settled cases are not collapsed the way a proposal's are: a proposal has
+ * rows carrying outcomes, and a shown set has none.
+ */
+export type AiOrderingShownSetState = AiOrderingShownSetStateDto;
 
 /** One operation the guest changed before accepting, described as applied. */
 export type AiOrderingAppliedSummaryModel = {

@@ -49,6 +49,27 @@ export const aiOrderingUnansweredReasons = [
  * "You removed the tea", "you never answered", "we never got to it" and "it
  * would not go in" are four different things to say.
  */
+/**
+ * What became of a set of products the assistant showed.
+ *
+ * Four, none inferred from the absence of another. A guest who picked and a
+ * guest who walked away are different things to tell the one who comes back,
+ * and a set with no operations has nothing else to carry the difference — the
+ * same argument that keeps `superseded` separate from an ordinary decision on a
+ * proposal.
+ *
+ * `answered_in_words` is the guest typing their answer instead of picking it;
+ * `superseded` is them changing the subject. Both arrive as a message, and only
+ * the assistant's next answer tells them apart, which is why the server records
+ * which one it decided this was.
+ */
+export const aiOrderingShownSetOutcomes = [
+  'picked',
+  'answered_in_words',
+  'superseded',
+  'lapsed',
+] as const;
+
 export const aiOrderingOperationOutcomes = [
   'accepted',
   'rejected',
@@ -275,6 +296,19 @@ export const aiOrderingProposalResponseSchema = z.object({
 export const aiOrderingProductsResponseSchema = z.object({
   type: z.literal('products'),
   reply: aiOrderingReplySchema,
+  /**
+   * Issued by the backend, like `proposalId` is, and for the same reason: the
+   * guest acts on this set, so their action needs something to answer against.
+   *
+   * A pick is resolved against the set the assistant actually showed THIS
+   * guest, found by this id in their own conversation — which is what makes
+   * another guest's set structurally unreachable, exactly as it is for a choice
+   * question's prompt id.
+   *
+   * Optional only because a turn stored before this field existed carries no
+   * id, and such a set is simply not pickable.
+   */
+  shownSetId: aiOrderingIdSchema.optional(),
   productIds: z.array(aiOrderingIdSchema).min(1),
   categoryId: aiOrderingIdSchema.optional(),
 });
@@ -351,6 +385,37 @@ export const decideAiOrderingProposalSchema = z.object({
 });
 
 /**
+ * The guest picking one of the products the assistant showed.
+ *
+ * Ids only, like a proposal decision, and for the same reason: the backend
+ * rebuilds what to tell the assistant from the set it recorded, so a caller can
+ * neither pick a product that set never presented nor alter what the assistant
+ * will be told it was.
+ *
+ * There is no free-text field here. A guest who answers in words sends an
+ * ordinary message; this exists for the tap, which is not a message.
+ */
+export const pickAiOrderingShownProductSchema = z.object({
+  shownSetId: aiOrderingIdSchema,
+  productId: aiOrderingIdSchema,
+});
+
+/**
+ * What the server recorded for the shown set this turn settled.
+ *
+ * Present when the guest had a set standing and did something that ended it.
+ * The panel marks those cards from this rather than inferring them, because the
+ * server is the side that wrote the record — the same reasoning as
+ * `settledProposal`, which this is deliberately shaped after.
+ */
+export const aiOrderingSettledShownSetSchema = z.object({
+  shownSetId: aiOrderingIdSchema,
+  outcome: z.enum(aiOrderingShownSetOutcomes),
+  /** Present only when `outcome` is `picked`. */
+  pickedProductId: aiOrderingIdSchema.optional(),
+});
+
+/**
  * What the server recorded for the proposal this message settled.
  *
  * Present only when the guest had an unanswered proposal open and sent another
@@ -368,6 +433,7 @@ export const aiOrderingTurnResponseDataSchema = z.object({
   versionId: aiOrderingIdSchema,
   response: aiOrderingResponseSchema,
   settledProposal: aiOrderingSettledProposalSchema.optional(),
+  settledShownSet: aiOrderingSettledShownSetSchema.optional(),
 });
 
 export type AiOrderingChoice = z.infer<typeof aiOrderingChoiceSchema>;
@@ -398,6 +464,11 @@ export type AiOrderingOperationResult = z.infer<
 export type AiOrderingSettledProposal = z.infer<
   typeof aiOrderingSettledProposalSchema
 >;
+export type AiOrderingShownSetOutcome =
+  (typeof aiOrderingShownSetOutcomes)[number];
+export type AiOrderingSettledShownSet = z.infer<
+  typeof aiOrderingSettledShownSetSchema
+>;
 export type SendAiOrderingMessageRequest = z.infer<
   typeof sendAiOrderingMessageSchema
 >;
@@ -407,8 +478,22 @@ export type DecideAiOrderingProposalRequest = z.infer<
 export type AiOrderingTurnResponseData = z.infer<
   typeof aiOrderingTurnResponseDataSchema
 >;
+export type PickAiOrderingShownProductRequest = z.infer<
+  typeof pickAiOrderingShownProductSchema
+>;
 
 export type SendAiOrderingMessageSuccessResponse =
+  ApiSuccessResponse<AiOrderingTurnResponseData>;
+
+/**
+ * A pick produces a turn, the same shape a message does.
+ *
+ * It resumes the paused run rather than sending a message, and the run then
+ * answers — so what comes back is the assistant's next response, recorded as
+ * its own turn because `response` is singular and every reader of a turn
+ * depends on that.
+ */
+export type PickAiOrderingShownProductSuccessResponse =
   ApiSuccessResponse<AiOrderingTurnResponseData>;
 
 /**
@@ -493,6 +578,28 @@ export type AiOrderingProposalStateDto =
       reply?: string;
     };
 
+/**
+ * What became of a shown set, as the guest's restored transcript reports it.
+ *
+ * Unlike a proposal's two states, the settled cases are NOT collapsed. A
+ * proposal can collapse them because its rows carry outcomes; a shown set has
+ * no rows, so this field is the only thing that can tell a guest who picked
+ * from one who walked away.
+ *
+ * `pending` means the cards are still pickable after a reload, which is what
+ * storing the set bought: before it, a restored set had to be inert, because
+ * "already answered" and "never answered" looked identical from here.
+ */
+export type AiOrderingShownSetStateDto =
+  | { status: 'pending' }
+  | {
+      status: 'settled';
+      settledAt: string;
+      outcome: AiOrderingShownSetOutcome;
+      /** Present only when `outcome` is `picked`. */
+      pickedProductId?: string;
+    };
+
 export type AiOrderingGuestTurnDto = {
   /** The stored turn id, so the transcript has stable React keys. */
   id: string;
@@ -500,6 +607,11 @@ export type AiOrderingGuestTurnDto = {
   response: AiOrderingResponse;
   /** Present exactly when `response.type` is `proposal`. */
   proposal?: AiOrderingProposalStateDto;
+  /**
+   * Present exactly when `response.type` is `products` and the set carries an
+   * id. A set stored before it had one is absent here, and not pickable.
+   */
+  shownSet?: AiOrderingShownSetStateDto;
   versionId: string;
   createdAt: string;
 };

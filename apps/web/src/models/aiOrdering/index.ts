@@ -4,8 +4,10 @@ export {
   aiOrderingChoiceInputModes,
   aiOrderingOperationOutcomes,
   aiOrderingResponseTypes,
+  aiOrderingShownSetOutcomes,
   aiOrderingUnansweredReasons,
   decideAiOrderingProposalSchema,
+  pickAiOrderingShownProductSchema,
   sendAiOrderingMessageSchema,
 } from '@repo/shared';
 
