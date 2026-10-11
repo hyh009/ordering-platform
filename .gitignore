@@ -105,3 +105,7 @@ graphify-out/
 /lessons/
 /reference/
 /learning-records/
+
+# Claude Code agent worktrees: local checkouts, hundreds of MB, rebuilt on
+# demand.
+.claude/worktrees/
