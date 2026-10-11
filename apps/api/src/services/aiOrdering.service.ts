@@ -58,6 +58,7 @@ import type {
   DecideAiOrderingProposalRequest,
   PublicMenuDto,
   SendAiOrderingMessageRequest,
+  SupportedLocale,
   UpdateCartItemRequest,
 } from '@repo/shared';
 import type {
@@ -302,6 +303,7 @@ export class AiOrderingService {
       resolution.operations.filter((operation) =>
         resolution.adjustedOperationIds.includes(operation.operationId),
       ),
+      request.locale,
     );
     const keptOperations = resolution.operations.map(
       (operation) =>
@@ -392,6 +394,7 @@ export class AiOrderingService {
   private async describeAdjustedOperations(
     claims: GuestTokenClaims,
     adjusted: AiOrderingOperation[],
+    guestLocale: SupportedLocale | undefined,
   ): Promise<AiOrderingOperation[]> {
     if (adjusted.length === 0) {
       return [];
@@ -412,7 +415,7 @@ export class AiOrderingService {
       summary: buildAiOrderingOperationLabel(operation, {
         menu,
         cart,
-        locale: store.locale.defaultLocale,
+        locale: guestLocale ?? store.locale.defaultLocale,
       }),
     }));
   }
@@ -842,7 +845,9 @@ export class AiOrderingService {
       context,
       validation: { menu, cart, participantId: claims.participantId },
       confirmationRequired,
-      locale: store.locale.defaultLocale,
+      // The labels follow the guest's interface. The menu the model reads above
+      // stays in the store's default locale.
+      locale: request.locale ?? store.locale.defaultLocale,
       guestMessage: request.message,
       onModelCall: createAiOrderingDebugTrace(`turn-${proposalId}`),
       newId: (prefix) =>

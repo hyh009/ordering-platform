@@ -1,10 +1,11 @@
 import type { GuestSessionStore } from '@/app/global/guestSession/guestSession.store';
-import { tDefault } from '@/app/i18n';
+import { getCurrentLanguage, tDefault } from '@/app/i18n';
 import {
   proposalQuantityChanges,
   sendAiOrderingMessageSchema,
 } from '@/models/aiOrdering';
 import { exceedsProductQuantityLimit } from '@/models/cart';
+import { languageToLocale } from '@/models/metadata';
 import { storeFrontAiOrderingService } from '@/services/storeFrontAiOrdering.service';
 import {
   mapStoreFrontApiError,
@@ -181,6 +182,9 @@ export function createStoreFrontAiOrderingCommands(deps: {
       if (typeof scoped !== 'string') return scoped;
       const token = scoped;
 
+      // The proposal's labels are menu text the server writes, so it has to be
+      // told which language the guest is reading.
+      const locale = languageToLocale(getCurrentLanguage());
       const request: SendAiOrderingMessageRequest = {
         message: input.message,
         ...(input.responseToPromptId !== undefined
@@ -189,6 +193,7 @@ export function createStoreFrontAiOrderingCommands(deps: {
         ...(input.selectedOptionId !== undefined
           ? { selectedOptionId: input.selectedOptionId }
           : {}),
+        ...(locale !== undefined ? { locale } : {}),
       };
 
       const validation = sendAiOrderingMessageSchema.safeParse(request);
@@ -282,6 +287,8 @@ export function createStoreFrontAiOrderingCommands(deps: {
 
       actions.applyStarted();
 
+      const decisionLocale = languageToLocale(getCurrentLanguage());
+
       try {
         const decision = await storeFrontAiOrderingService.decideProposal(
           token,
@@ -289,6 +296,7 @@ export function createStoreFrontAiOrderingCommands(deps: {
             proposalId: proposal.proposalId,
             keptOperationIds,
             ...(resolvedChoices.length > 0 ? { resolvedChoices } : {}),
+            ...(decisionLocale !== undefined ? { locale: decisionLocale } : {}),
           },
         );
 

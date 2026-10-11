@@ -89,7 +89,7 @@ export function AssistantProposalCard({
   onAnswerChoice,
   onApply,
 }: AssistantProposalCardProps) {
-  const { tDefault } = useAppTranslation();
+  const { language, tDefault } = useAppTranslation();
 
   // Which answered choice the guest has opened to change. Which option is
   // selected is not kept here: that is the proposal's state and goes through
@@ -255,9 +255,15 @@ export function AssistantProposalCard({
           panel's own words rather than as a reply, for the same reason. */}
       {proposal.openChoiceLabels.length > 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          {tDefault('guest.assistant.choicesToPick', 'Still to choose: {{labels}}', {
-            labels: proposal.openChoiceLabels.join('、'),
-          })}
+          {tDefault(
+            'guest.assistant.choicesToPick',
+            'Still to choose: {{labels}}',
+            {
+              labels: proposal.openChoiceLabels.join(
+                language.startsWith('zh') ? '、' : ', ',
+              ),
+            },
+          )}
         </p>
       ) : null}
 

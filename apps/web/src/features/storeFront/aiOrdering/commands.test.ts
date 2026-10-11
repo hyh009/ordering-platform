@@ -117,6 +117,7 @@ describe('storefront assistant send command', () => {
 
     expect(sendMessageMock).toHaveBeenCalledWith('token-a', {
       message: 'What is bubble tea?',
+      locale: 'en',
     });
   });
 
@@ -147,6 +148,7 @@ describe('storefront assistant send command', () => {
       message: 'Large',
       responseToPromptId: 'prompt-1',
       selectedOptionId: 'option-2',
+      locale: 'en',
     });
   });
 
@@ -203,6 +205,7 @@ describe('storefront assistant decision command', () => {
     expect(decideProposalMock).toHaveBeenCalledWith('token-a', {
       proposalId: 'proposal-1',
       keptOperationIds: ['op-2'],
+      locale: 'en',
     });
   });
 

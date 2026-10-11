@@ -49,6 +49,11 @@ export function tDefault(
   });
 }
 
+/** The language the interface is in, for code outside React. */
+export function getCurrentLanguage(): string {
+  return i18n.language;
+}
+
 export function useAppTranslation() {
   const { i18n: i18nInstance, t } = useTranslation();
 
@@ -88,7 +93,9 @@ export async function initManagementLanguage(): Promise<void> {
   const browserLangs = [...(navigator.languages ?? [navigator.language])];
   const match =
     browserLangs.find((l) => isSupportedLanguage(l)) ??
-    browserLangs.map((l) => l.split('-')[0]).find((l) => isSupportedLanguage(l));
+    browserLangs
+      .map((l) => l.split('-')[0])
+      .find((l) => isSupportedLanguage(l));
   const lang = match ?? 'zh-TW';
   await i18n.changeLanguage(lang);
   localStorage.setItem(languageStorageKey, lang);

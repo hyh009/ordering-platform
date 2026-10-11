@@ -10,16 +10,16 @@
  * Built from the operation's own fields, so it cannot say more than the
  * operation does.
  *
- * Language: the product name is taken in the store's default locale, the same
- * string the menu shows. The assistant's reply follows the guest's language, so
- * a guest writing in another language reads a reply in theirs above a label in
- * the store's. That is accepted: a label that is honest in the wrong language
- * beats one that is fluent and false.
+ * Language: names are taken in the locale the guest's interface is in, the same
+ * strings the menu beside the panel shows, falling back to the store's default
+ * locale when the request names none. A name the menu does not carry in that
+ * locale is shown in one it does carry, rather than as an id.
  */
 
 import type {
   AiOrderingOperation,
   CartDto,
+  LocalizedStringDto,
   PublicMenuDto,
   SupportedLocale,
 } from '@repo/shared';
@@ -30,6 +30,19 @@ export type AiOrderingLabelContext = {
   locale: SupportedLocale;
 };
 
+const NOTE_REMOVED_LABEL: Record<SupportedLocale, string> = {
+  en: '— note removed',
+  'zh-TW': '— 移除備註',
+};
+
+function localize(
+  value: LocalizedStringDto,
+  locale: SupportedLocale,
+  fallback: string,
+): string {
+  return value[locale] ?? Object.values(value).find(Boolean) ?? fallback;
+}
+
 function productName(
   productId: string,
   context: AiOrderingLabelContext,
@@ -37,7 +50,7 @@ function productName(
   for (const group of context.menu.groups) {
     for (const product of group.products) {
       if (product.id === productId) {
-        return product.name[context.locale] ?? productId;
+        return localize(product.name, context.locale, productId);
       }
     }
   }
@@ -48,7 +61,7 @@ function productName(
 function cartItemName(itemId: string, context: AiOrderingLabelContext): string {
   const item = context.cart.items.find((candidate) => candidate.id === itemId);
 
-  return item ? (item.productName[context.locale] ?? itemId) : itemId;
+  return item ? localize(item.productName, context.locale, itemId) : itemId;
 }
 
 function optionLabels(
@@ -65,7 +78,9 @@ function optionLabels(
       (candidate) => candidate.id === selection.optionId,
     );
 
-    return option?.name[context.locale] ?? selection.optionId;
+    return option
+      ? localize(option.name, context.locale, selection.optionId)
+      : selection.optionId;
   });
 }
 
@@ -113,7 +128,7 @@ export function buildAiOrderingOperationLabel(
       }
 
       if (operation.item.notes === null) {
-        changes.push('— note removed');
+        changes.push(NOTE_REMOVED_LABEL[context.locale]);
       } else if (operation.item.notes !== undefined) {
         changes.push(`“${operation.item.notes}”`);
       }
