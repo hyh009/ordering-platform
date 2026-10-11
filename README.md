@@ -20,6 +20,8 @@ a restaurant ordering system:
   incoming orders.
 - Guests enter a public storefront, create or join an order, build a cart,
   submit batches, and track order status.
+- Guests can also order by talking to an AI assistant, which proposes cart
+  changes the guest confirms before anything is applied.
 
 The project focuses on practical full-stack product architecture: shared API
 contracts, explicit frontend boundaries, backend domain services, optimistic
@@ -39,6 +41,9 @@ concurrency checks, and guest ordering lifecycle rules.
   submission, order tracking, and recent orders.
 - MongoDB persistence, Redis-backed runtime support, auth/session handling,
   structured logging, validation, and automated tests.
+- LLM integration behind a human-in-the-loop boundary, with versioned prompts,
+  validated tool output, and a replay harness that measures prompt changes
+  instead of guessing at them.
 
 ## Core Features
 
@@ -68,6 +73,25 @@ concurrency checks, and guest ordering lifecycle rules.
 - Menu browsing, product configuration, cart review, and order submission.
 - Dine-in pay-later add-on flow while the order remains open.
 - Order tracking with batch-level status and browser-local recent orders.
+
+### AI Ordering Assistant
+
+- Natural-language ordering inside the storefront, answered in the language the
+  guest wrote in.
+- The assistant proposes cart changes and applies none of them on its own. The
+  guest accepts the proposal, dismisses individual changes, or ignores it.
+- Product suggestions, questions when a required choice was not stated, and an
+  explicit answer when a request cannot be met from the menu.
+- Every proposed change is validated against the live menu and cart before the
+  guest sees it; operations that do not resolve are dropped, not guessed at.
+- Prompts are versioned and fingerprinted by content, so an older prompt can be
+  replayed against a newer model and the difference attributed.
+- A replay harness and regression suite run over a frozen menu fixture, so the
+  effect of a prompt edit is measured rather than assumed.
+- Admin review pages show stored conversations and the exact prompt each turn
+  was sent.
+- Off by default: the assistant stays disabled unless a released version id and
+  a provider key are both present.
 
 ## Architecture
 
@@ -104,6 +128,8 @@ repositories, model mappers, and shared boundary contracts.
 - Passport / JWT
 - Pino
 - Swagger / OpenAPI
+- LangChain / LangGraph
+- Google Gemini
 - Vitest
 - Supertest
 
@@ -149,6 +175,9 @@ repositories, model mappers, and shared boundary contracts.
 │  ├─ agent/
 │  ├─ features/
 │  └─ schema/
+├─ openspec/
+│  ├─ changes/
+│  └─ specs/
 ├─ package.json
 ├─ pnpm-lock.yaml
 ├─ pnpm-workspace.yaml
@@ -295,6 +324,20 @@ MONGODB_URI=mongodb://localhost:27017/app_db?replicaSet=rs0
 REDIS_URL=redis://localhost:6379
 ```
 
+The AI ordering assistant is optional and stays off unless both a released
+version id and a provider key are present:
+
+```env
+GEMINI_API_KEY=
+AI_ORDERING_PROVIDER=gemini
+AI_ORDERING_MODEL=gemini-3.5-flash-lite
+AI_ORDERING_VERSION_ID=
+```
+
+The provider and the model are one choice and do not belong to a prompt
+version: replaying an old prompt against a newer model is the point of keeping
+versions.
+
 The web app reads its API base URL from `apps/web/.env`:
 
 ```env
@@ -324,6 +367,9 @@ POST /api/v1/auth/login
 GET /api/v1/public/stores/:storeId
 GET /api/v1/public/guest/session
 GET /api/v1/merchant/stores/:storeId/orders
+POST /api/v1/public/guest/ai-ordering/chat
+POST /api/v1/public/guest/ai-ordering/proposals/decision
+GET /api/v1/admin/ai-ordering/stores/:storeId/conversations
 ```
 
 ## Documentation
@@ -334,7 +380,12 @@ Feature and architecture notes are kept in `docs/`:
 - `docs/features/ordering-frontend.md`
 - `docs/features/guest-ordering-entry-flow.md`
 - `docs/features/merchant-orders.md`
+- `docs/features/ai-ordering.md`
 - `docs/features/auth.md`
 - `docs/schema/mongo.md`
+
+The AI ordering assistant's behaviour contract lives in
+`openspec/specs/ai-ordering-assistant/spec.md`, with in-flight proposals under
+`openspec/changes/`.
 
 Agent-facing implementation guides live under `docs/agent/`.
