@@ -82,3 +82,10 @@ when the user asks or the task cannot be verified without one.
 
 Use Context7 MCP to fetch current documentation whenever the user asks about a
 library, framework, SDK, API, CLI tool, or cloud service.
+
+## Shell output
+
+- Avoid commands that produce large amounts of output.
+- When inspecting logs or command results, use `head`, `tail`, `grep`, or other filtering to limit output.
+- Do not use `cat` on large files; use targeted file reads instead.
+- For test/build output, show only relevant errors or the last ~100 lines unless more context is necessary.
