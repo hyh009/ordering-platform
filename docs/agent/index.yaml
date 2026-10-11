@@ -14,6 +14,10 @@ agent_docs:
         path: docs/agent/workflows/git-commits.md
         use_when: Only when the user explicitly asks for a commit.
 
+      - name: branch-and-pr
+        path: docs/agent/workflows/branch-and-pr.md
+        use_when: Starting a new piece of work on its own branch, or taking finished work to main through a pull request.
+
       - name: feature-docs
         path: docs/agent/workflows/feature-docs.md
         use_when: Creating or updating docs/features files.
