@@ -5,6 +5,7 @@ import {
   cartItemParamsSchema,
   updateCartItemSchema,
 } from './cart.js';
+import { supportedLocales } from './metadata.js';
 
 import type { ApiSuccessResponse } from './api.js';
 import type { CartDto } from './cart.js';
@@ -342,6 +343,11 @@ export const sendAiOrderingMessageSchema = z.object({
   responseToPromptId: aiOrderingIdSchema.optional(),
   /** Absent when the guest answered a `choices` response with free text. */
   selectedOptionId: aiOrderingIdSchema.optional(),
+  /**
+   * The language the guest's interface is in, which the proposal's labels are
+   * then written in. Absent falls back to the store's default locale.
+   */
+  locale: z.enum(supportedLocales).optional(),
 });
 
 /**
@@ -382,6 +388,11 @@ export const decideAiOrderingProposalSchema = z.object({
     )
     .max(40)
     .optional(),
+  /**
+   * The language the guest's interface is in, for the summary of an operation
+   * the guest changed. Absent falls back to the store's default locale.
+   */
+  locale: z.enum(supportedLocales).optional(),
 });
 
 /**

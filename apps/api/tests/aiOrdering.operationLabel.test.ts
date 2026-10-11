@@ -39,7 +39,9 @@ describe('AI ordering operation labels', () => {
         item: {
           productId: 'prod-milk-tea',
           quantity: 1,
-          selectedOptions: [{ modifierId: 'mod-sugar', optionId: 'opt-sugar-half' }],
+          selectedOptions: [
+            { modifierId: 'mod-sugar', optionId: 'opt-sugar-half' },
+          ],
         },
       }),
     ).toContain('半糖');
@@ -91,7 +93,9 @@ describe('AI ordering operation labels', () => {
       itemId: 'item-own-milk-tea',
       item: {
         quantity: 2,
-        selectedOptions: [{ modifierId: 'mod-sugar', optionId: 'opt-sugar-free' }],
+        selectedOptions: [
+          { modifierId: 'mod-sugar', optionId: 'opt-sugar-free' },
+        ],
       },
     });
 
@@ -108,7 +112,67 @@ describe('AI ordering operation labels', () => {
         itemId: 'item-own-milk-tea',
         item: { notes: null },
       }),
-    ).toContain('removed');
+    ).toContain('移除備註');
+  });
+
+  it('writes the label in the locale it is given', () => {
+    const english = { ...context, locale: 'en' as const };
+
+    expect(
+      buildAiOrderingOperationLabel(
+        {
+          type: 'add_item',
+          operationId: 'op-1',
+          summary: '',
+          item: { productId: 'prod-rice', quantity: 2 },
+        },
+        english,
+      ),
+    ).toBe('+ Steamed rice ×2');
+    expect(
+      buildAiOrderingOperationLabel(
+        {
+          type: 'update_own_item',
+          operationId: 'op-1',
+          summary: '',
+          itemId: 'item-own-milk-tea',
+          item: { notes: null },
+        },
+        english,
+      ),
+    ).toContain('note removed');
+  });
+
+  it('uses a name the menu does carry when it has none in that locale', () => {
+    // A store that never translated a product still has a name for it, and an
+    // id is not something a guest can read.
+    const untranslated = {
+      ...context,
+      locale: 'en' as const,
+      menu: {
+        ...AI_ORDERING_MENU_FIXTURE,
+        groups: AI_ORDERING_MENU_FIXTURE.groups.map((group) => ({
+          ...group,
+          products: group.products.map((product) =>
+            product.id === 'prod-rice'
+              ? { ...product, name: { 'zh-TW': '白飯' } }
+              : product,
+          ),
+        })),
+      },
+    };
+
+    expect(
+      buildAiOrderingOperationLabel(
+        {
+          type: 'add_item',
+          operationId: 'op-1',
+          summary: '',
+          item: { productId: 'prod-rice', quantity: 1 },
+        },
+        untranslated,
+      ),
+    ).toBe('+ 白飯 ×1');
   });
 
   it('names the item on a removal', () => {

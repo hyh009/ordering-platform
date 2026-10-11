@@ -164,11 +164,13 @@ The label is still delivered on the wire, so the panel, the merchant review
 surface, the stored corpus and the replay report are unchanged. Only its author
 moved.
 
-The product name is taken in the **store's default locale** while the reply
-follows the guest's language, so a guest writing in another language reads a
-reply in theirs above a label in the store's. Accepted deliberately: a label that
-is honest in the wrong language beats one that is fluent and false. The web
-client holds the menu, the cart and i18n, so it can compose its own later.
+Names are taken in the **locale the guest's interface is in**, which the web
+client sends as `locale` on both the message and the decision request. A request
+without one falls back to the store's default locale, and a name the menu does
+not carry in that locale is shown in one it does carry. The label is written
+when the proposal is made, so a proposal already in the transcript keeps the
+language it was written in if the guest switches afterwards. The menu the model
+reads is still rendered in the store's default locale.
 
 ### Every Model-Facing Field Says What It Is For
 
@@ -315,9 +317,9 @@ reason.
 The fixed line is the last resort: the third call failed, ran out of the turn's
 budget, or came back unusable. Its language is read from what the guest typed —
 any Han character reads as Chinese, any Latin letter as English — and falls back
-to the store's default locale when the message names neither. It follows the
-guest, unlike an operation label, because it is spoken to them and is the only
-thing they read that turn.
+to the locale the labels are written in when the message names neither. What the
+guest typed comes first, ahead of their interface language, because the line is
+spoken to them and is the only thing they read that turn.
 
 What is never shown is the reply the model wrote alongside the failed proposal.
 It was written to introduce a list — "請確認以下變更：" — and the list is gone,
