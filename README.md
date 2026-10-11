@@ -4,7 +4,7 @@ A full-stack multi-tenant ordering platform for restaurant merchants, platform
 administrators, and guest storefront ordering.
 
 Project walkthrough slides:
-[Google Slides](https://docs.google.com/presentation/d/1Gx8pIBz0TbGntUpWYqjTap-SVAAS3nmkPmv7rg-Lf5A/edit?usp=sharing)
+[Google Slides](https://docs.google.com/presentation/d/1ZuxcFANgD1lhAiBbM2RQb4EOAYljjxg2/edit?usp=sharing)
 
 No live deployment is currently available. The slides above show the product
 scope, core flows, and screen walkthrough.
