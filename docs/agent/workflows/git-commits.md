@@ -5,11 +5,8 @@ Use this guide only when the user directly asks you to create a git commit.
 Do not create a commit just because code changes are complete. Wait until the
 user explicitly asks for a commit.
 
-Also follow the safe staging and audit workflow in:
-
-```txt
-docs/agent/skills/focused-git-commits/SKILL.md
-```
+Also follow the safe staging and audit workflow in the `focused-git-commits`
+skill.
 
 ## Commit Message Style
 
