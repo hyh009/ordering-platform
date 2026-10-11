@@ -350,3 +350,40 @@ The closing sentence after a decision stays the assistant's, by the same test:
 whether the guest wants anything else is conversation, not a fact about a
 control. The two never appear together — one belongs to a proposal still
 waiting, the other to one already decided.
+
+
+### 20. Measured: the model will not name the option the guest stated
+
+Recorded because this is the evidence that settles the design, and because
+without it the first version of this change looks like it was abandoned on an
+argument rather than on a result.
+
+Experiment, 2026-10-11 on `gemini-3.5-flash-lite`, the model actually served. A
+`statedOptionIds` field was added to the `show_products` arguments against a
+menu of twelve egg crepes that every one of which can take nuggets, and
+`我要蛋餅加雞塊` was replayed six times — three with the instruction in the
+field's description, three with it in the tool's description as well.
+
+- showed all twelve products: **6 of 6**
+- mentioned the nuggets in the reply: 3 of 6
+  (`您可以選擇喜歡的口味並加購雞塊`)
+- filled `statedOptionIds`: **0 of 6**
+
+So the model understands the request and says so in prose, and will not put it
+in a structured field. Strengthening the instruction did not move it, in either
+of the two places a tool's instructions can live.
+
+This kills the approach of carrying the stated option across the tap, which is
+otherwise the better design: it needs no model call, keeps `show_products` to
+showing, and the guest's tap reaches the configuration sheet as fast as it does
+today. It depends on exactly one field that only the model can fill, and the
+model will not fill it.
+
+It is also the fifth time this feature has asked the model to fill a field and
+been told no. The four before it are in
+[[prompt-data-signals-outrank-prose]] and the plan of record. The axis that
+works is which tool to call; the axis that does not is what to put in a field
+the answer does not otherwise need.
+
+Which leaves the tap going back to the model — decision 1 — not because it is
+cheap, but because the cheaper design has now been measured and does not work.
