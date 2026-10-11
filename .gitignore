@@ -97,3 +97,11 @@ references/
 # graphify knowledge-graph output: generated, ~25MB, rebuilt with
 # `graphify update .`
 graphify-out/
+
+/MISSION.md
+/RESOURCES.md
+/NOTES.md
+/assets/
+/lessons/
+/reference/
+/learning-records/
