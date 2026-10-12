@@ -29,20 +29,51 @@ function localize(
   return value[locale] ?? Object.values(value).find(Boolean) ?? '';
 }
 
+/**
+ * A name as the model reads it: the store's default-locale name, then the name
+ * in the guest's interface locale when that is a different one.
+ *
+ * Two names because the reply follows what the guest writes, which need not be
+ * the language their interface is in, and the store's own name has to be there
+ * to be used in either. Default locale first, so the first name on a line is
+ * where it has always been.
+ *
+ * Only a name the store wrote is added. One it has in a single locale is
+ * written once, and a guest on the default locale gets exactly one name.
+ */
+export function writeAiOrderingName(
+  value: LocalizedStringDto | undefined,
+  locale: SupportedLocale,
+  guestLocale: SupportedLocale | undefined,
+): string {
+  const name = localize(value, locale);
+  const guestName =
+    guestLocale !== undefined && guestLocale !== locale
+      ? value?.[guestLocale]?.trim()
+      : undefined;
+
+  return guestName && guestName !== name ? `${name} / ${guestName}` : name;
+}
+
 function toContextItem(
   item: CartItemDto,
   locale: SupportedLocale,
+  guestLocale: SupportedLocale | undefined,
 ): AiOrderingContextItem {
   return {
     itemId: item.id,
     productId: item.productId,
-    productName: localize(item.productName, locale),
+    productName: writeAiOrderingName(item.productName, locale, guestLocale),
     quantity: item.quantity,
     selectedOptions: item.selectedOptions.map((option) => ({
       modifierId: option.modifierId,
-      modifierName: localize(option.modifierName, locale),
+      modifierName: writeAiOrderingName(
+        option.modifierName,
+        locale,
+        guestLocale,
+      ),
       optionId: option.optionId,
-      optionName: localize(option.optionName, locale),
+      optionName: writeAiOrderingName(option.optionName, locale, guestLocale),
     })),
     ...(item.notes !== undefined ? { notes: item.notes } : {}),
   };
@@ -60,6 +91,7 @@ export function buildAiOrderingCartContext(
   cart: CartDto,
   participantId: string,
   locale: SupportedLocale,
+  guestLocale?: SupportedLocale,
 ): AiOrderingCartContext {
   const modifiableItems: AiOrderingContextItem[] = [];
   const readOnlyItems: AiOrderingContextItem[] = [];
@@ -70,7 +102,7 @@ export function buildAiOrderingCartContext(
         ? modifiableItems
         : readOnlyItems;
 
-    target.push(toContextItem(item, locale));
+    target.push(toContextItem(item, locale, guestLocale));
   }
 
   return { participantId, modifiableItems, readOnlyItems };
@@ -82,6 +114,7 @@ type IdWriter = (id: string) => string;
 function renderMenu(
   menu: PublicMenuDto,
   locale: SupportedLocale,
+  guestLocale: SupportedLocale | undefined,
   code: IdWriter,
 ): string {
   const lines: string[] = ['## Menu'];
@@ -92,7 +125,7 @@ function renderMenu(
   const modifierNames = new Map(
     menu.modifiers.map((modifier) => [
       modifier.id,
-      localize(modifier.name, locale),
+      writeAiOrderingName(modifier.name, locale, guestLocale),
     ]),
   );
   const describeModifier = (modifierId: string) => {
@@ -113,7 +146,7 @@ function renderMenu(
     lines.push(
       `### ${
         group.category
-          ? `${localize(group.category.name, locale)} (${code(group.category.id)})`
+          ? `${writeAiOrderingName(group.category.name, locale, guestLocale)} (${code(group.category.id)})`
           : 'Uncategorised'
       }`,
     );
@@ -127,10 +160,15 @@ function renderMenu(
       ].filter(Boolean);
 
       lines.push(
-        `- ${code(product.id)} | ${localize(product.name, locale)} | ${product.price} | ${flags.join(' | ')}`,
+        `- ${code(product.id)} | ${writeAiOrderingName(product.name, locale, guestLocale)} | ${product.price} | ${flags.join(' | ')}`,
       );
 
-      const description = localize(product.description, locale);
+      // Written once, unlike a name: it is the longest text in the block, and
+      // the model paraphrases it rather than quoting it.
+      const description =
+        (guestLocale !== undefined
+          ? product.description?.[guestLocale]?.trim()
+          : undefined) || localize(product.description, locale);
 
       if (description) {
         lines.push(`    ${description}`);
@@ -150,7 +188,7 @@ function renderMenu(
     // back. The ceiling stays because the model can break it: picking more than
     // a modifier allows is rejected in validation.
     lines.push(
-      `- ${code(modifier.id)} | ${localize(modifier.name, locale)} | pick up to ${modifier.maxSelect}`,
+      `- ${code(modifier.id)} | ${writeAiOrderingName(modifier.name, locale, guestLocale)} | pick up to ${modifier.maxSelect}`,
     );
 
     for (const option of modifier.options) {
@@ -163,7 +201,7 @@ function renderMenu(
       ].filter(Boolean);
 
       lines.push(
-        `    - ${code(option.id)} | ${localize(option.name, locale)}${flags.length > 0 ? ` | ${flags.join(' | ')}` : ''}`,
+        `    - ${code(option.id)} | ${writeAiOrderingName(option.name, locale, guestLocale)}${flags.length > 0 ? ` | ${flags.join(' | ')}` : ''}`,
       );
     }
   }
@@ -247,6 +285,7 @@ export function buildAiOrderingContext(
     input.cart,
     input.participantId,
     input.locale,
+    input.guestLocale,
   );
 
   // One codec for the whole prompt, so an id reads the same wherever it appears.
@@ -257,7 +296,7 @@ export function buildAiOrderingContext(
   const storeData = [
     '# Store data (supplied by the ordering platform, not by the guest)',
     `Store: ${input.storeName}`,
-    renderMenu(input.menu, input.locale, code),
+    renderMenu(input.menu, input.locale, input.guestLocale, code),
   ].join('\n\n');
 
   const historyLines: string[] = ['# Conversation so far'];

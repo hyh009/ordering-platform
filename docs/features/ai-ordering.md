@@ -114,7 +114,9 @@ how often each part changes, not by how it reads.
   store_data        user     when the store edits its menu    yes, and
                                                               SHARED across
                                                               every guest of
-                                                              that store
+                                                              that store on
+                                                              the same
+                                                              interface locale
   history           user     append-only, so it grows but     mostly
                              never rewrites earlier text
   current_turn      user     EVERY turn (cart snapshot,       no
@@ -123,6 +125,27 @@ how often each part changes, not by how it reads.
 
 The cart snapshot goes **last**. Putting it before the history — the more natural
 reading order — would invalidate the cache on every single turn.
+
+### Names Are Written In Two Locales For A Guest On Another Interface
+
+Every name in the menu and the cart is written in the store's default locale.
+When the request's `locale` is a different one and the store has a name in it,
+that name follows the first: `白飯 / Steamed rice`. This covers the store's own
+name and category, product, modifier and option names.
+
+The reply follows the language the guest writes in, which need not be the one
+their interface is in, so the store's own name has to be present in both for the
+model to use it rather than translate. The core instructions tell it to use the
+name in the language of its reply and never to write both.
+
+A guest on the store's default locale, or a request with no `locale`, gets one
+name per line and the same store data block as before; a test pins that output.
+A name the store has in one locale is written once. A product description is
+written once too, in the interface locale when the store has one there,
+otherwise in the default locale.
+
+The store data block therefore differs by interface locale, and the shared
+cache entry is per locale rather than per store.
 
 ## The Model Is Asked For Less Than The API Returns
 
@@ -169,8 +192,7 @@ client sends as `locale` on both the message and the decision request. A request
 without one falls back to the store's default locale, and a name the menu does
 not carry in that locale is shown in one it does carry. The label is written
 when the proposal is made, so a proposal already in the transcript keeps the
-language it was written in if the guest switches afterwards. The menu the model
-reads is still rendered in the store's default locale.
+language it was written in if the guest switches afterwards.
 
 ### Every Model-Facing Field Says What It Is For
 

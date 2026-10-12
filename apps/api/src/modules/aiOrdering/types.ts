@@ -218,7 +218,15 @@ export type AiOrderingAssembledContext = {
 
 export type AiOrderingContextInput = {
   config: AiOrderingVersionConfig;
+  /** The store's default locale. Every name is written in it. */
   locale: SupportedLocale;
+  /**
+   * The locale the guest's interface is in, when the request named one.
+   *
+   * A name the store also has in this locale is written a second time, beside
+   * the first. Absent, or the same as `locale`, leaves one name per line.
+   */
+  guestLocale?: SupportedLocale;
   storeName: string;
   menu: PublicMenuDto;
   cart: CartDto;

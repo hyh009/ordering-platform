@@ -125,6 +125,65 @@ describe('AI ordering replay', () => {
     expect(run.outcomes[0]?.operationSummaries).toEqual(['+ 白飯 ×1']);
   });
 
+  it('labels a case in its own interface locale, and the rest in the run locale', async () => {
+    const addRice = {
+      tool: {
+        name: 'propose_cart_operations',
+        args: {
+          reply: 'ok',
+          operations: [
+            { type: 'add_item', item: { productId: 'prod-rice', quantity: 1 } },
+          ],
+        },
+      },
+    };
+
+    const run = await replayAiOrderingVersion({
+      config,
+      provider: 'gemini',
+      modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
+      cases: [
+        { message: 'One steamed rice please', interfaceLocale: 'en' },
+        { message: '幫我加一份白飯' },
+      ],
+      toToolSchema,
+      createChatModel: scriptedModel([addRice, addRice]),
+    });
+
+    expect(run.outcomes[0]?.operationSummaries).toEqual(['+ Steamed rice ×1']);
+    expect(run.outcomes[1]?.operationSummaries).toEqual(['+ 白飯 ×1']);
+  });
+
+  it('shows the model both names only for a case on another interface locale', async () => {
+    const model = fakeModel()
+      .respond(new AIMessage('ok'))
+      .respond(new AIMessage('好。'));
+
+    await replayAiOrderingVersion({
+      config,
+      provider: 'gemini',
+      modelName: 'test-model',
+      // No quota to respect in front of a scripted model.
+      minIntervalMs: 0,
+      cases: [
+        { message: 'What do you have?', interfaceLocale: 'en' },
+        { message: '有什麼' },
+      ],
+      toToolSchema,
+      createChatModel: () => model,
+    });
+
+    const sent = model.calls.map((call) =>
+      call.messages.map((message) => String(message.content)).join('\n'),
+    );
+
+    expect(sent[0]).toContain('白飯 / Steamed rice');
+    expect(sent[1]).toContain('| 白飯 |');
+    expect(sent[1]).not.toContain('Steamed rice');
+  });
+
   it('never executes, because the run is never resumed', async () => {
     const run = await replayAiOrderingVersion({
       config,
@@ -169,7 +228,8 @@ describe('AI ordering replay', () => {
       minIntervalMs: 0,
       cases: [{ message: '你好' }, { message: '再見' }],
       toToolSchema,
-      createChatModel: () => fakeModel().respond(new Error('provider exploded')),
+      createChatModel: () =>
+        fakeModel().respond(new Error('provider exploded')),
     });
 
     // One bad case must not abandon the rest of the replay.

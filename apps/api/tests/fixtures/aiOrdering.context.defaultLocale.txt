@@ -1,0 +1,45 @@
+# Store data (supplied by the ordering platform, not by the guest)
+
+Store: 測試小館
+
+## Menu
+### 飲料 (cat-drink)
+- prod-milk-tea | 珍珠奶茶 | 60 | choices: mod-sugar (甜度), mod-ice (冰塊), mod-topping (加料)
+    錫蘭紅茶加鮮奶與珍珠
+- prod-milk-green | 翠玉奶綠 | 60 | choices: mod-sugar (甜度), mod-ice (冰塊), mod-topping (加料)
+- prod-black-tea | 紅茶 | 35 | choices: mod-sugar (甜度), mod-ice (冰塊)
+### 主餐 (cat-main)
+- prod-beef-noodle | 牛肉麵 | 180 | choices: mod-spice (辣度)
+- prod-fried-chicken | 香雞排 | 90 | SOLD OUT | no choices
+### Uncategorised
+- prod-rice | 白飯 | 20 | no choices
+## Choices
+- mod-sugar | 甜度 | pick up to 1
+    - opt-sugar-full | 全糖
+    - opt-sugar-half | 半糖
+    - opt-sugar-free | 無糖
+- mod-ice | 冰塊 | pick up to 1
+    - opt-ice-normal | 正常冰
+    - opt-ice-less | 少冰
+    - opt-ice-none | 去冰
+- mod-spice | 辣度 | pick up to 1
+    - opt-spice-none | 不辣
+    - opt-spice-mild | 小辣
+    - opt-spice-hot | 大辣 | SOLD OUT
+- mod-topping | 加料 | pick up to 3
+    - opt-topping-pearl | 珍珠 | +10
+    - opt-topping-pudding | 布丁 | +15
+    - opt-topping-grass | 仙草 | +10
+
+=====
+
+# This turn — Turn 1
+## The cart right now
+Everything this cart holds at this moment, after every change below was settled. Nothing else is in it.
+### Items you may change — this guest added them
+- item-own-milk-tea | 珍珠奶茶 | x1 | mod-sugar (甜度): opt-sugar-half (半糖), mod-ice (冰塊): opt-ice-less (少冰)
+- item-own-rice | 白飯 | x2
+### Items you may NOT change — other people sharing this cart added them
+- item-other-beef | 牛肉麵 | x1 | mod-spice (辣度): opt-spice-mild (小辣)
+## Guest message
+幫我加一份白飯

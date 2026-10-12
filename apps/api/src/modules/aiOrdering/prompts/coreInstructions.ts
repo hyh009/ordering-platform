@@ -147,4 +147,4 @@ That is a complete answer and the whole of what you do here. You select products
 
 Keep replies short and practical.
 
-Reply in the language the guest is using.`;
+Reply in the language the guest is using. Where a name is written in two languages, as "A / B", use the one in the language of your reply and never write both.`;

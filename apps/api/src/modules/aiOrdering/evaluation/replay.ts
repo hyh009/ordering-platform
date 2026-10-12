@@ -79,6 +79,14 @@ export type AiOrderingReplayCase = {
    * Validation reads this same menu, so a `productId` here is a real target.
    */
   menu?: PublicMenuDto;
+  /**
+   * The language this guest's interface is in, when it is not the run's.
+   *
+   * What the web client sends as `locale`. Per case rather than per run because
+   * the suite is otherwise one language, and a second run in another language
+   * would be a second suite whose totals nobody adds up.
+   */
+  interfaceLocale?: SupportedLocale;
   source?: { conversationId: string; turnId: string };
 };
 
@@ -199,6 +207,9 @@ async function replayOne(
   const context = buildAiOrderingContext({
     config: input.config,
     locale: input.locale ?? 'zh-TW',
+    ...(replayCase.interfaceLocale !== undefined
+      ? { guestLocale: replayCase.interfaceLocale }
+      : {}),
     storeName: 'Replay Fixture',
     menu,
     cart,
@@ -228,7 +239,8 @@ async function replayOne(
       participantId: AI_ORDERING_FIXTURE_PARTICIPANT_SELF,
     },
     confirmationRequired: true,
-    locale: input.locale ?? 'zh-TW',
+    // Labels follow the interface, as they do in the service.
+    locale: replayCase.interfaceLocale ?? input.locale ?? 'zh-TW',
     guestMessage: replayCase.message,
     onModelCall: createAiOrderingDebugTrace('replay'),
     newId: (prefix) => `${prefix}-replay`,
