@@ -458,6 +458,42 @@ const CART_WITH_THREE_BLACK_TEAS: CartDto = {
   ],
 };
 
+/**
+ * The fixture menu with the beef noodles under an English name that is not a
+ * translation of the Chinese one.
+ *
+ * A store's name in another language is whatever the store wrote, and the
+ * fixture's own English names are close enough to a literal translation that a
+ * model can arrive at them without ever being shown them. This one it cannot
+ * guess, so a reply that uses it was read off the menu.
+ */
+const MENU_WITH_A_NAMED_DISH: PublicMenuDto = {
+  ...AI_ORDERING_MENU_FIXTURE,
+  groups: AI_ORDERING_MENU_FIXTURE.groups.map((group) => ({
+    ...group,
+    products: group.products.map((product) =>
+      product.id === 'prod-beef-noodle'
+        ? {
+            ...product,
+            name: { 'zh-TW': '牛肉麵', en: 'House Braised Beef Bowl' },
+          }
+        : product,
+    ),
+  })),
+};
+
+/**
+ * A reply names a thing once.
+ *
+ * On an interface in another language every name is written twice, joined by
+ * ` / `, and a reply that copies the pair whole reads as a menu line rather
+ * than a sentence.
+ */
+const namesThingsOnce = (outcome: AiOrderingReplayOutcome) =>
+  !(outcome.reply ?? '').includes(' / ');
+
+const hasHan = (text: string) => /\p{Script=Han}/u.test(text);
+
 export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
   {
     // Browsing. What this case has always been for is that NOTHING reaches the
@@ -825,5 +861,46 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
     expects:
       'answers in words and proposes nothing: checking out is not a cart change',
     check: (outcome) => operations(outcome).length === 0,
+  },
+  {
+    // An English interface on a store whose menu is Chinese first. Ordering by
+    // the English name has to land on the product, and the label the guest
+    // reads is in their interface's language.
+    interfaceLocale: 'en',
+    message: 'One steamed rice please',
+    expects: 'proposes the steamed rice, and the reply names nothing twice',
+    check: (outcome) =>
+      outcome.responseType === 'proposal' &&
+      adds(outcome, 'Steamed rice') &&
+      namesThingsOnce(outcome),
+  },
+  {
+    // The store's English name, not a translation. Asked as a question so the
+    // answer is a sentence: a shelf of cards would name the dish correctly
+    // without the model having written anything.
+    interfaceLocale: 'en',
+    menu: MENU_WITH_A_NAMED_DISH,
+    message: 'How much is the beef noodle dish?',
+    expects:
+      "the reply calls the dish by the store's English name, House Braised Beef Bowl",
+    check: (outcome) =>
+      (outcome.reply ?? '').toLowerCase().includes('house braised beef bowl') &&
+      namesThingsOnce(outcome) &&
+      operations(outcome).length === 0,
+  },
+  {
+    // The interface is English and the guest writes Chinese. The reply follows
+    // what they wrote, so it names the dish in Chinese; the label follows the
+    // interface, so the operation reads in English.
+    interfaceLocale: 'en',
+    message: '加點一碗白飯',
+    expects:
+      'proposes the steamed rice, and the reply stays in Chinese without the English name',
+    check: (outcome) =>
+      outcome.responseType === 'proposal' &&
+      adds(outcome, 'Steamed rice') &&
+      hasHan(outcome.reply ?? '') &&
+      !(outcome.reply ?? '').toLowerCase().includes('steamed rice') &&
+      namesThingsOnce(outcome),
   },
 ];

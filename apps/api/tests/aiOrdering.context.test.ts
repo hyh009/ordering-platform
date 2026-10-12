@@ -858,12 +858,143 @@ describe('AI ordering context assembly', () => {
 
 describe('AI ordering menu categories', () => {
   it('writes the id of every category, so one can be sent back', () => {
-    const menu = blockText(buildAiOrderingContext(contextInput()), 'store_data');
+    const menu = blockText(
+      buildAiOrderingContext(contextInput()),
+      'store_data',
+    );
 
     // `show_products` takes a category id. A heading that gave only the name
     // left the model with nothing to send, and it named products one by one
     // instead until it hit their bound.
     expect(menu).toMatch(/### 飲料 \([\w-]+\)/);
     expect(menu).toMatch(/### 主餐 \([\w-]+\)/);
+  });
+});
+
+describe('AI ordering context for a default-locale guest', () => {
+  // Captured before names could be written in two languages. A guest whose
+  // interface is in the store's default locale is most guests, and every
+  // regression case, so what they are sent must not move when the second name
+  // is added for everyone else.
+  it('sends the store data and the cart exactly as before', async () => {
+    const context = buildAiOrderingContext(contextInput());
+
+    await expect(
+      [
+        blockText(context, 'store_data'),
+        blockText(context, 'current_turn'),
+      ].join('\n\n=====\n\n'),
+    ).toMatchFileSnapshot('./fixtures/aiOrdering.context.defaultLocale.txt');
+  });
+});
+
+describe('AI ordering context for a guest on another interface locale', () => {
+  const english = (overrides: Partial<AiOrderingContextInput> = {}) =>
+    buildAiOrderingContext(contextInput({ guestLocale: 'en', ...overrides }));
+
+  it("writes the store's name in both locales, default first", () => {
+    const storeData = blockText(english(), 'store_data');
+
+    expect(storeData).toContain('### 飲料 / Drinks (cat-drink)');
+    expect(storeData).toContain('- prod-rice | 白飯 / Steamed rice | ');
+    // Where the product names its choices, and where the choice is listed.
+    expect(storeData).toContain('mod-sugar (甜度 / Sweetness)');
+    expect(storeData).toContain('- mod-sugar | 甜度 / Sweetness | pick up to');
+    expect(storeData).toContain('- opt-sugar-half | 半糖 / Half sugar');
+  });
+
+  it('writes one name when the interface is in the default locale', () => {
+    expect(
+      blockText(
+        buildAiOrderingContext(contextInput({ guestLocale: 'zh-TW' })),
+        'store_data',
+      ),
+    ).toBe(blockText(buildAiOrderingContext(contextInput()), 'store_data'));
+  });
+
+  it('writes one name for a product the store did not translate', () => {
+    const storeData = blockText(
+      english({
+        menu: {
+          ...AI_ORDERING_MENU_FIXTURE,
+          groups: AI_ORDERING_MENU_FIXTURE.groups.map((group) => ({
+            ...group,
+            products: group.products.map((product) =>
+              product.id === 'prod-rice'
+                ? { ...product, name: { 'zh-TW': '白飯' } }
+                : product,
+            ),
+          })),
+        },
+      }),
+      'store_data',
+    );
+
+    expect(storeData).toContain('- prod-rice | 白飯 | ');
+  });
+
+  it('writes one name when both locales hold the same string', () => {
+    const storeData = blockText(
+      english({
+        menu: {
+          ...AI_ORDERING_MENU_FIXTURE,
+          groups: AI_ORDERING_MENU_FIXTURE.groups.map((group) => ({
+            ...group,
+            products: group.products.map((product) =>
+              product.id === 'prod-rice'
+                ? { ...product, name: { 'zh-TW': 'Rice', en: 'Rice' } }
+                : product,
+            ),
+          })),
+        },
+      }),
+      'store_data',
+    );
+
+    expect(storeData).toContain('- prod-rice | Rice | ');
+  });
+
+  it('names a cart item and its choices the same way', () => {
+    const line = blockText(english(), 'current_turn')
+      .split('\n')
+      .find((candidate) => candidate.includes('珍珠奶茶'));
+
+    expect(line).toContain('| 珍珠奶茶 / Bubble milk tea |');
+    expect(line).toContain(
+      'mod-sugar (甜度 / Sweetness): opt-sugar-half (半糖 / Half sugar)',
+    );
+  });
+
+  describe('a product description is written once', () => {
+    const withDescription = (description: Record<string, string>) => ({
+      ...AI_ORDERING_MENU_FIXTURE,
+      groups: AI_ORDERING_MENU_FIXTURE.groups.map((group) => ({
+        ...group,
+        products: group.products.map((product) =>
+          product.id === 'prod-rice' ? { ...product, description } : product,
+        ),
+      })),
+    });
+
+    it('in the interface locale when the store has one there', () => {
+      const storeData = blockText(
+        english({
+          menu: withDescription({ 'zh-TW': '池上米', en: 'Chishang rice' }),
+        }),
+        'store_data',
+      );
+
+      expect(storeData).toContain('    Chishang rice');
+      expect(storeData).not.toContain('池上米');
+    });
+
+    it('in the default locale when it has none there', () => {
+      const storeData = blockText(
+        english({ menu: withDescription({ 'zh-TW': '池上米' }) }),
+        'store_data',
+      );
+
+      expect(storeData).toContain('    池上米');
+    });
   });
 });

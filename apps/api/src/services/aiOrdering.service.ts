@@ -30,6 +30,7 @@ import {
   resolveAiOrderingPrompt,
   resolveAiOrderingRuntime,
   windowAiOrderingHistory,
+  writeAiOrderingName,
 } from '@src/modules/aiOrdering';
 import { aiOrderingRepository } from '@src/repositories/aiOrdering/repository';
 import { storeRepository } from '@src/repositories/store/repository';
@@ -804,8 +805,13 @@ export class AiOrderingService {
     const context = buildAiOrderingContext({
       config: runtime.config,
       locale: store.locale.defaultLocale,
+      ...(request.locale !== undefined ? { guestLocale: request.locale } : {}),
       storeName:
-        store.profile.displayName[store.locale.defaultLocale] ?? store.id,
+        writeAiOrderingName(
+          store.profile.displayName,
+          store.locale.defaultLocale,
+          request.locale,
+        ) || store.id,
       menu,
       cart,
       participantId: claims.participantId,
@@ -845,8 +851,7 @@ export class AiOrderingService {
       context,
       validation: { menu, cart, participantId: claims.participantId },
       confirmationRequired,
-      // The labels follow the guest's interface. The menu the model reads above
-      // stays in the store's default locale.
+      // The labels follow the guest's interface.
       locale: request.locale ?? store.locale.defaultLocale,
       guestMessage: request.message,
       onModelCall: createAiOrderingDebugTrace(`turn-${proposalId}`),

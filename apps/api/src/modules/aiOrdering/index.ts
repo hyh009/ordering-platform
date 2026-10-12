@@ -25,7 +25,10 @@
  */
 
 // ── Prompt assembly ───────────────────────────────────────────────────────────
-export { buildAiOrderingContext } from '@src/modules/aiOrdering/context';
+export {
+  buildAiOrderingContext,
+  writeAiOrderingName,
+} from '@src/modules/aiOrdering/context';
 export {
   planAiOrderingSummarization,
   windowAiOrderingHistory,

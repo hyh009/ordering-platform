@@ -577,6 +577,30 @@ describe('AiOrderingService', () => {
     });
   });
 
+  describe('the interface locale', () => {
+    it("shows the model the store's names in both locales when the request names another one", async () => {
+      const h = harness({ existingConversation: null });
+
+      await h.service.sendMessage(claims, {
+        message: 'One steamed rice please',
+        locale: 'en',
+      });
+
+      expect(h.firstPrompt).toContain('白飯 / Steamed rice');
+      expect(h.firstPrompt).toMatch(/^Store: .+ \/ .+$/m);
+    });
+
+    it('shows one name when the request names none', async () => {
+      const h = harness({ existingConversation: null });
+
+      await send(h);
+
+      expect(h.firstPrompt).toContain('| 白飯 |');
+      expect(h.firstPrompt).not.toContain('Steamed rice');
+      expect(h.firstPrompt).not.toMatch(/^Store: .+ \/ .+$/m);
+    });
+  });
+
   describe('confirmation mode', () => {
     it('requires confirmation when the version forbids automatic application', async () => {
       const h = harness({
@@ -1463,12 +1487,18 @@ describe('AiOrderingService: what the guest applied', () => {
     // The one case the closing call is kept for, end to end: the outcome is
     // recorded, and the sentence the model wrote about it reaches the caller.
     expect(decided.results).toEqual([
-      expect.objectContaining({ operationId: h.operationId, outcome: 'failed' }),
+      expect.objectContaining({
+        operationId: h.operationId,
+        outcome: 'failed',
+      }),
     ]);
     expect(decided.reply).toBe('加好了。');
     expect(h.resultWrites).toHaveLength(1);
     expect(h.resultWrites[0]?.results).toEqual([
-      expect.objectContaining({ operationId: h.operationId, outcome: 'failed' }),
+      expect.objectContaining({
+        operationId: h.operationId,
+        outcome: 'failed',
+      }),
     ]);
   });
 
