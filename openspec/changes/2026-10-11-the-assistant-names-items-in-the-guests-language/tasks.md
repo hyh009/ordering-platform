@@ -82,7 +82,7 @@ the behavior changes, see design decision 6.
   `pnpm --filter api run build`. Verified by all three passing
 - [x] 6.3 Run `openspec validate 2026-10-11-the-assistant-names-items-in-the-guests-language`.
   Verified by it passing
-- [ ] 6.4 Manual check to hand to the user, not run by the agent: on the English
+- [x] 6.4 Manual check to hand to the user, not run by the agent: on the English
   storefront of a Chinese-default store, ask for a product in English and
   confirm the reply uses the name shown on the product card; then ask in Chinese
   and confirm the reply uses the Chinese name. Verified by the user's
