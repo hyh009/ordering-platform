@@ -399,7 +399,23 @@ export function createStoreFrontCartCommands(deps: {
         cartActions.cartCleared();
         return { order, status: 'submitted' };
       } catch (error) {
-        return failMutation(error, expectedStoreId, token);
+        const failure = failMutation(error, expectedStoreId, token);
+
+        // The server repriced the cart before refusing, so show the guest the
+        // new prices before they submit again. If this read fails, the cart's
+        // `cart_updated` event still brings them.
+        if (failure.reason === 'price-changed') {
+          try {
+            const cart = await storeFrontCartService.getCart(token);
+            if (hasScopedToken(expectedStoreId, token)) {
+              cartActions.cartUpdated(cart);
+            }
+          } catch {
+            // The refusal is the outcome the caller reports; nothing to add.
+          }
+        }
+
+        return failure;
       }
     },
   };

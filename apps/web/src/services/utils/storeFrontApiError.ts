@@ -13,6 +13,7 @@ export type StoreFrontCommandFailureReason =
   | 'network'
   | 'not-found'
   | 'order-locked'
+  | 'price-changed'
   | 'quantity-limit'
   | 'rate-limited'
   | 'server'
@@ -47,6 +48,9 @@ const STOREFRONT_CODE_REASON: Partial<
   CART_NOT_FOUND: 'cart-not-active',
   PRODUCT_SOLD_OUT: 'sold-out',
   MODIFIER_SELECTION_INVALID: 'sold-out',
+  // The server has already repriced the cart, so the guest's next step is to
+  // look at the new prices and submit again, not to change anything.
+  PRICE_CHANGED: 'price-changed',
   STORE_NOT_OPEN: 'store-closed',
   ORDER_LOCKED: 'order-locked',
   STORE_NOT_FOUND: 'not-found',
@@ -95,6 +99,11 @@ const STOREFRONT_MESSAGES: Record<
     key: 'guest.errors.itemUnavailable',
     fallback:
       'Some items are no longer available. Please review your selection.',
+  },
+  'price-changed': {
+    key: 'guest.errors.priceChanged',
+    fallback:
+      'Some prices have changed. Please check your cart and submit again.',
   },
   'store-closed': {
     key: 'guest.errors.storeClosed',

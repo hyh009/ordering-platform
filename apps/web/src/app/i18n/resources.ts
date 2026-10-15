@@ -774,6 +774,7 @@ const manualResources: Resource = {
           notFound: '找不到資料。',
           orderLocked: '此訂單已無法變更，請洽現場人員。',
           orderNotFound: '找不到這筆訂單。',
+          priceChanged: '部分品項價格已變動，請確認購物車後再送出一次。',
           quantityLimit: '同一品項一次最多可點 99 份，需要更多請洽現場人員。',
           sessionExpired: '你的點餐階段已結束。',
           storeClosed: '店家目前已關閉點餐。',

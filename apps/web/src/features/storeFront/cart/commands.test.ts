@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/api/apiError';
 import { createGuestSessionStore } from '@/app/global/guestSession/guestSession.store';
 import { storeFrontCartService } from '@/services/storeFrontCart.service';
 import { createTenantStore } from '../tenant/store';
@@ -12,6 +13,7 @@ vi.mock('@/services/storeFrontCart.service', () => ({
     getCart: vi.fn(),
     addItem: vi.fn(),
     updateItem: vi.fn(),
+    submitCart: vi.fn(),
   },
 }));
 
@@ -164,6 +166,74 @@ describe('storefront cart commands', () => {
       await expect(
         commands.updateItem('store-a', 'line-2', { quantity: 19 }),
       ).resolves.toEqual({ status: 'updated' });
+    });
+  });
+
+  // The server refuses a submit whose prices changed, and has already repriced
+  // the cart, so the guest must see the new prices before submitting again.
+  describe('a submit refused for a price change', () => {
+    const submitCartMock = vi.mocked(storeFrontCartService.submitCart);
+    const getCartMock = vi.mocked(storeFrontCartService.getCart);
+
+    function setup() {
+      const cartStore = createStoreFrontCartStore();
+      const sessionStore = createGuestSessionStore();
+      const tenantStore = createTenantStore();
+      sessionStore.setState({
+        guestToken: 'token-a',
+        participantId: 'participant-a',
+        storeId: 'store-a',
+      });
+      tenantStore.setState({ activeStoreId: 'store-a' });
+      cartStore.setState({
+        cart: { id: 'cart-1', subtotal: 360 } as unknown as Cart,
+      });
+
+      return {
+        cartStore,
+        commands: createStoreFrontCartCommands({
+          cartActions: createStoreFrontCartActions(cartStore),
+          cartStore,
+          sessionStore,
+          tenantStore,
+        }),
+      };
+    }
+
+    it('re-reads the cart so the store holds the repriced lines', async () => {
+      const repriced = { id: 'cart-1', subtotal: 400 } as unknown as Cart;
+      submitCartMock.mockRejectedValue(
+        new ApiError({
+          statusCode: 409,
+          code: 'PRICE_CHANGED',
+          message: 'Some prices have changed',
+        }),
+      );
+      getCartMock.mockResolvedValue(repriced);
+      const { commands, cartStore } = setup();
+
+      await expect(commands.submitCart('store-a', {})).resolves.toMatchObject({
+        status: 'failed',
+        reason: 'price-changed',
+      });
+      expect(getCartMock).toHaveBeenCalledWith('token-a');
+      expect(cartStore.getState().cart).toBe(repriced);
+      expect(cartStore.getState().isMutating).toBe(false);
+    });
+
+    it('does not re-read the cart for other failures', async () => {
+      submitCartMock.mockRejectedValue(
+        new ApiError({
+          statusCode: 400,
+          code: 'PRODUCT_SOLD_OUT',
+          message: 'Some items are no longer available',
+        }),
+      );
+      const { commands } = setup();
+
+      await commands.submitCart('store-a', {});
+
+      expect(getCartMock).not.toHaveBeenCalled();
     });
   });
 });
