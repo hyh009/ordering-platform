@@ -1,15 +1,5 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/hsinyao/.local/bin/graphify hook-guard read"
-          }
-        ]
-      }
-    ]
+    "PreToolUse": []
   }
 }
