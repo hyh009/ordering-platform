@@ -16,6 +16,7 @@ import type {
   AiOrderingCartContext,
   AiOrderingContextInput,
   AiOrderingContextItem,
+  AiOrderingProposalLogEntry,
 } from '@src/modules/aiOrdering/types';
 
 function localize(
@@ -212,7 +213,7 @@ function renderMenu(
 function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
   const lines: string[] = [
     '## The cart right now',
-    'Everything this cart holds at this moment, after every change below was settled. Nothing else is in it.',
+    'Everything this cart holds at this moment, after every change in the conversation above was settled. Nothing else is in it.',
   ];
 
   const renderItems = (
@@ -271,8 +272,11 @@ function renderCart(cart: AiOrderingCartContext, code: IdWriter): string {
  * 1. `core_instructions` — identical for every request on this version.
  * 2. `store_data` — identical for every guest of this store until the menu
  *    changes, so the cached prefix is shared ACROSS conversations.
- * 3. `history` — append-only, so earlier turns stay a stable prefix.
- * 4. `current_turn` — the cart snapshot, any reported outcomes, and the message.
+ * 3. `history` — append-only, so earlier turns stay a stable prefix. What the
+ *    cart did with a proposal is written under the turn that made it: that is
+ *    settled before the turn is first sent, so the line never changes later.
+ * 4. `current_turn` — the cart snapshot, the ids of the most recent proposal,
+ *    and the message.
  *
  * The cart snapshot is the most volatile input and therefore goes last. Putting
  * it before the history — the more natural reading order — would invalidate the
@@ -299,22 +303,86 @@ export function buildAiOrderingContext(
     renderMenu(input.menu, input.locale, input.guestLocale, code),
   ].join('\n\n');
 
-  const historyLines: string[] = ['# Conversation so far'];
+  const proposalLog = (input.proposalLog ?? []).filter(
+    (entry) => entry.operations.length > 0,
+  );
+
+  /** What the cart did with each change of one proposal, a line per change. */
+  const renderOutcomes = (
+    entry: AiOrderingProposalLogEntry,
+    prefix: string,
+    withIds: boolean,
+  ) =>
+    entry.operations.map((operation) => {
+      const result = entry.results.find(
+        (candidate) => candidate.operationId === operation.operationId,
+      );
+
+      return `${prefix}${operation.summary}${
+        withIds ? ` (${renderProposedOperation(operation, code)})` : ''
+      }: ${describeOutcome(
+        result?.outcome,
+        result?.failureCode,
+        entry.adjustedOperationIds?.includes(operation.operationId) ?? false,
+      )}`;
+    });
+
+  const historyLines: string[] = [
+    '# Conversation so far',
+    // Always present, proposals or not, so the block opens the same way on
+    // every turn of every conversation.
+    'Under each proposal of yours is what the cart did with it. That line is what actually happened; where it disagrees with what you said at the time, it is right and your reply was not.',
+  ];
 
   if (input.summary) {
     historyLines.push(`Earlier turns, summarised: ${input.summary}`);
   }
 
+  const historyTurnNumbers = new Set(
+    input.history.map((turn) => turn.turnNumber),
+  );
+  // Proposals made on turns the window no longer shows. They move only when the
+  // window does, which rewrites the top of this block anyway.
+  const agedOutProposals = proposalLog.filter(
+    (entry) => !historyTurnNumbers.has(entry.turnNumber),
+  );
+
+  if (agedOutProposals.length > 0) {
+    historyLines.push('Changes you proposed on turns no longer shown:');
+
+    for (const entry of agedOutProposals) {
+      historyLines.push(
+        ...renderOutcomes(entry, `- [Turn ${entry.turnNumber}] `, false),
+      );
+    }
+  }
+
   if (input.history.length === 0) {
     historyLines.push('No earlier turns.');
   } else {
-    // Every line carries its turn number because the proposal log lives in
-    // another block and refers back to these turns by number.
     for (const turn of input.history) {
       historyLines.push(`[Turn ${turn.turnNumber}] Guest: ${turn.message}`);
       historyLines.push(
         `[Turn ${turn.turnNumber}] You (${turn.responseType}): ${turn.reply}`,
       );
+
+      // Directly under the reply that announced it, and without ids. A reply
+      // says "I added it" before anyone has accepted, and with the correction
+      // in another block the model believed the reply: told the egg crepe it
+      // had offered was not wanted, it went looking for something to remove
+      // and removed the only item the cart held. Ids would differ from turn to
+      // turn where a short code stops being unique, and this text must not.
+      for (const entry of proposalLog) {
+        if (entry.turnNumber === turn.turnNumber) {
+          historyLines.push(
+            ...renderOutcomes(
+              entry,
+              `[Turn ${turn.turnNumber}] What the cart did — `,
+              false,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -326,46 +394,44 @@ export function buildAiOrderingContext(
     renderCart(cartContext, code),
   ];
 
-  const proposalLog = (input.proposalLog ?? []).filter(
-    (entry) => entry.operations.length > 0,
-  );
+  // Only the most recent proposal is repeated here, with its ids: it is the one
+  // that may be proposed again, the ids are what that takes, and they are the
+  // part that cannot go in the history.
+  const lastProposal = proposalLog.at(-1);
 
-  if (proposalLog.length > 0) {
-    const lastTurnNumber = proposalLog.at(-1)?.turnNumber;
-
+  if (lastProposal) {
+    currentTurnLines.push('## Your most recent proposal, with its ids');
     currentTurnLines.push(
-      '## Every change you proposed, and what the cart did',
-    );
-    currentTurnLines.push(
-      'Oldest first. This is what the cart actually did; where it disagrees with what you said at the time, this is right and your reply was not.',
-    );
-    currentTurnLines.push(
-      `A change that was ignored on Turn ${lastTurnNumber} may still be wanted: if the guest's message now reads that way, propose it again, altering only the part they just corrected and asking nothing you already know. A change ignored on any earlier turn is over — leave it alone unless they ask for it now.`,
+      `A change that was ignored on Turn ${lastProposal.turnNumber} may still be wanted: if the guest's message now reads that way, propose it again, altering only the part they just corrected and asking nothing you already know. A change ignored on any earlier turn is over — leave it alone unless they ask for it now.`,
     );
 
-    for (const entry of proposalLog) {
-      for (const operation of entry.operations) {
-        const result = entry.results.find(
-          (candidate) => candidate.operationId === operation.operationId,
-        );
-        // Ids only on the most recent proposal, which is the only one that may
-        // be proposed again: that is what the ids are for, and spelling them out
-        // for every settled change would be the longest block in the prompt.
-        const detail =
-          entry.turnNumber === lastTurnNumber
-            ? ` (${renderProposedOperation(operation, code)})`
-            : '';
+    // The other half of the sentence above, and only where it can apply. Told
+    // that an offer may be wanted again and nothing about one that is not, the
+    // model read "I don't want the egg crepe" as an order to remove something,
+    // and the only things it could remove were the items the cart did hold.
+    const reachedCart = (operationId: string) =>
+      lastProposal.results.some(
+        (result) =>
+          result.operationId === operationId && result.outcome === 'accepted',
+      );
 
-        currentTurnLines.push(
-          `- [Turn ${entry.turnNumber}] ${operation.summary}${detail}: ${describeOutcome(
-            result?.outcome,
-            result?.failureCode,
-            entry.adjustedOperationIds?.includes(operation.operationId) ??
-              false,
-          )}`,
-        );
-      }
+    if (
+      lastProposal.operations.some(
+        (operation) => !reachedCart(operation.operationId),
+      )
+    ) {
+      currentTurnLines.push(
+        'If the guest is instead saying they do not want a change that is marked "not in the cart", there is nothing to undo: it was never added. Tell them so in words, and propose nothing — removing some other item is not what they asked for.',
+      );
     }
+
+    currentTurnLines.push(
+      ...renderOutcomes(
+        lastProposal,
+        `- [Turn ${lastProposal.turnNumber}] `,
+        true,
+      ),
+    );
   }
 
   if (input.resolvedPrompt) {

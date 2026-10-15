@@ -385,12 +385,12 @@ describe('AI ordering context assembly', () => {
             ],
           }),
         ),
-        'current_turn',
+        'history',
       );
 
       // The failure this exists for: the history still holds "I added the milk
       // tea for you", and without this the model trusts that over the cart.
-      expect(text).toContain('this is right and your reply was not');
+      expect(text).toContain('it is right and your reply was not');
     });
 
     it('passes a failure code through when one was reported', () => {
@@ -418,56 +418,61 @@ describe('AI ordering context assembly', () => {
       expect(failed).toContain('PRODUCT_SOLD_OUT');
     });
 
-    it('numbers every change by the turn that proposed it', () => {
-      const text = blockText(
-        buildAiOrderingContext(
-          contextInput({
-            history: [
-              {
-                turnNumber: 1,
-                message: '我要珍珠奶茶',
-                reply: '好的，請確認。',
-                responseType: 'proposal',
-              },
-              {
-                turnNumber: 2,
-                message: '再來一碗白飯',
-                reply: '好的，請確認。',
-                responseType: 'proposal',
-              },
-            ],
-            proposalLog: [
-              logEntry(
-                1,
-                [
-                  {
-                    type: 'add_item',
-                    operationId: 'op-1',
-                    summary: '+ 珍珠奶茶 ×1',
-                    item: { productId: 'prod-milk-tea', quantity: 1 },
-                  },
-                ],
-                [{ operationId: 'op-1', outcome: 'accepted' }],
-              ),
-              logEntry(
-                2,
-                [riceOperation('op-2')],
-                [{ operationId: 'op-2', outcome: 'superseded' }],
-              ),
-            ],
-          }),
-        ),
-        'current_turn',
+    it('writes every change under the turn that proposed it', () => {
+      const context = buildAiOrderingContext(
+        contextInput({
+          history: [
+            {
+              turnNumber: 1,
+              message: '我要珍珠奶茶',
+              reply: '好的，請確認。',
+              responseType: 'proposal',
+            },
+            {
+              turnNumber: 2,
+              message: '再來一碗白飯',
+              reply: '好的，請確認。',
+              responseType: 'proposal',
+            },
+          ],
+          proposalLog: [
+            logEntry(
+              1,
+              [
+                {
+                  type: 'add_item',
+                  operationId: 'op-1',
+                  summary: '+ 珍珠奶茶 ×1',
+                  item: { productId: 'prod-milk-tea', quantity: 1 },
+                },
+              ],
+              [{ operationId: 'op-1', outcome: 'accepted' }],
+            ),
+            logEntry(
+              2,
+              [riceOperation('op-2')],
+              [{ operationId: 'op-2', outcome: 'superseded' }],
+            ),
+          ],
+        }),
       );
+      const history = blockText(context, 'history');
 
-      // The number is the whole point of the log living outside the history: it
-      // is how the model tells a change made two turns ago from one made last
-      // turn, which is what it has to know to decide whether to offer it again.
-      expect(text).toContain(
-        '- [Turn 1] + 珍珠奶茶 ×1: the guest accepted it — it is in the cart',
+      // Straight after the reply that announced it: a reply says "please
+      // confirm" or "I added it" before anyone has answered, and the next line
+      // is what settles which it was.
+      expect(history).toContain(
+        [
+          '[Turn 1] You (proposal): 好的，請確認。',
+          '[Turn 1] What the cart did — + 珍珠奶茶 ×1: the guest accepted it — it is in the cart',
+          '[Turn 2] Guest: 再來一碗白飯',
+          '[Turn 2] You (proposal): 好的，請確認。',
+          '[Turn 2] What the cart did — + 白飯 ×1: the guest ignored it — not in the cart',
+        ].join('\n'),
       );
-      expect(text).toContain('- [Turn 2] + 白飯 ×1');
-      expect(text).toContain('# This turn — Turn 3');
+      expect(blockText(context, 'current_turn')).toContain(
+        '# This turn — Turn 3',
+      );
     });
 
     it('spells out the ids of the most recent proposal only', () => {
@@ -533,7 +538,8 @@ describe('AI ordering context assembly', () => {
         '(op-3 | update_own_item | item item-rice | note removed)',
       );
       expect(text).toContain('(op-4 | remove_own_item | item item-black-tea)');
-      expect(text).toContain('- [Turn 1] + 白飯 ×1: the guest accepted');
+      // The earlier one is in the history, under its own turn, and not here.
+      expect(text).not.toContain('[Turn 1]');
       expect(text).not.toContain('op-1 | add_item');
     });
 
@@ -596,25 +602,27 @@ describe('AI ordering context assembly', () => {
       const logOf = (conversation: AiOrderingConversationEntity) => {
         const last = readAiOrderingLastProposal(conversation);
 
-        return blockText(
-          buildAiOrderingContext(
-            contextInput({
-              proposalLog: [
-                ...readAiOrderingEarlierProposals(conversation),
-                ...(last
-                  ? [
-                      {
-                        turnNumber: last.turnNumber,
-                        ...readAiOrderingAppliedOperations(last.proposal),
-                        results: last.proposal.decision?.results ?? [],
-                      },
-                    ]
-                  : []),
-              ],
-            }),
-          ),
-          'current_turn',
+        const context = buildAiOrderingContext(
+          contextInput({
+            proposalLog: [
+              ...readAiOrderingEarlierProposals(conversation),
+              ...(last
+                ? [
+                    {
+                      turnNumber: last.turnNumber,
+                      ...readAiOrderingAppliedOperations(last.proposal),
+                      results: last.proposal.decision?.results ?? [],
+                    },
+                  ]
+                : []),
+            ],
+          }),
         );
+
+        return [
+          blockText(context, 'history'),
+          blockText(context, 'current_turn'),
+        ].join('\n');
       };
 
       const accepted = [
@@ -720,39 +728,118 @@ describe('AI ordering context assembly', () => {
       expect(text).toContain('no recorded outcome — not in the cart');
     });
 
-    it('keeps the proposed operations out of the history block', () => {
-      const context = buildAiOrderingContext(
-        contextInput({
-          history: [
-            {
-              turnNumber: 1,
-              message: '我要鮮奶茶',
-              reply: '好的，為您加上鮮奶茶。',
-              responseType: 'proposal',
-            },
-          ],
-          proposalLog: [
-            logEntry(
-              1,
-              [
-                {
-                  type: 'add_item',
-                  operationId: 'op-1',
-                  summary: '+ 鮮奶茶 ×1',
-                  item: { productId: 'prod-milk-tea', quantity: 1 },
-                },
-              ],
-              [{ operationId: 'op-1', outcome: 'superseded' }],
-            ),
-          ],
-        }),
+    it('leaves a settled turn exactly as written when later turns follow', () => {
+      const teaTurn = {
+        turnNumber: 1,
+        message: '我要鮮奶茶',
+        reply: '好的，為您加上鮮奶茶。',
+        responseType: 'proposal',
+      } as const;
+      const teaEntry = logEntry(
+        1,
+        [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '+ 鮮奶茶 ×1',
+            item: { productId: 'prod-milk-tea', quantity: 1 },
+          },
+        ],
+        [{ operationId: 'op-1', outcome: 'superseded' }],
       );
 
-      // The history block is append-only so its prefix stays cacheable. Writing
-      // an outcome into the turn that proposed it would rewrite that text when
-      // the outcome arrived, which is a turn later than the reply.
-      expect(blockText(context, 'history')).not.toContain('op-1');
-      expect(blockText(context, 'current_turn')).toContain('[Turn 1]');
+      const afterOneTurn = blockText(
+        buildAiOrderingContext(
+          contextInput({ history: [teaTurn], proposalLog: [teaEntry] }),
+        ),
+        'history',
+      );
+      const afterTwoTurns = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            history: [
+              teaTurn,
+              {
+                turnNumber: 2,
+                message: '再來一碗白飯',
+                reply: '好的，請確認。',
+                responseType: 'proposal',
+              },
+            ],
+            proposalLog: [
+              teaEntry,
+              logEntry(
+                2,
+                [riceOperation('op-2')],
+                [{ operationId: 'op-2', outcome: 'accepted' }],
+              ),
+            ],
+          }),
+        ),
+        'history',
+      );
+
+      // The history block is append-only so its prefix stays cacheable. An
+      // outcome is settled before its turn is first sent, so the turn reads the
+      // same on every later request — which is also why it carries no ids: those
+      // are spelled out for the newest proposal only, and that changes.
+      expect(afterTwoTurns.startsWith(afterOneTurn)).toBe(true);
+      expect(afterOneTurn).not.toContain('op-1');
+    });
+
+    it('still reports a proposal whose turn the window no longer shows', () => {
+      const history = blockText(
+        buildAiOrderingContext(
+          contextInput({
+            history: [
+              {
+                turnNumber: 12,
+                message: '有什麼推薦',
+                reply: '珍珠奶茶很受歡迎。',
+                responseType: 'message',
+              },
+            ],
+            proposalLog: [
+              logEntry(
+                1,
+                [riceOperation('op-1')],
+                [{ operationId: 'op-1', outcome: 'accepted' }],
+              ),
+            ],
+          }),
+        ),
+        'history',
+      );
+
+      expect(history.indexOf('- [Turn 1] + 白飯 ×1')).toBeGreaterThan(-1);
+      expect(history.indexOf('- [Turn 1] + 白飯 ×1')).toBeLessThan(
+        history.indexOf('[Turn 12] Guest'),
+      );
+    });
+
+    it('says there is nothing to undo only when a change did not reach the cart', () => {
+      const currentTurnAfter = (outcome: 'accepted' | 'superseded') =>
+        blockText(
+          buildAiOrderingContext(
+            contextInput({
+              proposalLog: [
+                logEntry(
+                  1,
+                  [riceOperation('op-1')],
+                  [{ operationId: 'op-1', outcome }],
+                ),
+              ],
+            }),
+          ),
+          'current_turn',
+        );
+
+      // "I don't want that" about an offer that lapsed is not a removal. Said
+      // of an accepted change it IS one, so the sentence must not be there.
+      expect(currentTurnAfter('superseded')).toContain(
+        'there is nothing to undo: it was never added',
+      );
+      expect(currentTurnAfter('accepted')).not.toContain('nothing to undo');
     });
 
     it('omits the section entirely when nothing has been proposed', () => {
@@ -761,7 +848,7 @@ describe('AI ordering context assembly', () => {
         'current_turn',
       );
 
-      expect(currentTurn).not.toContain('Every change you proposed');
+      expect(currentTurn).not.toContain('Your most recent proposal');
     });
   });
 
