@@ -27,6 +27,7 @@ describe('mapStoreFrontApiError', () => {
     { code: 'CART_NOT_FOUND', reason: 'cart-not-active' },
     { code: 'PRODUCT_SOLD_OUT', reason: 'sold-out' },
     { code: 'MODIFIER_SELECTION_INVALID', reason: 'sold-out' },
+    { code: 'PRICE_CHANGED', reason: 'price-changed' },
     { code: 'STORE_NOT_OPEN', reason: 'store-closed' },
     { code: 'ORDER_LOCKED', reason: 'order-locked' },
     { code: 'STORE_NOT_FOUND', reason: 'not-found' },
@@ -62,6 +63,16 @@ describe('mapStoreFrontApiError', () => {
 
     expect(results.every((result) => result.reason === 'not-found')).toBe(true);
     expect(messages.size).toBe(1);
+  });
+
+  it('tells the guest the prices changed and to submit again', () => {
+    const result = mapStoreFrontApiError(
+      apiError({ statusCode: 409, code: 'PRICE_CHANGED' }),
+    );
+
+    expect(result.message).toBe(
+      'Some prices have changed. Please check your cart and submit again.',
+    );
   });
 
   it('classifies network failures', () => {

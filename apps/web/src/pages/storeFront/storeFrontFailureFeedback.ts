@@ -40,6 +40,7 @@ export const STOREFRONT_FAILURE_PRESENTATION: Record<
   'store-closed': { action: 'toast', load: 'page' },
   'order-locked': { action: 'toast', load: 'page' },
   'sold-out': { action: 'toast', load: 'page' },
+  'price-changed': { action: 'toast', load: 'page' },
   'cart-not-active': { action: 'toast', load: 'page' },
   // Assistant failures never block the page: ordering works without it. A toast
   // on the action axis, and on a load the page renders normally with the panel
