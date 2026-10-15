@@ -30,10 +30,11 @@ import {
   CartRepricedError,
   checkSubmittedItems,
   hasSameSelection,
+  repriceLine,
   unitPriceOf,
 } from './submittedItems';
 
-import type { SubmittedItemsCheck } from './submittedItems';
+import type { RepricedLine, SubmittedItemsCheck } from './submittedItems';
 import type {
   CartDto,
   CartItemInput,
@@ -417,7 +418,8 @@ class SubmittedPriceChanged extends Error {
  * Bring the cart's changed lines to the current price and throw the public
  * refusal. Lines are matched by id: a line removed since the check is skipped,
  * and one edited since already carries a freshly built price, so only a line
- * still at the price and options the check saw is repriced.
+ * still at the price and options the check saw is repriced. The refusal names
+ * only the lines this write repriced.
  */
 async function repriceCartAndRefuse(
   cartId: string,
@@ -426,12 +428,13 @@ async function repriceCartAndRefuse(
   const repricedById = new Map(
     check.repriced.map((line) => [line.item.id, line]),
   );
+  let written: RepricedLine[] = [];
 
   const updated = await updateCartWithRetry(cartId, (cart) => {
+    // Reset per attempt: a retried write re-reads the cart from scratch.
+    written = [];
     const items = cart.items.map((item) => {
       const line = repricedById.get(item.id);
-      // Untouched since the check: same price and same options. A line whose
-      // options were edited meanwhile keeps the guest's edit and its own price.
       if (
         !line ||
         item.unitPrice !== line.previousUnitPrice ||
@@ -439,17 +442,23 @@ async function repriceCartAndRefuse(
       ) {
         return item;
       }
-      return {
-        ...item,
-        selectedOptions: line.item.selectedOptions,
-        unitPrice: line.item.unitPrice,
-        totalItemPrice: line.item.unitPrice * item.quantity,
-      };
+      written.push(line);
+      return repriceLine(item, line.item.selectedOptions, line.item.unitPrice);
     });
     return { items, ...computeTotals(items, cart.serviceFeeRate) };
   });
 
-  throw new CartRepricedError(check.repriced, toCartDto(updated));
+  // Every changed line was removed or edited meanwhile, so nothing was
+  // repriced and there is no new price to confirm: submitting again will go
+  // through, which is what the generic retry conflict says.
+  if (written.length === 0) {
+    throw new ConflictError(
+      'Cart was modified concurrently, please retry',
+      ERROR_CODES.CONFLICT,
+    );
+  }
+
+  throw new CartRepricedError(written, toCartDto(updated));
 }
 
 // ── Cart lifecycle ─────────────────────────────────────────────────────────────
