@@ -732,6 +732,40 @@ export const AI_ORDERING_REGRESSION_CASES: AiOrderingRegressionCase[] = [
       !adds(outcome, '珍珠奶茶'),
   },
   {
+    // A real conversation: the assistant offered an item nobody had asked for,
+    // announced it as added, and the guest typed that they did not want it. The
+    // offer had lapsed, so there was nothing to undo — but the reply in the
+    // history still said "added", and the assistant went looking for something
+    // to remove and proposed removing an item the cart did hold.
+    // The cutlet is on the menu and not in the fixture cart, which is the point.
+    message: '我沒有要香雞排',
+    history: [
+      {
+        turnNumber: 1,
+        message: '香雞排多少錢',
+        responseType: 'proposal',
+        reply: '沒問題！香雞排一份幫您加上。',
+      },
+    ],
+    proposalLog: [
+      {
+        turnNumber: 1,
+        operations: [
+          {
+            type: 'add_item',
+            operationId: 'op-1',
+            summary: '+ 香雞排 ×1',
+            item: { productId: 'prod-fried-chicken', quantity: 1 },
+          },
+        ],
+        results: [{ operationId: 'op-1', outcome: 'superseded' }],
+      },
+    ],
+    expects:
+      'no change to the cart: the cutlet was never added, so nothing is removed',
+    check: (outcome) => operations(outcome).length === 0,
+  },
+  {
     // The same question worded backwards, kept because this phrasing once came
     // back as "cannot answer". Any answer that names the drinks counts; the one
     // thing still rejected is a refusal.

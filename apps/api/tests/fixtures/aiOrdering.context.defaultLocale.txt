@@ -35,7 +35,7 @@ Store: 測試小館
 
 # This turn — Turn 1
 ## The cart right now
-Everything this cart holds at this moment, after every change below was settled. Nothing else is in it.
+Everything this cart holds at this moment, after every change in the conversation above was settled. Nothing else is in it.
 ### Items you may change — this guest added them
 - item-own-milk-tea | 珍珠奶茶 | x1 | mod-sugar (甜度): opt-sugar-half (半糖), mod-ice (冰塊): opt-ice-less (少冰)
 - item-own-rice | 白飯 | x2

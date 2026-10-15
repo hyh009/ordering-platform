@@ -861,7 +861,9 @@ describe('AiOrderingService proposal lifetime', () => {
     // The failure this exists for: the history still holds "I added the milk
     // tea", the cart does not have it, and nothing used to reconcile the two —
     // so the model invented a cart item id for an item never added.
-    expect(h.firstPrompt).toContain('Every change you proposed');
+    expect(h.firstPrompt).toContain(
+      '[Turn 1] What the cart did — 加入鮮奶茶: the guest ignored it — not in the cart',
+    );
     expect(h.firstPrompt).toContain(
       '[Turn 1] 加入鮮奶茶 (op-1 | add_item | product prod-milk-tea | x1): the guest ignored it — not in the cart',
     );

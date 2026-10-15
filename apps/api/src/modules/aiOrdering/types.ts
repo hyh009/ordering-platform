@@ -108,8 +108,8 @@ export type AiOrderingHistoryTurn = {
   /**
    * 1-based position in the whole conversation, not in the sent window.
    *
-   * Numbered because the proposal log is rendered outside the history and has
-   * to say WHEN each change was proposed. Counting from the conversation rather
+   * Numbered because the current turn refers back to the most recent proposal
+   * and has to say WHEN it was made. Counting from the conversation rather
    * than from the window keeps a turn's number the same once it is written,
    * which is also what keeps the history block's prefix cacheable.
    */
@@ -239,10 +239,12 @@ export type AiOrderingContextInput = {
    * Every proposal made so far with how each of its changes ended, oldest
    * first; the last entry is the one made on the previous turn.
    *
-   * Rendered in the current turn rather than attached to the history turns that
-   * made them: an outcome arrives after the turn that proposed it, so writing it
-   * into the history would rewrite text the provider's prefix cache depends on
-   * staying append-only. The turn number is what reconnects the two blocks.
+   * Each is written in the history, under the turn that made it. An outcome
+   * arrives after the reply that proposed it, but before that turn is ever sent
+   * as history — the next message settles it first — so the history stays
+   * append-only and the provider's prefix cache still hits. The caller must
+   * therefore pass every proposal as settled as it will ever be. Only the last
+   * one is repeated in the current turn, with the ids to propose it again.
    */
   proposalLog?: AiOrderingProposalLogEntry[];
   /**

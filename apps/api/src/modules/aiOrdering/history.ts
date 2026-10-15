@@ -36,7 +36,7 @@ export function windowAiOrderingHistory(
 
   return {
     // Numbered from the conversation, not from the window, so a turn keeps the
-    // number it had when it was written and the proposal log can name it.
+    // number it had when it was written and its proposal can be written under it.
     history: conversation.turns.slice(windowStart).map((turn, index) => ({
       turnNumber: windowStart + index + 1,
       message: turn.message,
