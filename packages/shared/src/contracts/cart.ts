@@ -210,3 +210,21 @@ export type LeaveCartSuccessResponse = ApiSuccessResponse<{
 }>;
 
 export type SubmitCartSuccessResponse = ApiSuccessResponse<{ order: OrderDto }>;
+
+// ── Error details ──────────────────────────────────────────────────────────────
+
+/**
+ * One submitted line whose stored unit price no longer matches the menu. Prices
+ * are in the same integer unit as `CartItemDto.unitPrice`.
+ */
+export type PriceChangedItemDto = {
+  itemId: string;
+  productId: string;
+  previousUnitPrice: number;
+  currentUnitPrice: number;
+};
+
+/** `details` of a `PRICE_CHANGED` submit refusal. */
+export type PriceChangedErrorDetails = {
+  changedItems: PriceChangedItemDto[];
+};

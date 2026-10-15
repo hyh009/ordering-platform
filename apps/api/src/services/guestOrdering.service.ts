@@ -1,5 +1,6 @@
 import * as data from '@src/modules/guestOrdering/guestOrdering.data.service';
 import * as sse from '@src/modules/guestOrdering/guestOrdering.sse.service';
+import { CartRepricedError } from '@src/modules/guestOrdering/submittedItems';
 
 import type {
   CartItemInput,
@@ -107,7 +108,18 @@ export class GuestOrderingService {
     claims: GuestTokenClaims,
     request: SubmitCartRequest,
   ): Promise<OrderDto> {
-    const { order, cart } = await data.submitCart(claims, request);
+    let submitted: Awaited<ReturnType<typeof data.submitCart>>;
+    try {
+      submitted = await data.submitCart(claims, request);
+    } catch (error) {
+      // The refusal already repriced the shared cart; the other devices on the
+      // session must see the new prices too, not only the guest who submitted.
+      if (error instanceof CartRepricedError) {
+        sse.emitCartUpdated(claims.cartId, error.cart);
+      }
+      throw error;
+    }
+    const { order, cart } = submitted;
 
     // The submitted round always changes the order; it also drains the draft
     // cart unless this was a double-submit no-op (`cart` null).

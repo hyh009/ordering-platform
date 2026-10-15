@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CartRepricedError } from '../src/modules/guestOrdering/submittedItems.js';
 import { guestOrderingService } from '../src/services/guestOrdering.service.js';
 
 import type { GuestTokenClaims } from '../src/services/guestToken.service.js';
@@ -110,6 +111,27 @@ describe('guest session stream', () => {
 
     expect(events).toContainEqual({ type: 'order_updated', order: fakeOrder });
     expect(events).toContainEqual({ type: 'cart_updated', cart: fakeCart });
+    unsubscribe();
+  });
+
+  it('forwards the repriced cart when a submit is refused for a price change', async () => {
+    dataMocks.getGuestSession.mockResolvedValue({
+      participantId: claims.participantId,
+      cart: fakeCart,
+    });
+    const refusal = new CartRepricedError([], fakeCart);
+    dataMocks.submitCart.mockRejectedValue(refusal);
+
+    const events: GuestStreamEventDto[] = [];
+    const { subscribe } =
+      await guestOrderingService.openGuestSessionStream(claims);
+    const unsubscribe = subscribe((event) => events.push(event));
+
+    await expect(guestOrderingService.submitCart(claims, {})).rejects.toBe(
+      refusal,
+    );
+
+    expect(events).toEqual([{ type: 'cart_updated', cart: fakeCart }]);
     unsubscribe();
   });
 

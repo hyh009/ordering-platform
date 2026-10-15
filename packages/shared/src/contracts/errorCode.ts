@@ -44,6 +44,9 @@ export const ERROR_CODES = {
   ORDER_TYPE_NOT_ENABLED: 'ORDER_TYPE_NOT_ENABLED',
   STORE_NOT_OPEN: 'STORE_NOT_OPEN',
   PRODUCT_SOLD_OUT: 'PRODUCT_SOLD_OUT',
+  // A submitted line's stored price no longer matches the menu. The refusal
+  // has already repriced the cart, so submitting again confirms the new price.
+  PRICE_CHANGED: 'PRICE_CHANGED',
   MODIFIER_SELECTION_INVALID: 'MODIFIER_SELECTION_INVALID',
   TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
   AI_ORDERING_DISABLED: 'AI_ORDERING_DISABLED',
