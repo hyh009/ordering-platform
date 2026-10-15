@@ -486,7 +486,10 @@ router.post('/leave', async (req, res) => {
  *                         productId: product-123
  *                         reason: product_sold_out
  *       409:
- *         description: Cart already checked out or store closed
+ *         description: >
+ *           Cart already checked out, store closed, or a line's price changed.
+ *           On PRICE_CHANGED no order is created and the cart has already been
+ *           repriced; submitting again confirms the new prices.
  *         content:
  *           application/json:
  *             schema:
@@ -498,6 +501,18 @@ router.post('/leave', async (req, res) => {
  *                   statusCode: 409
  *                   code: CART_NOT_ACTIVE
  *                   message: Cart is no longer active
+ *               priceChanged:
+ *                 value:
+ *                   status: error
+ *                   statusCode: 409
+ *                   code: PRICE_CHANGED
+ *                   message: Some prices have changed
+ *                   details:
+ *                     changedItems:
+ *                       - itemId: cart-item-123
+ *                         productId: product-123
+ *                         previousUnitPrice: 180
+ *                         currentUnitPrice: 200
  */
 router.post(
   '/submit',

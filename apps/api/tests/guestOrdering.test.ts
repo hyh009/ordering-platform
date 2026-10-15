@@ -1665,3 +1665,156 @@ describe('submit and order', () => {
     expect(join.body.code).toBe('INVALID_JOIN_CODE');
   });
 });
+
+describe('submit refuses a changed price', () => {
+  async function cartWith(price = 180, quantity = 2) {
+    const product = seedProduct({ price });
+    const owner = await createDineInCart('Amy');
+
+    const added = await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity });
+    expect(added.status).toBe(200);
+
+    return { owner, product };
+  }
+
+  function submit(token: string) {
+    return request(app)
+      .post('/api/v1/public/guest/cart/submit')
+      .set(auth(token))
+      .send({});
+  }
+
+  it('refuses a price that rose, reprices the cart, and creates no order', async () => {
+    const { owner, product } = await cartWith(180, 2);
+    const itemId = mocks.carts.get(owner.cart.id)!.items[0]!.id;
+
+    mocks.products.get(product.id)!.price = 200;
+
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('PRICE_CHANGED');
+    expect(response.body.details).toEqual({
+      changedItems: [
+        {
+          itemId,
+          productId: product.id,
+          previousUnitPrice: 180,
+          currentUnitPrice: 200,
+        },
+      ],
+    });
+    expect(mocks.orders.size).toBe(0);
+
+    const cart = await request(app)
+      .get('/api/v1/public/guest/cart')
+      .set(auth(owner.guestToken));
+    const line = cart.body.data.cart.items[0];
+    expect(line.unitPrice).toBe(200);
+    expect(line.totalItemPrice).toBe(400);
+    expect(cart.body.data.cart.subtotal).toBe(400);
+    expect(cart.body.data.cart.totalAmount).toBe(440);
+  });
+
+  it('refuses a price that fell, the same as a rise', async () => {
+    const { owner, product } = await cartWith(180);
+    mocks.products.get(product.id)!.price = 150;
+
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('PRICE_CHANGED');
+  });
+
+  it('refuses a changed option adjustment', async () => {
+    const product = seedProduct({ price: 180 });
+    const modifier = seedModifier();
+    mocks.products.get(product.id)!.modifierIds = [modifier.id];
+    const owner = await createDineInCart('Amy');
+    const added = await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({
+        productId: product.id,
+        quantity: 1,
+        selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+      });
+    expect(added.status).toBe(200);
+
+    modifier.options[0]!.priceAdjustment = 15;
+
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.details.changedItems[0]).toMatchObject({
+      previousUnitPrice: 180,
+      currentUnitPrice: 195,
+    });
+    const cartLine = mocks.carts.get(owner.cart.id)!.items[0]!;
+    expect(cartLine.unitPrice).toBe(195);
+    expect(cartLine.selectedOptions[0]!.priceAdjustment).toBe(15);
+  });
+
+  it('creates the order at the new price when the guest submits again', async () => {
+    const { owner, product } = await cartWith(180, 2);
+    mocks.products.get(product.id)!.price = 200;
+    await submit(owner.guestToken);
+
+    const again = await submit(owner.guestToken);
+
+    expect(again.status).toBe(201);
+    expect(again.body.data.order.items[0].unitPrice).toBe(200);
+    expect(again.body.data.order.subtotal).toBe(400);
+  });
+
+  it('reports sold out before price and leaves the cart unpriced', async () => {
+    const { owner, product } = await cartWith(180);
+    const changed = seedProduct({ price: 90 });
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: changed.id, quantity: 1 });
+
+    mocks.products.get(product.id)!.isSoldOut = true;
+    mocks.products.get(changed.id)!.price = 120;
+
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('PRODUCT_SOLD_OUT');
+    const prices = mocks.carts
+      .get(owner.cart.id)!
+      .items.map((item) => item.unitPrice);
+    expect(prices).toEqual([180, 90]);
+  });
+
+  it('never reprices earlier rounds and compares only the new round', async () => {
+    const { owner, product } = await cartWith(180, 1);
+    expect((await submit(owner.guestToken)).status).toBe(201);
+
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: product.id, quantity: 1 });
+    const newLineId = mocks.carts.get(owner.cart.id)!.items[0]!.id;
+    mocks.products.get(product.id)!.price = 200;
+
+    const refused = await submit(owner.guestToken);
+    expect(refused.status).toBe(409);
+    expect(
+      refused.body.details.changedItems.map(
+        (change: { itemId: string }) => change.itemId,
+      ),
+    ).toEqual([newLineId]);
+
+    const addOn = await submit(owner.guestToken);
+    expect(addOn.status).toBe(201);
+    const unitPrices = addOn.body.data.order.items.map(
+      (item: { unitPrice: number }) => item.unitPrice,
+    );
+    expect(unitPrices).toEqual([180, 200]);
+  });
+});

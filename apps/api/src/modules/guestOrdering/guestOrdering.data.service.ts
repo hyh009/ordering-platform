@@ -26,7 +26,14 @@ import {
 import mongoose from 'mongoose';
 
 import { CART_LINE_MAX_QUANTITY, mergeChangedCartItem } from './cartItemMerge';
+import {
+  CartRepricedError,
+  checkSubmittedItems,
+  hasSameSelection,
+  unitPriceOf,
+} from './submittedItems';
 
+import type { SubmittedItemsCheck } from './submittedItems';
 import type {
   CartDto,
   CartItemInput,
@@ -350,9 +357,7 @@ async function buildCartItemSnapshot(
   );
 
   // unitPrice includes selected option adjustments; totalItemPrice = unitPrice * quantity.
-  const unitPrice =
-    product.price +
-    selectedOptions.reduce((sum, option) => sum + option.priceAdjustment, 0);
+  const unitPrice = unitPriceOf(product.price, selectedOptions);
 
   return {
     id: `cart-item-${randomUUID()}`,
@@ -371,16 +376,10 @@ async function buildCartItemSnapshot(
   };
 }
 
-type UnavailableItem = {
-  itemId: string;
-  productId: string;
-  reason: 'product_unavailable' | 'product_sold_out' | 'option_unavailable';
-};
-
-async function findUnavailableItems(
+async function checkItemsAgainstMenu(
   storeId: string,
   items: CartItemSnapshot[],
-): Promise<UnavailableItem[]> {
+): Promise<SubmittedItemsCheck> {
   const productIds = [...new Set(items.map((item) => item.productId))];
   const products = await Promise.all(
     productIds.map((productId) => productRepository.findById(productId)),
@@ -399,47 +398,58 @@ async function findUnavailableItems(
     modifiers.map((modifier) => [modifier.id, modifier]),
   );
 
-  const unavailable: UnavailableItem[] = [];
+  return checkSubmittedItems(items, productById, modifierById);
+}
 
-  for (const item of items) {
-    const product = productById.get(item.productId);
-
-    if (!product || product.status !== 'published' || !product.isActive) {
-      unavailable.push({
-        itemId: item.id,
-        productId: item.productId,
-        reason: 'product_unavailable',
-      });
-      continue;
-    }
-
-    if (product.isSoldOut) {
-      unavailable.push({
-        itemId: item.id,
-        productId: item.productId,
-        reason: 'product_sold_out',
-      });
-      continue;
-    }
-
-    const hasUnavailableOption = item.selectedOptions.some((selection) => {
-      const modifier = modifierById.get(selection.modifierId);
-      const option = modifier?.options.find(
-        (candidate) => candidate.id === selection.optionId,
-      );
-      return !option || !option.isActive || option.isSoldOut;
-    });
-
-    if (hasUnavailableOption) {
-      unavailable.push({
-        itemId: item.id,
-        productId: item.productId,
-        reason: 'option_unavailable',
-      });
-    }
+/**
+ * Raised inside the submit transaction when a line's price changed. Internal:
+ * the refusal has to reprice the cart, and a write made inside the transaction
+ * would be rolled back by the very throw that refuses, so the repricing happens
+ * where this is caught, outside it.
+ */
+class SubmittedPriceChanged extends Error {
+  constructor(readonly check: SubmittedItemsCheck) {
+    super('Submitted line prices changed');
   }
+}
 
-  return unavailable;
+/**
+ * Bring the cart's changed lines to the current price and throw the public
+ * refusal. Lines are matched by id: a line removed since the check is skipped,
+ * and one edited since already carries a freshly built price, so only a line
+ * still at the price and options the check saw is repriced.
+ */
+async function repriceCartAndRefuse(
+  cartId: string,
+  check: SubmittedItemsCheck,
+): Promise<never> {
+  const repricedById = new Map(
+    check.repriced.map((line) => [line.item.id, line]),
+  );
+
+  const updated = await updateCartWithRetry(cartId, (cart) => {
+    const items = cart.items.map((item) => {
+      const line = repricedById.get(item.id);
+      // Untouched since the check: same price and same options. A line whose
+      // options were edited meanwhile keeps the guest's edit and its own price.
+      if (
+        !line ||
+        item.unitPrice !== line.previousUnitPrice ||
+        !hasSameSelection(item, line.item)
+      ) {
+        return item;
+      }
+      return {
+        ...item,
+        selectedOptions: line.item.selectedOptions,
+        unitPrice: line.item.unitPrice,
+        totalItemPrice: line.item.unitPrice * item.quantity,
+      };
+    });
+    return { items, ...computeTotals(items, cart.serviceFeeRate) };
+  });
+
+  throw new CartRepricedError(check.repriced, toCartDto(updated));
 }
 
 // ── Cart lifecycle ─────────────────────────────────────────────────────────────
@@ -971,13 +981,18 @@ export async function submitCart(
         throw new BadRequestError('Cart is empty', ERROR_CODES.BAD_REQUEST);
       }
 
-      const unavailable = await findUnavailableItems(cart.storeId, flushed);
-      if (unavailable.length > 0) {
+      // Availability before price: `check` never reports a price change
+      // while any line is unavailable.
+      const check = await checkItemsAgainstMenu(cart.storeId, flushed);
+      if (check.unavailable.length > 0) {
         throw new BadRequestError(
           'Some items are no longer available',
           ERROR_CODES.PRODUCT_SOLD_OUT,
-          { unavailableItems: unavailable },
+          { unavailableItems: check.unavailable },
         );
+      }
+      if (check.repriced.length > 0) {
+        throw new SubmittedPriceChanged(check);
       }
 
       let resultOrder: OrderEntity;
@@ -1110,6 +1125,11 @@ export async function submitCart(
       order: toOrderDto(result.order),
       cart: result.cart === null ? null : toCartDto(result.cart),
     };
+  } catch (error) {
+    if (error instanceof SubmittedPriceChanged) {
+      return await repriceCartAndRefuse(claims.cartId, error.check);
+    }
+    throw error;
   } finally {
     await session.endSession();
   }
