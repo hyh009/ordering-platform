@@ -1791,6 +1791,100 @@ describe('submit refuses a changed price', () => {
     expect(prices).toEqual([180, 90]);
   });
 
+  // Runs `meanwhile` after the submit transaction aborts and before the cart is
+  // repriced: the window in which another participant can still change it.
+  function betweenCheckAndRepricing(meanwhile: () => void) {
+    vi.spyOn(mongoose.connection, 'startSession').mockImplementation(
+      async () =>
+        ({
+          async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+            try {
+              return await fn();
+            } catch (error) {
+              meanwhile();
+              throw error;
+            }
+          },
+          async endSession() {
+            return undefined;
+          },
+        }) as unknown as mongoose.ClientSession,
+    );
+  }
+
+  it('lists only the lines it repriced when one was removed meanwhile', async () => {
+    const { owner, product } = await cartWith(180, 1);
+    const other = seedProduct({ price: 90 });
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({ productId: other.id, quantity: 1 });
+    const [first, second] = mocks.carts.get(owner.cart.id)!.items;
+    mocks.products.get(product.id)!.price = 200;
+    mocks.products.get(other.id)!.price = 100;
+
+    betweenCheckAndRepricing(() => {
+      const cart = mocks.carts.get(owner.cart.id)!;
+      cart.items = cart.items.filter((item) => item.id !== second!.id);
+    });
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.details.changedItems).toEqual([
+      expect.objectContaining({ itemId: first!.id, currentUnitPrice: 200 }),
+    ]);
+    const items = mocks.carts.get(owner.cart.id)!.items;
+    expect(items.map((item) => item.id)).toEqual([first!.id]);
+    expect(items[0]!.unitPrice).toBe(200);
+  });
+
+  it('asks for a retry, not a price change, when no line was repriced', async () => {
+    const { owner, product } = await cartWith(180, 1);
+    mocks.products.get(product.id)!.price = 200;
+
+    betweenCheckAndRepricing(() => {
+      mocks.carts.get(owner.cart.id)!.items = [];
+    });
+    const response = await submit(owner.guestToken);
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('CONFLICT');
+  });
+
+  it("keeps another guest's option edit made meanwhile", async () => {
+    const product = seedProduct({ price: 180 });
+    const modifier = seedModifier();
+    mocks.products.get(product.id)!.modifierIds = [modifier.id];
+    const owner = await createDineInCart('Amy');
+    await request(app)
+      .post('/api/v1/public/guest/cart/items')
+      .set(auth(owner.guestToken))
+      .send({
+        productId: product.id,
+        quantity: 1,
+        selectedOptions: [{ modifierId: modifier.id, optionId: 'option-mild' }],
+      });
+    mocks.products.get(product.id)!.price = 200;
+
+    // The edit picks another option at the price the line already had.
+    const edited = {
+      modifierId: modifier.id,
+      modifierName: { en: 'Spice Level' },
+      optionId: 'option-extra',
+      optionName: { en: 'Extra Hot' },
+      priceAdjustment: 0,
+    };
+    betweenCheckAndRepricing(() => {
+      mocks.carts.get(owner.cart.id)!.items[0]!.selectedOptions = [edited];
+    });
+    const response = await submit(owner.guestToken);
+
+    expect(response.body.code).toBe('CONFLICT');
+    const line = mocks.carts.get(owner.cart.id)!.items[0]!;
+    expect(line.selectedOptions).toEqual([edited]);
+    expect(line.unitPrice).toBe(180);
+  });
+
   it('never reprices earlier rounds and compares only the new round', async () => {
     const { owner, product } = await cartWith(180, 1);
     expect((await submit(owner.guestToken)).status).toBe(201);

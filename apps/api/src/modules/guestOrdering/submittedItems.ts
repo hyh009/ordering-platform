@@ -47,6 +47,20 @@ export function unitPriceOf(
   );
 }
 
+/** The line at a new unit price, with its total recomputed. */
+export function repriceLine(
+  item: CartItemSnapshot,
+  selectedOptions: CartItemSnapshot['selectedOptions'],
+  unitPrice: number,
+): CartItemSnapshot {
+  return {
+    ...item,
+    selectedOptions,
+    unitPrice,
+    totalItemPrice: unitPrice * item.quantity,
+  };
+}
+
 /** Whether two snapshots of a line select the same options, in any order. */
 export function hasSameSelection(
   a: CartItemSnapshot,
@@ -113,12 +127,7 @@ export function checkSubmittedItems(
     if (currentUnitPrice !== item.unitPrice) {
       repriced.push({
         previousUnitPrice: item.unitPrice,
-        item: {
-          ...item,
-          selectedOptions,
-          unitPrice: currentUnitPrice,
-          totalItemPrice: currentUnitPrice * item.quantity,
-        },
+        item: repriceLine(item, selectedOptions, currentUnitPrice),
       });
     }
   }
