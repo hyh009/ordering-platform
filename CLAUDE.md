@@ -89,3 +89,13 @@ library, framework, SDK, API, CLI tool, or cloud service.
 - When inspecting logs or command results, use `head`, `tail`, `grep`, or other filtering to limit output.
 - Do not use `cat` on large files; use targeted file reads instead.
 - For test/build output, show only relevant errors or the last ~100 lines unless more context is necessary.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for hyh009/ordering-platform, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one root `GLOSSARY.md` and `docs/adr/`, created lazily. See `docs/agents/domain.md`.
