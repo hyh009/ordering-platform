@@ -49,7 +49,13 @@ guest message
   |
   v
 [ runtime/agent.ts ]  ------------------------------------+
-  |  createAgent + planning middleware                    |
+  |  createAgent + HITL + planning middleware wiring      |
+  v                                                       |
+[ runtime/planningMiddleware.ts ]                          |
+  |  repair policy + response settlement                  |
+  v                                                       |
+[ runtime/modelCall.ts ]                                   |
+  |  provider call + output inspection                    |
   |  1st model call                                       |
   v                                                       |
 [ outputGate.ts ]        read the TOOL CALL, then parse   |
@@ -822,12 +828,16 @@ Backend module (`apps/api/src/modules/aiOrdering/`):
 - `rateLimit.ts` — the limiter interface, plus an in-process implementation used
   by unit tests
 - `rateLimit.redis.ts` — the implementation the service actually uses
-- `runtime/agent.ts` — the agent run: `createAgent`, the human-in-the-loop
-  interrupt, and the planning middleware that owns the gate, validation, the
-  bounded repair attempts, and the quality signals
+- `runtime/agent.ts` — `createAgent`, proposal execution, and the
+  human-in-the-loop interrupt
+- `runtime/planningMiddleware.ts` — bounded repair policy, quality signals,
+  and response settlement
+- `runtime/modelCall.ts` — planning and closing model calls, output gate,
+  validation, trace records, and applying each call's timeout signal
+- `runtime/types.ts` — input and run-record types shared by runtime components
 - `runtime/checkpointer.ts` — the paused-run store and its TTL
-- `runtime/model.ts` — the provider-agnostic seam: usage reading and the
-  per-call timeout clamp
+- `runtime/model.ts` — the provider-agnostic summary caller and per-call
+  timeout clamp
 - `runtime/gemini.ts` — constructing the Gemini chat model, and nothing else
 - `runtime/geminiSchema.ts` — rewriting tool argument schemas into Gemini's
   OpenAPI subset (`const`, null branches, `oneOf`)

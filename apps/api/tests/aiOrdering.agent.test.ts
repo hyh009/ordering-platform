@@ -143,6 +143,21 @@ function boundToolNames(bind: { mock: { calls: unknown[][] } }): string[][] {
   );
 }
 
+function failBindOnCall(
+  model: ReturnType<typeof fakeModel>,
+  callNumber: number,
+) {
+  const original = model.bindTools.bind(model);
+  let calls = 0;
+  vi.spyOn(model, 'bindTools').mockImplementation((...args) => {
+    calls += 1;
+    if (calls === callNumber) {
+      throw new Error('provider unavailable');
+    }
+    return original(...args);
+  });
+}
+
 describe('AI ordering agent run', () => {
   let cart: ReturnType<typeof executor>;
 
@@ -162,6 +177,8 @@ describe('AI ordering agent run', () => {
     expect(cart.addItem).not.toHaveBeenCalled();
     expect(record.response?.type).toBe('proposal');
     expect(record.modelCalls).toBe(1);
+    expect(record.quality.repairAttempted).toBe(false);
+    expect(record.quality.repairSucceeded).toBeUndefined();
   });
 
   it('gives the proposal backend-issued ids the model never emitted', async () => {
@@ -428,6 +445,8 @@ describe('AI ordering agent run', () => {
       type: 'message',
       reply: 'We do not have that one. Something else?',
     });
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBe(true);
 
     // Unbound, not forbidden in prose: a change that fails for a reason the
     // model cannot fix would fail a third time the same way.
@@ -533,6 +552,137 @@ describe('AI ordering agent run', () => {
     expect(record.quality.repairAttempted).toBe(true);
     expect(record.quality.repairSucceeded).toBe(true);
     expect(record.response?.type).toBe('proposal');
+  });
+
+  it('keeps valid operations when the repair cannot be parsed', async () => {
+    const model = fakeModel()
+      .respondWithTools([
+        {
+          name: 'propose_cart_operations',
+          args: {
+            reply: 'I can add the rice.',
+            operations: [
+              {
+                type: 'add_item',
+                summary: 'Add rice',
+                item: { productId: 'prod-rice', quantity: 1 },
+              },
+              {
+                type: 'add_item',
+                summary: 'Add unavailable product',
+                item: { productId: 'prod-does-not-exist', quantity: 1 },
+              },
+            ],
+          },
+          id: 'call_1',
+        },
+      ])
+      .respond(new AIMessage(''));
+    const { agent, record, messages } = build(model, cart);
+
+    const result = await agent.invoke({ messages }, threadConfig);
+
+    expect(result.__interrupt__).toBeDefined();
+    expect(record.modelCalls).toBe(2);
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBe(false);
+    expect(record.quality.droppedOperationCount).toBe(1);
+    expect(record.response?.type).toBe('proposal');
+    if (record.response?.type === 'proposal') {
+      expect(record.response.operations).toHaveLength(1);
+      expect(record.response.operations[0]?.type).toBe('add_item');
+    }
+  });
+
+  it('rejects three unparseable replies without a proposal', async () => {
+    const model = fakeModel()
+      .respond(new AIMessage(''))
+      .respond(new AIMessage(''))
+      .respond(new AIMessage(''));
+    const { agent, record, messages } = build(model, cart);
+
+    await agent.invoke({ messages }, threadConfig);
+
+    expect(record.modelCalls).toBe(3);
+    expect(record.response).toBeNull();
+    expect(record.rejectionDetail).toBeTruthy();
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBe(false);
+    expect(cart.addItem).not.toHaveBeenCalled();
+  });
+
+  it('records a provider failure without starting output repair', async () => {
+    const model = fakeModel();
+    vi.spyOn(model, 'bindTools').mockImplementation(() => {
+      throw new Error('provider unavailable');
+    });
+    const { agent, record, messages } = build(model, cart);
+
+    await expect(agent.invoke({ messages }, threadConfig)).rejects.toThrow(
+      'provider unavailable',
+    );
+
+    expect(record.modelCalls).toBe(1);
+    expect(record.quality.repairAttempted).toBe(false);
+    expect(record.calls).toHaveLength(1);
+    expect(record.calls[0]?.error).toBe('provider unavailable');
+  });
+
+  it('propagates a provider failure during repair', async () => {
+    const model = fakeModel().respondWithTools([
+      proposalCall('prod-does-not-exist'),
+    ]);
+    failBindOnCall(model, 2);
+    const { agent, record, messages } = build(model, cart);
+
+    await expect(agent.invoke({ messages }, threadConfig)).rejects.toThrow(
+      'provider unavailable',
+    );
+
+    expect(record.modelCalls).toBe(2);
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBeUndefined();
+    expect(record.calls[1]?.error).toBe('provider unavailable');
+    expect(cart.addItem).not.toHaveBeenCalled();
+  });
+
+  it('uses the fixed reply when fallback provider fails after parsed proposals', async () => {
+    const model = fakeModel()
+      .respondWithTools([proposalCall('prod-does-not-exist')])
+      .respondWithTools([proposalCall('prod-still-not-real')]);
+    failBindOnCall(model, 3);
+    const { agent, record, messages } = build(model, cart);
+
+    const result = await agent.invoke({ messages }, threadConfig);
+
+    expect(result.__interrupt__).toBeUndefined();
+    expect(record.modelCalls).toBe(3);
+    expect(record.calls[2]?.error).toBe('provider unavailable');
+    expect(record.response).toEqual({
+      type: 'message',
+      reply: AI_ORDERING_EMPTY_PROPOSAL_REPLY['zh-TW'],
+    });
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBe(false);
+    expect(record.quality.droppedOperationCount).toBe(1);
+  });
+
+  it('propagates fallback provider failure when no earlier reply parsed', async () => {
+    const model = fakeModel()
+      .respond(new AIMessage(''))
+      .respond(new AIMessage(''));
+    failBindOnCall(model, 3);
+    const { agent, record, messages } = build(model, cart);
+
+    await expect(agent.invoke({ messages }, threadConfig)).rejects.toThrow(
+      'provider unavailable',
+    );
+
+    expect(record.modelCalls).toBe(3);
+    expect(record.quality.repairAttempted).toBe(true);
+    expect(record.quality.repairSucceeded).toBeUndefined();
+    expect(record.calls[2]?.error).toBe('provider unavailable');
+    expect(record.response).toBeNull();
   });
 
   it('tells the model what was wrong, after the cached prefix', async () => {

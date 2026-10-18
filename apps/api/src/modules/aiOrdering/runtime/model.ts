@@ -3,7 +3,7 @@
  * provider is behind it.
  *
  * LangChain unifies the INTERFACE — `invoke`, `bindTools`, message types, and the
- * normalised `usage_metadata` this file reads — but not the CONSTRUCTION: picking
+ * normalised `usage_metadata` the runtime reads — but not the CONSTRUCTION: picking
  * a provider always means a package and a constructor. That part is the only part
  * that lives in a provider file (`gemini.ts`), and it is small on purpose.
  *
