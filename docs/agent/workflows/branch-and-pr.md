@@ -13,9 +13,9 @@ docs/agent/workflows/git-commits.md
 
 One change, one branch, one pull request.
 
-An OpenSpec change under `openspec/changes/` is already that unit: it has a
-scope, a `tasks.md` that says when it is done, and a validator. Use it as the
-pull request boundary.
+A GitHub issue is already that unit: it has a scope, acceptance criteria that
+say when it is done, and blocking edges that say what must land first. Use it
+as the pull request boundary.
 
 A pull request is the right size when reverting it would not also revert a
 decision you want to keep. Line count is not the measure. A thousand lines
@@ -56,15 +56,14 @@ laptop. `.github/workflows/ci.yml` runs on `pull_request`, and reads the
 workflow from the branch under review, so CI runs even for a workflow change
 that has not reached `main`.
 
-Take the draft label off when `tasks.md` is complete and `openspec validate`
-passes.
+Take the draft label off when every acceptance criterion in the issue is met
+and CI passes.
 
 ## Writing the Description
 
-Point at the specification, not at the diff. For an OpenSpec change that is
-`openspec/changes/<name>/proposal.md`; for shipped behavior it is the spec under
-`openspec/specs/`. A reader three months later opens those, not 45,000 lines of
-diff.
+Point at the specification, not at the diff. Write `Closes #<issue>` so the
+merge closes the issue and links back to it. A reader three months later opens
+the issue, not 45,000 lines of diff.
 
 State plainly what is NOT in the change. A proposal document that lands without
 its implementation must say so, or readers assume the behavior exists.
